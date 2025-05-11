@@ -15,6 +15,7 @@ import (
 	"github.com/trebent/kerberos/internal/env"
 	"github.com/trebent/kerberos/internal/otel"
 	"github.com/trebent/zerologr"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 var (
@@ -76,10 +77,12 @@ func main() {
 // It returns an error if the server fails to start and when stopping. If
 // the server is stopped, it returns http.ErrServerClosed.
 func startServer(ctx context.Context) error {
-	handler := http.NewServeMux()
-	handler.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		zerologr.Info("Received request", "method", r.Method, "path", r.URL.Path)
+		w.WriteHeader(http.StatusOK)
 	})
+	handler := otelhttp.NewHandler(mux, "/")
 
 	server := http.Server{
 		Addr:         fmt.Sprintf(":%d", env.Port.Value()),
