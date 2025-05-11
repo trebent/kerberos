@@ -48,6 +48,7 @@ func main() {
 		Caller:  true,
 		V:       env.LogVerbosity.Value(),
 	})
+	logger.Info("Starting Kerberos API Gateway")
 
 	// Start Kerberos API GW server
 	if err := startServer(); !errors.Is(err, http.ErrServerClosed) {
@@ -58,6 +59,9 @@ func main() {
 
 func startServer() error {
 	handler := http.NewServeMux()
+	handler.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		zerologr.Info("Received request", "method", r.Method, "path", r.URL.Path)
+	})
 
 	server := http.Server{
 		Addr:         fmt.Sprintf(":%d", env.Port.Value()),
