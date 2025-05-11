@@ -8,7 +8,7 @@ import (
 
 var (
 	port = envparser.Register(&envparser.Opts[int]{
-		Name:  "KERBEROS_PORT",
+		Name:  "PORT",
 		Desc:  "Port for the Kerberos API GW server.",
 		Value: 30000,
 		Validate: func(v int) error {
