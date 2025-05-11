@@ -13,6 +13,7 @@ import (
 
 	"github.com/trebent/envparser"
 	"github.com/trebent/kerberos/internal/env"
+	"github.com/trebent/kerberos/internal/otel"
 	"github.com/trebent/zerologr"
 )
 
@@ -48,16 +49,33 @@ func main() {
 		Caller:  true,
 		V:       env.LogVerbosity.Value(),
 	})
-	logger.Info("Starting Kerberos API Gateway")
+	zerologr.Set(logger.WithName("global"))
+	logger = logger.WithName("start")
+	logger.Info("Starting Kerberos API GW server", "port", env.Port.Value())
+
+	signalCtx, signalCancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer signalCancel()
+
+	shutdown, err := otel.Instrument(signalCtx)
+	if err != nil {
+		logger.Error(err, "Failed to instrument OpenTelemetry")
+		os.Exit(1)
+	}
+	defer shutdown(context.Background())
 
 	// Start Kerberos API GW server
-	if err := startServer(); !errors.Is(err, http.ErrServerClosed) {
+	if err := startServer(signalCtx); !errors.Is(err, http.ErrServerClosed) {
+		println(err.Error())
 		logger.Error(err, "Failed to start Kerberos HTTP server")
 		os.Exit(1)
 	}
+	logger.Info("Kerberos API GW server stopped")
 }
 
-func startServer() error {
+// startServer starts the HTTP server and listens for incoming requests.
+// It returns an error if the server fails to start and when stopping. If
+// the server is stopped, it returns http.ErrServerClosed.
+func startServer(ctx context.Context) error {
 	handler := http.NewServeMux()
 	handler.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		zerologr.Info("Received request", "method", r.Method, "path", r.URL.Path)
@@ -75,12 +93,25 @@ func startServer() error {
 		errChan <- server.ListenAndServe()
 	}()
 
-	signalCtx, signalCancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer signalCancel()
-	<-signalCtx.Done()
+	var (
+		srvErr      error
+		shutdownErr error
+	)
+	select {
+	case <-ctx.Done():
+		zerologr.Info("Stopping server")
 
-	timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), readTimeout+writeTimeout)
-	defer timeoutCancel()
+		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), readTimeout+writeTimeout)
+		defer timeoutCancel()
 
-	return errors.Join(server.Shutdown(timeoutCtx), <-errChan)
+		shutdownErr = server.Shutdown(timeoutCtx)
+		if shutdownErr != nil {
+			zerologr.Error(shutdownErr, "Server shutdown error")
+		}
+		srvErr = <-errChan
+	case srvErr = <-errChan:
+		zerologr.Error(srvErr, "Server start error")
+	}
+
+	return errors.Join(srvErr, shutdownErr)
 }
