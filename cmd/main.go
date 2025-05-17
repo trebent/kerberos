@@ -23,10 +23,12 @@ var (
 	writeTimeout time.Duration
 )
 
-//nolint:gochecknoinits
-func init() {
-	envparser.Prefix = "KRB" //nolint:reassign
-}
+// TODO: Add support for prefix exemptions to allow OTEL vars to be set without
+// the KRB prefix.
+// //nolint:gochecknoinits
+// func init() {
+// 	envparser.Prefix = "KRB" //nolint:reassign
+// }
 
 func main() {
 	flag.CommandLine.SetOutput(os.Stdout)
@@ -82,7 +84,7 @@ func startServer(ctx context.Context) error {
 		zerologr.Info("Received request", "method", r.Method, "path", r.URL.Path)
 		w.WriteHeader(http.StatusOK)
 	})
-	handler := otelhttp.NewHandler(mux, "/")
+	handler := otelhttp.NewHandler(mux, "krb")
 
 	server := http.Server{
 		Addr:         fmt.Sprintf(":%d", env.Port.Value()),
