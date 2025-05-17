@@ -2,19 +2,19 @@ services:
   prometheus:
     image: "prom/prometheus:v3.3.1"
     ports:
-      - 9090:9090
+      - ${PROM_PORT}:9090
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
 
   grafana:
     image: "grafana/grafana:12.0.0"
     ports:
-      - 3000:3000
+      - ${GRAFANA_PORT}:3000
     volumes:
       - ./grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/grafana-datasources.yml
       - ./grafana/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/grafana-dashboards.yml
       - ./grafana/prometheus.json:/var/lib/grafana/prometheus.json
-      - ./grafana/kerberos.json:/var/lib/grafana/kerberos.json
+      - ./grafana/kerberos_runtime.json:/var/lib/grafana/kerberos_runtime.json
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
 
   # jaeger:

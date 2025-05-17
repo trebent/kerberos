@@ -8,4 +8,4 @@ providers:
   - name: "Kerberos"
     type: file
     options:
-      path: /var/lib/grafana/kerberos.json
+      path: /var/lib/grafana/kerberos_runtime.json
