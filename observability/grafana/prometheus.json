@@ -18,83 +18,9 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 2,
+  "id": 1,
   "links": [],
   "panels": [
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 12,
-        "x": 0,
-        "y": 0
-      },
-      "id": 6,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "last"
-          ],
-          "fields": "/^kerberos$/",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value_and_name",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "up",
-          "format": "time_series",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "{{job}}",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "Target up status",
-      "type": "stat"
-    },
     {
       "datasource": {
         "type": "prometheus",
@@ -132,8 +58,8 @@
       },
       "gridPos": {
         "h": 5,
-        "w": 12,
-        "x": 12,
+        "w": 24,
+        "x": 0,
         "y": 0
       },
       "id": 5,
@@ -147,6 +73,7 @@
           ],
           "show": false
         },
+        "frameIndex": 0,
         "showHeader": true
       },
       "pluginVersion": "12.0.0",
@@ -158,12 +85,14 @@
           },
           "disableTextWrap": false,
           "editorMode": "code",
-          "expr": "max by (job, instance, \"service.name\") (target_info)",
+          "exemplar": false,
+          "expr": "target_info",
+          "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "{{label_name}}",
-          "range": true,
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
           "refId": "A",
           "useBackend": false
         }
@@ -191,28 +120,30 @@
               "names": [
                 "instance",
                 "job",
-                "service.name"
+                "service.name",
+                "telemetry.sdk.language",
+                "telemetry.sdk.name",
+                "telemetry.sdk.version",
+                "Value"
               ]
             }
           }
         },
         {
-          "id": "groupBy",
+          "id": "organize",
           "options": {
-            "fields": {
-              "instance": {
-                "aggregations": [],
-                "operation": "groupby"
-              },
-              "job": {
-                "aggregations": [],
-                "operation": "groupby"
-              },
-              "service.name": {
-                "aggregations": [],
-                "operation": "groupby"
-              }
-            }
+            "excludeByName": {},
+            "includeByName": {},
+            "indexByName": {
+              "Value": 6,
+              "instance": 1,
+              "job": 0,
+              "service.name": 2,
+              "telemetry.sdk.language": 3,
+              "telemetry.sdk.name": 4,
+              "telemetry.sdk.version": 5
+            },
+            "renameByName": {}
           }
         }
       ],
@@ -642,5 +573,5 @@
   "timezone": "browser",
   "title": "Prometheus status",
   "uid": "6d3ea7ab-5878-46f3-9b5f-2a021b205cc5",
-  "version": 13
+  "version": 1
 }

@@ -13,7 +13,8 @@ services:
     volumes:
       - ./grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/grafana-datasources.yml
       - ./grafana/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/grafana-dashboards.yml
-      - ./grafana/dashboard.json:/var/lib/grafana/dashboard.json
+      - ./grafana/prometheus.json:/var/lib/grafana/prometheus.json
+      - ./grafana/kerberos.json:/var/lib/grafana/kerberos.json
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
 
   # jaeger:

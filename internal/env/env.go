@@ -87,3 +87,7 @@ var (
 		},
 	})
 )
+
+func Parse() error {
+	return envparser.Parse()
+}

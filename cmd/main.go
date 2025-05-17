@@ -41,7 +41,7 @@ func main() {
 
 	flag.Parse()
 	// ExitOnError = true
-	_ = envparser.Parse()
+	_ = env.Parse()
 
 	readTimeout = time.Duration(env.ReadTimeoutSeconds.Value()) * time.Second
 	writeTimeout = time.Duration(env.WriteTimeoutSeconds.Value()) * time.Second
