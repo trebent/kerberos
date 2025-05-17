@@ -121,10 +121,8 @@
                 "instance",
                 "job",
                 "service.name",
-                "telemetry.sdk.language",
-                "telemetry.sdk.name",
-                "telemetry.sdk.version",
-                "Value"
+                "Value",
+                "service.version"
               ]
             }
           }
@@ -135,13 +133,11 @@
             "excludeByName": {},
             "includeByName": {},
             "indexByName": {
-              "Value": 6,
-              "instance": 1,
-              "job": 0,
-              "service.name": 2,
-              "telemetry.sdk.language": 3,
-              "telemetry.sdk.name": 4,
-              "telemetry.sdk.version": 5
+              "Value": 4,
+              "instance": 3,
+              "job": 2,
+              "service.name": 0,
+              "service.version": 1
             },
             "renameByName": {}
           }

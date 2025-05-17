@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"strconv"
 	"syscall"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/trebent/kerberos/internal/otel"
 	"github.com/trebent/zerologr"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 )
 
 // nolint: gochecknoglobals
@@ -24,6 +26,8 @@ var (
 	readTimeout  time.Duration
 	writeTimeout time.Duration
 )
+
+const serviceName = "krb"
 
 // TODO: Add support for prefix exemptions to allow OTEL vars to be set without
 // the KRB prefix.
@@ -49,11 +53,20 @@ func main() {
 	writeTimeout = time.Duration(env.WriteTimeoutSeconds.Value()) * time.Second
 
 	// Set up monitoring
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		panic("could not read build info")
+	}
+	serviceVersion := "unknown"
+	if info.Main.Version != "" {
+		serviceVersion = info.Main.Version
+	}
+
 	logger := zerologr.New(&zerologr.Opts{
 		Console: env.LogToConsole.Value(),
 		Caller:  true,
 		V:       env.LogVerbosity.Value(),
-	})
+	}).WithValues(string(semconv.ServiceNameKey), serviceName, string(semconv.ServiceVersionKey), serviceVersion)
 	zerologr.Set(logger.WithName("global"))
 	logger = logger.WithName("start")
 	logger.Info("Starting Kerberos API GW server", "port", env.Port.Value())
@@ -65,7 +78,7 @@ func main() {
 	)
 	defer signalCancel()
 
-	shutdown, err := otel.Instrument(signalCtx)
+	shutdown, err := otel.Instrument(signalCtx, serviceName, serviceVersion)
 	if err != nil {
 		logger.Error(err, "Failed to instrument OpenTelemetry")
 		os.Exit(1) // nolint: gocritic
@@ -99,7 +112,7 @@ func startServer(ctx context.Context) error {
 					i, err := strconv.ParseInt(queryParam, 10, 16)
 					return int(i), err
 				}
-				return 200, nil
+				return http.StatusOK, nil
 			}()
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)

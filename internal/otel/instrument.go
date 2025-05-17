@@ -10,7 +10,9 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 )
 
 // Instrument bootstraps the OpenTelemetry pipeline.
@@ -18,6 +20,7 @@ import (
 // nolint: nonamedreturns
 func Instrument(
 	ctx context.Context,
+	serviceName, serviceVersion string,
 ) (shutdown func(context.Context) error, err error) {
 	var shutdownFuncs []func(context.Context) error
 
@@ -41,7 +44,15 @@ func Instrument(
 	prop := newPropagator()
 	otel.SetTextMapPropagator(prop)
 
-	tracerProvider, err := newTracerProvider(ctx)
+	// Create telemetry resource.
+	res := resource.NewWithAttributes(
+		semconv.SchemaURL,
+		semconv.ServiceName(serviceName),
+		semconv.ServiceVersion(serviceVersion),
+	)
+
+	// Set up trace provider.
+	tracerProvider, err := newTracerProvider(ctx, res)
 	if err != nil {
 		handleErr(err)
 		return shutdown, err
@@ -50,20 +61,19 @@ func Instrument(
 	otel.SetTracerProvider(tracerProvider)
 
 	// Set up meter provider.
-	meterProvider, err := newMeterProvider(ctx)
+	meterProvider, err := newMeterProvider(ctx, res)
 	if err != nil {
 		handleErr(err)
 		return shutdown, err
 	}
+	shutdownFuncs = append(shutdownFuncs, meterProvider.Shutdown)
+	otel.SetMeterProvider(meterProvider)
 
 	err = runtime.Start()
 	if err != nil {
 		handleErr(err)
 		return shutdown, err
 	}
-
-	shutdownFuncs = append(shutdownFuncs, meterProvider.Shutdown)
-	otel.SetMeterProvider(meterProvider)
 
 	return shutdown, err
 }
@@ -75,20 +85,20 @@ func newPropagator() propagation.TextMapPropagator {
 	)
 }
 
-func newTracerProvider(ctx context.Context) (*trace.TracerProvider, error) {
+func newTracerProvider(ctx context.Context, res *resource.Resource) (*trace.TracerProvider, error) {
 	traceExporter, err := autoexport.NewSpanExporter(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return trace.NewTracerProvider(trace.WithBatcher(traceExporter)), nil
+	return trace.NewTracerProvider(trace.WithBatcher(traceExporter), trace.WithResource(res)), nil
 }
 
-func newMeterProvider(ctx context.Context) (*metric.MeterProvider, error) {
+func newMeterProvider(ctx context.Context, res *resource.Resource) (*metric.MeterProvider, error) {
 	reader, err := autoexport.NewMetricReader(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return metric.NewMeterProvider(metric.WithReader(reader)), nil
+	return metric.NewMeterProvider(metric.WithReader(reader), metric.WithResource(res)), nil
 }
