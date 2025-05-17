@@ -163,7 +163,7 @@
         },
         "tooltip": {
           "hideZeros": false,
-          "mode": "single",
+          "mode": "multi",
           "sort": "none"
         }
       },
@@ -1571,5 +1571,5 @@
   "timezone": "browser",
   "title": "Kerberos",
   "uid": "ec321aef-6a36-42aa-a972-08d3d17660be",
-  "version": 1
+  "version": 2
 }
