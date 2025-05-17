@@ -13,11 +13,6 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        # these aliases make sure to test both latest and previous minor 
-        # versions.
-        go-version-alias: ["stable", "oldstable"]
     steps:
       - uses: actions/checkout@v4
       # Disable the builtin caching since it uses the hash of the go.sum file
@@ -27,7 +22,7 @@ jobs:
       - name: Set up Golang ${{ matrix.go-version-alias }}
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go-version-alias }}
+          go-version-file: go.mod
           cache: false
       # Use restore-keys to always use a cache that was created with the same
       # prefix.
@@ -55,11 +50,6 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        # these aliases make sure to test both latest and previous minor 
-        # versions.
-        go-version-alias: ["stable", "oldstable"]
     steps:
       - uses: actions/checkout@v4
       # Disable the builtin caching since it uses the hash of the go.sum file
@@ -69,7 +59,7 @@ jobs:
       - name: Set up Golang ${{ matrix.go-version-alias }}
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go-version-alias }}
+          go-version-file: go.mod
           cache: false
       # Use restore-keys to always use a cache that was created with the same
       # prefix.
@@ -83,4 +73,3 @@ jobs:
           restore-keys: build-
       - name: Build
         run: make
-
