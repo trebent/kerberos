@@ -1,6 +1,6 @@
 build:
 	@echo "Building Kerberos..."
-	go build -o kerberos ./cmd/kerberos
+	go build -o kerberos ./cmd/main.go
 	@echo "Build complete."
 
 validate:

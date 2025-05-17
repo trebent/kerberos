@@ -15,9 +15,10 @@ import (
 
 // Instrument bootstraps the OpenTelemetry pipeline.
 // If it does not return an error, make sure to call shutdown for proper cleanup.
+// nolint: nonamedreturns
 func Instrument(
 	ctx context.Context,
-) (shutdown func(context.Context) error, err error) { // nolint: nonamedreturns
+) (shutdown func(context.Context) error, err error) {
 	var shutdownFuncs []func(context.Context) error
 
 	shutdown = func(ctx context.Context) error {
