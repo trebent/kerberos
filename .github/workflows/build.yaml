@@ -42,10 +42,10 @@ jobs:
         run: go test ./... -coverprofile=coverage.out
       - name: Generate coverage report
         run: go tool cover -html=coverage.out -o coverage.html
-      - name: Upload coverega report
+      - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
-          name: go-coverage-report-${{ matrix.go-version-alias }}
+          name: go-coverage-report-${{ github.sha }}
           path: coverage.html
 
   build:
