@@ -6,11 +6,12 @@ import (
 	"github.com/trebent/envparser"
 )
 
+// nolint: gochecknoglobals
 var (
 	Port = envparser.Register(&envparser.Opts[int]{
 		Name:  "PORT",
 		Desc:  "Port for the Kerberos API GW server.",
-		Value: 30000, //nolint:mnd
+		Value: 30000, // nolint: mnd
 		Validate: func(v int) error {
 			if v < 1000 || v > 65535 {
 				return fmt.Errorf("must be between 1000 and 65535: %d", v)
@@ -35,7 +36,7 @@ var (
 	ReadTimeoutSeconds = envparser.Register(&envparser.Opts[int]{
 		Name:  "READ_TIMEOUT_SECONDS",
 		Desc:  "Read timeout in seconds.",
-		Value: 5,
+		Value: 5, // nolint: mnd
 		Validate: func(v int) error {
 			if v < 1 {
 				return fmt.Errorf("must be greater than 0: %d", v)
@@ -46,7 +47,7 @@ var (
 	WriteTimeoutSeconds = envparser.Register(&envparser.Opts[int]{
 		Name:  "WRITE_TIMEOUT_SECONDS",
 		Desc:  "Write timeout in seconds.",
-		Value: 5,
+		Value: 5, // nolint: mnd
 		Validate: func(v int) error {
 			if v < 1 {
 				return fmt.Errorf("must be greater than 0: %d", v)

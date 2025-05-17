@@ -18,6 +18,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
+// nolint: gochecknoglobals
 var (
 	readTimeout  time.Duration
 	writeTimeout time.Duration
@@ -56,19 +57,22 @@ func main() {
 	logger = logger.WithName("start")
 	logger.Info("Starting Kerberos API GW server", "port", env.Port.Value())
 
-	signalCtx, signalCancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	signalCtx, signalCancel := signal.NotifyContext(
+		context.Background(),
+		syscall.SIGINT,
+		syscall.SIGTERM,
+	)
 	defer signalCancel()
 
 	shutdown, err := otel.Instrument(signalCtx)
 	if err != nil {
 		logger.Error(err, "Failed to instrument OpenTelemetry")
-		os.Exit(1)
+		os.Exit(1) // nolint: gocritic
 	}
-	defer shutdown(context.Background())
+	defer shutdown(context.Background()) // nolint: errcheck
 
 	// Start Kerberos API GW server
-	if err := startServer(signalCtx); !errors.Is(err, http.ErrServerClosed) {
-		println(err.Error())
+	if err := startServer(signalCtx); !errors.Is(err, http.ErrServerClosed) { // nolint: govet
 		logger.Error(err, "Failed to start Kerberos HTTP server")
 		os.Exit(1)
 	}
@@ -106,7 +110,10 @@ func startServer(ctx context.Context) error {
 	case <-ctx.Done():
 		zerologr.Info("Stopping server")
 
-		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), readTimeout+writeTimeout)
+		timeoutCtx, timeoutCancel := context.WithTimeout(
+			context.Background(),
+			readTimeout+writeTimeout,
+		)
 		defer timeoutCancel()
 
 		shutdownErr = server.Shutdown(timeoutCtx)

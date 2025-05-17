@@ -15,13 +15,15 @@ import (
 
 // Instrument bootstraps the OpenTelemetry pipeline.
 // If it does not return an error, make sure to call shutdown for proper cleanup.
-func Instrument(ctx context.Context) (shutdown func(context.Context) error, err error) {
+func Instrument(
+	ctx context.Context,
+) (shutdown func(context.Context) error, err error) { // nolint: nonamedreturns
 	var shutdownFuncs []func(context.Context) error
 
 	shutdown = func(ctx context.Context) error {
 		zerologr.Info("Shutting down OpenTelemetry SDK")
 
-		var err error
+		var err error // nolint: govet
 		for _, fn := range shutdownFuncs {
 			err = errors.Join(err, fn(ctx))
 		}
@@ -41,7 +43,7 @@ func Instrument(ctx context.Context) (shutdown func(context.Context) error, err 
 	tracerProvider, err := newTracerProvider(ctx)
 	if err != nil {
 		handleErr(err)
-		return
+		return shutdown, err
 	}
 	shutdownFuncs = append(shutdownFuncs, tracerProvider.Shutdown)
 	otel.SetTracerProvider(tracerProvider)
@@ -50,19 +52,19 @@ func Instrument(ctx context.Context) (shutdown func(context.Context) error, err 
 	meterProvider, err := newMeterProvider(ctx)
 	if err != nil {
 		handleErr(err)
-		return
+		return shutdown, err
 	}
 
 	err = runtime.Start()
 	if err != nil {
 		handleErr(err)
-		return
+		return shutdown, err
 	}
 
 	shutdownFuncs = append(shutdownFuncs, meterProvider.Shutdown)
 	otel.SetMeterProvider(meterProvider)
 
-	return
+	return shutdown, err
 }
 
 func newPropagator() propagation.TextMapPropagator {
