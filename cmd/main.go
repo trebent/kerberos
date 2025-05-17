@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -88,6 +89,28 @@ func startServer(ctx context.Context) error {
 		zerologr.Info("Received request", "method", r.Method, "path", r.URL.Path)
 		w.WriteHeader(http.StatusOK)
 	})
+	if env.TestEndpoint.Value() {
+		mux.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
+			zerologr.Info("Received test request", "method", r.Method, "path", r.URL.Path)
+
+			statusCode, err := func() (int, error) {
+				queryParam := r.URL.Query().Get("status_code")
+				if queryParam != "" {
+					i, err := strconv.ParseInt(queryParam, 10, 16)
+					return int(i), err
+				}
+				return 200, nil
+			}()
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				zerologr.Error(err, "Failed to decode the status_code query parameter")
+				return
+			}
+			zerologr.Info("Responding with status code", "status_code", statusCode)
+			w.WriteHeader(statusCode)
+		})
+		zerologr.Info("Test endpoint enabled")
+	}
 	handler := otelhttp.NewHandler(mux, "krb")
 
 	server := http.Server{

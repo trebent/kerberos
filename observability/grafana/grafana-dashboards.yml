@@ -5,7 +5,11 @@ providers:
     type: file
     options:
       path: /var/lib/grafana/prometheus.json
-  - name: "Kerberos"
+  - name: "Kerberos runtime"
     type: file
     options:
       path: /var/lib/grafana/kerberos_runtime.json
+  - name: "Kerberos HTTP"
+    type: file
+    options:
+      path: /var/lib/grafana/kerberos_http.json

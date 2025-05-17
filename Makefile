@@ -1,5 +1,6 @@
 GRAFANA_PORT ?= 3000
 PROM_PORT ?= 9090
+KERBEROS_PORT ?= 30000
 
 build:
 	@echo "\033[0;32mBuilding Kerberos...\033[0m"
@@ -23,4 +24,17 @@ setup-local-obs:
 
 run:
 	@echo "\033[0;32mRunning Kerberos...\033[0m"
-	@LOG_TO_CONSOLE=1 LOG_VERBOSITY=100 OTEL_METRICS_EXPORTER=prometheus OTEL_TRACES_EXPORTER=otlp go run ./cmd/main.go
+	@LOG_TO_CONSOLE=1 LOG_VERBOSITY=100 OTEL_METRICS_EXPORTER=prometheus OTEL_TRACES_EXPORTER=otlp PORT=$(KERBEROS_PORT) go run ./cmd/main.go
+
+generate-test-requests:
+	@echo "\033[0;32mRunning some sample HTTP requests...\033[0m"
+	@curl -X GET localhost:$(KERBEROS_PORT)/test
+	@curl -X GET localhost:$(KERBEROS_PORT)/test?status_code=400
+	@curl -X PUT localhost:$(KERBEROS_PORT)/test
+	@curl -X PUT localhost:$(KERBEROS_PORT)/test?status_code=500
+	@curl -X POST localhost:$(KERBEROS_PORT)/test
+	@curl -X POST localhost:$(KERBEROS_PORT)/test?status_code=204
+	@curl -X PATCH localhost:$(KERBEROS_PORT)/test
+	@curl -X PATCH localhost:$(KERBEROS_PORT)/test?status_code=404
+	@curl -X DELETE localhost:$(KERBEROS_PORT)/test
+	@curl -X OPTIONS localhost:$(KERBEROS_PORT)/test

@@ -15,6 +15,7 @@ services:
       - ./grafana/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/grafana-dashboards.yml
       - ./grafana/prometheus.json:/var/lib/grafana/prometheus.json
       - ./grafana/kerberos_runtime.json:/var/lib/grafana/kerberos_runtime.json
+      - ./grafana/kerberos_http.json:/var/lib/grafana/kerberos_http.json
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
 
   # jaeger:

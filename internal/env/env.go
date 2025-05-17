@@ -19,6 +19,11 @@ var (
 			return nil
 		},
 	})
+	TestEndpoint = envparser.Register(&envparser.Opts[bool]{
+		Name:  "TEST_ENDPOINT",
+		Desc:  "Set to enable a testing endpoint that can be used to test how Kerberos generates metrics for various requests.",
+		Value: false,
+	})
 	LogToConsole = envparser.Register(&envparser.Opts[bool]{
 		Name: "LOG_TO_CONSOLE",
 		Desc: "Set to log to console.",
