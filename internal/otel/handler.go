@@ -8,7 +8,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/trebent/kerberos/internal/version"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
@@ -34,12 +33,6 @@ const (
 
 	responseCounterName       = "response"
 	responseSizeHistogramName = "response.size"
-)
-
-// nolint: gochecknoglobals
-var meter = otel.GetMeterProvider().Meter(
-	"github.com/trebent/kerberos/forwarder",
-	metric.WithInstrumentationVersion(version.Version()),
 )
 
 func Middleware(next http.Handler, logger logr.Logger) http.Handler {
@@ -74,6 +67,9 @@ func Middleware(next http.Handler, logger logr.Logger) http.Handler {
 
 		w, rw := newResponseWrapper(w)
 
+		// Update at least the request counter here, since it's not reliant on handler logic.
+		o.requestCountCounter.Add(ctx, 1)
+
 		// Since the duration metric is directly related to the route forwarded to, keep the time
 		// measurement as close to the forwarding call as possible.
 		start := time.Now()
@@ -83,16 +79,13 @@ func Middleware(next http.Handler, logger logr.Logger) http.Handler {
 		// Process the response.
 		span.SetStatus(rw.SpanStatus())
 
-		// Update all metrics, can't separate request and response handling since the handler is
-		// called by ServeHTTP.
+		// Update metrics, can't separate request and response handling since the handler is
+		// called by ServeHTTP, no
 		// TODO: add backend selection
 		// TODO: add route
-		statusCodeOpt := metric.WithAttributeSet(
-			attribute.NewSet(semconv.HTTPStatusCode(rw.StatusCode())),
-		)
+		statusCodeOpt := metric.WithAttributes(semconv.HTTPStatusCode(rw.StatusCode()))
 
 		// Request
-		o.requestCountCounter.Add(ctx, 1)
 		o.requestSizeHistogram.Record(ctx, bw.NumBytes())
 		o.requestDurationHistogram.Record(ctx, float64(duration/time.Millisecond))
 
@@ -110,6 +103,11 @@ func newObs() *obs {
 			trace.WithSpanKind(trace.SpanKindServer),
 		},
 	}
+
+	meter := otel.GetMeterProvider().Meter(
+		"github.com/trebent/kerberos/forwarder",
+		metric.WithInstrumentationVersion(version.Version()),
+	)
 
 	requestCountCounter, err := meter.Int64Counter(
 		requestCountCounterName,
@@ -147,7 +145,7 @@ func newObs() *obs {
 
 	responseCounter, err := meter.Int64Counter(
 		responseCounterName,
-		metric.WithDescription("Measures HTTP responses."),
+		metric.WithDescription("Keeps track of HTTP response status code counts."),
 	)
 	must(err)
 	o.responseCounter = responseCounter
