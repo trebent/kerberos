@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"runtime/debug"
 	"syscall"
 	"time"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/trebent/kerberos/internal/env"
 	krbhandler "github.com/trebent/kerberos/internal/handler"
 	krbotel "github.com/trebent/kerberos/internal/otel"
+	"github.com/trebent/kerberos/internal/version"
 	"github.com/trebent/zerologr"
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 )
@@ -53,20 +53,11 @@ func main() {
 	writeTimeout = time.Duration(env.WriteTimeoutSeconds.Value()) * time.Second
 
 	// Set up monitoring
-	info, ok := debug.ReadBuildInfo()
-	if !ok {
-		panic("could not read build info")
-	}
-	serviceVersion := "unknown"
-	if info.Main.Version != "" {
-		serviceVersion = info.Main.Version
-	}
-
 	rootLogger := zerologr.New(&zerologr.Opts{
 		Console: env.LogToConsole.Value(),
 		Caller:  true,
 		V:       env.LogVerbosity.Value(),
-	}).WithValues(string(semconv.ServiceNameKey), serviceName, string(semconv.ServiceVersionKey), serviceVersion)
+	}).WithValues(string(semconv.ServiceNameKey), serviceName, string(semconv.ServiceVersionKey), version.Version())
 	zerologr.Set(rootLogger.WithName("global"))
 	startLogger := rootLogger.WithName("start")
 	startLogger.Info("Starting Kerberos API GW server", "port", env.Port.Value())
@@ -78,7 +69,7 @@ func main() {
 	)
 	defer signalCancel()
 
-	shutdown, err := krbotel.Instrument(signalCtx, serviceName, serviceVersion)
+	shutdown, err := krbotel.Instrument(signalCtx, serviceName, version.Version())
 	if err != nil {
 		startLogger.Error(err, "Failed to instrument OpenTelemetry")
 		os.Exit(1) // nolint: gocritic

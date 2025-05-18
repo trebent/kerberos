@@ -22,19 +22,24 @@ setup-local-obs:
 	@echo " - Grafana on port:    $(GRAFANA_PORT)"
 	@echo " - Prometheus on port: $(PROM_PORT)"
 
+teardown-local-obs:
+	@echo "\033[0;32mStopping local observability services...\033[0m"
+	@docker compose -f observability/compose.yaml down
+	@echo "\033[0;32mStopped local observability deployment.\033[0m"
+
 run:
 	@echo "\033[0;32mRunning Kerberos...\033[0m"
 	@LOG_TO_CONSOLE=1 LOG_VERBOSITY=100 OTEL_METRICS_EXPORTER=prometheus OTEL_TRACES_EXPORTER=otlp PORT=$(KERBEROS_PORT) go run ./cmd/main.go
 
 generate-test-requests:
 	@echo "\033[0;32mRunning some sample HTTP requests...\033[0m"
-	@curl -X GET localhost:$(KERBEROS_PORT)/test
-	@curl -X GET localhost:$(KERBEROS_PORT)/test?status_code=400
-	@curl -X PUT localhost:$(KERBEROS_PORT)/test
-	@curl -X PUT localhost:$(KERBEROS_PORT)/test?status_code=500
-	@curl -X POST localhost:$(KERBEROS_PORT)/test
-	@curl -X POST localhost:$(KERBEROS_PORT)/test?status_code=204
-	@curl -X PATCH localhost:$(KERBEROS_PORT)/test
-	@curl -X PATCH localhost:$(KERBEROS_PORT)/test?status_code=404
-	@curl -X DELETE localhost:$(KERBEROS_PORT)/test
-	@curl -X OPTIONS localhost:$(KERBEROS_PORT)/test
+	curl -X GET -i localhost:$(KERBEROS_PORT)/test
+	curl -X GET -i localhost:$(KERBEROS_PORT)/test?status_code=400
+	curl -X PUT -i localhost:$(KERBEROS_PORT)/test
+	curl -X PUT -i localhost:$(KERBEROS_PORT)/test?status_code=500
+	curl -X POST -i localhost:$(KERBEROS_PORT)/test
+	curl -X POST -i localhost:$(KERBEROS_PORT)/test?status_code=204
+	curl -X PATCH -i localhost:$(KERBEROS_PORT)/test
+	curl -X PATCH -i localhost:$(KERBEROS_PORT)/test?status_code=404
+	curl -X DELETE -i localhost:$(KERBEROS_PORT)/test
+	curl -X OPTIONS -i localhost:$(KERBEROS_PORT)/test

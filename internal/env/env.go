@@ -74,6 +74,19 @@ var (
 		Create:         true,
 		AcceptedValues: []string{"none", "otlp", "console"},
 	})
+	OtelTracesExporterProtocol = envparser.Register(&envparser.Opts[string]{
+		Name:           "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL",
+		Desc:           "OpenTelemetry traces exporter protocol.",
+		Value:          "grpc",
+		Create:         true,
+		AcceptedValues: []string{"http/protobuf", "grpc"},
+	})
+	OtelExporterOTLPEndpoint = envparser.Register(&envparser.Opts[string]{
+		Name:   "OTEL_EXPORTER_OTLP_ENDPOINT",
+		Desc:   "OpenTelemetry OTLP exporter endpoint.",
+		Value:  "http://localhost:4317",
+		Create: true,
+	})
 	OtelExporterPrometheusHost = envparser.Register(&envparser.Opts[string]{
 		Name:   "OTEL_EXPORTER_PROMETHEUS_HOST",
 		Desc:   "OpenTelemetry Prometheus host.",
