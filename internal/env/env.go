@@ -82,8 +82,9 @@ var (
 		AcceptedValues: []string{"http/protobuf", "grpc"},
 	})
 	OtelExporterOTLPEndpoint = envparser.Register(&envparser.Opts[string]{
-		Name:   "OTEL_EXPORTER_OTLP_ENDPOINT",
-		Desc:   "OpenTelemetry OTLP exporter endpoint.",
+		Name: "OTEL_EXPORTER_OTLP_ENDPOINT",
+		Desc: "OpenTelemetry OTLP exporter endpoint.",
+		// This ensures plan HTTP can be used for OTEL type exports.
 		Value:  "http://localhost:4317",
 		Create: true,
 	})

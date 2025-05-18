@@ -1,3 +1,4 @@
+// nolint: mnd
 package otel
 
 import (
@@ -13,13 +14,13 @@ import (
 type (
 	bodyWrapper struct {
 		body  io.ReadCloser
-		bytes uint
+		bytes int64
 	}
 	responseWrapper struct {
 		responseWriter http.ResponseWriter
 		lock           *sync.Mutex
 
-		bytes       uint
+		bytes       int64
 		wroteHeader bool
 		statusCode  int
 	}
@@ -41,15 +42,17 @@ func (bw *bodyWrapper) Close() error {
 
 func (bw *bodyWrapper) Read(p []byte) (int, error) {
 	n, err := bw.body.Read(p)
-	bw.bytes += uint(n)
+	bw.bytes += int64(n)
 	return n, err
 }
 
-func (bw *bodyWrapper) NumBytes() uint {
+func (bw *bodyWrapper) NumBytes() int64 {
 	return bw.bytes
 }
 
-func newResponseWrapper(responseWriter http.ResponseWriter) (http.ResponseWriter, *responseWrapper) {
+func newResponseWrapper(
+	responseWriter http.ResponseWriter,
+) (http.ResponseWriter, *responseWrapper) {
 	rw := &responseWrapper{responseWriter: responseWriter, lock: &sync.Mutex{}}
 	return httpsnoop.Wrap(responseWriter, httpsnoop.Hooks{
 		Header: func(httpsnoop.HeaderFunc) httpsnoop.HeaderFunc {
@@ -70,14 +73,14 @@ func newResponseWrapper(responseWriter http.ResponseWriter) (http.ResponseWriter
 func (r *responseWrapper) Header() http.Header {
 	zerologr.V(100).Info("Header")
 
-	return r.Header()
+	return r.responseWriter.Header()
 }
 
 func (r *responseWrapper) Write(p []byte) (int, error) {
 	zerologr.V(100).Info("Write", "len", len(p))
 
 	n, err := r.responseWriter.Write(p)
-	r.bytes += uint(n)
+	r.bytes += int64(n)
 	return n, err
 }
 
@@ -105,12 +108,12 @@ func (r *responseWrapper) Flush() {
 	}
 }
 
-func (r *responseWrapper) NumBytes() uint {
+func (r *responseWrapper) NumBytes() int64 {
 	return r.bytes
 }
 
-func (r *responseWrapper) StatusCode() uint {
-	return uint(r.statusCode)
+func (r *responseWrapper) StatusCode() int {
+	return r.statusCode
 }
 
 func (r *responseWrapper) SpanStatus() (codes.Code, string) {

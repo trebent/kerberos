@@ -2,9 +2,11 @@ package version
 
 import "runtime/debug"
 
-// Exposed to have a settable variable when building binaries.
+// Ver is exposed to have a settable variable when building binaries.
+// nolint: gochecknoglobals
 var Ver = ""
 
+// nolint: gochecknoinits
 func init() {
 	// This is used as a way of supporting EITHER runtime BuildInfo, OR settings the
 	// version during build time. If Version is empty, we try to fetch it from BuildInfo,
