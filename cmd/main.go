@@ -86,7 +86,8 @@ func main() {
 	defer shutdown(context.Background()) // nolint: errcheck
 
 	// Start Kerberos API GW server
-	if err := startServer(signalCtx, rootLogger); !errors.Is(err, http.ErrServerClosed) { // nolint: govet
+	// nolint: govet
+	if err := startServer(signalCtx, rootLogger); !errors.Is(err, http.ErrServerClosed) {
 		startLogger.Error(err, "Failed to start Kerberos HTTP server")
 		os.Exit(1)
 	}
