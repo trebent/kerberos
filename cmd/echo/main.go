@@ -5,6 +5,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -34,6 +35,11 @@ func main() {
 	// Register the echo handler
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		println(r.Method+" "+r.URL.String(), "size", r.ContentLength)
+
+		for key, values := range r.Header {
+			println("  ", key, fmt.Sprintf("%s", values))
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 
 		resp := &response{
