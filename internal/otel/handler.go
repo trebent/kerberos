@@ -81,17 +81,18 @@ func Middleware(next http.Handler, logger logr.Logger) http.Handler {
 
 		// Update metrics, can't separate request and response handling since the handler is
 		// called by ServeHTTP, no
-		// TODO: add backend selection
-		// TODO: add route
 		statusCodeOpt := metric.WithAttributes(semconv.HTTPStatusCode(rw.StatusCode()))
+		// TODO: add actual route
+		// TODO: add backend to generalOpts
+		generalOpts := metric.WithAttributes(semconv.HTTPMethod(r.Method), semconv.HTTPRoute(r.URL.Path))
 
 		// Request
-		o.requestSizeHistogram.Record(ctx, bw.NumBytes())
-		o.requestDurationHistogram.Record(ctx, float64(duration/time.Millisecond))
+		o.requestSizeHistogram.Record(ctx, bw.NumBytes(), generalOpts)
+		o.requestDurationHistogram.Record(ctx, float64(duration/time.Millisecond), generalOpts)
 
 		// Response
-		o.responseCounter.Add(ctx, 1, statusCodeOpt)
-		o.responseSizeHistogram.Record(ctx, rw.NumBytes())
+		o.responseCounter.Add(ctx, 1, statusCodeOpt, generalOpts)
+		o.responseSizeHistogram.Record(ctx, rw.NumBytes(), generalOpts)
 
 		logger.Info(r.Method + " " + r.URL.Path)
 	})
