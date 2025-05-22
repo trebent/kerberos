@@ -3,10 +3,12 @@ package otel
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/trebent/kerberos/internal/version"
+	"github.com/trebent/zerologr"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
@@ -35,8 +37,9 @@ const (
 	responseSizeHistogramName = "response.size"
 )
 
-func Middleware(next http.Handler, logger logr.Logger) http.Handler {
+func Middleware(next http.Handler) http.Handler {
 	o := newObs()
+	logger := zerologr.WithName("request")
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check request trace context
@@ -54,7 +57,9 @@ func Middleware(next http.Handler, logger logr.Logger) http.Handler {
 		ctx, span := tracer.Start(ctx, spanName, o.spanOpts...)
 		defer span.End() // Stop the span after EVERYTHING is done
 
-		logger.Info(r.Method + " " + r.URL.Path)
+		rLogger := logger.WithValues("path", r.URL.Path, "method", r.Method)
+		rLogger.Info(r.Method + " " + r.URL.Path)
+		ctx = logr.NewContext(ctx, rLogger)
 
 		// Wrap the request body to extract size
 		// Wrap the response to extract:
@@ -97,7 +102,11 @@ func Middleware(next http.Handler, logger logr.Logger) http.Handler {
 		o.responseCounter.Add(ctx, 1, statusCodeOpt, generalOpts)
 		o.responseSizeHistogram.Record(ctx, rw.NumBytes(), generalOpts)
 
-		logger.Info(r.Method + " " + r.URL.Path)
+		for key, values := range w.Header() {
+			rLogger.Info("Checking written response headers", "key", key, "values", values)
+		}
+
+		rLogger.Info(r.Method + " " + r.URL.Path + " " + strconv.Itoa(rw.StatusCode()))
 	})
 }
 

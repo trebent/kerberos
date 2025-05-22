@@ -71,8 +71,6 @@ func newResponseWrapper(
 }
 
 func (r *responseWrapper) Header() http.Header {
-	zerologr.V(100).Info("Header")
-
 	return r.responseWriter.Header()
 }
 

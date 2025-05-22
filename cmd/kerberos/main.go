@@ -11,11 +11,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-logr/logr"
 	"github.com/trebent/envparser"
 	"github.com/trebent/kerberos/internal/env"
 	krbhandler "github.com/trebent/kerberos/internal/handler"
 	krbotel "github.com/trebent/kerberos/internal/otel"
+	"github.com/trebent/kerberos/internal/router"
 	"github.com/trebent/kerberos/internal/version"
 	"github.com/trebent/zerologr"
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
@@ -53,13 +53,15 @@ func main() {
 	writeTimeout = time.Duration(env.WriteTimeoutSeconds.Value()) * time.Second
 
 	// Set up monitoring
-	rootLogger := zerologr.New(&zerologr.Opts{
+	zerologr.Set(zerologr.New(&zerologr.Opts{
 		Console: env.LogToConsole.Value(),
 		Caller:  true,
 		V:       env.LogVerbosity.Value(),
-	}).WithValues(string(semconv.ServiceNameKey), serviceName, string(semconv.ServiceVersionKey), version.Version())
-	zerologr.Set(rootLogger.WithName("global"))
-	startLogger := rootLogger.WithName("start")
+	}).
+		WithValues(string(semconv.ServiceNameKey), serviceName, string(semconv.ServiceVersionKey), version.Version()).
+		WithName("krb"),
+	)
+	startLogger := zerologr.WithName("start")
 	startLogger.Info("Starting Kerberos API GW server", "port", env.Port.Value())
 
 	signalCtx, signalCancel := signal.NotifyContext(
@@ -78,7 +80,7 @@ func main() {
 
 	// Start Kerberos API GW server
 	// nolint: govet
-	if err := startServer(signalCtx, rootLogger); !errors.Is(err, http.ErrServerClosed) {
+	if err := startServer(signalCtx); !errors.Is(err, http.ErrServerClosed) {
 		startLogger.Error(err, "Failed to start Kerberos HTTP server")
 		os.Exit(1)
 	}
@@ -88,7 +90,7 @@ func main() {
 // startServer starts the HTTP server and listens for incoming requests.
 // It returns an error if the server fails to start and when stopping. If
 // the server is stopped, it returns http.ErrServerClosed.
-func startServer(ctx context.Context, rootLogger logr.Logger) error {
+func startServer(ctx context.Context) error {
 	mux := http.NewServeMux()
 
 	// OTEL middleware must be called first, then forwarding can happen.
@@ -97,16 +99,30 @@ func startServer(ctx context.Context, rootLogger logr.Logger) error {
 	// resp = forward(request)
 	// stop tracing/metrics/logs
 	if env.TestEndpoint.Value() {
-		mux.Handle("/test", krbotel.Middleware(
-			krbhandler.Test(),
-			rootLogger.WithName("request")),
-		)
+		testHandler := krbotel.Middleware(krbhandler.Test())
+
+		mux.Handle("/test", testHandler)
 		zerologr.Info("Test endpoint enabled")
 	}
-	mux.Handle("/gw", krbotel.Middleware(
-		krbhandler.Forwarder(rootLogger.WithName("forwarder")),
-		rootLogger.WithName("request")),
+
+	zerologr.Info("Loading router")
+	// This is the main endpoint for the API GW. Every incoming request passes through the backend
+	// middleware for backend detection, and the route middleware for route matching. A failure to
+	// match a backend yields a 404. Route matching is optional, it's use is limited to enrich
+	// metrics with route information which can't be derived from the raw URL (as the metric
+	// dimensions would grow out of control).
+	r, err := router.Load(
+		&router.RouterOpts{Loader: router.NewJSONLoader(env.RouteJSONFile.Value())},
 	)
+	if err != nil {
+		return err
+	}
+	zerologr.Info("Router loaded")
+
+	gwHandler := krbotel.Middleware(
+		router.Middleware(krbhandler.Forwarder(), r),
+	)
+	mux.Handle("/gw/", gwHandler)
 
 	server := http.Server{
 		Addr:         fmt.Sprintf(":%d", env.Port.Value()),

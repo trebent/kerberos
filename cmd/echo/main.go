@@ -33,10 +33,8 @@ func main() {
 
 	// Register the echo handler
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		println(r.Method + " " + r.URL.String())
+		println(r.Method+" "+r.URL.String(), "size", r.ContentLength)
 		w.Header().Set("Content-Type", "application/json")
-
-		w.WriteHeader(http.StatusOK)
 
 		resp := &response{
 			Method:  r.Method,

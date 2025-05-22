@@ -2,6 +2,7 @@ package env
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/trebent/envparser"
 )
@@ -60,6 +61,17 @@ var (
 			return nil
 		},
 	})
+	RouteJSONFile = envparser.Register(&envparser.Opts[string]{
+		Name:  "ROUTE_JSON_FILE",
+		Desc:  "JSON file to load routes from.",
+		Value: "./routes.json", // nolint: mnd
+		Validate: func(path string) error {
+			f, err := os.Open(path)
+			defer f.Close()
+			return err
+		},
+	})
+	// OTEL conf.
 	OtelMetricsExporter = envparser.Register(&envparser.Opts[string]{
 		Name:           "OTEL_METRICS_EXPORTER",
 		Desc:           "OpenTelemetry metrics exporter.",
