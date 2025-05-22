@@ -1,3 +1,4 @@
+// nolint
 // echo is a simple HTTP server that echoes back the request
 // body and headers. It is used for testing purposes.
 package main
@@ -48,18 +49,26 @@ func main() {
 			// Read the request body
 			_, err := io.Copy(resp, r.Body)
 			if err != nil {
-				http.Error(w, "{\"error\": \"failed to read request body\"}", http.StatusInternalServerError)
+				http.Error(
+					w,
+					"{\"error\": \"failed to read request body\"}",
+					http.StatusInternalServerError,
+				)
 				return
 			}
 		}
 
 		responseBytes, err := json.MarshalIndent(resp, "", "  ")
 		if err != nil {
-			http.Error(w, "{\"error\": \"failed to marshal response\"}", http.StatusInternalServerError)
+			http.Error(
+				w,
+				"{\"error\": \"failed to marshal response\"}",
+				http.StatusInternalServerError,
+			)
 			return
 		}
 
-		w.Write(responseBytes)
+		_, _ = w.Write(responseBytes)
 	})
 
 	// Start the server

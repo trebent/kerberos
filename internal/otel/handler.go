@@ -84,7 +84,10 @@ func Middleware(next http.Handler, logger logr.Logger) http.Handler {
 		statusCodeOpt := metric.WithAttributes(semconv.HTTPStatusCode(rw.StatusCode()))
 		// TODO: add actual route
 		// TODO: add backend to generalOpts
-		generalOpts := metric.WithAttributes(semconv.HTTPMethod(r.Method), semconv.HTTPRoute(r.URL.Path))
+		generalOpts := metric.WithAttributes(
+			semconv.HTTPMethod(r.Method),
+			semconv.HTTPRoute(r.URL.Path),
+		)
 
 		// Request
 		o.requestSizeHistogram.Record(ctx, bw.NumBytes(), generalOpts)

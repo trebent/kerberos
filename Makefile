@@ -10,7 +10,7 @@ build:
 validate:
 	@echo "\033[0;32mValidating Kerberos...\033[0m"
 	@go tool govulncheck ./...
-	@go tool golangci-lint run
+	@go tool golangci-lint run --fix
 	@go test -v ./... -coverprofile=coverage.out
 	@go tool cover -html=coverage.out -o coverage.html
 	@echo "\033[0;32mValidation complete.\033[0m"
