@@ -14,7 +14,7 @@ import (
 	"github.com/trebent/zerologr"
 )
 
-var forwardPattern = regexp.MustCompile(`^/gw/backend/.*/(.*)?$`)
+var forwardPattern = regexp.MustCompile(`^/gw/backend/[-_a-z0-9]+/(.*)?$`)
 
 // Forwarder returns a HTTP handler that forwards any received requests to
 // their designated backends.
