@@ -60,19 +60,19 @@ func Forwarder() http.Handler {
 		}
 		defer resp.Body.Close()
 
+		for key, values := range resp.Header {
+			rLogger.V(100).Info("Adding header to response", "key", key, "values", values)
+			for _, value := range values {
+				w.Header().Add(key, value)
+			}
+		}
+
 		_, err = io.Copy(w, resp.Body)
 		if err != nil {
 			rLogger.Error(err, "Failed to copy response body")
 			jsonError, _ := response.JSONError("forwarding failure")
 			http.Error(w, string(jsonError), http.StatusInternalServerError)
 			return
-		}
-
-		for key, values := range resp.Header {
-			rLogger.Info("Adding header to response", "key", key, "values", values)
-			for _, value := range values {
-				w.Header().Add(key, value)
-			}
 		}
 
 		w.WriteHeader(resp.StatusCode)

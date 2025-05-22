@@ -102,10 +102,6 @@ func Middleware(next http.Handler) http.Handler {
 		o.responseCounter.Add(ctx, 1, statusCodeOpt, generalOpts)
 		o.responseSizeHistogram.Record(ctx, rw.NumBytes(), generalOpts)
 
-		for key, values := range w.Header() {
-			rLogger.Info("Checking written response headers", "key", key, "values", values)
-		}
-
 		rLogger.Info(r.Method + " " + r.URL.Path + " " + strconv.Itoa(rw.StatusCode()))
 	})
 }
