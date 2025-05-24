@@ -2,6 +2,8 @@ GRAFANA_PORT ?= 3000
 PROM_PORT ?= 9090
 KERBEROS_PORT ?= 30000
 
+default: validate build
+
 build:
 	@echo "\033[0;32mBuilding Kerberos...\033[0m"
 	go build -o kerberos ./cmd/main.go
@@ -10,7 +12,7 @@ build:
 validate:
 	@echo "\033[0;32mValidating Kerberos...\033[0m"
 	@go tool govulncheck ./...
-	@go tool golangci-lint run --fix
+	@golangci-lint run --fix
 	@go test -v ./... -coverprofile=coverage.out
 	@go tool cover -html=coverage.out -o coverage.html
 	@echo "\033[0;32mValidation complete.\033[0m"

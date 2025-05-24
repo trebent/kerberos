@@ -38,6 +38,8 @@ jobs:
         uses: golangci/golangci-lint-action@v8
         with:
           version: v2.1
+      - name: Run vulnerability scan
+        run: go tool govulncheck ./...
       - name: Run tests
         run: go test ./... -coverprofile=coverage.out
       - name: Generate coverage report
