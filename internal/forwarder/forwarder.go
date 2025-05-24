@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/go-logr/logr"
+	"github.com/trebent/kerberos/internal/otel"
 	"github.com/trebent/kerberos/internal/response"
 	"github.com/trebent/kerberos/internal/router"
 	"github.com/trebent/zerologr"
@@ -89,6 +90,9 @@ func Forwarder() http.Handler {
 func Test() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		zerologr.Info("Received test request", "method", r.Method, "path", r.URL.Path)
+
+		ctx := router.NewBackendContext(r.Context(), &TestBackend{})
+		otel.UpdateRequestContext(w, ctx)
 
 		statusCode, err := func() (int, error) {
 			queryParam := r.URL.Query().Get("status_code")

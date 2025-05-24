@@ -7,9 +7,11 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/trebent/kerberos/internal/router"
 	"github.com/trebent/kerberos/internal/version"
 	"github.com/trebent/zerologr"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
@@ -87,12 +89,12 @@ func Middleware(next http.Handler) http.Handler {
 		// Update metrics, can't separate request and response handling since the handler is
 		// called by ServeHTTP, no
 		statusCodeOpt := metric.WithAttributes(semconv.HTTPStatusCode(rw.StatusCode()))
-		// TODO: add actual route
-		// TODO: add backend to generalOpts
 		generalOpts := metric.WithAttributes(
 			semconv.HTTPMethod(r.Method),
 			semconv.HTTPRoute(r.URL.Path),
+			attribute.String("krb.backend", router.BackendFromContext(rw.GetRequestContext()).Name()),
 		)
+		// TODO: add actual route
 
 		// Request
 		o.requestSizeHistogram.Record(ctx, bw.NumBytes(), generalOpts)

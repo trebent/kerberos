@@ -2,6 +2,8 @@
 package otel
 
 import (
+	"context"
+	"errors"
 	"io"
 	"net/http"
 	"sync"
@@ -20,6 +22,8 @@ type (
 		responseWriter http.ResponseWriter
 		lock           *sync.Mutex
 
+		requestContext context.Context
+
 		bytes       int64
 		wroteHeader bool
 		statusCode  int
@@ -29,7 +33,8 @@ type (
 var (
 	_ http.ResponseWriter = &responseWrapper{}
 	_ http.Flusher        = &responseWrapper{}
-	_ io.ReadCloser       = &bodyWrapper{}
+
+	_ io.ReadCloser = &bodyWrapper{}
 )
 
 func newBodyWrapper(body io.ReadCloser) io.ReadCloser {
@@ -50,6 +55,14 @@ func (bw *bodyWrapper) NumBytes() int64 {
 	return bw.bytes
 }
 
+func UpdateRequestContext(w http.ResponseWriter, ctx context.Context) {
+	if rw, ok := w.(*responseWrapper); ok {
+		rw.SetRequestContext(ctx)
+		return
+	}
+	zerologr.Error(errors.New("wrong type"), "UpdateRequestContext called with non-responseWrapper type")
+}
+
 func newResponseWrapper(
 	responseWriter http.ResponseWriter,
 ) (http.ResponseWriter, *responseWrapper) {
@@ -68,6 +81,14 @@ func newResponseWrapper(
 			return rw.Flush
 		},
 	}), rw
+}
+
+func (r *responseWrapper) SetRequestContext(ctx context.Context) {
+	r.requestContext = ctx
+}
+
+func (r *responseWrapper) GetRequestContext() context.Context {
+	return r.requestContext
 }
 
 func (r *responseWrapper) Header() http.Header {
