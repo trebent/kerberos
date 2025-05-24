@@ -1,4 +1,4 @@
-package handler
+package forwarder
 
 import (
 	"errors"
@@ -14,7 +14,11 @@ import (
 	"github.com/trebent/zerologr"
 )
 
-var forwardPattern = regexp.MustCompile(`^/gw/backend/[-_a-z0-9]+/(.*)?$`)
+var (
+	forwardPattern = regexp.MustCompile(`^/gw/backend/[-_a-z0-9]+/(.+)?$`)
+
+	ErrFailedPatternMatch = errors.New("forward pattern match failed")
+)
 
 // Forwarder returns a HTTP handler that forwards any received requests to
 // their designated backends.
@@ -30,7 +34,7 @@ func Forwarder() http.Handler {
 
 		forwardURL := forwardPattern.FindStringSubmatch(r.URL.Path)
 		if len(forwardURL) < 2 {
-			rLogger.Error(errors.New("failed to match forward pattern"), "Pattern match failed")
+			rLogger.Error(fmt.Errorf("%w: %s", ErrFailedPatternMatch, r.URL.Path), "Pattern match failed")
 			jsonError, _ := response.JSONError("forwarding failure")
 			http.Error(w, string(jsonError), http.StatusInternalServerError)
 			return

@@ -13,7 +13,7 @@ import (
 
 	"github.com/trebent/envparser"
 	"github.com/trebent/kerberos/internal/env"
-	krbhandler "github.com/trebent/kerberos/internal/handler"
+	"github.com/trebent/kerberos/internal/forwarder"
 	krbotel "github.com/trebent/kerberos/internal/otel"
 	"github.com/trebent/kerberos/internal/router"
 	"github.com/trebent/kerberos/internal/version"
@@ -99,7 +99,7 @@ func startServer(ctx context.Context) error {
 	// resp = forward(request)
 	// stop tracing/metrics/logs
 	if env.TestEndpoint.Value() {
-		testHandler := krbotel.Middleware(krbhandler.Test())
+		testHandler := krbotel.Middleware(forwarder.Test())
 
 		mux.Handle("/test", testHandler)
 		zerologr.Info("Test endpoint enabled")
@@ -120,7 +120,7 @@ func startServer(ctx context.Context) error {
 	zerologr.Info("Router loaded")
 
 	gwHandler := krbotel.Middleware(
-		router.Middleware(krbhandler.Forwarder(), r),
+		router.Middleware(forwarder.Forwarder(), r),
 	)
 	mux.Handle("/gw/", gwHandler)
 

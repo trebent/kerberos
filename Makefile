@@ -37,7 +37,6 @@ run-echo:
 	@echo "\033[0;32mRunning echo server...\033[0m"
 	@go run ./cmd/echo/main.go
 
-
 generate-test-requests:
 	@echo "\033[0;32mRunning some sample HTTP requests...\033[0m"
 	curl -X GET -i localhost:$(KERBEROS_PORT)/test

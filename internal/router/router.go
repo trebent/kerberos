@@ -31,12 +31,13 @@ type (
 )
 
 var (
-	routePattern = regexp.MustCompile(`^/gw/backend/([-_a-z0-9]+)?/.*$`)
+	routePattern = regexp.MustCompile(`^/gw/backend/([-_a-z0-9]+)?/.+$`)
 
 	ErrFailedPatternMatch = errors.New("backend pattern match failed")
 	ErrNoBackendMatch     = errors.New("no backend match")
 )
 
+// Load a router based on the provided option's loader.
 func Load(opts *RouterOpts) (Router, error) {
 	backends, err := opts.Loader.Load()
 	if err != nil {

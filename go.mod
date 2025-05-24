@@ -6,7 +6,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.4
 	github.com/go-logr/logr v1.4.2
 	github.com/trebent/envparser v1.0.4
-	github.com/trebent/zerologr v1.0.0
+	github.com/trebent/zerologr v1.0.1
 	go.opentelemetry.io/contrib/exporters/autoexport v0.60.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.60.0
 	go.opentelemetry.io/otel v1.35.0

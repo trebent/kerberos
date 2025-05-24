@@ -5,7 +5,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/trebent/kerberos/internal/response"
-	"golang.org/x/net/context"
 )
 
 func Middleware(next http.Handler, router Router) http.Handler {
@@ -24,7 +23,7 @@ func Middleware(next http.Handler, router Router) http.Handler {
 
 		// Set backend in context logger to forward. Don't append to the name.
 		ctx := logr.NewContext(r.Context(), logger.WithValues("backend", backend.Name()))
-		ctx = context.WithValue(ctx, backendContextKey, backend)
+		ctx = NewBackendContext(ctx, backend)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

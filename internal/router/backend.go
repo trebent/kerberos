@@ -22,6 +22,10 @@ var _ Backend = &backend{}
 
 const backendContextKey routingCtxKey = "backend"
 
+func NewBackendContext(ctx context.Context, value any) context.Context {
+	return context.WithValue(ctx, backendContextKey, value)
+}
+
 func BackendFromContext(ctx context.Context) Backend {
 	backend, _ := ctx.Value(backendContextKey).(Backend)
 	return backend
