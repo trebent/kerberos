@@ -7,8 +7,6 @@ github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XL
 github.com/coreos/go-systemd/v22 v22.5.0/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
-github.com/felixge/httpsnoop v1.0.4/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
 github.com/go-logr/logr v1.2.2/go.mod h1:jdQByPbusPIv2/zmleS9BjJVeZ6kBagPoEUsqbVz/1A=
 github.com/go-logr/logr v1.4.2 h1:6pFjapn8bFcIbiKo3XT4j/BhANplGihG6tvd+8rYgrY=
 github.com/go-logr/logr v1.4.2/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=
@@ -58,8 +56,6 @@ github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOf
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/trebent/envparser v1.0.4 h1:qtNBewZBoggCIDP3Frr1TRVeB09aN60z0E/2dU/26OM=
 github.com/trebent/envparser v1.0.4/go.mod h1:2IHgeyAFWMVBIkeWapwm0O6BwE1FMpSKqgtoHW3iqo0=
-github.com/trebent/zerologr v1.0.0 h1:jc8ynDM+GQli328iGtdcKCEVNnEAFkivutJ4SwMtt7Y=
-github.com/trebent/zerologr v1.0.0/go.mod h1:N1h7sYuIX5uYSewAeV3Hlsq+JWCYKE5wznOOOyJhdfc=
 github.com/trebent/zerologr v1.0.1 h1:KEZQ3KmQvISTnkLHhYXUOiBopNQpBp3uAQihfOHHQ28=
 github.com/trebent/zerologr v1.0.1/go.mod h1:N1h7sYuIX5uYSewAeV3Hlsq+JWCYKE5wznOOOyJhdfc=
 go.opentelemetry.io/auto/sdk v1.1.0 h1:cH53jehLUN6UFLY71z+NDOiNJqDdPRaXzTel0sJySYA=

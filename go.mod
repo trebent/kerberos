@@ -3,7 +3,6 @@ module github.com/trebent/kerberos
 go 1.24.3
 
 require (
-	github.com/felixge/httpsnoop v1.0.4
 	github.com/go-logr/logr v1.4.2
 	github.com/trebent/envparser v1.0.4
 	github.com/trebent/zerologr v1.0.1
@@ -14,7 +13,6 @@ require (
 	go.opentelemetry.io/otel/sdk v1.35.0
 	go.opentelemetry.io/otel/sdk/metric v1.35.0
 	go.opentelemetry.io/otel/trace v1.35.0
-	golang.org/x/net v0.39.0
 )
 
 require (
@@ -50,6 +48,7 @@ require (
 	go.opentelemetry.io/otel/sdk/log v0.11.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.5.0 // indirect
 	golang.org/x/mod v0.24.0 // indirect
+	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/sync v0.13.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/telemetry v0.0.0-20240522233618-39ace7a40ae7 // indirect
