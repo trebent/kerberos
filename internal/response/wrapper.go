@@ -75,6 +75,9 @@ func (r *ResponseWrapper) SetRequestContext(ctx context.Context) {
 }
 
 func (r *ResponseWrapper) GetRequestContext() context.Context {
+	if r.requestContext == nil {
+		return context.Background()
+	}
 	return r.requestContext
 }
 

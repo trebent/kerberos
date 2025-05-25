@@ -80,9 +80,6 @@ func Middleware(next http.Handler) http.Handler {
 		// - response body size
 		wrapped := response.NewResponseWrapper(w)
 
-		// Update at least the request counter here, since it's not reliant on handler logic.
-		o.requestCountCounter.Add(ctx, 1)
-
 		// Since the duration metric is directly related to the route forwarded to, keep the time
 		// measurement as close to the forwarding call as possible.
 		start := time.Now()
@@ -100,12 +97,13 @@ func Middleware(next http.Handler) http.Handler {
 		krbMetricMeta := extractKrbMetricMeta(wrapper.GetRequestContext())
 
 		// Request
+		o.requestCountCounter.Add(ctx, 1, requestMeta, krbMetricMeta)
 		o.requestSizeHistogram.Record(ctx, bw.NumBytes(), requestMeta, krbMetricMeta)
 		o.requestDurationHistogram.Record(ctx, float64(duration/time.Millisecond), requestMeta, krbMetricMeta)
 
 		// Response
-		o.responseCounter.Add(ctx, 1, statusCodeOpt, requestMeta)
-		o.responseSizeHistogram.Record(ctx, wrapper.NumBytes(), requestMeta)
+		o.responseCounter.Add(ctx, 1, statusCodeOpt, requestMeta, krbMetricMeta)
+		o.responseSizeHistogram.Record(ctx, wrapper.NumBytes(), requestMeta, krbMetricMeta)
 
 		rLogger.Info(r.Method + " " + r.URL.Path + " " + strconv.Itoa(wrapper.StatusCode()))
 	})
@@ -197,6 +195,9 @@ func must(err error) {
 
 func extractKrbMetricMeta(ctx context.Context) metric.MeasurementOption {
 	backend := ctx.Value(KrbMetaBackend)
+	if backend == nil {
+		return metric.WithAttributes(attribute.String("krb.backend", "unknown"))
+	}
 	return metric.WithAttributes(
 		attribute.String("krb.backend", backend.(string)),
 	)
