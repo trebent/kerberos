@@ -2,6 +2,8 @@ package router
 
 import (
 	"context"
+
+	"github.com/trebent/kerberos/internal/otel"
 )
 
 type (
@@ -20,10 +22,11 @@ type (
 
 var _ Backend = &backend{}
 
-const backendContextKey routingCtxKey = "backend"
+const backendContextKey routingCtxKey = "routing.backend"
 
 func NewBackendContext(ctx context.Context, backend Backend) context.Context {
-	return context.WithValue(ctx, backendContextKey, backend)
+	ctx = context.WithValue(ctx, backendContextKey, backend)
+	return context.WithValue(ctx, otel.KrbMetaBackend, backend.Name())
 }
 
 func BackendFromContext(ctx context.Context) Backend {

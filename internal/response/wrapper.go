@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/felixge/httpsnoop"
 	"github.com/trebent/zerologr"
 	"go.opentelemetry.io/otel/codes"
 )
@@ -63,30 +62,11 @@ func UpdateRequestContext(w http.ResponseWriter, ctx context.Context) {
 	zerologr.Error(errors.New("wrong type"), "UpdateRequestContext called with non-responseWrapper type")
 }
 
-func NewResponseWrapper(
-	responseWriter http.ResponseWriter,
-) http.ResponseWriter {
-	rw := &ResponseWrapper{lock: &sync.Mutex{}}
-
-	// TODO: this leads to an infinite loop since rw.Header calls rw.responseWriter.Header :)
-	rw.responseWriter = httpsnoop.Wrap(responseWriter, httpsnoop.Hooks{
-		Header: func(httpsnoop.HeaderFunc) httpsnoop.HeaderFunc {
-			return rw.Header
-		},
-		Write: func(httpsnoop.WriteFunc) httpsnoop.WriteFunc {
-			return rw.Write
-		},
-		WriteHeader: func(httpsnoop.WriteHeaderFunc) httpsnoop.WriteHeaderFunc {
-			return rw.WriteHeader
-		},
-		Flush: func(httpsnoop.FlushFunc) httpsnoop.FlushFunc {
-			return rw.Flush
-		},
-	})
-	return rw
+func NewResponseWrapper(responseWriter http.ResponseWriter) http.ResponseWriter {
+	return &ResponseWrapper{lock: &sync.Mutex{}, responseWriter: responseWriter}
 }
 
-func (r *ResponseWrapper) ResponseWriter() http.ResponseWriter {
+func (r *ResponseWrapper) RealResponseWriter() http.ResponseWriter {
 	return r.responseWriter
 }
 

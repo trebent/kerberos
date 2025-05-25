@@ -2,13 +2,13 @@
 package otel
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/trebent/kerberos/internal/response"
-	"github.com/trebent/kerberos/internal/router"
 	"github.com/trebent/kerberos/internal/version"
 	"github.com/trebent/zerologr"
 	"go.opentelemetry.io/otel"
@@ -19,14 +19,17 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-type obs struct {
-	spanOpts                 []trace.SpanStartOption
-	requestCountCounter      metric.Int64Counter
-	requestSizeHistogram     metric.Int64Histogram
-	requestDurationHistogram metric.Float64Histogram
-	responseCounter          metric.Int64Counter
-	responseSizeHistogram    metric.Int64Histogram
-}
+type (
+	obs struct {
+		spanOpts                 []trace.SpanStartOption
+		requestCountCounter      metric.Int64Counter
+		requestSizeHistogram     metric.Int64Histogram
+		requestDurationHistogram metric.Float64Histogram
+		responseCounter          metric.Int64Counter
+		responseSizeHistogram    metric.Int64Histogram
+	}
+	krbMetaCtxKey string
+)
 
 const (
 	tracerName = "krb"
@@ -38,6 +41,8 @@ const (
 
 	responseCounterName       = "response"
 	responseSizeHistogramName = "response.size"
+
+	KrbMetaBackend krbMetaCtxKey = "krb.backend"
 )
 
 func Middleware(next http.Handler) http.Handler {
@@ -74,7 +79,6 @@ func Middleware(next http.Handler) http.Handler {
 		// - status code
 		// - response body size
 		wrapped := response.NewResponseWrapper(w)
-		wrapper, _ := wrapped.(*response.ResponseWrapper)
 
 		// Update at least the request counter here, since it's not reliant on handler logic.
 		o.requestCountCounter.Add(ctx, 1)
@@ -86,25 +90,22 @@ func Middleware(next http.Handler) http.Handler {
 		duration := time.Since(start)
 
 		// Process the response.
+		wrapper, _ := wrapped.(*response.ResponseWrapper)
 		span.SetStatus(wrapper.SpanStatus())
 
 		// Update metrics, can't separate request and response handling since the handler is
 		// called by ServeHTTP, no
 		statusCodeOpt := metric.WithAttributes(semconv.HTTPStatusCode(wrapper.StatusCode()))
-		generalOpts := metric.WithAttributes(
-			semconv.HTTPMethod(r.Method),
-			semconv.HTTPRoute(r.URL.Path),
-			attribute.String("krb.backend", router.BackendFromContext(wrapper.GetRequestContext()).Name()),
-		)
-		// TODO: add actual route
+		requestMeta := metric.WithAttributes(semconv.HTTPMethod(r.Method))
+		krbMetricMeta := extractKrbMetricMeta(wrapper.GetRequestContext())
 
 		// Request
-		o.requestSizeHistogram.Record(ctx, bw.NumBytes(), generalOpts)
-		o.requestDurationHistogram.Record(ctx, float64(duration/time.Millisecond), generalOpts)
+		o.requestSizeHistogram.Record(ctx, bw.NumBytes(), requestMeta, krbMetricMeta)
+		o.requestDurationHistogram.Record(ctx, float64(duration/time.Millisecond), requestMeta, krbMetricMeta)
 
 		// Response
-		o.responseCounter.Add(ctx, 1, statusCodeOpt, generalOpts)
-		o.responseSizeHistogram.Record(ctx, wrapper.NumBytes(), generalOpts)
+		o.responseCounter.Add(ctx, 1, statusCodeOpt, requestMeta)
+		o.responseSizeHistogram.Record(ctx, wrapper.NumBytes(), requestMeta)
 
 		rLogger.Info(r.Method + " " + r.URL.Path + " " + strconv.Itoa(wrapper.StatusCode()))
 	})
@@ -192,4 +193,11 @@ func must(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func extractKrbMetricMeta(ctx context.Context) metric.MeasurementOption {
+	backend := ctx.Value(KrbMetaBackend)
+	return metric.WithAttributes(
+		attribute.String("krb.backend", backend.(string)),
+	)
 }

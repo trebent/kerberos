@@ -13,23 +13,22 @@ func Middleware(next http.Handler, router Router) http.Handler {
 		rLogger := logger.WithName("router")
 		rLogger.Info("Routing request")
 
-		rw := wrapped.(*response.ResponseWrapper)
-		w := rw.ResponseWriter()
-
 		backend, err := router.GetBackend(*r)
 		if err != nil {
 			rLogger.Error(err, "Failed to route request")
-			jsonError, _ := response.JSONError("backend not found")
-			http.Error(w, string(jsonError), http.StatusNotFound)
+			response.JSONError(wrapped, ErrNoBackendFound, http.StatusNotFound)
 			return
 		}
 
 		// Set backend in context logger to forward. Don't append to the name.
 		ctx := logr.NewContext(r.Context(), logger.WithValues("backend", backend.Name()))
 		ctx = NewBackendContext(ctx, backend)
-		rw.SetRequestContext(ctx)
 
+		// Update the wrapper request context to be able to extract in higher level middleware.
+		wrapper := wrapped.(*response.ResponseWrapper)
+		wrapper.SetRequestContext(ctx)
+
+		// Serve the request with the updated context.
 		next.ServeHTTP(wrapped, r.WithContext(ctx))
-		rLogger.V(50).Info("Routed request")
 	})
 }

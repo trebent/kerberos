@@ -34,7 +34,7 @@ var (
 	routePattern = regexp.MustCompile(`^/gw/backend/([-_a-z0-9]+)?/.+$`)
 
 	ErrFailedPatternMatch = errors.New("backend pattern match failed")
-	ErrNoBackendMatch     = errors.New("no backend match")
+	ErrNoBackendFound     = errors.New("no backend found")
 )
 
 // Load a router based on the provided option's loader.
@@ -61,5 +61,5 @@ func (r *router) GetBackend(req http.Request) (Backend, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("%w: %s", ErrNoBackendMatch, req.URL.Path)
+	return nil, fmt.Errorf("%w: %s", ErrNoBackendFound, req.URL.Path)
 }

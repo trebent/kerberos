@@ -1,6 +1,7 @@
 package forwarder
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -18,6 +19,7 @@ var (
 	forwardPattern = regexp.MustCompile(`^/gw/backend/[-_a-z0-9]+/(.+)?$`)
 
 	ErrFailedPatternMatch = errors.New("forward pattern match failed")
+	ErrFailedForwarding   = errors.New("failed to forward request")
 )
 
 // Forwarder returns a HTTP handler that forwards any received requests to
@@ -32,26 +34,23 @@ func Forwarder() http.Handler {
 
 		backend := router.BackendFromContext(r.Context())
 
-		rw := wrapped.(*response.ResponseWrapper)
-		w := rw.ResponseWriter()
-
 		forwardURL := forwardPattern.FindStringSubmatch(r.URL.Path)
 		if len(forwardURL) < 2 {
 			rLogger.Error(fmt.Errorf("%w: %s", ErrFailedPatternMatch, r.URL.Path), "Pattern match failed")
-			jsonError, _ := response.JSONError("forwarding failure")
-			http.Error(w, string(jsonError), http.StatusInternalServerError)
+			response.JSONError(wrapped, ErrFailedForwarding, http.StatusInternalServerError)
 			return
 		}
 
-		forwardRequest, err := http.NewRequest(
+		forwardRequest, err := http.NewRequestWithContext(
+			// TODO: Use the request context?
+			context.TODO(),
 			r.Method,
 			fmt.Sprintf("http://%s:%d/%s", backend.Host(), backend.Port(), forwardURL[1]),
 			r.Body,
 		)
 		if err != nil {
 			rLogger.Error(err, "Failed to create request")
-			jsonError, _ := response.JSONError("forwarding failure")
-			http.Error(w, string(jsonError), http.StatusInternalServerError)
+			response.JSONError(wrapped, ErrFailedForwarding, http.StatusInternalServerError)
 			return
 		}
 
@@ -61,8 +60,7 @@ func Forwarder() http.Handler {
 		resp, err := client.Do(forwardRequest)
 		if err != nil {
 			rLogger.Error(err, "Failed to forward request")
-			jsonError, _ := response.JSONError("forwarding failure")
-			http.Error(w, string(jsonError), http.StatusInternalServerError)
+			response.JSONError(wrapped, ErrFailedForwarding, http.StatusInternalServerError)
 			return
 		}
 		defer resp.Body.Close()
@@ -70,19 +68,18 @@ func Forwarder() http.Handler {
 		for key, values := range resp.Header {
 			rLogger.V(100).Info("Adding header to response", "key", key, "values", values)
 			for _, value := range values {
-				w.Header().Add(key, value)
+				wrapped.Header().Add(key, value)
 			}
 		}
 
-		_, err = io.Copy(w, resp.Body)
+		_, err = io.Copy(wrapped, resp.Body)
 		if err != nil {
 			rLogger.Error(err, "Failed to copy response body")
-			jsonError, _ := response.JSONError("forwarding failure")
-			http.Error(w, string(jsonError), http.StatusInternalServerError)
+			response.JSONError(wrapped, ErrFailedForwarding, http.StatusInternalServerError)
 			return
 		}
 
-		w.WriteHeader(resp.StatusCode)
+		wrapped.WriteHeader(resp.StatusCode)
 		rLogger.V(50).Info("Forwarded request")
 	})
 }
@@ -94,9 +91,6 @@ func Test() http.Handler {
 	return http.HandlerFunc(func(wrapped http.ResponseWriter, r *http.Request) {
 		zerologr.Info("Received test request", "method", r.Method, "path", r.URL.Path)
 
-		rw := wrapped.(*response.ResponseWrapper)
-		w := rw.ResponseWriter()
-
 		statusCode, err := func() (int, error) {
 			queryParam := r.URL.Query().Get("status_code")
 			if queryParam != "" {
@@ -107,21 +101,19 @@ func Test() http.Handler {
 		}()
 
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			wrapped.WriteHeader(http.StatusInternalServerError)
 			zerologr.Error(err, "Failed to decode the status_code query parameter")
 			return
 		}
 
 		// nolint: govet
-		if _, err := io.Copy(w, r.Body); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+		if _, err := io.Copy(wrapped, r.Body); err != nil {
+			wrapped.WriteHeader(http.StatusInternalServerError)
 			zerologr.Error(err, "Failed to write request body into response body")
 			return
 		}
 
 		zerologr.Info("Responding with status code", "status_code", statusCode)
-		w.WriteHeader(statusCode)
-
-		zerologr.Info("Test request completed", "status_code", statusCode, "body_size", rw.NumBytes())
+		wrapped.WriteHeader(statusCode)
 	})
 }
