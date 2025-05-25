@@ -6,7 +6,7 @@ default: validate build
 
 build:
 	@echo "\033[0;32mBuilding Kerberos...\033[0m"
-	go build -o kerberos ./cmd/main.go
+	go build -o kerberos ./cmd/kerberos/main.go
 	@echo "\033[0;32mBuild complete.\033[0m"
 
 validate:
