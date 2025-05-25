@@ -25,7 +25,7 @@ func Middleware(next http.Handler, router Router) http.Handler {
 		ctx = NewBackendContext(ctx, backend)
 
 		// Update the wrapper request context to be able to extract in higher level middleware.
-		wrapper := wrapped.(*response.ResponseWrapper)
+		wrapper, _ := wrapped.(*response.Wrapper)
 		wrapper.SetRequestContext(ctx)
 
 		// Serve the request with the updated context.

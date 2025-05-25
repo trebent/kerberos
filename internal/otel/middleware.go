@@ -86,7 +86,7 @@ func Middleware(next http.Handler) http.Handler {
 		duration := time.Since(start)
 
 		// Process the response, update the span with attributes.
-		wrapper, _ := wrapped.(*response.ResponseWrapper)
+		wrapper, _ := wrapped.(*response.Wrapper)
 		krbAttributes := extractKrbAttributes(wrapper.GetRequestContext())
 
 		span.SetStatus(wrapper.SpanStatus())
@@ -101,7 +101,12 @@ func Middleware(next http.Handler) http.Handler {
 		// Request
 		o.requestCountCounter.Add(ctx, 1, requestMeta, krbMetricMeta)
 		o.requestSizeHistogram.Record(ctx, bw.NumBytes(), requestMeta, krbMetricMeta)
-		o.requestDurationHistogram.Record(ctx, float64(duration/time.Millisecond), requestMeta, krbMetricMeta)
+		o.requestDurationHistogram.Record(
+			ctx,
+			float64(duration/time.Millisecond),
+			requestMeta,
+			krbMetricMeta,
+		)
 
 		// Response
 		o.responseCounter.Add(ctx, 1, statusCodeOpt, requestMeta, krbMetricMeta)
@@ -201,6 +206,7 @@ func extractKrbAttributes(ctx context.Context) []attribute.KeyValue {
 	if backend == nil {
 		attributes = append(attributes, attribute.String("krb.backend", "unknown"))
 	} else {
+		//nolint:errcheck
 		attributes = append(attributes, attribute.String("krb.backend", backend.(string)))
 	}
 

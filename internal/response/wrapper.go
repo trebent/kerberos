@@ -3,7 +3,6 @@ package response
 
 import (
 	"context"
-	"errors"
 	"io"
 	"net/http"
 	"sync"
@@ -17,7 +16,7 @@ type (
 		body  io.ReadCloser
 		bytes int64
 	}
-	ResponseWrapper struct {
+	Wrapper struct {
 		responseWriter http.ResponseWriter
 		lock           *sync.Mutex
 
@@ -30,8 +29,8 @@ type (
 )
 
 var (
-	_ http.ResponseWriter = &ResponseWrapper{}
-	_ http.Flusher        = &ResponseWrapper{}
+	_ http.ResponseWriter = &Wrapper{}
+	_ http.Flusher        = &Wrapper{}
 
 	_ io.ReadCloser = &BodyWrapper{}
 )
@@ -54,38 +53,30 @@ func (bw *BodyWrapper) NumBytes() int64 {
 	return bw.bytes
 }
 
-func UpdateRequestContext(w http.ResponseWriter, ctx context.Context) {
-	if rw, ok := w.(*ResponseWrapper); ok {
-		rw.SetRequestContext(ctx)
-		return
-	}
-	zerologr.Error(errors.New("wrong type"), "UpdateRequestContext called with non-responseWrapper type")
-}
-
 func NewResponseWrapper(responseWriter http.ResponseWriter) http.ResponseWriter {
-	return &ResponseWrapper{lock: &sync.Mutex{}, responseWriter: responseWriter}
+	return &Wrapper{lock: &sync.Mutex{}, responseWriter: responseWriter}
 }
 
-func (r *ResponseWrapper) RealResponseWriter() http.ResponseWriter {
+func (r *Wrapper) RealResponseWriter() http.ResponseWriter {
 	return r.responseWriter
 }
 
-func (r *ResponseWrapper) SetRequestContext(ctx context.Context) {
+func (r *Wrapper) SetRequestContext(ctx context.Context) {
 	r.requestContext = ctx
 }
 
-func (r *ResponseWrapper) GetRequestContext() context.Context {
+func (r *Wrapper) GetRequestContext() context.Context {
 	if r.requestContext == nil {
 		return context.Background()
 	}
 	return r.requestContext
 }
 
-func (r *ResponseWrapper) Header() http.Header {
+func (r *Wrapper) Header() http.Header {
 	return r.responseWriter.Header()
 }
 
-func (r *ResponseWrapper) Write(p []byte) (int, error) {
+func (r *Wrapper) Write(p []byte) (int, error) {
 	zerologr.V(100).Info("Write", "len", len(p))
 
 	n, err := r.responseWriter.Write(p)
@@ -93,7 +84,7 @@ func (r *ResponseWrapper) Write(p []byte) (int, error) {
 	return n, err
 }
 
-func (r *ResponseWrapper) WriteHeader(statusCode int) {
+func (r *Wrapper) WriteHeader(statusCode int) {
 	zerologr.V(100).Info("WriteHeader", "status_code", statusCode)
 
 	r.lock.Lock()
@@ -107,7 +98,7 @@ func (r *ResponseWrapper) WriteHeader(statusCode int) {
 	r.responseWriter.WriteHeader(statusCode)
 }
 
-func (r *ResponseWrapper) Flush() {
+func (r *Wrapper) Flush() {
 	zerologr.V(100).Info("Flush response")
 
 	r.WriteHeader(http.StatusOK)
@@ -117,15 +108,15 @@ func (r *ResponseWrapper) Flush() {
 	}
 }
 
-func (r *ResponseWrapper) NumBytes() int64 {
+func (r *Wrapper) NumBytes() int64 {
 	return r.bytes
 }
 
-func (r *ResponseWrapper) StatusCode() int {
+func (r *Wrapper) StatusCode() int {
 	return r.statusCode
 }
 
-func (r *ResponseWrapper) SpanStatus() (codes.Code, string) {
+func (r *Wrapper) SpanStatus() (codes.Code, string) {
 	if !r.wroteHeader {
 		return codes.Error, "no available status code"
 	}

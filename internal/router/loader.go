@@ -34,6 +34,7 @@ func (j *jsonLoader) Load() ([]Backend, error) {
 	zerologr.Info(string(data))
 
 	fileConfig := &jsonFile{}
+	//nolint:govet
 	if err := json.Unmarshal(data, &fileConfig); err != nil {
 		return nil, err
 	}

@@ -1,4 +1,4 @@
-// Response package contains common utilities for handling HTTP responses.
+// Package response contains common utilities for handling HTTP responses.
 package response
 
 import (
@@ -14,5 +14,5 @@ func JSONError(w http.ResponseWriter, err error, statusCode int) {
 	errorData, _ := json.MarshalIndent(jsonError{Message: err.Error()}, "", "  ")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	w.Write(errorData)
+	_, _ = w.Write(errorData)
 }

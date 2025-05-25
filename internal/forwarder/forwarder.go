@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -23,6 +24,8 @@ var (
 	ErrFailedForwarding   = errors.New("failed to forward request")
 )
 
+const expectedPatternMatches = 2
+
 // Forwarder returns a HTTP handler that forwards any received requests to
 // their designated backends.
 func Forwarder() http.Handler {
@@ -36,8 +39,11 @@ func Forwarder() http.Handler {
 		backend := router.BackendFromContext(r.Context())
 
 		forwardURL := forwardPattern.FindStringSubmatch(r.URL.Path)
-		if len(forwardURL) < 2 {
-			rLogger.Error(fmt.Errorf("%w: %s", ErrFailedPatternMatch, r.URL.Path), "Pattern match failed")
+		if len(forwardURL) < expectedPatternMatches {
+			rLogger.Error(
+				fmt.Errorf("%w: %s", ErrFailedPatternMatch, r.URL.Path),
+				"Pattern match failed",
+			)
 			response.JSONError(wrapped, ErrFailedForwarding, http.StatusInternalServerError)
 			return
 		}
@@ -45,7 +51,11 @@ func Forwarder() http.Handler {
 		forwardRequest, err := http.NewRequestWithContext(
 			r.Context(),
 			r.Method,
-			fmt.Sprintf("http://%s:%d/%s", backend.Host(), backend.Port(), forwardURL[1]),
+			fmt.Sprintf(
+				"http://%s/%s",
+				net.JoinHostPort(backend.Host(), strconv.Itoa(backend.Port())),
+				forwardURL[1],
+			),
 			r.Body,
 		)
 		if err != nil {
@@ -55,7 +65,8 @@ func Forwarder() http.Handler {
 		}
 
 		forwardRequest.Header = r.Header
-		otel.GetTextMapPropagator().Inject(r.Context(), propagation.HeaderCarrier(forwardRequest.Header))
+		otel.GetTextMapPropagator().
+			Inject(r.Context(), propagation.HeaderCarrier(forwardRequest.Header))
 
 		client := http.Client{}
 		resp, err := client.Do(forwardRequest)

@@ -112,7 +112,7 @@ func startServer(ctx context.Context) error {
 	// metrics with route information which can't be derived from the raw URL (as the metric
 	// dimensions would grow out of control).
 	r, err := router.Load(
-		&router.RouterOpts{Loader: router.NewJSONLoader(env.RouteJSONFile.Value())},
+		&router.Opts{Loader: router.NewJSONLoader(env.RouteJSONFile.Value())},
 	)
 	if err != nil {
 		return err

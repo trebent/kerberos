@@ -1,3 +1,4 @@
+// nolint // testing purposes
 package forwarder
 
 import "github.com/trebent/kerberos/internal/router"

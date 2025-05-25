@@ -18,8 +18,8 @@ type (
 		// returned.
 		GetBackend(http.Request) (Backend, error)
 	}
-	// RouterOpts are the options used to configure the router.
-	RouterOpts struct {
+	// Opts are the options used to configure the router.
+	Opts struct {
 		// Specify the loader to use for loading backends. The loader is responsible for
 		// loading the backends from a source. The source can be a file, a database, etc.
 		Loader BackendLoader
@@ -37,8 +37,10 @@ var (
 	ErrNoBackendFound     = errors.New("no backend found")
 )
 
+const expectedPatternMatches = 2
+
 // Load a router based on the provided option's loader.
-func Load(opts *RouterOpts) (Router, error) {
+func Load(opts *Opts) (Router, error) {
 	backends, err := opts.Loader.Load()
 	if err != nil {
 		return nil, err
@@ -51,7 +53,7 @@ func Load(opts *RouterOpts) (Router, error) {
 func (r *router) GetBackend(req http.Request) (Backend, error) {
 	reqPath := routePattern.FindStringSubmatch(req.URL.Path)
 
-	if len(reqPath) < 2 {
+	if len(reqPath) < expectedPatternMatches {
 		return nil, fmt.Errorf("%w: %s", ErrFailedPatternMatch, req.URL.Path)
 	}
 

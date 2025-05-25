@@ -67,8 +67,11 @@ var (
 		Value: "./routes.json", // nolint: mnd
 		Validate: func(path string) error {
 			f, err := os.Open(path)
+			if err != nil {
+				return err
+			}
 			defer f.Close()
-			return err
+			return nil
 		},
 	})
 	// OTEL conf.
