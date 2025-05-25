@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/trebent/kerberos/internal/response"
 	"github.com/trebent/kerberos/internal/router"
 	"github.com/trebent/kerberos/internal/version"
 	"github.com/trebent/zerologr"
@@ -64,15 +65,16 @@ func Middleware(next http.Handler) http.Handler {
 		ctx = logr.NewContext(ctx, rLogger)
 
 		// Wrap the request body to extract size
-		// Wrap the response to extract:
-		// - status code
-		// - response body size
-		bw, _ := newBodyWrapper(r.Body).(*bodyWrapper)
+		bw, _ := response.NewBodyWrapper(r.Body).(*response.BodyWrapper)
 		if r.Body != nil && r.Body != http.NoBody {
 			r.Body = bw
 		}
 
-		w, rw := newResponseWrapper(w)
+		// Wrap the response to extract:
+		// - status code
+		// - response body size
+		wrapped := response.NewResponseWrapper(w)
+		wrapper, _ := wrapped.(*response.ResponseWrapper)
 
 		// Update at least the request counter here, since it's not reliant on handler logic.
 		o.requestCountCounter.Add(ctx, 1)
@@ -80,19 +82,19 @@ func Middleware(next http.Handler) http.Handler {
 		// Since the duration metric is directly related to the route forwarded to, keep the time
 		// measurement as close to the forwarding call as possible.
 		start := time.Now()
-		next.ServeHTTP(w, r.WithContext(ctx))
+		next.ServeHTTP(wrapped, r.WithContext(ctx))
 		duration := time.Since(start)
 
 		// Process the response.
-		span.SetStatus(rw.SpanStatus())
+		span.SetStatus(wrapper.SpanStatus())
 
 		// Update metrics, can't separate request and response handling since the handler is
 		// called by ServeHTTP, no
-		statusCodeOpt := metric.WithAttributes(semconv.HTTPStatusCode(rw.StatusCode()))
+		statusCodeOpt := metric.WithAttributes(semconv.HTTPStatusCode(wrapper.StatusCode()))
 		generalOpts := metric.WithAttributes(
 			semconv.HTTPMethod(r.Method),
 			semconv.HTTPRoute(r.URL.Path),
-			attribute.String("krb.backend", router.BackendFromContext(rw.GetRequestContext()).Name()),
+			attribute.String("krb.backend", router.BackendFromContext(wrapper.GetRequestContext()).Name()),
 		)
 		// TODO: add actual route
 
@@ -102,9 +104,9 @@ func Middleware(next http.Handler) http.Handler {
 
 		// Response
 		o.responseCounter.Add(ctx, 1, statusCodeOpt, generalOpts)
-		o.responseSizeHistogram.Record(ctx, rw.NumBytes(), generalOpts)
+		o.responseSizeHistogram.Record(ctx, wrapper.NumBytes(), generalOpts)
 
-		rLogger.Info(r.Method + " " + r.URL.Path + " " + strconv.Itoa(rw.StatusCode()))
+		rLogger.Info(r.Method + " " + r.URL.Path + " " + strconv.Itoa(wrapper.StatusCode()))
 	})
 }
 

@@ -9,7 +9,6 @@ import (
 	"strconv"
 
 	"github.com/go-logr/logr"
-	"github.com/trebent/kerberos/internal/otel"
 	"github.com/trebent/kerberos/internal/response"
 	"github.com/trebent/kerberos/internal/router"
 	"github.com/trebent/zerologr"
@@ -24,7 +23,7 @@ var (
 // Forwarder returns a HTTP handler that forwards any received requests to
 // their designated backends.
 func Forwarder() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(wrapped http.ResponseWriter, r *http.Request) {
 		// Obtain matching backend to route to.
 		// Forward request and pipe forwarded response into origin response.
 		rLogger, _ := logr.FromContext(r.Context())
@@ -32,6 +31,9 @@ func Forwarder() http.Handler {
 		rLogger.Info("Forwarding request")
 
 		backend := router.BackendFromContext(r.Context())
+
+		rw := wrapped.(*response.ResponseWrapper)
+		w := rw.ResponseWriter()
 
 		forwardURL := forwardPattern.FindStringSubmatch(r.URL.Path)
 		if len(forwardURL) < 2 {
@@ -81,6 +83,7 @@ func Forwarder() http.Handler {
 		}
 
 		w.WriteHeader(resp.StatusCode)
+		rLogger.V(50).Info("Forwarded request")
 	})
 }
 
@@ -88,11 +91,11 @@ func Forwarder() http.Handler {
 // status code is passed as a query parameter. Any body present in the request
 // is echoed back.
 func Test() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(wrapped http.ResponseWriter, r *http.Request) {
 		zerologr.Info("Received test request", "method", r.Method, "path", r.URL.Path)
 
-		ctx := router.NewBackendContext(r.Context(), &TestBackend{})
-		otel.UpdateRequestContext(w, ctx)
+		rw := wrapped.(*response.ResponseWrapper)
+		w := rw.ResponseWriter()
 
 		statusCode, err := func() (int, error) {
 			queryParam := r.URL.Query().Get("status_code")
@@ -118,5 +121,7 @@ func Test() http.Handler {
 
 		zerologr.Info("Responding with status code", "status_code", statusCode)
 		w.WriteHeader(statusCode)
+
+		zerologr.Info("Test request completed", "status_code", statusCode, "body_size", rw.NumBytes())
 	})
 }
