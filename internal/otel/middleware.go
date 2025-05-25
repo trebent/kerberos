@@ -33,7 +33,6 @@ type (
 
 const (
 	tracerName = "krb"
-	spanName   = "krb"
 
 	requestCountCounterName      = "request.count"
 	requestSizeHistogramName     = "request.size"
@@ -51,8 +50,7 @@ func Middleware(next http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check request trace context
-		propagator := otel.GetTextMapPropagator()
-		ctx := propagator.Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
 
 		var tracer trace.Tracer
 		if span := trace.SpanFromContext(r.Context()); span.SpanContext().IsValid() {
@@ -62,7 +60,8 @@ func Middleware(next http.Handler) http.Handler {
 		}
 
 		// Start a span here to include ALL operations of KRB
-		ctx, span := tracer.Start(ctx, spanName, o.spanOpts...)
+		// TODO: add more to the span name?
+		ctx, span := tracer.Start(ctx, r.Method, o.spanOpts...)
 		defer span.End() // Stop the span after EVERYTHING is done
 
 		rLogger := logger.WithValues("path", r.URL.Path, "method", r.Method)
@@ -86,15 +85,18 @@ func Middleware(next http.Handler) http.Handler {
 		next.ServeHTTP(wrapped, r.WithContext(ctx))
 		duration := time.Since(start)
 
-		// Process the response.
+		// Process the response, update the span with attributes.
 		wrapper, _ := wrapped.(*response.ResponseWrapper)
+		krbAttributes := extractKrbAttributes(wrapper.GetRequestContext())
+
 		span.SetStatus(wrapper.SpanStatus())
+		span.SetAttributes(krbAttributes...)
 
 		// Update metrics, can't separate request and response handling since the handler is
 		// called by ServeHTTP, no
 		statusCodeOpt := metric.WithAttributes(semconv.HTTPStatusCode(wrapper.StatusCode()))
 		requestMeta := metric.WithAttributes(semconv.HTTPMethod(r.Method))
-		krbMetricMeta := extractKrbMetricMeta(wrapper.GetRequestContext())
+		krbMetricMeta := metric.WithAttributes(krbAttributes...)
 
 		// Request
 		o.requestCountCounter.Add(ctx, 1, requestMeta, krbMetricMeta)
@@ -193,12 +195,14 @@ func must(err error) {
 	}
 }
 
-func extractKrbMetricMeta(ctx context.Context) metric.MeasurementOption {
+func extractKrbAttributes(ctx context.Context) []attribute.KeyValue {
+	attributes := make([]attribute.KeyValue, 0, 1)
 	backend := ctx.Value(KrbMetaBackend)
 	if backend == nil {
-		return metric.WithAttributes(attribute.String("krb.backend", "unknown"))
+		attributes = append(attributes, attribute.String("krb.backend", "unknown"))
+	} else {
+		attributes = append(attributes, attribute.String("krb.backend", backend.(string)))
 	}
-	return metric.WithAttributes(
-		attribute.String("krb.backend", backend.(string)),
-	)
+
+	return attributes
 }

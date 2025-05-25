@@ -1,7 +1,6 @@
 package forwarder
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -13,6 +12,8 @@ import (
 	"github.com/trebent/kerberos/internal/response"
 	"github.com/trebent/kerberos/internal/router"
 	"github.com/trebent/zerologr"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 var (
@@ -42,8 +43,7 @@ func Forwarder() http.Handler {
 		}
 
 		forwardRequest, err := http.NewRequestWithContext(
-			// TODO: Use the request context?
-			context.TODO(),
+			r.Context(),
 			r.Method,
 			fmt.Sprintf("http://%s:%d/%s", backend.Host(), backend.Port(), forwardURL[1]),
 			r.Body,
@@ -55,6 +55,7 @@ func Forwarder() http.Handler {
 		}
 
 		forwardRequest.Header = r.Header
+		otel.GetTextMapPropagator().Inject(r.Context(), propagation.HeaderCarrier(forwardRequest.Header))
 
 		client := http.Client{}
 		resp, err := client.Do(forwardRequest)

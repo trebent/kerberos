@@ -4,11 +4,20 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+
+	krbotel "github.com/trebent/kerberos/internal/otel"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type response struct {
@@ -27,6 +36,15 @@ func (r *response) Write(p []byte) (n int, err error) {
 }
 
 func main() {
+	signalCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	shutdown, err := krbotel.Instrument(signalCtx, "echo", "0.1.0")
+	if err != nil {
+		os.Exit(1)
+	}
+	defer shutdown(context.Background())
+
 	// Create a new HTTP server
 	srv := &http.Server{
 		Addr: ":8080",
@@ -38,6 +56,11 @@ func main() {
 
 		for key, values := range r.Header {
 			println("  ", key, fmt.Sprintf("%s", values))
+		}
+
+		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+		if span := trace.SpanFromContext(ctx); span.SpanContext().IsValid() {
+			println("Got valid trace span:", span.SpanContext().TraceID().String(), "with parent", span.SpanContext().SpanID().String())
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -75,8 +98,14 @@ func main() {
 		_, _ = w.Write(responseBytes)
 	})
 
-	// Start the server
-	if err := srv.ListenAndServe(); err != nil {
-		log.Fatalf("Server failed: %v", err)
-	}
+	go func() {
+		// Start the server
+		if err := srv.ListenAndServe(); err != nil {
+			log.Fatalf("Server failed: %v", err)
+		}
+	}()
+
+	<-signalCtx.Done()
+	srv.Shutdown(context.Background())
+	log.Println("echo gracefully stopped")
 }
