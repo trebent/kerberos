@@ -15,6 +15,7 @@ import (
 	"syscall"
 
 	krbotel "github.com/trebent/kerberos/internal/otel"
+	"github.com/trebent/zerologr"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
@@ -39,8 +40,12 @@ func main() {
 	signalCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
+	logger := zerologr.New(&zerologr.Opts{Console: true}).WithName("echo")
+	zerologr.Set(logger)
+
 	shutdown, err := krbotel.Instrument(signalCtx, "echo", "0.1.0")
 	if err != nil {
+		zerologr.Error(err, "Failed to initialize OpenTelemetry")
 		os.Exit(1)
 	}
 	defer shutdown(context.Background())
