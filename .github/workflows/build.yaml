@@ -20,25 +20,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Disable the builtin caching since it uses the hash of the go.sum file
-      # to determine if the cache is valid. This is not ideal since the go.sum
-      # file is updated every time a new version of a dependency is downloaded.
-      # Not when your code changes.
-      - name: Set up Golang ${{ matrix.go-version-alias }}
+      - name: Set up Golang
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-          cache: false
-      # Use restore-keys to always use a cache that was created with the same
-      # prefix.
-      - name: Cache go modules and the buildcache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: validate-${{ github.sha }}
-          restore-keys: validate-
       - name: Lint
         uses: golangci/golangci-lint-action@v8
         with:
@@ -59,24 +44,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Disable the builtin caching since it uses the hash of the go.sum file
-      # to determine if the cache is valid. This is not ideal since the go.sum
-      # file is updated every time a new version of a dependency is downloaded.
-      # Not when your code changes.
-      - name: Set up Golang ${{ matrix.go-version-alias }}
+      - name: Set up Golang
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-          cache: false
-      # Use restore-keys to always use a cache that was created with the same
-      # prefix.
-      - name: Cache go modules and the buildcache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: build-${{ github.sha }}
-          restore-keys: build-
       - name: Build
         run: make build
