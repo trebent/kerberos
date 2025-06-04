@@ -9,11 +9,42 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    go-version-updates:
+      applies-to: version-updates
+      update-types:
+        - "minor"
+        - "patch"
+    go-security-updates:
+      applies-to: security-updates
+      update-types:
+        - "minor"
+        - "patch"
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "weekly"
+    docker-version-updates:
+      applies-to: version-updates
+      update-types:
+        - "minor"
+        - "patch"
+    docker-security-updates:
+      applies-to: security-updates
+      update-types:
+        - "minor"
+        - "patch"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      action-version-updates:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+      action-security-updates:
+        applies-to: security-updates
+        update-types:
+          - "minor"
+          - "patch"
