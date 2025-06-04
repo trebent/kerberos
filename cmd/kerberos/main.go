@@ -45,6 +45,15 @@ func main() {
 		fmt.Fprint(flag.CommandLine.Output(), envparser.Help())
 	}
 
+	resp, err := http.Get("https://www.google.com")
+	if err != nil {
+		println("Failed to connect to the internet, please check your connection.")
+		println(err.Error())
+		os.Exit(1) // nolint: gocritic
+	}
+	println("Connected to the internet, response status:", resp.Status)
+	os.Exit(0)
+
 	flag.Parse()
 	// ExitOnError = true
 	_ = env.Parse()

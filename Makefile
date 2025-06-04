@@ -4,11 +4,6 @@ KERBEROS_PORT ?= 30000
 
 default: validate build
 
-build:
-	@echo "\033[0;32mBuilding Kerberos...\033[0m"
-	go build -o kerberos ./cmd/kerberos/main.go
-	@echo "\033[0;32mBuild complete.\033[0m"
-
 validate:
 	@echo "\033[0;32mValidating Kerberos...\033[0m"
 	@go tool govulncheck ./...
@@ -16,6 +11,11 @@ validate:
 	@go test -v ./... -coverprofile=coverage.out
 	@go tool cover -html=coverage.out -o coverage.html
 	@echo "\033[0;32mValidation complete.\033[0m"
+
+build:
+	@echo "\033[0;32mBuilding Kerberos...\033[0m"
+	go build -o kerberos ./cmd/kerberos/main.go
+	@echo "\033[0;32mBuild complete.\033[0m"
 
 setup-local-obs:
 	@echo "\033[0;32mComposing local observability services...\033[0m"
