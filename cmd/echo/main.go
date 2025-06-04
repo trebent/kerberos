@@ -6,9 +6,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -29,6 +29,8 @@ type response struct {
 }
 
 var _ io.Writer = &response{}
+
+const tracerName = "echo"
 
 // Write implements io.Writer.
 func (r *response) Write(p []byte) (n int, err error) {
@@ -57,16 +59,22 @@ func main() {
 
 	// Register the echo handler
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		println(r.Method+" "+r.URL.String(), "size", r.ContentLength)
+		zerologr.Info(r.Method+" "+r.URL.String(), "size", r.ContentLength)
 
 		for key, values := range r.Header {
-			println("  ", key, fmt.Sprintf("%s", values))
+			zerologr.Info("Header", key, fmt.Sprintf("%s", values))
 		}
 
 		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
-		if span := trace.SpanFromContext(ctx); span.SpanContext().IsValid() {
-			println("Got valid trace span:", span.SpanContext().TraceID().String(), "with parent", span.SpanContext().SpanID().String())
+		span := trace.SpanFromContext(ctx)
+		if span.SpanContext().IsValid() {
+			zerologr.Info("Got valid trace span", "traceID", span.SpanContext().TraceID().String(), "spanID", span.SpanContext().SpanID().String())
 		}
+		tracer := newTracer(otel.GetTracerProvider())
+
+		ctx, newSpan := tracer.Start(ctx, "echoing", trace.WithSpanKind(trace.SpanKindServer))
+		zerologr.Info("New span", "traceID", newSpan.SpanContext().TraceID().String(), "spanID", newSpan.SpanContext().SpanID().String())
+		defer newSpan.End()
 
 		w.Header().Set("Content-Type", "application/json")
 
@@ -105,12 +113,16 @@ func main() {
 
 	go func() {
 		// Start the server
-		if err := srv.ListenAndServe(); err != nil {
-			log.Fatalf("Server failed: %v", err)
+		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			zerologr.Error(err, "Server start/stop failed: %v")
 		}
 	}()
 
 	<-signalCtx.Done()
 	srv.Shutdown(context.Background())
-	log.Println("echo gracefully stopped")
+	zerologr.Info("Echo gracefully stopped")
+}
+
+func newTracer(provider trace.TracerProvider) trace.Tracer {
+	return provider.Tracer(tracerName)
 }

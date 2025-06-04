@@ -44,6 +44,8 @@ run-echo:
 	@echo "\033[0;32mRunning echo server...\033[0m"
 	@OTEL_METRICS_EXPORTER=prometheus \
 	OTEL_TRACES_EXPORTER=otlp \
+	OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc \
+	OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317 \
 	OTEL_EXPORTER_PROMETHEUS_PORT=9463 \
 	go run ./cmd/echo/main.go
 
