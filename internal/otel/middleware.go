@@ -44,6 +44,7 @@ const (
 	KrbMetaBackend krbMetaCtxKey = "krb.backend"
 )
 
+// nolint: gochecknoglobals
 var tracer = otel.Tracer(tracerName)
 
 func Middleware(next http.Handler) http.Handler {
