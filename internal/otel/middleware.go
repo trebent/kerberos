@@ -44,6 +44,8 @@ const (
 	KrbMetaBackend krbMetaCtxKey = "krb.backend"
 )
 
+var tracer = otel.Tracer(tracerName)
+
 func Middleware(next http.Handler) http.Handler {
 	o := newObs()
 	logger := zerologr.WithName("request")
@@ -51,13 +53,6 @@ func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check request trace context
 		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
-
-		var tracer trace.Tracer
-		if span := trace.SpanFromContext(r.Context()); span.SpanContext().IsValid() {
-			tracer = o.newTracer(span.TracerProvider())
-		} else {
-			tracer = o.newTracer(otel.GetTracerProvider())
-		}
 
 		// Start a span here to include ALL operations of KRB
 		// TODO: add more to the span name?
@@ -124,7 +119,7 @@ func newObs() *obs {
 	}
 
 	meter := otel.GetMeterProvider().Meter(
-		"github.com/trebent/kerberos/forwarder",
+		"github.com/trebent/kerberos",
 		metric.WithInstrumentationVersion(version.Version()),
 	)
 
@@ -188,10 +183,6 @@ func newObs() *obs {
 	o.responseSizeHistogram = responseSizeHistogram
 
 	return o
-}
-
-func (o *obs) newTracer(provider trace.TracerProvider) trace.Tracer {
-	return provider.Tracer(tracerName)
 }
 
 func must(err error) {
