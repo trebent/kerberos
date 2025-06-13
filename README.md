@@ -1,5 +1,7 @@
 # Kerberos
 
+[![Lint, test, and build](https://github.com/trebent/kerberos/actions/workflows/build.yaml/badge.svg)](https://github.com/trebent/kerberos/actions/workflows/build.yaml)
+
 🐶🐶🐶
 
 
