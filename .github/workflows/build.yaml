@@ -26,8 +26,6 @@ jobs:
           go-version-file: go.mod
       - name: Lint
         uses: golangci/golangci-lint-action@v8
-        with:
-          version: v2.1
       - name: Run vulnerability scan
         run: go tool govulncheck ./...
       - name: Run tests
