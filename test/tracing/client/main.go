@@ -1,3 +1,4 @@
+// nolint
 package main
 
 import (
@@ -22,7 +23,12 @@ func main() {
 	ctx, span := otel.Tracer("client").Start(context.Background(), "client-request")
 	defer span.End()
 
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost:15000/echo?message=Hello%20World%21&delay=1000", nil)
+	req, _ := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		"http://localhost:15000/echo?message=Hello%20World%21&delay=1000",
+		nil,
+	)
 	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(req.Header))
 
 	c := http.Client{}

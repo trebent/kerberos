@@ -1,3 +1,4 @@
+// nolint
 package main
 
 import (
@@ -29,7 +30,8 @@ func main() {
 				println(" Header:", k, "Value:", v[0])
 			}
 
-			ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+			ctx := otel.GetTextMapPropagator().
+				Extract(r.Context(), propagation.HeaderCarrier(r.Header))
 			span := trace.SpanFromContext(ctx)
 
 			if span.IsRecording() {
@@ -43,13 +45,19 @@ func main() {
 			}
 
 			// Now for a real child span, linked to the client span since ctx is extracted using the text map propagator.
-			_, childSpan := otel.Tracer("server").Start(ctx, "server-request", trace.WithSpanKind(trace.SpanKindServer))
+			_, childSpan := otel.Tracer("server").
+				Start(ctx, "server-request", trace.WithSpanKind(trace.SpanKindServer))
 			defer childSpan.End()
 			// This will show in jaeger.
 			childSpan.SetAttributes(attribute.String("server-attribute", "value"))
 
 			// This does not do anythign, just for show.
-			span.SetAttributes(attribute.KeyValue{Key: "server-attribute", Value: attribute.StringValue(time.Now().String())})
+			span.SetAttributes(
+				attribute.KeyValue{
+					Key:   "server-attribute",
+					Value: attribute.StringValue(time.Now().String()),
+				},
+			)
 			// This does not do anythign, just for show.
 			span.End()
 
