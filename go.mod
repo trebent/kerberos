@@ -8,11 +8,11 @@ require (
 	github.com/trebent/zerologr v1.0.1
 	go.opentelemetry.io/contrib/exporters/autoexport v0.61.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.61.0
-	go.opentelemetry.io/otel v1.36.0
-	go.opentelemetry.io/otel/metric v1.36.0
-	go.opentelemetry.io/otel/sdk v1.36.0
+	go.opentelemetry.io/otel v1.37.0
+	go.opentelemetry.io/otel/metric v1.37.0
+	go.opentelemetry.io/otel/sdk v1.37.0
 	go.opentelemetry.io/otel/sdk/metric v1.36.0
-	go.opentelemetry.io/otel/trace v1.36.0
+	go.opentelemetry.io/otel/trace v1.37.0
 )
 
 require (
