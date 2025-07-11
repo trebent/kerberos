@@ -4,6 +4,7 @@ on:
   workflow_call:
     inputs:
       version:
+        type: string
         description: "Version of Kerberos to build."
         required: false
         default: "none"
