@@ -33,6 +33,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
+      # This step is to ensure that the version is set in the environment on push to main.
+      - name: Fake version input
+        if: ${{ inputs.version == '' }}
+        run: echo "VERSION=none" >> $GITHUB_ENV
       - name: Build Docker image
         env:
           VERSION: ${{ inputs.version }}
