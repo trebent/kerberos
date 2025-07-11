@@ -2,6 +2,8 @@ GRAFANA_PORT ?= 3000
 PROM_PORT ?= 9090
 KERBEROS_PORT ?= 30000
 
+VERSION ?= $(shell git describe --tags --always)
+
 default: validate build
 
 validate:
@@ -14,7 +16,12 @@ validate:
 
 build:
 	@echo "\033[0;32mBuilding Kerberos...\033[0m"
-	go build -o kerberos ./cmd/kerberos/main.go
+	CGO_ENABLED=0 go build -trimpath -ldflags="-X 'github.com/trebent/kerberos/internal/version.Ver=${VERSION}' -s -w" -o kerberos ./cmd/kerberos
+	@echo "\033[0;32mBuild complete.\033[0m"
+
+docker-build:
+	@echo "\033[0;32mBuilding Kerberos docker image...\033[0m"
+	docker build --build-arg VERSION=$(VERSION) -t github.com/trebent/kerberos:$(VERSION) .
 	@echo "\033[0;32mBuild complete.\033[0m"
 
 setup-local-obs:

@@ -1,0 +1,32 @@
+name: Pull request validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  static-analysis:
+    runs-on: ubuntu-latest
+    uses: ./.github/workflows/static-analysis.yaml
+    secrets: inherit
+
+  test:
+    runs-on: ubuntu-latest
+    uses: ./.github/workflows/test.yaml
+    secrets: inherit
+    
+  build:
+    runs-on: ubuntu-latest
+    uses: ./.github/workflows/build.yaml
+    secrets: inherit

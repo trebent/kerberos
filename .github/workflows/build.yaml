@@ -1,44 +1,18 @@
-name: Lint, test, and build
+name: Build
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-  pull_request:
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  workflow_call:
+    inputs:
+      version:
+        description: "Version of Kerberos to build."
+        required: false
+        default: "none"
 
 permissions:
   contents: read
-  pull-requests: read
 
 jobs:
-  validate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Golang
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-      - name: Lint
-        uses: golangci/golangci-lint-action@v8
-      - name: Run vulnerability scan
-        run: go tool govulncheck ./...
-      - name: Run tests
-        run: go test ./... -coverprofile=coverage.out
-      - name: Generate coverage report
-        run: go tool cover -html=coverage.out -o coverage.html
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
-        with:
-          name: go-coverage-report-${{ github.sha }}
-          path: coverage.html
-
-  build:
+  go-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -48,3 +22,15 @@ jobs:
           go-version-file: go.mod
       - name: Build
         run: make build
+  
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Build Docker image
+        env:
+          VERSION: ${{ inputs.version }}
+        run: VERSION=$VERSION make docker-build
+        
