@@ -106,6 +106,7 @@ func startServer(ctx context.Context) error {
 	}
 
 	zerologr.Info("Loading router")
+
 	// This is the main endpoint for the API GW. Every incoming request passes through the backend
 	// middleware for backend detection, and the route middleware for route matching. A failure to
 	// match a backend yields a 404. Route matching is optional, it's use is limited to enrich
