@@ -37,8 +37,8 @@ jobs:
       - name: Fake version input
         if: ${{ inputs.version == '' }}
         run: echo "VERSION=none" >> $GITHUB_ENV
+      - name: Set version env
+        if: ${{ inputs.version != '' }}
+        run: echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
       - name: Build Docker image
-        env:
-          VERSION: ${{ inputs.version }}
         run: VERSION=$VERSION make docker-build
-        
