@@ -17,16 +17,13 @@ permissions:
 
 jobs:
   static-analysis:
-    runs-on: ubuntu-latest
     uses: ./.github/workflows/static-analysis.yaml
     secrets: inherit
 
   test:
-    runs-on: ubuntu-latest
     uses: ./.github/workflows/test.yaml
     secrets: inherit
     
   build:
-    runs-on: ubuntu-latest
     uses: ./.github/workflows/build.yaml
     secrets: inherit
