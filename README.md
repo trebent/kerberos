@@ -1,6 +1,10 @@
 # Kerberos
 
-[![Lint, test, and build](https://github.com/trebent/kerberos/actions/workflows/build.yaml/badge.svg)](https://github.com/trebent/kerberos/actions/workflows/build.yaml)
+[![Static analysis](https://github.com/trebent/kerberos/actions/workflows/build.yaml/badge.svg)](https://github.com/trebent/kerberos/actions/workflows/static-analysis.yaml)
+[![Test](https://github.com/trebent/kerberos/actions/workflows/build.yaml/badge.svg)](https://github.com/trebent/kerberos/actions/workflows/test.yaml)
+[![Build](https://github.com/trebent/kerberos/actions/workflows/build.yaml/badge.svg)](https://github.com/trebent/kerberos/actions/workflows/build.yaml)
+[![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+[![Go Report Card](https://goreportcard.com/badge/github.com/trebent/kerberos)](https://goreportcard.com/report/github.com/trebent/kerberos)
 
 🐶🐶🐶
 

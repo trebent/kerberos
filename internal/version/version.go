@@ -15,7 +15,6 @@ func init() {
 		info, ok := debug.ReadBuildInfo()
 
 		if ok && info.Main.Version != "" {
-			println("Build info found, setting Ver to:", info.Main.Version)
 			Ver = info.Main.Version
 		}
 	}
