@@ -8,6 +8,9 @@ on:
         description: "Version of Kerberos to build."
         required: false
         default: "none"
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
