@@ -4,7 +4,7 @@ global:
 scrape_configs:
   - job_name: kerberos
     static_configs:
-      - targets: ["host.docker.internal:9464"]
+      - targets: ["kerberos:9464"]
   - job_name: echo
     static_configs:
-      - targets: ["host.docker.internal:9463"]
+      - targets: ["echo:9463"]

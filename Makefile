@@ -1,6 +1,9 @@
 GRAFANA_PORT ?= 3000
 PROM_PORT ?= 9090
 KERBEROS_PORT ?= 30000
+KERBEROS_METRICS_PORT ?= 9464
+ECHO_PORT ?= 15000
+ECHO_METRICS_PORT ?= 9463
 
 VERSION ?= $(shell git describe --tags --always)
 
@@ -24,37 +27,38 @@ docker-build:
 	docker build --build-arg VERSION=$(VERSION) -t github.com/trebent/kerberos:$(VERSION) .
 	@echo "\033[0;32mBuild complete.\033[0m"
 
-setup-local-obs:
+#
+# TEST
+#
+
+setup-observability-env:
 	@echo "\033[0;32mComposing local observability services...\033[0m"
-	@GRAFANA_PORT=$(GRAFANA_PORT) PROM_PORT=$(PROM_PORT) docker compose -f observability/compose.yaml up -d --force-recreate
+	@GRAFANA_PORT=$(GRAFANA_PORT) \
+	PROM_PORT=$(PROM_PORT) \
+	KERBEROS_PORT=$(KERBEROS_PORT) \
+	KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
+	ECHO_PORT=$(ECHO_PORT) \
+	ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
+	docker compose -f test/observability/compose.yaml up -d --force-recreate
+	
 	@echo "\033[0;32mComposed local observability deployment.\033[0m"
-	@echo " - Grafana on port:    $(GRAFANA_PORT)"
-	@echo " - Prometheus on port: $(PROM_PORT)"
+	@echo " - Grafana on port:          $(GRAFANA_PORT)"
+	@echo " - Prometheus on port:       $(PROM_PORT)"
+	@echo " - Kerberos on port:         $(KERBEROS_PORT)"
+	@echo " - Kerberos metrics on port: $(KERBEROS_METRICS_PORT)"
+	@echo " - Echo on port:             $(ECHO_PORT)"
+	@echo " - Echo metrics on port:     $(ECHO_METRICS_PORT)"
 
-teardown-local-obs:
+teardown-observability-env:
 	@echo "\033[0;32mStopping local observability services...\033[0m"
-	@docker compose -f observability/compose.yaml down
+	@GRAFANA_PORT=$(GRAFANA_PORT) \
+	PROM_PORT=$(PROM_PORT) \
+	KERBEROS_PORT=$(KERBEROS_PORT) \
+	KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
+	ECHO_PORT=$(ECHO_PORT) \
+	ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
+	docker compose -f test/observability/compose.yaml down
 	@echo "\033[0;32mStopped local observability deployment.\033[0m"
-
-run-krb-echo-test:
-	@echo "\033[0;32mRunning Kerberos for local tests...\033[0m"
-	@LOG_TO_CONSOLE=1 \
-	LOG_VERBOSITY=100 \
-	OTEL_METRICS_EXPORTER=prometheus \
-	OTEL_TRACES_EXPORTER=otlp \
-	PORT=$(KERBEROS_PORT) \
-	TEST_ENDPOINT=1 \
-	ROUTE_JSON_FILE=./cmd/echo/routes.json \
-	go run ./cmd/kerberos/main.go
-
-run-echo:
-	@echo "\033[0;32mRunning echo server...\033[0m"
-	@OTEL_METRICS_EXPORTER=prometheus \
-	OTEL_TRACES_EXPORTER=otlp \
-	OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc \
-	OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317 \
-	OTEL_EXPORTER_PROMETHEUS_PORT=9463 \
-	go run ./cmd/echo/main.go
 
 generate-test-requests:
 	@echo "\033[0;32mRunning some sample HTTP requests...\033[0m"

@@ -108,7 +108,7 @@ func Middleware(next http.Handler) http.Handler {
 		o.responseCounter.Add(ctx, 1, statusCodeOpt, requestMeta, krbMetricMeta)
 		o.responseSizeHistogram.Record(ctx, wrapper.NumBytes(), requestMeta, krbMetricMeta)
 
-		rLogger.Info(r.Method + " " + r.URL.Path + " " + strconv.Itoa(wrapper.StatusCode()))
+		rLogger.Info(r.Method+" "+r.URL.Path+" "+strconv.Itoa(wrapper.StatusCode()), string(semconv.HTTPStatusCodeKey), wrapper.StatusCode())
 	})
 }
 

@@ -1,0 +1,67 @@
+services:
+  kerberos:
+    image: "ghcr.io/github.com/trebent/kerberos:local"
+    pull_policy: build
+    build:
+      context: ../..
+      dockerfile: ./Dockerfile
+    ports:
+      - ${KERBEROS_PORT}:${KERBEROS_PORT}
+      - ${KERBEROS_METRICS_PORT}:${KERBEROS_METRICS_PORT}
+    environment:
+      - LOG_TO_CONSOLE=1
+      - LOG_VERBOSITY=100
+      - OTEL_METRICS_EXPORTER=prometheus
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_EXPORTER_PROMETHEUS_HOST=kerberos
+      - OTEL_EXPORTER_PROMETHEUS_PORT=${KERBEROS_METRICS_PORT}
+      - PORT=${KERBEROS_PORT}
+      - TEST_ENDPOINT=1
+      - ROUTE_JSON_FILE=/echo.json
+    volumes:
+      - ./routes/echo.json:/echo.json
+  
+  echo:
+    image: "ghcr.io/github.com/trebent/echo:local"
+    pull_policy: build
+    build:
+      context: ../..
+      dockerfile: ./cmd/echo/Dockerfile
+    ports:
+      - ${ECHO_PORT}:15000
+      - ${ECHO_METRICS_PORT}:${ECHO_METRICS_PORT}
+    environment:
+      - OTEL_METRICS_EXPORTER=prometheus
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_EXPORTER_PROMETHEUS_HOST=echo
+      - OTEL_EXPORTER_PROMETHEUS_PORT=${ECHO_METRICS_PORT}
+
+  prometheus:
+    image: "prom/prometheus:v3.3.1"
+    ports:
+      - ${PROM_PORT}:9090
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: "grafana/grafana:12.0.0"
+    ports:
+      - ${GRAFANA_PORT}:3000
+    volumes:
+      - ./grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/grafana-datasources.yml
+      - ./grafana/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/grafana-dashboards.yml
+      - ./grafana/prometheus.json:/var/lib/grafana/prometheus.json
+      - ./grafana/kerberos_runtime.json:/var/lib/grafana/kerberos_runtime.json
+      - ./grafana/kerberos_http.json:/var/lib/grafana/kerberos_http.json
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+
+  jaeger:
+    image: "jaegertracing/jaeger:2.6.0"
+    ports:
+      - 4317:4317
+      - 16686:16686
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
