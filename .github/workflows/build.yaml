@@ -16,7 +16,25 @@ permissions:
   contents: read
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.set-version.outputs.version }}
+    steps:
+      - name: Set version
+        id: set-version
+        run: |
+          if [ "${{ inputs.version }}" = "none" ]; then
+            VERSION=$(git describe --tags --abbrev=0)
+          elif [ "${{ inputs.version }}" = "" ]; then
+            VERSION=$(git describe --tags --abbrev=0)
+          else
+            VERSION=${{ inputs.version }}
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
   go-build:
+    needs: version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,20 +43,14 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Build
-        run: make build
+        run: VERSION=${{ needs.version.outputs.version }} make build
   
   docker-build:
+    needs: version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      # This step is to ensure that the version is set in the environment on push to main.
-      - name: Fake version input
-        if: ${{ inputs.version == '' }}
-        run: echo "VERSION=none" >> $GITHUB_ENV
-      - name: Set version env
-        if: ${{ inputs.version != '' }}
-        run: echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
       - name: Build Docker image
-        run: VERSION=$VERSION make docker-build
+        run: VERSION=${{ needs.version.outputs.version }} make docker-build
