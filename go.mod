@@ -1,13 +1,13 @@
 module github.com/trebent/kerberos
 
-go 1.24.5
+go 1.25.4
 
 require (
 	github.com/go-logr/logr v1.4.3
 	github.com/trebent/envparser v1.0.5
 	github.com/trebent/zerologr v1.0.1
 	go.opentelemetry.io/contrib/exporters/autoexport v0.63.0
-	go.opentelemetry.io/contrib/instrumentation/runtime v0.62.0
+	go.opentelemetry.io/contrib/instrumentation/runtime v0.63.0
 	go.opentelemetry.io/otel v1.38.0
 	go.opentelemetry.io/otel/metric v1.38.0
 	go.opentelemetry.io/otel/sdk v1.38.0
