@@ -23,7 +23,7 @@ jobs:
       - name: Generate coverage report
         run: go tool cover -html=coverage.out -o coverage.html
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: go-coverage-report-${{ github.sha }}
           path: coverage.html
