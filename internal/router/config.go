@@ -6,8 +6,14 @@ type routerCfg struct {
 	Enabled bool `json:"enabled"`
 }
 
+func (o *routerCfg) Schema() string {
+	return config.NoSchema
+}
+
 const configName = "router"
 
-func RegisterWith(cfg config.Map) error {
-	return cfg.Register(configName, &routerCfg{}, config.NoSchema)
+var _ config.Config = &routerCfg{}
+
+func RegisterWith(cfg config.Map) {
+	cfg.Register(configName, &routerCfg{})
 }

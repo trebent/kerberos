@@ -52,8 +52,8 @@ func main() {
 
 	// Config parse
 	cfg := config.New()
-	_ = krbotel.RegisterWith(cfg)
-	_ = router.RegisterWith(cfg)
+	krbotel.RegisterWith(cfg)
+	router.RegisterWith(cfg)
 
 	readTimeout = time.Duration(env.ReadTimeoutSeconds.Value()) * time.Second
 	writeTimeout = time.Duration(env.WriteTimeoutSeconds.Value()) * time.Second

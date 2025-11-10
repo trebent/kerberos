@@ -6,8 +6,14 @@ type otelCfg struct {
 	Enabled bool `json:"enabled"`
 }
 
+func (o *otelCfg) Schema() string {
+	return config.NoSchema
+}
+
 const configName = "otel"
 
-func RegisterWith(cfg config.Map) error {
-	return cfg.Register(configName, &otelCfg{}, config.NoSchema)
+var _ config.Config = &otelCfg{}
+
+func RegisterWith(cfg config.Map) {
+	cfg.Register(configName, &otelCfg{})
 }
