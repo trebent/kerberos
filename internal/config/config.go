@@ -3,6 +3,7 @@ package config
 type (
 	Map interface {
 		Register(name string, cfg any, schemaPath string) error
+		Load(name string, data []byte) error
 		Resolve() error
 		Access(name string) (any, error)
 	}
@@ -30,10 +31,20 @@ func (c *impl) Register(name string, cfg any, schemaPath string) error {
 	return nil
 }
 
+func (c *impl) Load(name string, data []byte) error {
+	_ = c.configEntries[name]
+
+	println(string(data))
+
+	return nil
+}
+
 func (c *impl) Resolve() error {
 	return nil
 }
 
 func (c *impl) Access(name string) (any, error) {
+	_ = c.configEntries[name]
+
 	return nil, nil
 }
