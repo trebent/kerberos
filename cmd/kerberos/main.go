@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/trebent/envparser"
+	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/env"
 	"github.com/trebent/kerberos/internal/forwarder"
 	krbotel "github.com/trebent/kerberos/internal/otel"
@@ -48,6 +49,11 @@ func main() {
 	flag.Parse()
 	// ExitOnError = true
 	_ = env.Parse()
+
+	// Config parse
+	cfg := config.New()
+	_ = krbotel.RegisterWith(cfg)
+	_ = router.RegisterWith(cfg)
 
 	readTimeout = time.Duration(env.ReadTimeoutSeconds.Value()) * time.Second
 	writeTimeout = time.Duration(env.WriteTimeoutSeconds.Value()) * time.Second
