@@ -1,6 +1,6 @@
 module github.com/trebent/kerberos
 
-go 1.24.5
+go 1.25.4
 
 require (
 	github.com/go-logr/logr v1.4.3
