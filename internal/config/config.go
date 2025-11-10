@@ -31,10 +31,8 @@ func (c *impl) Register(name string, cfg any, schemaPath string) error {
 	return nil
 }
 
-func (c *impl) Load(name string, data []byte) error {
+func (c *impl) Load(name string, _ []byte) error {
 	_ = c.configEntries[name]
-
-	println(string(data))
 
 	return nil
 }
