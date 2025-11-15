@@ -1,12 +1,15 @@
 package router
 
-import "github.com/trebent/kerberos/internal/config"
+import (
+	"github.com/kaptinlin/jsonschema"
+	"github.com/trebent/kerberos/internal/config"
+)
 
 type routerCfg struct {
 	Enabled bool `json:"enabled"`
 }
 
-func (o *routerCfg) Schema() string {
+func (o *routerCfg) Schema() *jsonschema.Schema {
 	return config.NoSchema
 }
 

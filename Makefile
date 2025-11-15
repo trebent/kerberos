@@ -5,34 +5,60 @@ KERBEROS_METRICS_PORT ?= 9464
 ECHO_PORT ?= 15000
 ECHO_METRICS_PORT ?= 9463
 
+BOLD_RED=\033[1;31m
+BOLD_GREEN=\033[1;32m
+BOLD_YELLOW=\033[1;33m
+BOLD_BLUE=\033[1;34m
+
+RED=\033[31m
+GREEN=\033[32m
+YELLOW=\033[33m
+BLUE=\033[34m
+RESET=\033[0m
+
 VERSION ?= $(shell git describe --tags --always)
+
+define cecho
+	@echo -e "${2}${1}${RESET}"
+endef
 
 default: validate build
 
-validate:
-	@echo "\033[0;32mValidating Kerberos...\033[0m"
-	@go tool govulncheck ./...
+lint:
+	$(call cecho,Running linter for Kerberos...,$(BOLD_YELLOW))
 	@golangci-lint run --fix
+	$(call cecho,Linter complete.,$(BOLD_GREEN))
+
+unittest:
+	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
 	@go test -v ./... -coverprofile=coverage.out
 	@go tool cover -html=coverage.out -o coverage.html
-	@echo "\033[0;32mValidation complete.\033[0m"
+	$(call cecho,Unit tests complete.,$(BOLD_GREEN))
+
+vulncheck:
+	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
+	@go tool govulncheck ./...
+	$(call cecho,Vulnerability check complete.,$(BOLD_GREEN))
+
+staticcheck: lint unittest vulncheck
+	$(call cecho,Static analysis complete.,$(BOLD_GREEN))
 
 build:
-	@echo "\033[0;32mBuilding Kerberos...\033[0m"
+	$(call cecho,Building Kerberos binary...,$(BOLD_YELLOW))
 	CGO_ENABLED=0 go build -trimpath -ldflags="-X 'github.com/trebent/kerberos/internal/version.Ver=${VERSION}' -s -w" -o kerberos ./cmd/kerberos
-	@echo "\033[0;32mBuild complete.\033[0m"
+	$(call cecho,Build complete.,$(BOLD_GREEN))
 
 docker-build:
-	@echo "\033[0;32mBuilding Kerberos docker image...\033[0m"
+	$(call cecho,Building Kerberos Docker image...,$(BOLD_YELLOW))
 	docker build --build-arg VERSION=$(VERSION) -t github.com/trebent/kerberos:$(VERSION) .
-	@echo "\033[0;32mBuild complete.\033[0m"
+	$(call cecho,Docker image build complete.,$(BOLD_GREEN))
 
 #
 # TEST
 #
 
 setup-observability-env:
-	@echo "\033[0;32mComposing local observability services...\033[0m"
+	$(call cecho,Setting up local observability services...,$(BOLD_YELLOW))
 	@GRAFANA_PORT=$(GRAFANA_PORT) \
 	PROM_PORT=$(PROM_PORT) \
 	KERBEROS_PORT=$(KERBEROS_PORT) \
@@ -41,27 +67,21 @@ setup-observability-env:
 	ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
 	docker compose -f test/observability/compose.yaml up -d --force-recreate
 	
-	@echo "\033[0;32mComposed local observability deployment.\033[0m"
-	@echo " - Grafana on port:          $(GRAFANA_PORT)"
-	@echo " - Prometheus on port:       $(PROM_PORT)"
-	@echo " - Kerberos on port:         $(KERBEROS_PORT)"
-	@echo " - Kerberos metrics on port: $(KERBEROS_METRICS_PORT)"
-	@echo " - Echo on port:             $(ECHO_PORT)"
-	@echo " - Echo metrics on port:     $(ECHO_METRICS_PORT)"
+	$(call cecho,Local observability deployment is up and running.,$(BOLD_GREEN))
+	$(call cecho,Access Grafana at: http://localhost:$(GRAFANA_PORT) (default user: admin, password: admin),$(BOLD_GREEN))
+	$(call cecho,Access Prometheus at: http://localhost:$(PROM_PORT),$(BOLD_GREEN))
+	$(call cecho,Kerberos service is running at: http://localhost:$(KERBEROS_PORT),$(BOLD_GREEN))
+	$(call cecho,Kerberos metrics are exposed at: http://localhost:$(KERBEROS_METRICS_PORT)/metrics,$(BOLD_GREEN))
+	$(call cecho,Echo service is running at: http://localhost:$(ECHO_PORT),$(BOLD_GREEN))
+	$(call cecho,Echo metrics are exposed at: http://localhost:$(ECHO_METRICS_PORT)/metrics,$(BOLD_GREEN))
 
 teardown-observability-env:
-	@echo "\033[0;32mStopping local observability services...\033[0m"
-	@GRAFANA_PORT=$(GRAFANA_PORT) \
-	PROM_PORT=$(PROM_PORT) \
-	KERBEROS_PORT=$(KERBEROS_PORT) \
-	KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
-	ECHO_PORT=$(ECHO_PORT) \
-	ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
+	$(call cecho,Tearing down local observability services...,$(BOLD_YELLOW))
 	docker compose -f test/observability/compose.yaml down
-	@echo "\033[0;32mStopped local observability deployment.\033[0m"
+	$(call cecho,Local observability deployment has been torn down.,$(BOLD_GREEN))
 
 generate-test-requests:
-	@echo "\033[0;32mRunning some sample HTTP requests...\033[0m"
+	$(call cecho,Generating test HTTP requests to Kerberos...,$(BOLD_YELLOW))
 	curl -X GET -i localhost:$(KERBEROS_PORT)/test
 	curl -X GET -i localhost:$(KERBEROS_PORT)/test?status_code=400
 	curl -X PUT -i localhost:$(KERBEROS_PORT)/test

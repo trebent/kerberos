@@ -111,7 +111,6 @@ func Test() http.Handler {
 			}
 			return http.StatusOK, nil
 		}()
-
 		if err != nil {
 			wrapped.WriteHeader(http.StatusInternalServerError)
 			zerologr.Error(err, "Failed to decode the status_code query parameter")

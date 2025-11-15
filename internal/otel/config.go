@@ -1,12 +1,15 @@
 package otel
 
-import "github.com/trebent/kerberos/internal/config"
+import (
+	"github.com/kaptinlin/jsonschema"
+	"github.com/trebent/kerberos/internal/config"
+)
 
 type otelCfg struct {
 	Enabled bool `json:"enabled"`
 }
 
-func (o *otelCfg) Schema() string {
+func (o *otelCfg) Schema() *jsonschema.Schema {
 	return config.NoSchema
 }
 
