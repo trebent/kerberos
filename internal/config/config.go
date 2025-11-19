@@ -365,7 +365,9 @@ func (c *impl) replaceReferencesInData() error {
 		dataStr := string(entry.data)
 
 		for ref, val := range c.refs {
-			zerologr.V(100).Info("Replacing reference '" + ref + "' with value '" + val + "' in config '" + name + "'")
+			zerologr.V(100).Info(
+				fmt.Sprintf("Replacing reference '%s' with value '%s' in config '%s'", ref, val, name),
+			)
 			dataStr = strings.ReplaceAll(dataStr, ref, val)
 			zerologr.V(100).Info("Intermediate replaced data: " + dataStr)
 		}
