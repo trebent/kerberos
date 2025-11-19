@@ -42,9 +42,10 @@ var (
 	//nolint:gochecknoglobals
 	NoSchema = &jsonschema.Schema{}
 
-	ErrNoRegisteredName = errors.New("could not find a config entry with that name")
-	ErrEnvVarRef        = errors.New("could not find an environment variable")
-	ErrPathVarRef       = errors.New("could not find path variable")
+	ErrNoRegisteredName   = errors.New("could not find a config entry with that name")
+	ErrEnvVarRef          = errors.New("could not find an environment variable")
+	ErrPathVarRef         = errors.New("could not find path variable")
+	ErrPathVarRefCircular = errors.New("circular path reference detected")
 
 	ErrMalformedPathRef = errors.New("malformed path reference")
 	ErrMalformedEnvRef  = errors.New("malformed env reference")
@@ -294,7 +295,7 @@ func (c *impl) findReferenceValues() error {
 }
 
 func (c *impl) findReferenceValue(origin string) (string, error) {
-	zerologr.V(100).Info("Walking refs, origin: " + origin)
+	zerologr.V(100).Info("Finding reference value for: " + origin)
 
 	originPath, err := getPathFromReference(origin)
 	if err != nil {
@@ -312,12 +313,7 @@ func (c *impl) findReferenceValue(origin string) (string, error) {
 			zerologr.V(100).Info("Env ref found during walk: " + decoded)
 			return c.refs[decoded], nil
 		} else if isPathReference(decoded) {
-			ref, err := getPathFromReference(decoded)
-			if err != nil {
-				return "", err
-			}
-
-			return c.walkRefs(originPath, ref)
+			return c.walkRefs(originPath, decoded)
 		}
 	}
 	return fmt.Sprintf("%v", value), nil
@@ -330,9 +326,10 @@ func (c *impl) walkRefs(originPath, ref string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	zerologr.V(100).Info("New ref path: " + newRefPath + " origin: " + originPath)
 
 	if originPath == newRefPath {
-		return "", fmt.Errorf("%w: circular reference detected at %s", ErrPathVarRef, originPath)
+		return "", fmt.Errorf("%w: %s", ErrPathVarRefCircular, originPath)
 	}
 
 	val, ok := c.values[newRefPath]
@@ -342,15 +339,11 @@ func (c *impl) walkRefs(originPath, ref string) (string, error) {
 
 	switch decoded := val.(type) {
 	case string:
-		if originPath == decoded {
-			return "", fmt.Errorf("%w: circular reference detected at %s", ErrPathVarRef, originPath)
-		} else if isPathReference(decoded) {
+		if isPathReference(decoded) {
 			zerologr.V(100).Info("Path ref found during walk: " + decoded)
-			newRef, err := getPathFromReference(decoded)
-			if err != nil {
-				return "", err
-			}
-			return c.walkRefs(originPath, newRef)
+			// Don't decode the reference path here, it's done recursively in the next call to walkRefs.
+			// The next call to walkRefs will extract the path from the reference and compare it to the originPath.
+			return c.walkRefs(originPath, decoded)
 		}
 	default:
 		return fmt.Sprintf("%v", decoded), nil
@@ -380,17 +373,6 @@ func (c *impl) replaceReferencesInData() error {
 	}
 
 	return nil
-}
-
-func getPathFromReference(ref string) (string, error) {
-	groups := pathRe.FindStringSubmatch(ref)
-	zerologr.V(100).Info("Found path ref submatch groups: ", "ref", ref, "groups", groups)
-	if len(groups) < 2 {
-		return "", fmt.Errorf("%w: %s", ErrMalformedPathRef, ref)
-	}
-
-	split := strings.Split(groups[1], ":")
-	return split[0], nil
 }
 
 func (c *impl) validateSchemas() error {
@@ -435,6 +417,7 @@ func isPathReference(ref string) bool {
 
 func getEnvReferenceValue(ref string) (string, error) {
 	groups := envRe.FindStringSubmatch(ref)
+	zerologr.V(100).Info("Found env ref submatch groups: ", "ref", ref, "groups", groups)
 	if len(groups) < 2 {
 		return "", fmt.Errorf("%w: %s", ErrMalformedEnvRef, ref)
 	}
@@ -443,8 +426,21 @@ func getEnvReferenceValue(ref string) (string, error) {
 
 	val, ok := os.LookupEnv(split[0])
 	if !ok {
+		if len(split) > 1 {
+			return split[1], nil
+		}
 		return "", fmt.Errorf("%w: %s", ErrEnvVarRef, split[0])
 	}
 
 	return val, nil
+}
+
+func getPathFromReference(ref string) (string, error) {
+	groups := pathRe.FindStringSubmatch(ref)
+	zerologr.V(100).Info("Found path ref submatch groups: ", "ref", ref, "groups", groups)
+	if len(groups) < 2 {
+		return "", fmt.Errorf("%w: %s", ErrMalformedPathRef, ref)
+	}
+
+	return groups[1], nil
 }

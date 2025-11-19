@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"testing"
 
@@ -178,6 +179,42 @@ func TestParsePathRef(t *testing.T) {
 
 	if decodedAccessCfg.Complex.String != "top.string" {
 		t.Fatal("Expected complex.string to contain \"top.string\"")
+	}
+
+	if decodedAccessCfg.Enabled != true {
+		t.Fatal("Expected enabled to be true")
+	}
+
+	if decodedAccessCfg.Complex.Bool != true {
+		t.Fatal("Expected complex.bool to be true")
+	}
+}
+
+func TestParsePathRefCircular(t *testing.T) {
+	teardown := enableLogging()
+	defer teardown()
+
+	cfg := &testCfg{}
+
+	data := []byte(`{
+  "enabled": true,
+  "string": "top.string",
+  "complex": {
+		"bool": ${ref:1.enabled},
+		"string": "${ref:1.complex.string}"
+  }
+}`)
+
+	m := New()
+	m.Register("1", cfg)
+
+	if err := m.Load("1", data); err != nil {
+		t.Fatal("Unexpected error when loading config 1:", err)
+	}
+
+	err := m.Parse()
+	if !errors.Is(err, ErrPathVarRefCircular) {
+		t.Fatal("Unexpected error when parsing loaded config:", err)
 	}
 }
 
