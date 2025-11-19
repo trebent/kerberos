@@ -169,7 +169,7 @@ func (c *impl) escapeReferences() error {
 				i = i + end + 3
 			} else if entry.data[i] == '$' && isReference(entry.data[i:i+6]) {
 				zerologr.V(100).Info(
-					"Found already escaped reference at index " + strconv.Itoa(i) + " in config '" + name + "'",
+					fmt.Sprintf("Found already escaped reference at index %d in config %s", i, name),
 				)
 
 				end := bytes.IndexByte(entry.data[i:], '}')
