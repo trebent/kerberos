@@ -25,9 +25,10 @@ type (
 		Schema() *jsonschema.Schema
 	}
 	configEntry struct {
-		schema *jsonschema.Schema
-		cfg    Config
-		data   []byte
+		schema      *jsonschema.Schema
+		cfg         Config
+		data        []byte
+		escapedData []byte
 	}
 	impl struct {
 		configEntries map[string]*configEntry
@@ -64,7 +65,7 @@ func New() Map {
 }
 
 func (c *impl) Register(name string, cfg Config) {
-	c.configEntries[name] = &configEntry{cfg.Schema(), cfg, nil}
+	c.configEntries[name] = &configEntry{cfg.Schema(), cfg, nil, nil}
 }
 
 func (c *impl) Load(name string, data []byte) error {
@@ -121,11 +122,15 @@ func (c *impl) resolveReferences() error {
 		return err
 	}
 
-	if err := c.walkConfig(); err != nil {
+	if err := c.walkForReferences(); err != nil {
 		return err
 	}
 
-	if err := c.realiseReferences(); err != nil {
+	if err := c.findReferenceValues(); err != nil {
+		return err
+	}
+
+	if err := c.replaceReferencesInData(); err != nil {
 		return err
 	}
 
@@ -139,6 +144,7 @@ func (c *impl) escapeReferences() error {
 	*/
 	for name, entry := range c.configEntries {
 		zerologr.V(100).Info("Escaping references for config '" + name + "'")
+		entry.escapedData = entry.data
 
 		i := 0
 		for i < len(entry.data) {
@@ -157,7 +163,7 @@ func (c *impl) escapeReferences() error {
 
 				zerologr.V(100).Info("Escaped reference: " + string(escapedRef))
 
-				entry.data = bytes.Replace(entry.data, entry.data[i:i+end+1], escapedRef, 1)
+				entry.escapedData = bytes.Replace(entry.data, entry.data[i:i+end+1], escapedRef, 1)
 
 				i = i + end + 3
 			} else if entry.data[i] == '$' && isReference(entry.data[i:i+6]) {
@@ -180,7 +186,7 @@ func (c *impl) escapeReferences() error {
 	return nil
 }
 
-func (c *impl) walkConfig() error {
+func (c *impl) walkForReferences() error {
 	/*
 		Reads through all config entries and gathers references and values for later resolution.
 	*/
@@ -188,7 +194,7 @@ func (c *impl) walkConfig() error {
 		zerologr.V(100).Info("Gathering references for config '" + name + "'")
 
 		generic := make(map[string]any)
-		if err := json.Unmarshal(entry.data, &generic); err != nil {
+		if err := json.Unmarshal(entry.escapedData, &generic); err != nil {
 			return fmt.Errorf("%w: %s due to: %w", ErrUnmarshal, name, err)
 		}
 
@@ -244,7 +250,7 @@ func (c *impl) walk(currentPath string, generic any) error {
 	return nil
 }
 
-func (c *impl) realiseReferences() error {
+func (c *impl) findReferenceValues() error {
 	/*
 		Values contain values for full paths, but some contains references as well. Now what's needed is:
 
@@ -259,7 +265,7 @@ func (c *impl) realiseReferences() error {
 		var err error
 		if isEnvReference(ref) {
 			zerologr.V(100).Info("Env ref, looking up environment variable: " + ref)
-			c.refs[ref], err = getEnvReference(ref)
+			c.refs[ref], err = getEnvReferenceValue(ref)
 			if err != nil {
 				return err
 			}
@@ -275,7 +281,7 @@ func (c *impl) realiseReferences() error {
 			zerologr.V(100).Info("Path ref, finding final value: " + ref)
 
 			// Find if the path reference can be walked to a final value
-			c.refs[ref], err = c.realiseReference(ref)
+			c.refs[ref], err = c.findReferenceValue(ref)
 			if err != nil {
 				return err
 			}
@@ -287,10 +293,10 @@ func (c *impl) realiseReferences() error {
 	return nil
 }
 
-func (c *impl) realiseReference(origin string) (string, error) {
+func (c *impl) findReferenceValue(origin string) (string, error) {
 	zerologr.V(100).Info("Walking refs, origin: " + origin)
 
-	originPath, err := c.getPathFromReference(origin)
+	originPath, err := getPathFromReference(origin)
 	if err != nil {
 		return "", err
 	}
@@ -306,7 +312,7 @@ func (c *impl) realiseReference(origin string) (string, error) {
 			zerologr.V(100).Info("Env ref found during walk: " + decoded)
 			return c.refs[decoded], nil
 		} else if isPathReference(decoded) {
-			ref, err := c.getPathFromReference(decoded)
+			ref, err := getPathFromReference(decoded)
 			if err != nil {
 				return "", err
 			}
@@ -320,7 +326,7 @@ func (c *impl) realiseReference(origin string) (string, error) {
 func (c *impl) walkRefs(originPath, ref string) (string, error) {
 	zerologr.V(100).Info("Walking refs, origin: " + originPath + ", ref: " + ref)
 
-	newRefPath, err := c.getPathFromReference(ref)
+	newRefPath, err := getPathFromReference(ref)
 	if err != nil {
 		return "", err
 	}
@@ -340,7 +346,7 @@ func (c *impl) walkRefs(originPath, ref string) (string, error) {
 			return "", fmt.Errorf("%w: circular reference detected at %s", ErrPathVarRef, originPath)
 		} else if isPathReference(decoded) {
 			zerologr.V(100).Info("Path ref found during walk: " + decoded)
-			newRef, err := c.getPathFromReference(decoded)
+			newRef, err := getPathFromReference(decoded)
 			if err != nil {
 				return "", err
 			}
@@ -353,7 +359,30 @@ func (c *impl) walkRefs(originPath, ref string) (string, error) {
 	return fmt.Sprintf("%v", val), nil
 }
 
-func (c *impl) getPathFromReference(ref string) (string, error) {
+func (c *impl) replaceReferencesInData() error {
+	/*
+		Replace all references in the original JSON data with their resolved values.
+	*/
+	for name, entry := range c.configEntries {
+		zerologr.V(100).Info("Replacing references in config '" + name + "': " + string(entry.data))
+
+		dataStr := string(entry.data)
+
+		for ref, val := range c.refs {
+			zerologr.V(100).Info("Replacing reference '" + ref + "' with value '" + val + "' in config '" + name + "'")
+			dataStr = strings.ReplaceAll(dataStr, ref, val)
+			zerologr.V(100).Info("Intermediate replaced data: " + dataStr)
+		}
+
+		entry.data = []byte(dataStr)
+
+		zerologr.V(100).Info("Replaced references in config '" + name + "': " + string(entry.data))
+	}
+
+	return nil
+}
+
+func getPathFromReference(ref string) (string, error) {
 	groups := pathRe.FindStringSubmatch(ref)
 	zerologr.V(100).Info("Found path ref submatch groups: ", "ref", ref, "groups", groups)
 	if len(groups) < 2 {
@@ -404,7 +433,7 @@ func isPathReference(ref string) bool {
 	return strings.HasPrefix(ref, "${ref:")
 }
 
-func getEnvReference(ref string) (string, error) {
+func getEnvReferenceValue(ref string) (string, error) {
 	groups := envRe.FindStringSubmatch(ref)
 	if len(groups) < 2 {
 		return "", fmt.Errorf("%w: %s", ErrMalformedEnvRef, ref)
