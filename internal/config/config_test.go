@@ -13,11 +13,13 @@ type (
 	testCfg struct {
 		Enabled      bool      `json:"enabled" jsonschema:"required"`
 		Number       int       `json:"number"`
+		String       string    `json:"string"`
 		Array        []string  `json:"array"`
 		Complex      *subCfg   `json:"complex"`
 		ComplexArray []*subCfg `json:"complex_array"`
 	}
 	subCfg struct {
+		Bool   bool   `json:"bool"`
 		Number int    `json:"number"`
 		String string `json:"string"`
 	}
@@ -139,6 +141,43 @@ func TestParseEnvRefDefault(t *testing.T) {
 
 	if !decodedAccessCfg.Enabled {
 		t.Fatal("Expected enabled to be true")
+	}
+}
+
+func TestParsePathRef(t *testing.T) {
+	teardown := enableLogging()
+	defer teardown()
+	os.Setenv("STRING_VALUE", "top.string")
+	defer os.Unsetenv("STRING_VALUE")
+
+	cfg := &testCfg{}
+
+	data := []byte(`{
+  "enabled": true,
+  "string": "${env:STRING_VALUE}",
+  "complex": {
+		"bool": ${ref:1.enabled},
+		"string": "${ref:1.string}"
+  }
+}`)
+
+	m := New()
+	m.Register("1", cfg)
+
+	if err := m.Load("1", data); err != nil {
+		t.Fatal("Unexpected error when loading config 1:", err)
+	}
+
+	err := m.Parse()
+	if err != nil {
+		t.Fatal("Unexpected error when parsing loaded config:", err)
+	}
+
+	accessCfg, _ := m.Access("1")
+	decodedAccessCfg := accessCfg.(*testCfg)
+
+	if decodedAccessCfg.Complex.String != "top.string" {
+		t.Fatal("Expected complex.string to contain \"top.string\"")
 	}
 }
 
