@@ -148,11 +148,10 @@ func (c *impl) escapeReferences() error {
 
 		i := 0
 		for i < len(entry.data) {
-			println(strconv.Itoa(i) + ": " + string(entry.data[i]))
-
+			//nolint:gocritic // ignore: nestedIfs
 			if entry.data[i] == '$' && isReference(entry.data[i:i+6]) && entry.data[i-1] != '"' {
 				zerologr.V(100).Info(
-					"Found unescaped reference at index " + strconv.Itoa(i) + " in config '" + name + "'",
+					fmt.Sprintf("Found unescaped reference at index %d in config %s", i, name),
 				)
 
 				end := bytes.IndexByte(entry.data[i:], '}')
