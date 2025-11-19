@@ -218,6 +218,36 @@ func TestParsePathRefCircular(t *testing.T) {
 	}
 }
 
+func TestParsePathRefCircularBackRef(t *testing.T) {
+	teardown := enableLogging()
+	defer teardown()
+
+	cfg := &testCfg{}
+
+	data := []byte(`{
+  "enabled": true,
+  "string": "${ref:1.complex.string}",
+  "complex": {
+		"bool": ${ref:1.enabled},
+		"string": "${ref:1.string}"
+  }
+}`)
+
+	m := New()
+	m.Register("1", cfg)
+
+	if err := m.Load("1", data); err != nil {
+		t.Fatal("Unexpected error when loading config 1:", err)
+	}
+
+	err := m.Parse()
+	if !errors.Is(err, ErrPathVarRefCircular) {
+		t.Fatal("Unexpected error when parsing loaded config:", err)
+	}
+
+	t.Log(err.Error())
+}
+
 func enableLogging() func() {
 	newLogger := zerologr.New(&zerologr.Opts{Console: true, V: 100})
 	zerologr.Set(newLogger)

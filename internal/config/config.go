@@ -54,7 +54,6 @@ var (
 
 	envRe  = regexp.MustCompile(`\$\{env:([a-zA-Z0-9_:]+)\}`)
 	pathRe = regexp.MustCompile(`\$\{ref:([a-zA-Z0-9_\.\[\]:]+)\}`)
-	// unresolvedRe = regexp.MustCompile(`\$\{UNRESOLVED:([a-zA-Z0-9_]+)\}`)
 )
 
 func New() Map {
@@ -152,7 +151,9 @@ func (c *impl) escapeReferences() error {
 			println(strconv.Itoa(i) + ": " + string(entry.data[i]))
 
 			if entry.data[i] == '$' && isReference(entry.data[i:i+6]) && entry.data[i-1] != '"' {
-				zerologr.V(100).Info("Found unescaped reference at index " + fmt.Sprint(i) + " in config '" + name + "'")
+				zerologr.V(100).Info(
+					"Found unescaped reference at index " + strconv.Itoa(i) + " in config '" + name + "'",
+				)
 
 				end := bytes.IndexByte(entry.data[i:], '}')
 				if end == -1 {
@@ -168,7 +169,9 @@ func (c *impl) escapeReferences() error {
 
 				i = i + end + 3
 			} else if entry.data[i] == '$' && isReference(entry.data[i:i+6]) {
-				zerologr.V(100).Info("Found already escaped reference at index " + fmt.Sprint(i) + " in config '" + name + "'")
+				zerologr.V(100).Info(
+					"Found already escaped reference at index " + strconv.Itoa(i) + " in config '" + name + "'",
+				)
 
 				end := bytes.IndexByte(entry.data[i:], '}')
 				if end == -1 {
@@ -307,6 +310,7 @@ func (c *impl) findReferenceValue(origin string) (string, error) {
 		return "", fmt.Errorf("%w: %s", ErrPathVarRef, origin)
 	}
 
+	//nolint:gocritic // ignore: typeSwitchVarNamings
 	switch decoded := value.(type) {
 	case string:
 		if isEnvReference(decoded) {
