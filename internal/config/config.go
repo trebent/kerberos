@@ -254,6 +254,7 @@ func (c *impl) walk(currentPath string, generic any) error {
 }
 
 func (c *impl) findReferenceValues() error {
+	zerologr.V(100).Info("Finding reference values")
 	/*
 		Values contain values for full paths, but some contains references as well. Now what's needed is:
 
@@ -264,10 +265,9 @@ func (c *impl) findReferenceValues() error {
 		Environment variable references are resolved first, then path references.
 	*/
 	for ref := range c.refs {
-		zerologr.V(100).Info("Checking reference: " + ref)
 		var err error
 		if isEnvReference(ref) {
-			zerologr.V(100).Info("Env ref, looking up environment variable: " + ref)
+			zerologr.V(100).Info("Checking env ref: " + ref)
 			c.refs[ref], err = getEnvReferenceValue(ref)
 			if err != nil {
 				return err
@@ -275,13 +275,12 @@ func (c *impl) findReferenceValues() error {
 		}
 	}
 
-	zerologr.V(100).Info(fmt.Sprintf("Realised env references: %s", c.refs))
+	zerologr.V(100).Info(fmt.Sprintf("Realised env refs: %s", c.refs))
 
 	for ref := range c.refs {
-		zerologr.V(100).Info("Checking reference: " + ref)
 		var err error
 		if isPathReference(ref) {
-			zerologr.V(100).Info("Path ref, finding final value: " + ref)
+			zerologr.V(100).Info("Checking path ref: " + ref)
 
 			// Find if the path reference can be walked to a final value
 			c.refs[ref], err = c.findReferenceValue(ref)
@@ -291,13 +290,13 @@ func (c *impl) findReferenceValues() error {
 		}
 	}
 
-	zerologr.V(100).Info(fmt.Sprintf("Realised references: %s", c.refs))
+	zerologr.V(100).Info(fmt.Sprintf("Realised all refs: %s", c.refs))
 
 	return nil
 }
 
 func (c *impl) findReferenceValue(origin string) (string, error) {
-	zerologr.V(100).Info("Finding reference value for: " + origin)
+	zerologr.V(100).Info("Finding value for ref: " + origin)
 
 	originPath, err := getPathFromReference(origin)
 	if err != nil {
@@ -309,16 +308,17 @@ func (c *impl) findReferenceValue(origin string) (string, error) {
 		return "", fmt.Errorf("%w: %s", ErrPathVarRef, origin)
 	}
 
-	//nolint:gocritic // ignore: typeSwitchVarNamings
-	switch decoded := value.(type) {
-	case string:
+	decoded, ok := value.(string)
+	if ok {
 		if isEnvReference(decoded) {
-			zerologr.V(100).Info("Env ref found during walk: " + decoded)
+			zerologr.V(100).Info("Env ref found: " + decoded)
 			return c.refs[decoded], nil
 		} else if isPathReference(decoded) {
+			zerologr.V(100).Info("Path ref found, walking path: " + decoded)
 			return c.walkRefs(originPath, decoded)
 		}
 	}
+
 	return fmt.Sprintf("%v", value), nil
 }
 
@@ -340,19 +340,20 @@ func (c *impl) walkRefs(originPath, ref string) (string, error) {
 		return "", fmt.Errorf("%w: %s", ErrPathVarRef, ref)
 	}
 
-	switch decoded := val.(type) {
-	case string:
-		if isPathReference(decoded) {
+	decoded, ok := val.(string)
+	if ok {
+		if isEnvReference(decoded) {
+			zerologr.V(100).Info("Env ref found during walk: " + decoded)
+			return c.refs[decoded], nil
+		} else if isPathReference(decoded) {
 			zerologr.V(100).Info("Path ref found during walk: " + decoded)
 			// Don't decode the reference path here, it's done recursively in the next call to walkRefs.
 			// The next call to walkRefs will extract the path from the reference and compare it to the originPath.
 			return c.walkRefs(originPath, decoded)
 		}
-	default:
-		return fmt.Sprintf("%v", decoded), nil
 	}
 
-	return fmt.Sprintf("%v", val), nil
+	return fmt.Sprintf("%v", decoded), nil
 }
 
 func (c *impl) replaceReferencesInData() error {
@@ -432,10 +433,12 @@ func getEnvReferenceValue(ref string) (string, error) {
 	val, ok := os.LookupEnv(split[0])
 	if !ok {
 		if len(split) > 1 {
+			zerologr.V(100).Info("Using default env var value: " + split[1])
 			return split[1], nil
 		}
 		return "", fmt.Errorf("%w: %s", ErrEnvVarRef, split[0])
 	}
+	zerologr.V(100).Info("Found env var value: " + val)
 
 	return val, nil
 }

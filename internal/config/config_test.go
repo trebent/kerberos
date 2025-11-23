@@ -292,6 +292,51 @@ func TestParsePathRefArrayIndex(t *testing.T) {
 	}
 }
 
+func TestParsePathRefToEnvRef(t *testing.T) {
+	teardown := enableLogging()
+	defer teardown()
+	os.Setenv("STRING_VALUE", "env_string")
+	defer os.Unsetenv("STRING_VALUE")
+
+	cfg := &testCfg{}
+
+	data := []byte(`{
+  "enabled": true,
+  "string": "${ref:1.complex_array[0].string}",
+	"complex": {
+		"string": "${env:STRING_VALUE}"
+	},
+	"complex_array": [
+			{
+				"string": "${ref:1.complex.string}"
+      }
+		]
+}`)
+
+	m := New()
+	m.Register("1", cfg)
+
+	if err := m.Load("1", data); err != nil {
+		t.Fatal("Unexpected error when loading config 1:", err)
+	}
+
+	err := m.Parse()
+	if err != nil {
+		t.Fatal("Unexpected error when parsing loaded config:", err)
+	}
+
+	accessCfg, _ := m.Access("1")
+	decodedAccessCfg := accessCfg.(*testCfg)
+
+	if decodedAccessCfg.String != "env_string" {
+		t.Fatal("Expected string to contain \"env_string\"")
+	}
+
+	if decodedAccessCfg.ComplexArray[0].String != "env_string" {
+		t.Fatal("Expected string to contain \"env_string\"")
+	}
+}
+
 func enableLogging() func() {
 	newLogger := zerologr.New(&zerologr.Opts{Console: true, V: 100})
 	zerologr.Set(newLogger)
