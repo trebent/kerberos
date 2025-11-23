@@ -248,6 +248,50 @@ func TestParsePathRefCircularBackRef(t *testing.T) {
 	t.Log(err.Error())
 }
 
+func TestParsePathRefArrayIndex(t *testing.T) {
+	teardown := enableLogging()
+	defer teardown()
+
+	cfg := &testCfg{}
+
+	data := []byte(`{
+  "enabled": true,
+  "string": "${ref:1.complex_array[0].string}",
+  "complex": {
+		"bool": ${ref:1.enabled},
+		"string": "${ref:1.string}"
+  },
+	"complex_array": [
+			{
+				"string": "index0"
+      }
+		]
+}`)
+
+	m := New()
+	m.Register("1", cfg)
+
+	if err := m.Load("1", data); err != nil {
+		t.Fatal("Unexpected error when loading config 1:", err)
+	}
+
+	err := m.Parse()
+	if err != nil {
+		t.Fatal("Unexpected error when parsing loaded config:", err)
+	}
+
+	accessCfg, _ := m.Access("1")
+	decodedAccessCfg := accessCfg.(*testCfg)
+
+	if decodedAccessCfg.String != "index0" {
+		t.Fatal("Expected string to contain \"index0\"")
+	}
+
+	if decodedAccessCfg.Complex.String != "index0" {
+		t.Fatal("Expected string to contain \"index0\"")
+	}
+}
+
 func enableLogging() func() {
 	newLogger := zerologr.New(&zerologr.Opts{Console: true, V: 100})
 	zerologr.Set(newLogger)

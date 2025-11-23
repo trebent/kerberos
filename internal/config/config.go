@@ -235,7 +235,7 @@ func (c *impl) walk(currentPath string, generic any) error {
 	case []any:
 		zerologr.V(100).Info("Walking into array in path '" + currentPath + "'")
 		for i, item := range val {
-			if err := c.walk(currentPath+".["+strconv.Itoa(i)+"]", item); err != nil {
+			if err := c.walk(currentPath+"["+strconv.Itoa(i)+"]", item); err != nil {
 				return err
 			}
 		}
