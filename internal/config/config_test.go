@@ -337,6 +337,47 @@ func TestParsePathRefToEnvRef(t *testing.T) {
 	}
 }
 
+func TestParsePathRefCrossDocument(t *testing.T) {
+	teardown := enableLogging()
+	defer teardown()
+	os.Setenv("STRING_VALUE", "env_string")
+	defer os.Unsetenv("STRING_VALUE")
+
+	cfg := &testCfg{}
+
+	data := []byte(`{
+  "enabled": true,
+  "string": "1string"
+}`)
+	data2 := []byte(`{
+  "enabled": true,
+  "string": "${ref:1.string}"
+}`)
+
+	m := New()
+	m.Register("1", cfg)
+	m.Register("2", cfg)
+
+	if err := m.Load("1", data); err != nil {
+		t.Fatal("Unexpected error when loading config 1:", err)
+	}
+	if err := m.Load("2", data2); err != nil {
+		t.Fatal("Unexpected error when loading config 1:", err)
+	}
+
+	err := m.Parse()
+	if err != nil {
+		t.Fatal("Unexpected error when parsing loaded config:", err)
+	}
+
+	accessCfg, _ := m.Access("2")
+	decodedAccessCfg := accessCfg.(*testCfg)
+
+	if decodedAccessCfg.String != "1string" {
+		t.Fatal("Expected string to contain \"1string\"")
+	}
+}
+
 func enableLogging() func() {
 	newLogger := zerologr.New(&zerologr.Opts{Console: true, V: 100})
 	zerologr.Set(newLogger)
