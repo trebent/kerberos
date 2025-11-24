@@ -4,7 +4,7 @@ go 1.25.4
 
 require (
 	github.com/go-logr/logr v1.4.3
-	github.com/kaptinlin/jsonschema v0.5.2
+	github.com/kaptinlin/jsonschema v0.6.1
 	github.com/trebent/envparser v1.0.5
 	github.com/trebent/zerologr v1.0.1
 	go.opentelemetry.io/contrib/exporters/autoexport v0.63.0
@@ -20,14 +20,15 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/go-json-experiment/json v0.0.0-20250910080747-cc2cfa0554c3 // indirect
+	github.com/go-json-experiment/json v0.0.0-20251027170946-4849db3c2f7e // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/goccy/go-yaml v1.18.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.2 // indirect
 	github.com/kaptinlin/go-i18n v0.2.0 // indirect
-	github.com/kaptinlin/messageformat-go v0.4.5 // indirect
+	github.com/kaptinlin/jsonpointer v0.4.6 // indirect
+	github.com/kaptinlin/messageformat-go v0.4.6 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
