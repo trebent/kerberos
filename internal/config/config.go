@@ -353,7 +353,7 @@ func (c *impl) walkRefs(originPath, ref string) (string, error) {
 		}
 	}
 
-	return fmt.Sprintf("%v", decoded), nil
+	return decoded, nil
 }
 
 func (c *impl) replaceReferencesInData() error {
