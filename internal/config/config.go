@@ -46,11 +46,11 @@ var (
 	ErrEnvVarRef          = errors.New("could not find an environment variable")
 	ErrPathVarRef         = errors.New("could not find path variable")
 	ErrPathVarRefCircular = errors.New("circular path reference detected")
-
-	ErrMalformedPathRef = errors.New("malformed path reference")
-	ErrMalformedEnvRef  = errors.New("malformed env reference")
-	ErrUnmarshal        = errors.New("failed to decode configuration")
-	ErrSubmatchEnv      = errors.New("failed to find submatch in env match")
+	ErrMalformedPathRef   = errors.New("malformed path reference")
+	ErrMalformedEnvRef    = errors.New("malformed env reference")
+	ErrUnmarshal          = errors.New("failed to decode configuration")
+	ErrSubmatchEnv        = errors.New("failed to find submatch in env match")
+	ErrSchema             = errors.New("schema validation failed")
 
 	envRe  = regexp.MustCompile(`\$\{env:([a-zA-Z0-9_:]+)\}`)
 	pathRe = regexp.MustCompile(`\$\{ref:([a-zA-Z0-9_\.\[\]:]+)\}`)
@@ -353,7 +353,7 @@ func (c *impl) walkRefs(originPath, ref string) (string, error) {
 		}
 	}
 
-	return fmt.Sprintf("%v", decoded), nil
+	return decoded, nil
 }
 
 func (c *impl) replaceReferencesInData() error {
@@ -382,6 +382,23 @@ func (c *impl) replaceReferencesInData() error {
 }
 
 func (c *impl) validateSchemas() error {
+	for _, entry := range c.configEntries {
+		if entry.cfg.Schema() == NoSchema {
+			continue
+		}
+
+		result := entry.cfg.Schema().ValidateJSON(entry.data)
+
+		if !result.IsValid() {
+			var err error
+			for field, evalErr := range result.Errors {
+				err = fmt.Errorf("%s: %s", field, evalErr.Message)
+			}
+
+			return fmt.Errorf("%w: %s", ErrSchema, err.Error())
+		}
+	}
+
 	return nil
 }
 
