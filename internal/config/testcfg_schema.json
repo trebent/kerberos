@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "enabled": {
+      "type": "boolean"
+    },
+    "number": {
+      "type": "integer"
+    },
+    "string": {
+      "type": "string"
+    },
+    "array": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "complex": {
+      "$ref": "#/definitions/subCfg"
+    },
+    "complex_array": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/subCfg"
+      }
+    }
+  },
+  "required": ["enabled"],
+  "definitions": {
+    "subCfg": {
+      "type": "object",
+      "properties": {
+        "bool": {
+          "type": "boolean"
+        },
+        "number": {
+          "type": "integer"
+        },
+        "string": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

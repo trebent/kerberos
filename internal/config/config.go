@@ -382,19 +382,37 @@ func (c *impl) replaceReferencesInData() error {
 }
 
 func (c *impl) validateSchemas() error {
-	for _, entry := range c.configEntries {
+	zerologr.V(100).Info("Validating schemas for all config entries")
+	/*
+		Validate all loaded config entries against their schemas.
+	*/
+	for name, entry := range c.configEntries {
+		zerologr.V(100).Info("Validating schema for config entry " + name)
 		if entry.cfg.Schema() == NoSchema {
+			zerologr.V(100).Info("No schema defined, skipping validation")
 			continue
 		}
 
 		result, err := entry.cfg.Schema().Validate(gojsonschema.NewBytesLoader(entry.data))
 		if err != nil {
+			return err
+		}
+
+		if result.Valid() {
+			zerologr.V(100).Info("Schema validation successful for config entry " + name)
+
+			for _, err := range result.Errors() {
+				zerologr.V(100).Info(
+					fmt.Sprintf("Schema validation warning for config entry %s: %s - %s", name, err.Field(), err.Description()),
+				)
+			}
+		} else {
 			var fullError error
 			for _, validationErr := range result.Errors() {
-				fullError = fmt.Errorf("%v, %s - %s", fullError, validationErr.Field(), validationErr.Description())
+				fullError = fmt.Errorf("%w, %s - %s", fullError, validationErr.Field(), validationErr.Description())
 			}
 
-			return fmt.Errorf("%w: %s", ErrSchema, fullError.Error())
+			return fmt.Errorf("%w: %s", ErrSchema, strings.TrimPrefix(fullError.Error(), "<nil>, "))
 		}
 	}
 

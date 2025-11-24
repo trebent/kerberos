@@ -5,6 +5,8 @@ import (
 	"os"
 	"testing"
 
+	_ "embed"
+
 	"github.com/go-logr/logr"
 	"github.com/trebent/zerologr"
 	"github.com/xeipuuv/gojsonschema"
@@ -12,7 +14,7 @@ import (
 
 type (
 	testCfg struct {
-		Enabled      bool      `json:"enabled" jsonschema:"required"`
+		Enabled      bool      `json:"enabled"`
 		Number       int       `json:"number"`
 		String       string    `json:"string"`
 		Array        []string  `json:"array"`
@@ -26,8 +28,16 @@ type (
 	}
 )
 
+//go:embed testcfg_schema.json
+var testCfgSchema []byte
+
 func (t *testCfg) Schema() *gojsonschema.Schema {
-	s, _ := gojsonschema.NewSchema(gojsonschema.NewGoLoader(&testCfg{}))
+	s, err := gojsonschema.NewSchema(gojsonschema.NewBytesLoader(testCfgSchema))
+
+	if err != nil {
+		panic("Failed to create schema for testCfg: " + err.Error())
+	}
+
 	return s
 }
 
@@ -387,6 +397,58 @@ func TestParseJSONSchemaValidationFail(t *testing.T) {
 
 	// Enabled is required but missing
 	data := []byte(`{}`)
+
+	m := New()
+	m.Register("1", cfg)
+
+	if err := m.Load("1", data); err != nil {
+		t.Fatal("Unexpected error when loading config 1:", err)
+	}
+
+	err := m.Parse()
+	if err == nil {
+		t.Fatal("Expected error when parsing loaded config, got nil")
+	} else {
+		t.Log(err)
+	}
+}
+
+func TestParseJSONSchemaValidationExtraField(t *testing.T) {
+	teardown := enableLogging()
+	defer teardown()
+
+	cfg := &testCfg{}
+
+	data := []byte(`{
+	"enabled": true,
+	"unknown": "value"	
+}`)
+
+	m := New()
+	m.Register("1", cfg)
+
+	if err := m.Load("1", data); err != nil {
+		t.Fatal("Unexpected error when loading config 1:", err)
+	}
+
+	err := m.Parse()
+	if err == nil {
+		t.Fatal("Expected error when parsing loaded config, got nil")
+	} else {
+		t.Log(err)
+	}
+}
+
+func TestParseJSONSchemaValidationWrongType(t *testing.T) {
+	teardown := enableLogging()
+	defer teardown()
+
+	cfg := &testCfg{}
+
+	// Enabled is the wrong type
+	data := []byte(`{
+	"enabled": "true"	
+}`)
 
 	m := New()
 	m.Register("1", cfg)
