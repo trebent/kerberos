@@ -383,6 +383,10 @@ func (c *impl) replaceReferencesInData() error {
 
 func (c *impl) validateSchemas() error {
 	for _, entry := range c.configEntries {
+		if entry.cfg.Schema() == NoSchema {
+			continue
+		}
+
 		result := entry.cfg.Schema().ValidateJSON(entry.data)
 
 		if !result.IsValid() {
