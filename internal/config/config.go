@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kaptinlin/jsonschema"
 	"github.com/trebent/zerologr"
+	"github.com/xeipuuv/gojsonschema"
 )
 
 type (
@@ -22,10 +22,10 @@ type (
 		Access(name string) (Config, error)
 	}
 	Config interface {
-		Schema() *jsonschema.Schema
+		Schema() *gojsonschema.Schema
 	}
 	configEntry struct {
-		schema      *jsonschema.Schema
+		schema      *gojsonschema.Schema
 		cfg         Config
 		data        []byte
 		escapedData []byte
@@ -40,7 +40,7 @@ type (
 
 var (
 	//nolint:gochecknoglobals
-	NoSchema = &jsonschema.Schema{}
+	NoSchema = &gojsonschema.Schema{}
 
 	ErrNoRegisteredName   = errors.New("could not find a config entry with that name")
 	ErrEnvVarRef          = errors.New("could not find an environment variable")
@@ -387,15 +387,14 @@ func (c *impl) validateSchemas() error {
 			continue
 		}
 
-		result := entry.cfg.Schema().ValidateJSON(entry.data)
-
-		if !result.IsValid() {
-			var err error
-			for field, evalErr := range result.Errors {
-				err = fmt.Errorf("%s: %s", field, evalErr.Message)
+		result, err := entry.cfg.Schema().Validate(gojsonschema.NewBytesLoader(entry.data))
+		if err != nil {
+			var fullError error
+			for _, validationErr := range result.Errors() {
+				fullError = fmt.Errorf("%v, %s - %s", fullError, validationErr.Field(), validationErr.Description())
 			}
 
-			return fmt.Errorf("%w: %s", ErrSchema, err.Error())
+			return fmt.Errorf("%w: %s", ErrSchema, fullError.Error())
 		}
 	}
 

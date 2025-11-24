@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
-	"github.com/kaptinlin/jsonschema"
 	"github.com/trebent/zerologr"
+	"github.com/xeipuuv/gojsonschema"
 )
 
 type (
@@ -26,8 +26,9 @@ type (
 	}
 )
 
-func (t *testCfg) Schema() *jsonschema.Schema {
-	return jsonschema.FromStruct[testCfg]()
+func (t *testCfg) Schema() *gojsonschema.Schema {
+	s, _ := gojsonschema.NewSchema(gojsonschema.NewGoLoader(&testCfg{}))
+	return s
 }
 
 func TestLoadNoName(t *testing.T) {
