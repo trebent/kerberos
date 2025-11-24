@@ -378,6 +378,30 @@ func TestParsePathRefCrossDocument(t *testing.T) {
 	}
 }
 
+func TestParseJSONSchemaValidationFail(t *testing.T) {
+	teardown := enableLogging()
+	defer teardown()
+
+	cfg := &testCfg{}
+
+	// Enabled is required but missing
+	data := []byte(`{}`)
+
+	m := New()
+	m.Register("1", cfg)
+
+	if err := m.Load("1", data); err != nil {
+		t.Fatal("Unexpected error when loading config 1:", err)
+	}
+
+	err := m.Parse()
+	if err == nil {
+		t.Fatal("Expected error when parsing loaded config, got nil")
+	} else {
+		t.Log(err)
+	}
+}
+
 func enableLogging() func() {
 	newLogger := zerologr.New(&zerologr.Opts{Console: true, V: 100})
 	zerologr.Set(newLogger)
