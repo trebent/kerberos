@@ -52,8 +52,15 @@ func main() {
 
 	// Config parse
 	cfg := config.New()
-	krbotel.RegisterWith(cfg)
-	router.RegisterWith(cfg)
+	if _, err := krbotel.RegisterWith(cfg); err != nil {
+		zerologr.Error(err, "Failed to register OTEL config")
+		os.Exit(1) // nolint: gocritic
+	}
+
+	if _, err := router.RegisterWith(cfg); err != nil {
+		zerologr.Error(err, "Failed to register router config")
+		os.Exit(1) // nolint: gocritic
+	}
 
 	readTimeout = time.Duration(env.ReadTimeoutSeconds.Value()) * time.Second
 	writeTimeout = time.Duration(env.WriteTimeoutSeconds.Value()) * time.Second

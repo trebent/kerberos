@@ -17,6 +17,7 @@ const configName = "otel"
 
 var _ config.Config = &otelCfg{}
 
-func RegisterWith(cfg config.Map) {
+func RegisterWith(cfg config.Map) (string, error) {
 	cfg.Register(configName, &otelCfg{})
+	return configName, nil
 }
