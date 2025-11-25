@@ -64,7 +64,7 @@ func main() {
 		Caller:  true,
 		V:       env.LogVerbosity.Value(),
 	}).
-		WithValues(string(semconv.ServiceNameKey), serviceName, string(semconv.ServiceVersionKey), version.Version()).
+		WithValues(string(semconv.ServiceNameKey), serviceName, string(semconv.ServiceVersionKey), version.Version).
 		WithName("krb"),
 	)
 	startLogger := zerologr.WithName("start")
@@ -77,7 +77,7 @@ func main() {
 	)
 	defer signalCancel()
 
-	shutdown, err := krbotel.Instrument(signalCtx, serviceName, version.Version())
+	shutdown, err := krbotel.Instrument(signalCtx, serviceName, version.Version)
 	if err != nil {
 		startLogger.Error(err, "Failed to instrument OpenTelemetry")
 		os.Exit(1) // nolint: gocritic

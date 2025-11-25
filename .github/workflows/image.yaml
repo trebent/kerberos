@@ -1,0 +1,55 @@
+name: Build docker image
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        description: "Version to build."
+        required: false
+        default: "none"
+      push:
+        type: boolean
+        description: "Whether to push the built image."
+        required: false
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub packages
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: ${{ inputs.push }}
+          build-args: |
+            VERSION=${{ inputs.version }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

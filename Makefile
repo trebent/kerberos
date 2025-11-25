@@ -45,7 +45,7 @@ staticcheck: lint unittest vulncheck
 
 build:
 	$(call cecho,Building Kerberos binary...,$(BOLD_YELLOW))
-	CGO_ENABLED=0 go build -trimpath -ldflags="-X 'github.com/trebent/kerberos/internal/version.Ver=${VERSION}' -s -w" -o kerberos ./cmd/kerberos
+	CGO_ENABLED=0 go build -trimpath -ldflags="-X 'github.com/trebent/kerberos/internal/version.Version=${VERSION}' -s -w" -o kerberos ./cmd/kerberos
 	$(call cecho,Build complete.,$(BOLD_GREEN))
 
 docker-build:

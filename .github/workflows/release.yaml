@@ -9,14 +9,37 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  version:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.set-version.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # Fetch all history for tags
+          tags: true
 
+      - name: Version info
+        id: set-version
+        run: |
+          VERSION=$(git describe --tags --always)  
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+  image:
+    needs: version
+    uses: ./.github/workflows/image.yaml
+    secrets: inherit
+    with:
+      version: ${{ needs.version.outputs.version }}
+      push: true
+
+  release:
+    needs: [version, image]
+    runs-on: ubuntu-latest
+    steps:
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create ${{ github.ref }} --generate-notes --latest
+          gh release create ${{ needs.version.outputs.version }} --generate-notes --latest

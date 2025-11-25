@@ -13,7 +13,7 @@ COPY internal/ internal/
 
 RUN --mount=type=cache,target=/go/pkg/mod \
   --mount=type=cache,target=/root/.cache/go-build \
-  CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-X github.com/trebent/kerberos/internal/version.Ver=${VERSION} -s -w" -o kerberos ./cmd/kerberos
+  CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-X github.com/trebent/kerberos/internal/version.Version=${VERSION} -s -w" -o kerberos ./cmd/kerberos
 
 FROM gcr.io/distroless/static-debian12:nonroot AS runtime
 

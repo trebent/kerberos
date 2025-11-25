@@ -124,7 +124,7 @@ func newObs() *obs {
 
 	meter := otel.GetMeterProvider().Meter(
 		"github.com/trebent/kerberos",
-		metric.WithInstrumentationVersion(version.Version()),
+		metric.WithInstrumentationVersion(version.Version),
 	)
 
 	requestCountCounter, err := meter.Int64Counter(

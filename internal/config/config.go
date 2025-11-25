@@ -398,22 +398,21 @@ func (c *impl) validateSchemas() error {
 			return err
 		}
 
-		if result.Valid() {
-			zerologr.V(100).Info("Schema validation successful for config entry " + name)
-
-			for _, err := range result.Errors() {
-				zerologr.V(100).Info(
-					fmt.Sprintf("Schema validation warning for config entry %s: %s - %s", name, err.Field(), err.Description()),
-				)
-			}
-		} else {
+		if !result.Valid() {
 			var fullError error
 			for _, validationErr := range result.Errors() {
-				fullError = fmt.Errorf("%w, %s - %s", fullError, validationErr.Field(), validationErr.Description())
+				fullError = fmt.Errorf(
+					"%w, %s - %s",
+					fullError,
+					validationErr.Field(),
+					validationErr.Description(),
+				)
 			}
 
 			return fmt.Errorf("%w: %s", ErrSchema, strings.TrimPrefix(fullError.Error(), "<nil>, "))
 		}
+
+		zerologr.V(100).Info("Schema for config entry " + name + " is valid")
 	}
 
 	return nil

@@ -26,6 +26,11 @@ type (
 		Number int    `json:"number"`
 		String string `json:"string"`
 	}
+	noSchema struct {
+		Bool   bool   `json:"bool"`
+		Number int    `json:"number"`
+		String string `json:"string"`
+	}
 )
 
 //go:embed testcfg_schema.json
@@ -39,6 +44,10 @@ func (t *testCfg) Schema() *gojsonschema.Schema {
 	}
 
 	return s
+}
+
+func (n *noSchema) Schema() *gojsonschema.Schema {
+	return NoSchema
 }
 
 func TestLoadNoName(t *testing.T) {
@@ -462,6 +471,32 @@ func TestParseJSONSchemaValidationWrongType(t *testing.T) {
 		t.Fatal("Expected error when parsing loaded config, got nil")
 	} else {
 		t.Log(err)
+	}
+}
+
+func TestParseNoSchema(t *testing.T) {
+	teardown := enableLogging()
+	defer teardown()
+
+	cfg := &noSchema{}
+
+	// Enabled is the wrong type
+	data := []byte(`{
+	"bool": true,
+	"number": 42,
+	"string": "test"	
+}`)
+
+	m := New()
+	m.Register("1", cfg)
+
+	if err := m.Load("1", data); err != nil {
+		t.Fatal("Unexpected error when loading config 1:", err)
+	}
+
+	err := m.Parse()
+	if err != nil {
+		t.Fatal("Unexpected error when parsing loaded config:", err)
 	}
 }
 

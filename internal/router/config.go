@@ -17,6 +17,7 @@ const configName = "router"
 
 var _ config.Config = &routerCfg{}
 
-func RegisterWith(cfg config.Map) {
+func RegisterWith(cfg config.Map) (string, error) {
 	cfg.Register(configName, &routerCfg{})
+	return configName, nil
 }
