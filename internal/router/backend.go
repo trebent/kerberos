@@ -3,7 +3,7 @@ package router
 import (
 	"context"
 
-	"github.com/trebent/kerberos/internal/otel"
+	otel "github.com/trebent/kerberos/internal/observability"
 )
 
 type (

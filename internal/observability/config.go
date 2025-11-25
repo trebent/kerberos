@@ -1,4 +1,4 @@
-package router
+package otel
 
 import (
 	_ "embed"
@@ -7,20 +7,20 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
-type routerConfig struct {
-	Backends []*backend `json:"backends"`
+type obsConfig struct {
+	Enabled bool `json:"enabled"`
 }
 
-const configName = "router"
+const configName = "observability"
 
 var (
-	_ config.Config = &routerConfig{}
+	_ config.Config = &obsConfig{}
 
 	//go:embed config_schema.json
 	schemaBytes []byte
 )
 
-func (o *routerConfig) Schema() *gojsonschema.Schema {
+func (o *obsConfig) Schema() *gojsonschema.Schema {
 	s, err := gojsonschema.NewSchema(gojsonschema.NewBytesLoader(schemaBytes))
 	if err != nil {
 		panic("Failed to create schema for routerConfig: " + err.Error())
@@ -30,6 +30,6 @@ func (o *routerConfig) Schema() *gojsonschema.Schema {
 }
 
 func RegisterWith(cfg config.Map) (string, error) {
-	cfg.Register(configName, &routerConfig{})
+	cfg.Register(configName, &obsConfig{Enabled: true})
 	return configName, nil
 }

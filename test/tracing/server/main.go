@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	krbotel "github.com/trebent/kerberos/internal/otel"
+	obs "github.com/trebent/kerberos/internal/observability"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-	shutdown, _ := krbotel.Instrument(context.TODO(), "tracing-testing", "0.1.0")
+	shutdown, _ := obs.Instrument(context.TODO(), "tracing-testing", "0.1.0")
 	defer shutdown(context.Background())
 	println("Starting server on :15000")
 

@@ -5,13 +5,13 @@ import (
 	"context"
 	"net/http"
 
-	krbotel "github.com/trebent/kerberos/internal/otel"
+	obs "github.com/trebent/kerberos/internal/observability"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 )
 
 func main() {
-	shutdown, err := krbotel.Instrument(context.TODO(), "tracing-testing-client", "0.1.0")
+	shutdown, err := obs.Instrument(context.TODO(), "tracing-testing-client", "0.1.0")
 	if err != nil {
 		println("Error initializing OpenTelemetry:", err.Error())
 		return

@@ -18,6 +18,7 @@ type (
 	Map interface {
 		Register(name string, cfg Config)
 		Load(name string, data []byte) error
+		MustLoad(name string, data []byte)
 		Parse() error
 		Access(name string) (Config, error)
 	}
@@ -64,6 +65,22 @@ func New() Map {
 	}
 }
 
+// AccessAs accesses a configuration entry by name and casts it to the provided type T.
+// It panics if the config entry is not found or if the type assertion fails.
+func AccessAs[T any](cfg Map, name string) T {
+	d, err := cfg.Access(name)
+	if err != nil {
+		panic(err)
+	}
+
+	typed, ok := d.(T)
+	if !ok {
+		panic(fmt.Sprintf("invalid config type for: %s", name))
+	}
+
+	return typed
+}
+
 func (c *impl) Register(name string, cfg Config) {
 	c.configEntries[name] = &configEntry{cfg.Schema(), cfg, nil, nil}
 }
@@ -77,6 +94,15 @@ func (c *impl) Load(name string, data []byte) error {
 	entry.data = data
 
 	return nil
+}
+
+func (c *impl) MustLoad(name string, data []byte) {
+	entry, ok := c.configEntries[name]
+	if !ok {
+		panic(fmt.Errorf("%w: %s", ErrNoRegisteredName, name))
+	}
+
+	entry.data = data
 }
 
 func (c *impl) Access(name string) (Config, error) {

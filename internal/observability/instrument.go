@@ -17,14 +17,13 @@ import (
 
 // Instrument bootstraps the OpenTelemetry pipeline.
 // If it does not return an error, make sure to call shutdown for proper cleanup.
-// nolint: nonamedreturns
 func Instrument(
 	ctx context.Context,
 	serviceName, serviceVersion string,
-) (shutdown func(context.Context) error, err error) {
+) (func(context.Context) error, error) {
 	var shutdownFuncs []func(context.Context) error
 
-	shutdown = func(ctx context.Context) error {
+	shutdown := func(ctx context.Context) error {
 		zerologr.Info("Shutting down OpenTelemetry SDK")
 
 		var err error // nolint: govet
@@ -34,6 +33,8 @@ func Instrument(
 		shutdownFuncs = nil
 		return err
 	}
+
+	var err error
 
 	// handleErr calls shutdown for cleanup and makes sure that all errors are returned.
 	handleErr := func(inErr error) {

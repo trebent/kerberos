@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+
+	"github.com/trebent/kerberos/internal/config"
 )
 
 type (
@@ -20,12 +22,10 @@ type (
 	}
 	// Opts are the options used to configure the router.
 	Opts struct {
-		// Specify the loader to use for loading backends. The loader is responsible for
-		// loading the backends from a source. The source can be a file, a database, etc.
-		Loader BackendLoader
+		Cfg config.Map
 	}
 	router struct {
-		backends []Backend
+		cfg *routerConfig
 	}
 	routingCtxKey string
 )
@@ -39,15 +39,9 @@ var (
 
 const expectedPatternMatches = 2
 
-// Load a router based on the provided option's loader.
-func Load(opts *Opts) (Router, error) {
-	backends, err := opts.Loader.Load()
-	if err != nil {
-		return nil, err
-	}
-
-	r := &router{backends: backends}
-	return r, nil
+// New returns a router based on the provided options.
+func New(opts *Opts) Router {
+	return &router{config.AccessAs[*routerConfig](opts.Cfg, configName)}
 }
 
 func (r *router) GetBackend(req http.Request) (Backend, error) {
@@ -57,7 +51,7 @@ func (r *router) GetBackend(req http.Request) (Backend, error) {
 		return nil, fmt.Errorf("%w: %s", ErrFailedPatternMatch, req.URL.Path)
 	}
 
-	for _, backend := range r.backends {
+	for _, backend := range r.cfg.Backends {
 		if backend.Name() == reqPath[1] {
 			return backend, nil
 		}

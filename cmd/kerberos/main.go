@@ -15,7 +15,7 @@ import (
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/env"
 	"github.com/trebent/kerberos/internal/forwarder"
-	krbotel "github.com/trebent/kerberos/internal/otel"
+	obs "github.com/trebent/kerberos/internal/observability"
 	"github.com/trebent/kerberos/internal/router"
 	"github.com/trebent/kerberos/internal/version"
 	"github.com/trebent/zerologr"
@@ -50,20 +50,10 @@ func main() {
 	// ExitOnError = true
 	_ = env.Parse()
 
-	// Config parse
-	cfg := config.New()
-	if _, err := krbotel.RegisterWith(cfg); err != nil {
-		zerologr.Error(err, "Failed to register OTEL config")
-		os.Exit(1) // nolint: gocritic
-	}
-
-	if _, err := router.RegisterWith(cfg); err != nil {
-		zerologr.Error(err, "Failed to register router config")
-		os.Exit(1) // nolint: gocritic
-	}
-
 	readTimeout = time.Duration(env.ReadTimeoutSeconds.Value()) * time.Second
 	writeTimeout = time.Duration(env.WriteTimeoutSeconds.Value()) * time.Second
+
+	cfg := setupConfig()
 
 	// Set up monitoring
 	zerologr.Set(zerologr.New(&zerologr.Opts{
@@ -84,26 +74,67 @@ func main() {
 	)
 	defer signalCancel()
 
-	shutdown, err := krbotel.Instrument(signalCtx, serviceName, version.Version)
+	cleanup, err := obs.Instrument(signalCtx, serviceName, version.Version)
 	if err != nil {
 		startLogger.Error(err, "Failed to instrument OpenTelemetry")
 		os.Exit(1) // nolint: gocritic
 	}
-	defer shutdown(context.Background()) // nolint: errcheck
+	defer cleanup(context.Background()) // nolint: errcheck
 
 	// Start Kerberos API GW server
 	// nolint: govet
-	if err := startServer(signalCtx); !errors.Is(err, http.ErrServerClosed) {
-		startLogger.Error(err, "Failed to start Kerberos HTTP server")
+	if err := startServer(signalCtx, cfg); !errors.Is(err, http.ErrServerClosed) {
+		startLogger.Error(err, "Kerberos HTTP server failed")
 		os.Exit(1)
 	}
 	startLogger.Info("Kerberos API GW server stopped")
 }
 
+// setupConfig sets up the configuration map and registers all necessary
+// configurations. It returns the configuration map after calling Parse().
+func setupConfig() config.Map {
+	cfg := config.New()
+
+	var (
+		err              error
+		obsConfigName    string
+		routerConfigName string
+	)
+
+	// Register all configurations.
+	obsConfigName, err = obs.RegisterWith(cfg)
+	must(err)
+	routerConfigName, err = router.RegisterWith(cfg)
+	must(err)
+
+	// Load all input configuration data.
+	if env.ObsJSONFile.Value() != "" {
+		obsData, _ := os.ReadFile(env.ObsJSONFile.Value())
+		cfg.MustLoad(obsConfigName, obsData)
+	}
+
+	routerData, _ := os.ReadFile(env.RouteJSONFile.Value())
+	cfg.MustLoad(routerConfigName, routerData)
+
+	// Parse configurations.
+	//nolint: govet
+	if err := cfg.Parse(); err != nil {
+		zerologr.Error(err, "Failed to parse configurations")
+		os.Exit(1) // nolint: gocritic
+	}
+
+	zerologr.Info("Loaded configurations",
+		"otel_config", obsConfigName,
+		"router_config", routerConfigName,
+	)
+
+	return cfg
+}
+
 // startServer starts the HTTP server and listens for incoming requests.
 // It returns an error if the server fails to start and when stopping. If
 // the server is stopped, it returns http.ErrServerClosed.
-func startServer(ctx context.Context) error {
+func startServer(ctx context.Context, cfg config.Map) error {
 	mux := http.NewServeMux()
 
 	// OTEL middleware must be called first, then forwarding can happen.
@@ -112,7 +143,7 @@ func startServer(ctx context.Context) error {
 	// resp = forward(request)
 	// stop tracing/metrics/logs
 	if env.TestEndpoint.Value() {
-		testHandler := krbotel.Middleware(forwarder.Test())
+		testHandler := obs.Middleware(forwarder.Test())
 
 		mux.Handle("/test", testHandler)
 		zerologr.Info("Test endpoint enabled")
@@ -125,15 +156,12 @@ func startServer(ctx context.Context) error {
 	// match a backend yields a 404. Route matching is optional, it's use is limited to enrich
 	// metrics with route information which can't be derived from the raw URL (as the metric
 	// dimensions would grow out of control).
-	r, err := router.Load(
-		&router.Opts{Loader: router.NewJSONLoader(env.RouteJSONFile.Value())},
+	r := router.New(
+		&router.Opts{Cfg: cfg},
 	)
-	if err != nil {
-		return err
-	}
 	zerologr.Info("Router loaded")
 
-	gwHandler := krbotel.Middleware(
+	gwHandler := obs.Middleware(
 		router.Middleware(forwarder.Forwarder(), r),
 	)
 	mux.Handle("/gw/", gwHandler)
@@ -174,4 +202,10 @@ func startServer(ctx context.Context) error {
 	}
 
 	return errors.Join(srvErr, shutdownErr)
+}
+
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
 }
