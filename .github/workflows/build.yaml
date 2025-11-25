@@ -2,12 +2,6 @@ name: Build
 
 on:
   workflow_call:
-    inputs:
-      version:
-        type: string
-        description: "Version of Kerberos to build."
-        required: false
-        default: "none"
   push:
     branches:
       - main
@@ -28,7 +22,7 @@ jobs:
         run: VERSION=${{ github.sha }} make build
   
   docker-build:
-    uses: ./.github/workflows/wc-image.yaml
+    uses: ./.github/workflows/image.yaml
     secrets: inherit
     with:
       version: ${{ github.sha }}
