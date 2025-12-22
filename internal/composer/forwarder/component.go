@@ -17,13 +17,17 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 )
 
-type Target interface {
-	Host() string
-	Port() int
-}
+type (
+	Target interface {
+		Host() string
+		Port() int
+	}
+	forwarder struct{}
+)
 
 var (
-	forwardPattern = regexp.MustCompile(`^/gw/backend/[-_a-z0-9]+/(.+)?$`)
+	_              composertypes.FlowComponent = (*forwarder)(nil)
+	forwardPattern                             = regexp.MustCompile(`^/gw/backend/[-_a-z0-9]+/(.+)?$`)
 
 	ErrFailedPatternMatch  = errors.New("forward pattern match failed")
 	ErrFailedTargetExtract = errors.New("could not determine target from context")
@@ -31,6 +35,20 @@ var (
 )
 
 const expectedPatternMatches = 2
+
+func NewComponent() composertypes.FlowComponent {
+	return &forwarder{}
+}
+
+// Compose implements [types.FlowComponent].
+func (f *forwarder) Compose(next composertypes.FlowComponent) composertypes.FlowComponent {
+	panic("unimplemented")
+}
+
+// ServeHTTP implements [types.FlowComponent].
+func (f *forwarder) ServeHTTP(http.ResponseWriter, *http.Request) {
+	panic("unimplemented")
+}
 
 // Forwarder returns a HTTP handler that forwards any received requests to
 // their designated backends.

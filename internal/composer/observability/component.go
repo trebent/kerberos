@@ -43,7 +43,24 @@ const (
 )
 
 // nolint: gochecknoglobals
-var tracer = otel.Tracer(tracerName)
+var (
+	tracer                             = otel.Tracer(tracerName)
+	_      composertypes.FlowComponent = (*obs)(nil)
+)
+
+func NewComponent() composertypes.FlowComponent {
+	return &obs{}
+}
+
+// Compose implements [types.FlowComponent].
+func (o *obs) Compose(next composertypes.FlowComponent) composertypes.FlowComponent {
+	panic("unimplemented")
+}
+
+// ServeHTTP implements [types.FlowComponent].
+func (o *obs) ServeHTTP(http.ResponseWriter, *http.Request) {
+	panic("unimplemented")
+}
 
 func Middleware(next http.Handler) http.Handler {
 	o := newObs()
