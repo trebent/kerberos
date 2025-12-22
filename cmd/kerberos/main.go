@@ -12,11 +12,12 @@ import (
 	"time"
 
 	"github.com/trebent/envparser"
+	composerctx "github.com/trebent/kerberos/internal/composer/context"
+	"github.com/trebent/kerberos/internal/composer/forwarder"
+	obs "github.com/trebent/kerberos/internal/composer/observability"
+	"github.com/trebent/kerberos/internal/composer/router"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/env"
-	"github.com/trebent/kerberos/internal/forwarder"
-	obs "github.com/trebent/kerberos/internal/observability"
-	"github.com/trebent/kerberos/internal/router"
 	"github.com/trebent/kerberos/internal/version"
 	"github.com/trebent/zerologr"
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
@@ -123,10 +124,7 @@ func setupConfig() config.Map {
 		os.Exit(1) // nolint: gocritic
 	}
 
-	zerologr.Info("Loaded configurations",
-		"otel_config", obsConfigName,
-		"router_config", routerConfigName,
-	)
+	zerologr.Info("Loaded configurations")
 
 	return cfg
 }
@@ -162,7 +160,7 @@ func startServer(ctx context.Context, cfg config.Map) error {
 	zerologr.Info("Router loaded")
 
 	gwHandler := obs.Middleware(
-		router.Middleware(forwarder.Forwarder(), r),
+		router.Middleware(forwarder.Forwarder(composerctx.TargetContextKey), r),
 	)
 	mux.Handle("/gw/", gwHandler)
 

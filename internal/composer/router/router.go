@@ -27,7 +27,6 @@ type (
 	router struct {
 		cfg *routerConfig
 	}
-	routingCtxKey string
 )
 
 var (

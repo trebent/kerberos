@@ -14,7 +14,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	obs "github.com/trebent/kerberos/internal/observability"
+	obs "github.com/trebent/kerberos/internal/composer/observability"
 	"github.com/trebent/zerologr"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -72,7 +72,7 @@ func main() {
 		}
 		tracer := newTracer(otel.GetTracerProvider())
 
-		ctx, newSpan := tracer.Start(ctx, "echoing", trace.WithSpanKind(trace.SpanKindServer))
+		_, newSpan := tracer.Start(ctx, "echoing", trace.WithSpanKind(trace.SpanKindServer))
 		zerologr.Info("New span", "traceID", newSpan.SpanContext().TraceID().String(), "spanID", newSpan.SpanContext().SpanID().String())
 		defer newSpan.End()
 

@@ -3,7 +3,7 @@ package router
 import (
 	"context"
 
-	otel "github.com/trebent/kerberos/internal/observability"
+	composerctx "github.com/trebent/kerberos/internal/composer/context"
 )
 
 type (
@@ -22,16 +22,9 @@ type (
 
 var _ Backend = &backend{}
 
-const backendContextKey routingCtxKey = "routing.backend"
-
 func NewBackendContext(ctx context.Context, backend Backend) context.Context {
-	ctx = context.WithValue(ctx, backendContextKey, backend)
-	return context.WithValue(ctx, otel.KrbMetaBackend, backend.Name())
-}
-
-func BackendFromContext(ctx context.Context) Backend {
-	backend, _ := ctx.Value(backendContextKey).(Backend)
-	return backend
+	ctx = context.WithValue(ctx, composerctx.TargetContextKey, backend)
+	return context.WithValue(ctx, composerctx.BackendContextKey, backend.Name())
 }
 
 func (b *backend) Name() string {
