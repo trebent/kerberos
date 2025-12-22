@@ -2,19 +2,16 @@ package composer
 
 import (
 	"net/http"
+
+	"github.com/trebent/kerberos/internal/composer/types"
 )
 
 type (
 	Composer struct {
-		Observability FlowComponent
-		Router        FlowComponent
-		Custom        FlowComponent
-		Forwarder     FlowComponent
-	}
-	FlowComponent interface {
-		http.Handler
-
-		Compose(next FlowComponent) FlowComponent
+		Observability types.FlowComponent
+		Router        types.FlowComponent
+		Custom        types.FlowComponent
+		Forwarder     types.FlowComponent
 	}
 )
 

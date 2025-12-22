@@ -5,12 +5,14 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
+
+	"github.com/trebent/kerberos/internal/composer/types"
 )
 
 type testFlow struct {
 	name   string
 	t      *testing.T
-	next   FlowComponent
+	next   types.FlowComponent
 	called sync.WaitGroup
 }
 
@@ -23,12 +25,12 @@ func newTestFlow(name string, t *testing.T) *testFlow {
 	return f
 }
 
-func (t *testFlow) Compose(next FlowComponent) FlowComponent {
+func (t *testFlow) Compose(next types.FlowComponent) types.FlowComponent {
 	t.next = next
 	return t
 }
 
-// ServeHTTP implements [FlowComponent].
+// ServeHTTP implements [types.FlowComponent].
 func (t *testFlow) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	t.t.Logf("In test flow: %s", t.name)
 	t.called.Done()
@@ -39,7 +41,7 @@ func (t *testFlow) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var _ FlowComponent = (*testFlow)(nil)
+var _ types.FlowComponent = (*testFlow)(nil)
 
 func TestComposerFlow(t *testing.T) {
 	one := newTestFlow("obs", t)
