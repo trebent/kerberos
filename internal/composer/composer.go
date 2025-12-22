@@ -1,32 +1,42 @@
 package composer
 
-import "net/http"
+import (
+	"net/http"
+)
 
-type Composer struct {
-	Observability http.Handler
-	Router        http.Handler
-	Composable    http.Handler
-	Forwarder     http.Handler
-}
+type (
+	Composer struct {
+		Observability FlowComponent
+		Router        FlowComponent
+		Composable    FlowComponent
+		Forwarder     FlowComponent
+	}
+	FlowComponent interface {
+		http.Handler
+
+		Compose(next FlowComponent) FlowComponent
+	}
+)
 
 var _ http.Handler = (*Composer)(nil)
 
 func (c *Composer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if c.Observability != nil {
-		c.Observability.ServeHTTP(w, r)
-		return
-	}
-	if c.Router != nil {
-		c.Router.ServeHTTP(w, r)
-		return
-	}
-	if c.Composable != nil {
-		c.Composable.ServeHTTP(w, r)
-		return
-	}
-	if c.Forwarder != nil {
-		c.Forwarder.ServeHTTP(w, r)
-		return
-	}
-	http.NotFound(w, r)
+	/*
+		Each composer component will run one-after-another in a pipeline fashion.
+		Each component can decide to short-circuit the request by returning an error.
+		If no error is returned, the next component in the pipeline is executed.
+
+		The order of execution is:
+		1. Observability
+		2. Router
+		3. Composable
+		4. Forwarder
+
+		If any component errors out it can simply modify the request to return the error to the client.
+		To set up the pipeline, each component is passed the next component in line. If a component fails,
+		it can return an error which will stop the pipeline execution.
+	*/
+
+	// handler w, r -> obs calls itself, then calls the next which is router
+	c.Observability.Compose(c.Router.Compose(c.Composable.Compose(c.Forwarder))).ServeHTTP(w, r)
 }
