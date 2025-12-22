@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/prometheus/common/version"
 	"github.com/trebent/envparser"
 	composerctx "github.com/trebent/kerberos/internal/composer/context"
 	"github.com/trebent/kerberos/internal/composer/forwarder"
@@ -18,7 +19,6 @@ import (
 	"github.com/trebent/kerberos/internal/composer/router"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/env"
-	"github.com/trebent/kerberos/internal/version"
 	"github.com/trebent/zerologr"
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 )
@@ -62,7 +62,7 @@ func main() {
 		Caller:  true,
 		V:       env.LogVerbosity.Value(),
 	}).
-		WithValues(string(semconv.ServiceNameKey), serviceName, string(semconv.ServiceVersionKey), version.Version).
+		WithValues(string(semconv.ServiceNameKey), serviceName, string(semconv.ServiceVersionKey), env.Version.Value()).
 		WithName("krb"),
 	)
 	startLogger := zerologr.WithName("start")
