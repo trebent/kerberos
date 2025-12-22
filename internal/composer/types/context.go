@@ -1,3 +1,4 @@
+//nolint:revive // welp
 package types
 
 type ContextKey string

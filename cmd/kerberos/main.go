@@ -13,10 +13,10 @@ import (
 
 	"github.com/prometheus/common/version"
 	"github.com/trebent/envparser"
-	composerctx "github.com/trebent/kerberos/internal/composer/context"
 	"github.com/trebent/kerberos/internal/composer/forwarder"
 	obs "github.com/trebent/kerberos/internal/composer/observability"
 	"github.com/trebent/kerberos/internal/composer/router"
+	composertypes "github.com/trebent/kerberos/internal/composer/types"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/env"
 	"github.com/trebent/zerologr"
@@ -160,7 +160,7 @@ func startServer(ctx context.Context, cfg config.Map) error {
 	zerologr.Info("Router loaded")
 
 	gwHandler := obs.Middleware(
-		router.Middleware(forwarder.Forwarder(composerctx.TargetContextKey), r),
+		router.Middleware(forwarder.Forwarder(composertypes.TargetContextKey), r),
 	)
 	mux.Handle("/gw/", gwHandler)
 
