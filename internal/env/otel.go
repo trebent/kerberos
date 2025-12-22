@@ -1,3 +1,4 @@
+//nolint:gochecknoglobals // Package env provides environment variable parsing for the Kerberos service.
 package env
 
 import (
@@ -7,7 +8,6 @@ import (
 )
 
 var (
-	// OTEL conf.
 	OtelMetricsExporter = envparser.Register(&envparser.Opts[string]{
 		Name:           "OTEL_METRICS_EXPORTER",
 		Desc:           "OpenTelemetry metrics exporter.",

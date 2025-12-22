@@ -1,3 +1,4 @@
+//nolint:gochecknoglobals // Package env provides environment variable parsing for the Kerberos service.
 package env
 
 import (
