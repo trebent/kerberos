@@ -50,7 +50,7 @@ func TestComposerFlow(t *testing.T) {
 	composer := &Composer{
 		Observability: one,
 		Router:        two,
-		Composable:    three,
+		Custom:        three,
 		Forwarder:     four,
 	}
 

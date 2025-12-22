@@ -10,7 +10,7 @@ import (
 	"strconv"
 
 	"github.com/go-logr/logr"
-	composerctx "github.com/trebent/kerberos/internal/composer/context"
+	composertypes "github.com/trebent/kerberos/internal/composer/types"
 	"github.com/trebent/kerberos/internal/response"
 	"github.com/trebent/zerologr"
 	"go.opentelemetry.io/otel"
@@ -34,7 +34,7 @@ const expectedPatternMatches = 2
 
 // Forwarder returns a HTTP handler that forwards any received requests to
 // their designated backends.
-func Forwarder(targetContextKey composerctx.ContextKey) http.Handler {
+func Forwarder(targetContextKey composertypes.ContextKey) http.Handler {
 	return http.HandlerFunc(func(wrapped http.ResponseWriter, r *http.Request) {
 		// Obtain matching backend to route to.
 		// Forward request and pipe forwarded response into origin response.

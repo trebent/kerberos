@@ -8,7 +8,7 @@ type (
 	Composer struct {
 		Observability FlowComponent
 		Router        FlowComponent
-		Composable    FlowComponent
+		Custom        FlowComponent
 		Forwarder     FlowComponent
 	}
 	FlowComponent interface {
@@ -38,5 +38,5 @@ func (c *Composer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	*/
 
 	// handler w, r -> obs calls itself, then calls the next which is router
-	c.Observability.Compose(c.Router.Compose(c.Composable.Compose(c.Forwarder))).ServeHTTP(w, r)
+	c.Observability.Compose(c.Router.Compose(c.Custom.Compose(c.Forwarder))).ServeHTTP(w, r)
 }

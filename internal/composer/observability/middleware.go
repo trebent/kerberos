@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	composerctx "github.com/trebent/kerberos/internal/composer/context"
+	composertypes "github.com/trebent/kerberos/internal/composer/types"
 	"github.com/trebent/kerberos/internal/env"
 	"github.com/trebent/kerberos/internal/response"
 	"github.com/trebent/zerologr"
@@ -195,7 +195,7 @@ func must(err error) {
 
 func extractKrbAttributes(ctx context.Context) []attribute.KeyValue {
 	attributes := make([]attribute.KeyValue, 0, 1)
-	backend := ctx.Value(composerctx.BackendContextKey)
+	backend := ctx.Value(composertypes.BackendContextKey)
 	if backend == nil {
 		attributes = append(attributes, attribute.String("krb.backend", "unknown"))
 	} else {
