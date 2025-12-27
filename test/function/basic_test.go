@@ -110,6 +110,33 @@ func TestRoot(t *testing.T) {
 	}
 }
 
+// Validate calls to a backend's root path works.
+func TestNoBackend(t *testing.T) {
+	t.Parallel()
+
+	testData := "{\"test\": \"value\"}"
+	buf := bytes.NewBuffer([]byte(testData))
+	urlSegment := "/idontexist"
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://localhost:%d/gw/backend%s", port, urlSegment), buf)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+
+	resp, err := client.Do(req)
+	verifyRespStatusCode(resp, err, http.StatusNotFound, t)
+}
+
+func verifyRespStatusCode(resp *http.Response, err error, expectedCode int, t *testing.T) {
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != expectedCode {
+		t.Fatalf("unexpected status code: got %d, want %d", resp.StatusCode, expectedCode)
+	}
+}
+
 func verifyRespOK(resp *http.Response, err error, t *testing.T) *EchoResponse {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)

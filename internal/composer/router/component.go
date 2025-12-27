@@ -51,12 +51,12 @@ func (r *router) Next(next composertypes.FlowComponent) {
 }
 
 // ServeHTTP implements [types.FlowComponent].
-func (rou *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
+func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	logger, _ := logr.FromContext(req.Context())
 	rLogger := logger.WithName("router")
 	rLogger.Info("Routing request")
 
-	backend, err := rou.GetBackend(*req)
+	backend, err := r.GetBackend(*req)
 	if err != nil {
 		rLogger.Error(err, "Failed to route request")
 		response.JSONError(wrapped, ErrNoBackendFound, http.StatusNotFound)
@@ -72,17 +72,17 @@ func (rou *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	wrapper.SetRequestContext(ctx)
 
 	// Serve the request with the updated context.
-	rou.next.ServeHTTP(wrapped, req.WithContext(ctx))
+	r.next.ServeHTTP(wrapped, req.WithContext(ctx))
 }
 
-func (rou *router) GetBackend(req http.Request) (Backend, error) {
+func (r *router) GetBackend(req http.Request) (Backend, error) {
 	reqPath := routePattern.FindStringSubmatch(req.URL.Path)
 
 	if len(reqPath) < expectedPatternMatches {
 		return nil, fmt.Errorf("%w: %s", ErrFailedPatternMatch, req.URL.Path)
 	}
 
-	for _, backend := range rou.cfg.Backends {
+	for _, backend := range r.cfg.Backends {
 		if backend.Name() == reqPath[1] {
 			return backend, nil
 		}
