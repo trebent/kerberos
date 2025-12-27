@@ -37,7 +37,7 @@ unittest:
 
 functiontest:
 	$(call cecho,Running function tests for Kerberos...,$(BOLD_YELLOW))
-	@cd test/function && go test -v ./...
+	@cd test/function && go test -v ./... -count=1
 	$(call cecho,Function tests complete.,$(BOLD_GREEN))
 
 vulncheck:
