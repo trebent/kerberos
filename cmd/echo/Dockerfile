@@ -6,6 +6,9 @@ FROM builder AS deps
 
 COPY go.mod go.sum ./
 
+RUN --mount=type=cache,target=/go/pkg/mod \
+  go mod download
+
 FROM deps AS build
 
 COPY . .

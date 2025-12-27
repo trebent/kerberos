@@ -8,3 +8,5 @@ docs/
 README*
 test/
 build/
+Makefile
+LICENSE
