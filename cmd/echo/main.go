@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	obs "github.com/trebent/kerberos/internal/composer/observability"
@@ -30,7 +31,10 @@ type response struct {
 
 var _ io.Writer = &response{}
 
-const tracerName = "echo"
+const (
+	tracerName  = "echo"
+	defaultPort = "15000"
+)
 
 // Write implements io.Writer.
 func (r *response) Write(p []byte) (n int, err error) {
@@ -39,6 +43,17 @@ func (r *response) Write(p []byte) (n int, err error) {
 }
 
 func main() {
+	val, found := os.LookupEnv("PORT")
+	if !found {
+		val = defaultPort
+	}
+
+	port, err := strconv.Atoi(val) // just to validate
+	if err != nil {
+		zerologr.Error(err, "Failed to parse PORT environment variable")
+		os.Exit(1)
+	}
+
 	signalCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
@@ -54,7 +69,7 @@ func main() {
 
 	// Create a new HTTP server
 	srv := &http.Server{
-		Addr: ":15000",
+		Addr: fmt.Sprintf(":%d", port),
 	}
 
 	// Register the echo handler
@@ -118,6 +133,7 @@ func main() {
 		}
 	}()
 
+	zerologr.Info("Echo server started", "port", port)
 	<-signalCtx.Done()
 	srv.Shutdown(context.Background())
 	zerologr.Info("Echo gracefully stopped")

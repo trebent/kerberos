@@ -54,8 +54,6 @@ func main() {
 	readTimeout = time.Duration(env.ReadTimeoutSeconds.Value()) * time.Second
 	writeTimeout = time.Duration(env.WriteTimeoutSeconds.Value()) * time.Second
 
-	cfg := setupConfig()
-
 	// Set up monitoring
 	zerologr.Set(zerologr.New(&zerologr.Opts{
 		Console: env.LogToConsole.Value(),
@@ -65,6 +63,8 @@ func main() {
 		WithValues(string(semconv.ServiceNameKey), serviceName, string(semconv.ServiceVersionKey), env.Version.Value()).
 		WithName("krb"),
 	)
+	cfg := setupConfig()
+
 	startLogger := zerologr.WithName("start")
 	startLogger.Info("Starting Kerberos API GW server", "port", env.Port.Value())
 
@@ -94,6 +94,8 @@ func main() {
 // setupConfig sets up the configuration map and registers all necessary
 // configurations. It returns the configuration map after calling Parse().
 func setupConfig() config.Map {
+	zerologr.Info("Setting up configuration...")
+
 	cfg := config.New()
 
 	var (
@@ -110,6 +112,7 @@ func setupConfig() config.Map {
 
 	// Load all input configuration data.
 	if env.ObsJSONFile.Value() != "" {
+		zerologr.Info("Observability configuration detected, loading")
 		obsData, _ := os.ReadFile(env.ObsJSONFile.Value())
 		cfg.MustLoad(obsConfigName, obsData)
 	}

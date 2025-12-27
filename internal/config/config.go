@@ -169,6 +169,10 @@ func (c *impl) escapeReferences() error {
 		interpreted incorrectly during JSON unmarshalling.
 	*/
 	for name, entry := range c.configEntries {
+		if len(entry.data) == 0 {
+			continue
+		}
+
 		zerologr.V(100).Info("Escaping references for config '" + name + "'")
 		entry.escapedData = entry.data
 
@@ -220,6 +224,10 @@ func (c *impl) walkForReferences() error {
 		Reads through all config entries and gathers references and values for later resolution.
 	*/
 	for name, entry := range c.configEntries {
+		if len(entry.data) == 0 {
+			continue
+		}
+
 		zerologr.V(100).Info("Gathering references for config '" + name + "'")
 
 		generic := make(map[string]any)
@@ -387,6 +395,10 @@ func (c *impl) replaceReferencesInData() error {
 		Replace all references in the original JSON data with their resolved values.
 	*/
 	for name, entry := range c.configEntries {
+		if len(entry.data) == 0 {
+			continue
+		}
+
 		zerologr.V(100).Info("Replacing references in config '" + name + "': " + string(entry.data))
 
 		dataStr := string(entry.data)
@@ -413,6 +425,10 @@ func (c *impl) validateSchemas() error {
 		Validate all loaded config entries against their schemas.
 	*/
 	for name, entry := range c.configEntries {
+		if len(entry.data) == 0 {
+			continue
+		}
+
 		zerologr.V(100).Info("Validating schema for config entry " + name)
 		if entry.cfg.Schema() == NoSchema {
 			zerologr.V(100).Info("No schema defined, skipping validation")

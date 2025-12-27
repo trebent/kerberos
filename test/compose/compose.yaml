@@ -1,7 +1,7 @@
 services:
   kerberos:
     image: "ghcr.io/github.com/trebent/kerberos:${VERSION}"
-    pull_policy: build
+    pull_policy: always
     build:
       context: ../..
       dockerfile: ./Dockerfile
@@ -23,15 +23,16 @@ services:
       - ./routes/echo.json:/echo.json
   
   echo:
-    image: "ghcr.io/github.com/trebent/echo:local"
-    pull_policy: build
+    image: "ghcr.io/github.com/trebent/kerberos/echo:${VERSION}"
+    pull_policy: always
     build:
       context: ../..
       dockerfile: ./cmd/echo/Dockerfile
     ports:
-      - ${ECHO_PORT}:15000
+      - ${ECHO_PORT}:${ECHO_PORT}
       - ${ECHO_METRICS_PORT}:${ECHO_METRICS_PORT}
     environment:
+      - PORT=${ECHO_PORT}
       - OTEL_METRICS_EXPORTER=prometheus
       - OTEL_TRACES_EXPORTER=otlp
       - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
@@ -41,6 +42,7 @@ services:
 
   prometheus:
     image: "prom/prometheus:v3.3.1"
+    pull_policy: if_not_present
     ports:
       - ${PROM_PORT}:9090
     volumes:
@@ -48,6 +50,7 @@ services:
 
   grafana:
     image: "grafana/grafana:12.0.0"
+    pull_policy: if_not_present
     ports:
       - ${GRAFANA_PORT}:3000
     volumes:
@@ -60,6 +63,7 @@ services:
 
   jaeger:
     image: "jaegertracing/jaeger:2.6.0"
+    pull_policy: if_not_present
     ports:
       - 4317:4317
       - 16686:16686

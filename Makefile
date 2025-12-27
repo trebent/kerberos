@@ -53,6 +53,14 @@ build:
 	CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/kerberos ./cmd/kerberos
 	$(call cecho,Build complete.,$(BOLD_GREEN))
 
+run:
+	$(call cecho,Running Kerberos...,$(BOLD_YELLOW))
+	@OTEL_METRICS_EXPORTER=prometheus \
+		OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
+		LOG_TO_CONSOLE=true \
+		LOG_VERBOSITY=100 \
+		go run ./cmd/kerberos
+
 docker-build:
 	$(call cecho,Building Kerberos Docker image...,$(BOLD_YELLOW))
 	docker build --build-arg VERSION=$(VERSION) -t github.com/trebent/kerberos:$(VERSION) .
@@ -60,39 +68,88 @@ docker-build:
 
 docker-run:
 	$(call cecho,Running Kerberos Docker container...,$(BOLD_YELLOW))
-	docker run -d \ 
+	docker run -d \
 		-p $(KERBEROS_PORT):$(KERBEROS_PORT) \
 		-p $(KERBEROS_METRICS_PORT):$(KERBEROS_METRICS_PORT) \
 		-e PORT=$(KERBEROS_PORT) \
 		-e OTEL_METRICS_EXPORTER=prometheus \
 		-e OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
+		-e LOG_TO_CONSOLE=true \
+		-e LOG_VERBOSITY=100 \
 		--name kerberos \
 		github.com/trebent/kerberos:$(VERSION)
 	$(call cecho,Kerberos Docker container is running.,$(BOLD_GREEN))
 
+docker-stop:
+	$(call cecho,Stopping Kerberos Docker container...,$(BOLD_YELLOW))
+	@docker stop kerberos
+	$(call cecho,Kerberos Docker container has been stopped.,$(BOLD_GREEN))
+
+docker-rm:
+	$(call cecho,Removing Kerberos Docker container...,$(BOLD_YELLOW))
+	@docker rm kerberos
+	$(call cecho,Kerberos Docker container has been removed.,$(BOLD_GREEN))
+
 docker-compose-up:
 	$(call cecho,Composing Kerberos test environment...,$(BOLD_YELLOW))
-	docker compose -f test/compose/compose.yaml up -d --force-recreate
+	@VERSION=$(VERSION) \
+		KERBEROS_PORT=$(KERBEROS_PORT) \
+		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
+		PROM_PORT=$(PROM_PORT) \
+		GRAFANA_PORT=$(GRAFANA_PORT) \
+		ECHO_PORT=$(ECHO_PORT) \
+		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
+		docker compose -f test/compose/compose.yaml up -d --force-recreate
 	$(call cecho,Kerberos test environment is running.,$(BOLD_GREEN))
+
+docker-compose-logs:
+	@VERSION=$(VERSION) \
+		KERBEROS_PORT=$(KERBEROS_PORT) \
+		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
+		PROM_PORT=$(PROM_PORT) \
+		GRAFANA_PORT=$(GRAFANA_PORT) \
+		ECHO_PORT=$(ECHO_PORT) \
+		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
+		docker compose -f test/compose/compose.yaml logs -f kerberos
+
+docker-compose-ps:
+	@VERSION=$(VERSION) \
+		KERBEROS_PORT=$(KERBEROS_PORT) \
+		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
+		PROM_PORT=$(PROM_PORT) \
+		GRAFANA_PORT=$(GRAFANA_PORT) \
+		ECHO_PORT=$(ECHO_PORT) \
+		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
+		docker compose -f test/compose/compose.yaml ps
+
+docker-logs:
+	@docker logs -f kerberos
 
 docker-compose-down:
 	$(call cecho,Tearing down Kerberos test environment...,$(BOLD_YELLOW))
-	docker compose -f test/compose/compose.yaml down
+	@VERSION=$(VERSION) \
+		KERBEROS_PORT=$(KERBEROS_PORT) \
+		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
+		PROM_PORT=$(PROM_PORT) \
+		GRAFANA_PORT=$(GRAFANA_PORT) \
+		ECHO_PORT=$(ECHO_PORT) \
+		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
+		docker compose -f test/compose/compose.yaml down
 	$(call cecho,Kerberos test environment has been torn down.,$(BOLD_GREEN))
 
 echo-build:
 	$(call cecho,Building Echo binary...,$(BOLD_YELLOW))
-	CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/echo ./cmd/echo
+	@CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/echo ./cmd/echo
 	$(call cecho,Echo build complete.,$(BOLD_GREEN))
 
 echo-docker-build:
 	$(call cecho,Building Echo Docker image...,$(BOLD_YELLOW))
-	docker build --build-arg VERSION=$(VERSION) -f cmd/echo/Dockerfile -t github.com/trebent/kerberos/echo:$(VERSION) .
+	@docker build --build-arg VERSION=$(VERSION) -f cmd/echo/Dockerfile -t github.com/trebent/kerberos/echo:$(VERSION) .
 	$(call cecho,Echo Docker image build complete.,$(BOLD_GREEN))
 
 echo-docker-run:
 	$(call cecho,Running Echo Docker container...,$(BOLD_YELLOW))
-	docker run -d \ 
+	@docker run -d \ 
 		-p $(ECHO_PORT):$(ECHO_PORT) \
 		-p $(ECHO_METRICS_PORT):$(ECHO_METRICS_PORT) \
 		-e OTEL_METRICS_EXPORTER=prometheus \

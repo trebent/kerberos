@@ -3,22 +3,25 @@
   "type": "object",
   "properties": {
     "backends": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "The name of the backend."
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the backend."
+          },
+          "host": {
+            "type": "string",
+            "description": "The host address of the backend."
+          },
+          "port": {
+            "type": "integer",
+            "description": "The port number of the backend."
+          }
         },
-        "host": {
-          "type": "string",
-          "description": "The host address of the backend."
-        },
-        "port": {
-          "type": "integer",
-          "description": "The port number of the backend."
-        }
-      },
-      "additionalProperties": false
+        "additionalProperties": false
+      }
     }
   },
   "required": ["backends"],
