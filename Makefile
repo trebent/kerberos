@@ -58,6 +58,15 @@ docker-build:
 	docker build --build-arg VERSION=$(VERSION) -t github.com/trebent/kerberos:$(VERSION) .
 	$(call cecho,Docker image build complete.,$(BOLD_GREEN))
 
+docker-run:
+	$(call cecho,Running Kerberos Docker container...,$(BOLD_YELLOW))
+	docker run -d \ 
+		-p $(KERBEROS_PORT):$(KERBEROS_PORT) \
+		-p $(KERBEROS_METRICS_PORT):$(KERBEROS_METRICS_PORT) \
+		--name kerberos \
+		github.com/trebent/kerberos:$(VERSION)
+	$(call cecho,Kerberos Docker container is running.,$(BOLD_GREEN))
+
 #
 # TEST
 #
