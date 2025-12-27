@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0  # Fetch all history for tags
-          tags: true
+          fetch-tags: true
 
       - name: Version info
         id: set-version
@@ -42,13 +42,3 @@ jobs:
     with:
       version: ${{ needs.version.outputs.version }}
       functional: true
-
-  release:
-    needs: [version, test]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Create GitHub Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release create ${{ needs.version.outputs.version }} --generate-notes --latest
