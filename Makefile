@@ -35,6 +35,11 @@ unittest:
 	@go tool cover -html=coverage.out -o coverage.html
 	$(call cecho,Unit tests complete.,$(BOLD_GREEN))
 
+functiontest:
+	$(call cecho,Running functional tests for Kerberos...,$(BOLD_YELLOW))
+	@go test -v ./test/functional/...
+	$(call cecho,Functional tests complete.,$(BOLD_GREEN))
+
 vulncheck:
 	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
 	@go tool govulncheck ./...

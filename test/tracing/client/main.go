@@ -5,7 +5,7 @@ import (
 	"context"
 	"net/http"
 
-	obs "github.com/trebent/kerberos/internal/observability"
+	obs "github.com/trebent/kerberos/internal/composer/observability"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 )

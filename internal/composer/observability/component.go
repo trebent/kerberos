@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	composertypes "github.com/trebent/kerberos/internal/composer/types"
+	"github.com/trebent/kerberos/internal/env"
 	"github.com/trebent/kerberos/internal/response"
-	"github.com/trebent/kerberos/internal/version"
 	"github.com/trebent/zerologr"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -28,7 +29,6 @@ type (
 		responseCounter          metric.Int64Counter
 		responseSizeHistogram    metric.Int64Histogram
 	}
-	krbMetaCtxKey string
 )
 
 const (
@@ -40,12 +40,27 @@ const (
 
 	responseCounterName       = "response"
 	responseSizeHistogramName = "response.size"
-
-	KrbMetaBackend krbMetaCtxKey = "krb.backend"
 )
 
 // nolint: gochecknoglobals
-var tracer = otel.Tracer(tracerName)
+var (
+	tracer                             = otel.Tracer(tracerName)
+	_      composertypes.FlowComponent = (*obs)(nil)
+)
+
+func NewComponent() composertypes.FlowComponent {
+	return &obs{}
+}
+
+// Next implements [types.FlowComponent].
+func (o *obs) Next(_ composertypes.FlowComponent) {
+	panic("unimplemented")
+}
+
+// ServeHTTP implements [types.FlowComponent].
+func (o *obs) ServeHTTP(http.ResponseWriter, *http.Request) {
+	panic("unimplemented")
+}
 
 func Middleware(next http.Handler) http.Handler {
 	o := newObs()
@@ -124,7 +139,7 @@ func newObs() *obs {
 
 	meter := otel.GetMeterProvider().Meter(
 		"github.com/trebent/kerberos",
-		metric.WithInstrumentationVersion(version.Version),
+		metric.WithInstrumentationVersion(env.Version.Value()),
 	)
 
 	requestCountCounter, err := meter.Int64Counter(
@@ -197,7 +212,7 @@ func must(err error) {
 
 func extractKrbAttributes(ctx context.Context) []attribute.KeyValue {
 	attributes := make([]attribute.KeyValue, 0, 1)
-	backend := ctx.Value(KrbMetaBackend)
+	backend := ctx.Value(composertypes.BackendContextKey)
 	if backend == nil {
 		attributes = append(attributes, attribute.String("krb.backend", "unknown"))
 	} else {

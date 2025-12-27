@@ -34,8 +34,16 @@ jobs:
       version: ${{ needs.version.outputs.version }}
       push: true
 
-  release:
+  test:
     needs: [version, image]
+    uses: ./.github/workflows/test.yaml
+    secrets: inherit
+    with:
+      version: ${{ needs.version.outputs.version }}
+      functional: true
+
+  release:
+    needs: [version, test]
     runs-on: ubuntu-latest
     steps:
       - name: Create GitHub Release

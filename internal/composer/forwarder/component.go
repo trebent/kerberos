@@ -10,25 +10,51 @@ import (
 	"strconv"
 
 	"github.com/go-logr/logr"
+	composertypes "github.com/trebent/kerberos/internal/composer/types"
 	"github.com/trebent/kerberos/internal/response"
-	"github.com/trebent/kerberos/internal/router"
 	"github.com/trebent/zerologr"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 )
 
-var (
-	forwardPattern = regexp.MustCompile(`^/gw/backend/[-_a-z0-9]+/(.+)?$`)
+type (
+	Target interface {
+		Host() string
+		Port() int
+	}
+	forwarder struct{}
+)
 
-	ErrFailedPatternMatch = errors.New("forward pattern match failed")
-	ErrFailedForwarding   = errors.New("failed to forward request")
+var (
+	_              composertypes.FlowComponent = (*forwarder)(nil)
+	forwardPattern                             = regexp.MustCompile(
+		`^/gw/backend/[-_a-z0-9]+/(.+)?$`,
+	)
+
+	ErrFailedPatternMatch  = errors.New("forward pattern match failed")
+	ErrFailedTargetExtract = errors.New("could not determine target from context")
+	ErrFailedForwarding    = errors.New("failed to forward request")
 )
 
 const expectedPatternMatches = 2
 
+func NewComponent() composertypes.FlowComponent {
+	return &forwarder{}
+}
+
+// Next implements [types.FlowComponent].
+func (f *forwarder) Next(_ composertypes.FlowComponent) {
+	panic("the forwarder is intended to be the last component in the flow")
+}
+
+// ServeHTTP implements [types.FlowComponent].
+func (f *forwarder) ServeHTTP(http.ResponseWriter, *http.Request) {
+	panic("unimplemented")
+}
+
 // Forwarder returns a HTTP handler that forwards any received requests to
 // their designated backends.
-func Forwarder() http.Handler {
+func Forwarder(targetContextKey composertypes.ContextKey) http.Handler {
 	return http.HandlerFunc(func(wrapped http.ResponseWriter, r *http.Request) {
 		// Obtain matching backend to route to.
 		// Forward request and pipe forwarded response into origin response.
@@ -36,10 +62,18 @@ func Forwarder() http.Handler {
 		rLogger = rLogger.WithName("forwarder")
 		rLogger.Info("Forwarding request")
 
-		backend := router.BackendFromContext(r.Context())
+		target, ok := r.Context().Value(targetContextKey).(Target)
+		if !ok {
+			rLogger.Error(
+				fmt.Errorf("%w: %s", ErrFailedTargetExtract, r.URL.Path),
+				"Target extract failed",
+			)
+			response.JSONError(wrapped, ErrFailedForwarding, http.StatusInternalServerError)
+			return
+		}
 
 		forwardURL := forwardPattern.FindStringSubmatch(r.URL.Path)
-		if len(forwardURL) < expectedPatternMatches {
+		if len(forwardURL) != expectedPatternMatches {
 			rLogger.Error(
 				fmt.Errorf("%w: %s", ErrFailedPatternMatch, r.URL.Path),
 				"Pattern match failed",
@@ -53,7 +87,7 @@ func Forwarder() http.Handler {
 			r.Method,
 			fmt.Sprintf(
 				"http://%s/%s",
-				net.JoinHostPort(backend.Host(), strconv.Itoa(backend.Port())),
+				net.JoinHostPort(target.Host(), strconv.Itoa(target.Port())),
 				forwardURL[1],
 			),
 			r.Body,
