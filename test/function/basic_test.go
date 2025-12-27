@@ -1,6 +1,7 @@
 package ft
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -45,6 +46,7 @@ func init() {
 	}
 }
 
+// Validate happy path forwarding to a backend service.
 func TestHappy(t *testing.T) {
 	t.Parallel()
 
@@ -54,8 +56,61 @@ func TestHappy(t *testing.T) {
 		t.Fatalf("failed to create request: %v", err)
 	}
 
-	client := &http.Client{}
 	resp, err := client.Do(req)
+	response := verifyRespOK(resp, err, t)
+
+	if response.URL != urlSegment {
+		t.Errorf("unexpected URL in response: got %s, want %s", response.URL, urlSegment)
+	}
+
+	if response.Body != nil {
+		t.Errorf("unexpected body in response: got %s, want empty", string(response.Body))
+	}
+
+	if response.Method != http.MethodGet {
+		t.Errorf("unexpected method in response: got %s, want %s", response.Method, http.MethodGet)
+	}
+}
+
+// Validate calls to a backend's root path works.
+func TestRoot(t *testing.T) {
+	t.Parallel()
+
+	testData := "{\"test\": \"value\"}"
+	buf := bytes.NewBuffer([]byte(testData))
+	urlSegment := "/"
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", port, urlSegment), buf)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+
+	resp, err := client.Do(req)
+	decodedResponse := verifyRespOK(resp, err, t)
+
+	if decodedResponse.URL != urlSegment {
+		t.Errorf("unexpected URL in response: got %s, want %s", decodedResponse.URL, urlSegment)
+	}
+
+	if decodedResponse.Body == nil {
+		t.Errorf("unexpected body in response: got %s, want non-empty", string(decodedResponse.Body))
+	}
+
+	if decodedResponse.Method != http.MethodPost {
+		t.Errorf("unexpected method in response: got %s, want %s", decodedResponse.Method, http.MethodPost)
+	}
+
+	if string(decodedResponse.Body) != testData {
+		t.Errorf("unexpected body in response: got %s, want %s", string(decodedResponse.Body), testData)
+	}
+
+	for _, val := range resp.Header["Content-Type"] {
+		if val != "application/json" {
+			t.Errorf("unexpected Content-Type header value: got %s, want %s", val, "application/json")
+		}
+	}
+}
+
+func verifyRespOK(resp *http.Response, err error, t *testing.T) *EchoResponse {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -70,15 +125,5 @@ func TestHappy(t *testing.T) {
 		t.Fatalf("failed to decode response body: %v", err)
 	}
 
-	if response.URL != urlSegment {
-		t.Errorf("unexpected URL in response: got %s, want %s", response.URL, urlSegment)
-	}
-
-	if response.Body != nil {
-		t.Errorf("unexpected body in response: got %s, want empty", string(response.Body))
-	}
-
-	if response.Method != http.MethodGet {
-		t.Errorf("unexpected method in response: got %s, want %s", response.Method, http.MethodGet)
-	}
+	return response
 }

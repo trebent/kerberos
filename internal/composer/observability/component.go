@@ -22,6 +22,9 @@ import (
 
 type (
 	obs struct {
+		next composertypes.FlowComponent
+
+		logger                   logr.Logger
 		spanOpts                 []trace.SpanStartOption
 		requestCountCounter      metric.Int64Counter
 		requestSizeHistogram     metric.Int64Histogram
@@ -49,85 +52,76 @@ var (
 )
 
 func NewComponent() composertypes.FlowComponent {
-	return &obs{}
+	return newObs()
 }
 
 // Next implements [types.FlowComponent].
-func (o *obs) Next(_ composertypes.FlowComponent) {
-	panic("unimplemented")
+func (o *obs) Next(next composertypes.FlowComponent) {
+	o.next = next
 }
 
 // ServeHTTP implements [types.FlowComponent].
-func (o *obs) ServeHTTP(http.ResponseWriter, *http.Request) {
-	panic("unimplemented")
-}
+func (o *obs) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Check request trace context
+	ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
 
-func Middleware(next http.Handler) http.Handler {
-	o := newObs()
-	logger := zerologr.WithName("request")
+	// Start a span here to include ALL operations of KRB
+	// TODO: add more to the span name?
+	ctx, span := tracer.Start(ctx, r.Method, o.spanOpts...)
+	defer span.End() // Stop the span after EVERYTHING is done
 
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Check request trace context
-		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+	rLogger := o.logger.WithValues("path", r.URL.Path, "method", r.Method)
+	rLogger.Info(r.Method + " " + r.URL.Path)
+	ctx = logr.NewContext(ctx, rLogger)
 
-		// Start a span here to include ALL operations of KRB
-		// TODO: add more to the span name?
-		ctx, span := tracer.Start(ctx, r.Method, o.spanOpts...)
-		defer span.End() // Stop the span after EVERYTHING is done
+	// Wrap the request body to extract size
+	bw, _ := response.NewBodyWrapper(r.Body).(*response.BodyWrapper)
+	if r.Body != nil && r.Body != http.NoBody {
+		r.Body = bw
+	}
 
-		rLogger := logger.WithValues("path", r.URL.Path, "method", r.Method)
-		rLogger.Info(r.Method + " " + r.URL.Path)
-		ctx = logr.NewContext(ctx, rLogger)
+	// Wrap the response to extract:
+	// - status code
+	// - response body size
+	wrapped := response.NewResponseWrapper(w)
 
-		// Wrap the request body to extract size
-		bw, _ := response.NewBodyWrapper(r.Body).(*response.BodyWrapper)
-		if r.Body != nil && r.Body != http.NoBody {
-			r.Body = bw
-		}
+	// Since the duration metric is directly related to the route forwarded to, keep the time
+	// measurement as close to the forwarding call as possible.
+	start := time.Now()
+	o.next.ServeHTTP(wrapped, r.WithContext(ctx))
+	duration := time.Since(start)
 
-		// Wrap the response to extract:
-		// - status code
-		// - response body size
-		wrapped := response.NewResponseWrapper(w)
+	// Process the response, update the span with attributes.
+	wrapper, _ := wrapped.(*response.Wrapper)
+	krbAttributes := extractKrbAttributes(wrapper.GetRequestContext())
 
-		// Since the duration metric is directly related to the route forwarded to, keep the time
-		// measurement as close to the forwarding call as possible.
-		start := time.Now()
-		next.ServeHTTP(wrapped, r.WithContext(ctx))
-		duration := time.Since(start)
+	span.SetStatus(wrapper.SpanStatus())
+	span.SetAttributes(krbAttributes...)
 
-		// Process the response, update the span with attributes.
-		wrapper, _ := wrapped.(*response.Wrapper)
-		krbAttributes := extractKrbAttributes(wrapper.GetRequestContext())
+	// Update metrics, can't separate request and response handling since the handler is
+	// called by ServeHTTP, no
+	statusCodeOpt := metric.WithAttributes(semconv.HTTPStatusCode(wrapper.StatusCode()))
+	requestMeta := metric.WithAttributes(semconv.HTTPMethod(r.Method))
+	krbMetricMeta := metric.WithAttributes(krbAttributes...)
 
-		span.SetStatus(wrapper.SpanStatus())
-		span.SetAttributes(krbAttributes...)
+	// Request
+	o.requestCountCounter.Add(ctx, 1, requestMeta, krbMetricMeta)
+	o.requestSizeHistogram.Record(ctx, bw.NumBytes(), requestMeta, krbMetricMeta)
+	o.requestDurationHistogram.Record(
+		ctx,
+		float64(duration/time.Millisecond),
+		requestMeta,
+		krbMetricMeta,
+	)
 
-		// Update metrics, can't separate request and response handling since the handler is
-		// called by ServeHTTP, no
-		statusCodeOpt := metric.WithAttributes(semconv.HTTPStatusCode(wrapper.StatusCode()))
-		requestMeta := metric.WithAttributes(semconv.HTTPMethod(r.Method))
-		krbMetricMeta := metric.WithAttributes(krbAttributes...)
+	// Response
+	o.responseCounter.Add(ctx, 1, statusCodeOpt, requestMeta, krbMetricMeta)
+	o.responseSizeHistogram.Record(ctx, wrapper.NumBytes(), requestMeta, krbMetricMeta)
 
-		// Request
-		o.requestCountCounter.Add(ctx, 1, requestMeta, krbMetricMeta)
-		o.requestSizeHistogram.Record(ctx, bw.NumBytes(), requestMeta, krbMetricMeta)
-		o.requestDurationHistogram.Record(
-			ctx,
-			float64(duration/time.Millisecond),
-			requestMeta,
-			krbMetricMeta,
-		)
-
-		// Response
-		o.responseCounter.Add(ctx, 1, statusCodeOpt, requestMeta, krbMetricMeta)
-		o.responseSizeHistogram.Record(ctx, wrapper.NumBytes(), requestMeta, krbMetricMeta)
-
-		rLogger.Info(
-			r.Method+" "+r.URL.Path+" "+strconv.Itoa(wrapper.StatusCode()),
-			string(semconv.HTTPStatusCodeKey), wrapper.StatusCode(),
-		)
-	})
+	rLogger.Info(
+		r.Method+" "+r.URL.Path+" "+strconv.Itoa(wrapper.StatusCode()),
+		string(semconv.HTTPStatusCodeKey), wrapper.StatusCode(),
+	)
 }
 
 func newObs() *obs {
@@ -136,6 +130,8 @@ func newObs() *obs {
 			trace.WithSpanKind(trace.SpanKindServer),
 		},
 	}
+
+	o.logger = zerologr.WithName("request")
 
 	meter := otel.GetMeterProvider().Meter(
 		"github.com/trebent/kerberos",
