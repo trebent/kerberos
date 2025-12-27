@@ -40,12 +40,12 @@ var (
 
 const expectedPatternMatches = 2
 
-func NewComponent(opts Opts) composertypes.FlowComponent {
+func NewComponent(_ Opts) composertypes.FlowComponent {
 	return &router{}
 }
 
 // Next implements [types.FlowComponent].
-func (r *router) Next(next composertypes.FlowComponent) {
+func (r *router) Next(_ composertypes.FlowComponent) {
 	panic("unimplemented")
 }
 

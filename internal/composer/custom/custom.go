@@ -7,8 +7,8 @@ import (
 )
 
 type custom struct {
-	handler http.Handler
-	next    types.FlowComponent
+	http.Handler
+	types.FlowComponent
 }
 
 var _ types.FlowComponent = (*custom)(nil)
@@ -17,10 +17,10 @@ func NewComponent() types.FlowComponent {
 	return &custom{}
 }
 
-func (c *custom) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (c *custom) ServeHTTP(_ http.ResponseWriter, _ *http.Request) {
 	panic("custom component not implemented")
 }
 
-func (c *custom) Next(next types.FlowComponent) {
+func (c *custom) Next(_ types.FlowComponent) {
 	panic("custom component not implemented")
 }

@@ -15,21 +15,22 @@ concurrency:
 
 permissions:
   contents: read
+  packages: write
   pull-requests: read
 
 jobs:
   static-analysis:
-    uses: ./.github/workflows/static-analysis.yaml
+    uses: ./.github/workflows/callable-static-analysis.yaml
     secrets: inherit
 
   build:
-    uses: ./.github/workflows/build.yaml
+    uses: ./.github/workflows/callable-build.yaml
     secrets: inherit
 
   image:
-    uses: ./.github/workflows/image.yaml
+    uses: ./.github/workflows/callable-image.yaml
     secrets: inherit
   
   test:
-    uses: ./.github/workflows/test.yaml
+    uses: ./.github/workflows/callable-test.yaml
     secrets: inherit
