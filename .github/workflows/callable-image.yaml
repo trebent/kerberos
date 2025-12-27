@@ -14,7 +14,9 @@ on:
         required: false
         default: false
 
-# No permission block to allow caller to set permissions as needed
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   docker-build:
