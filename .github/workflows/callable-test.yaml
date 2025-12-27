@@ -1,0 +1,49 @@
+name: Test
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        description: "Version to test."
+        required: false
+        default: "none"
+      functional:
+        type: boolean
+        description: "Whether to run functional tests."
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  unit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Golang
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Run tests
+        run: make unittest
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v5
+        with:
+          name: go-coverage-report-${{ github.sha }}
+          path: coverage.html
+  
+  functional-test:
+    if: ${{ inputs.functional == true }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Golang
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Run Kerberos
+        run: make docker-run
+      - name: Run functional tests
+        run: make functiontest

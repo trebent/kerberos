@@ -2,9 +2,12 @@ name: Build
 
 on:
   workflow_call:
-  push:
-    branches:
-      - main
+    inputs:
+      version:
+        type: string
+        description: "Version to build."
+        required: false
+        default: "none"
 
 permissions:
   contents: read
@@ -19,11 +22,4 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Build
-        run: VERSION=${{ github.sha }} make build
-  
-  docker-build:
-    uses: ./.github/workflows/image.yaml
-    secrets: inherit
-    with:
-      version: ${{ github.sha }}
-      push: false
+        run: make build
