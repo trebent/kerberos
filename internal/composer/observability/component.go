@@ -53,7 +53,7 @@ func NewComponent() composertypes.FlowComponent {
 }
 
 // Next implements [types.FlowComponent].
-func (o *obs) Next(next composertypes.FlowComponent) {
+func (o *obs) Next(_ composertypes.FlowComponent) {
 	panic("unimplemented")
 }
 

@@ -27,7 +27,9 @@ type (
 
 var (
 	_              composertypes.FlowComponent = (*forwarder)(nil)
-	forwardPattern                             = regexp.MustCompile(`^/gw/backend/[-_a-z0-9]+/(.+)?$`)
+	forwardPattern                             = regexp.MustCompile(
+		`^/gw/backend/[-_a-z0-9]+/(.+)?$`,
+	)
 
 	ErrFailedPatternMatch  = errors.New("forward pattern match failed")
 	ErrFailedTargetExtract = errors.New("could not determine target from context")
@@ -41,7 +43,7 @@ func NewComponent() composertypes.FlowComponent {
 }
 
 // Next implements [types.FlowComponent].
-func (f *forwarder) Next(next composertypes.FlowComponent) {
+func (f *forwarder) Next(_ composertypes.FlowComponent) {
 	panic("the forwarder is intended to be the last component in the flow")
 }
 
