@@ -1,20 +1,25 @@
-FROM golang:1.24.5 AS builder
+FROM golang:1.25.5 AS builder
 
 WORKDIR /
 
+FROM builder AS deps
+
 COPY go.mod go.sum ./
-COPY cmd/ cmd/
-COPY internal/ internal/
+
+FROM deps AS build
+
+COPY . .
+
+ENV GOOS=linux
+ENV CGO_ENABLED=0
 
 RUN --mount=type=cache,target=/go/pkg/mod \
   --mount=type=cache,target=/root/.cache/go-build \
-  CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o echo ./cmd/echo
+  go build -trimpath -ldflags="-s -w" -o echo ./cmd/echo
 
 FROM gcr.io/distroless/static-debian12:nonroot AS runtime
 
-WORKDIR /
-
-COPY --from=builder /echo /echo
+COPY --from=build /echo /echo
 
 EXPOSE 15000
 

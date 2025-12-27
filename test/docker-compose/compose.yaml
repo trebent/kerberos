@@ -1,6 +1,6 @@
 services:
   kerberos:
-    image: "ghcr.io/github.com/trebent/kerberos:local"
+    image: "ghcr.io/github.com/trebent/kerberos:${VERSION}"
     pull_policy: build
     build:
       context: ../..

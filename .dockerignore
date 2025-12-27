@@ -1,0 +1,10 @@
+.git
+.gitignore
+.github
+.editorconfig
+.golangci-lint.yaml
+coverage*
+docs/
+README*
+test/
+build/
