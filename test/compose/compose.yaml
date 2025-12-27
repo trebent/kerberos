@@ -1,7 +1,7 @@
 services:
   kerberos:
-    image: "ghcr.io/github.com/trebent/kerberos:${VERSION}"
-    pull_policy: always
+    image: "ghcr.io/trebent/kerberos:${VERSION}"
+    pull_policy: if_not_present
     build:
       context: ../..
       dockerfile: ./Dockerfile
@@ -23,8 +23,8 @@ services:
       - ./routes/echo.json:/echo.json
   
   echo:
-    image: "ghcr.io/github.com/trebent/kerberos/echo:${VERSION}"
-    pull_policy: always
+    image: "ghcr.io/trebent/kerberos/echo:${VERSION}"
+    pull_policy: if_not_present
     build:
       context: ../..
       dockerfile: ./cmd/echo/Dockerfile

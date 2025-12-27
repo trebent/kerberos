@@ -43,7 +43,13 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-      - name: Run Kerberos
-        run: make docker-run
+      - name: Run Kerberos test environment
+        run: make docker-compose-up
       - name: Run functional tests
         run: make functiontest
+      - name: Output logs if tests fail
+        if: failure()
+        run: make docker-compose-logs
+      - name: Tear down Kerberos test environment
+        if: always()
+        run: make docker-compose-down
