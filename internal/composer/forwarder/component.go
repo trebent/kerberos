@@ -40,9 +40,9 @@ func NewComponent() composertypes.FlowComponent {
 	return &forwarder{}
 }
 
-// Compose implements [types.FlowComponent].
-func (f *forwarder) Compose(next composertypes.FlowComponent) composertypes.FlowComponent {
-	panic("unimplemented")
+// Next implements [types.FlowComponent].
+func (f *forwarder) Next(next composertypes.FlowComponent) {
+	panic("the forwarder is intended to be the last component in the flow")
 }
 
 // ServeHTTP implements [types.FlowComponent].

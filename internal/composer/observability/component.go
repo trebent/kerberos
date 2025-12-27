@@ -52,8 +52,8 @@ func NewComponent() composertypes.FlowComponent {
 	return &obs{}
 }
 
-// Compose implements [types.FlowComponent].
-func (o *obs) Compose(next composertypes.FlowComponent) composertypes.FlowComponent {
+// Next implements [types.FlowComponent].
+func (o *obs) Next(next composertypes.FlowComponent) {
 	panic("unimplemented")
 }
 

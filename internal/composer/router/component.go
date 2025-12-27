@@ -44,8 +44,8 @@ func NewComponent(opts Opts) composertypes.FlowComponent {
 	return &router{}
 }
 
-// Compose implements [types.FlowComponent].
-func (r *router) Compose(next composertypes.FlowComponent) composertypes.FlowComponent {
+// Next implements [types.FlowComponent].
+func (r *router) Next(next composertypes.FlowComponent) {
 	panic("unimplemented")
 }
 

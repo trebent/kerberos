@@ -25,9 +25,8 @@ func newTestFlow(name string, t *testing.T) *testFlow {
 	return f
 }
 
-func (t *testFlow) Compose(next types.FlowComponent) types.FlowComponent {
+func (t *testFlow) Next(next types.FlowComponent) {
 	t.next = next
-	return t
 }
 
 // ServeHTTP implements [types.FlowComponent].
@@ -49,12 +48,12 @@ func TestComposerFlow(t *testing.T) {
 	three := newTestFlow("composable", t)
 	four := newTestFlow("forwarder", t)
 
-	composer := &Composer{
+	composer := New(&Opts{
 		Observability: one,
 		Router:        two,
 		Custom:        three,
 		Forwarder:     four,
-	}
+	})
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com/test", nil)
 	if err != nil {
@@ -62,7 +61,8 @@ func TestComposerFlow(t *testing.T) {
 	}
 
 	t.Log("Serving the request...")
-	composer.ServeHTTP(httptest.NewRecorder(), req)
+	recorder := httptest.NewRecorder()
+	composer.ServeHTTP(recorder, req)
 
 	t.Log("Awaiting one...")
 	one.called.Wait()
@@ -72,4 +72,8 @@ func TestComposerFlow(t *testing.T) {
 	three.called.Wait()
 	t.Log("Awaiting four...")
 	four.called.Wait()
+
+	if recorder.Result().StatusCode != http.StatusOK {
+		t.Fatalf("expected status code %d, got %d", http.StatusOK, recorder.Result().StatusCode)
+	}
 }

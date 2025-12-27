@@ -21,6 +21,6 @@ func (c *custom) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	panic("custom component not implemented")
 }
 
-func (c *custom) Compose(next types.FlowComponent) types.FlowComponent {
+func (c *custom) Next(next types.FlowComponent) {
 	panic("custom component not implemented")
 }
