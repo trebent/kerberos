@@ -110,7 +110,45 @@ func TestRoot(t *testing.T) {
 	}
 }
 
-// Validate calls to a backend's root path works.
+// Validate calls to a backend's nested path works.
+func TestNested(t *testing.T) {
+	t.Parallel()
+
+	testData := "{\"test\": \"value\"}"
+	buf := bytes.NewBuffer([]byte(testData))
+	urlSegment := "/soi/mae"
+	req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", port, urlSegment), buf)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+
+	resp, err := client.Do(req)
+	decodedResponse := verifyRespOK(resp, err, t)
+
+	if decodedResponse.URL != urlSegment {
+		t.Errorf("unexpected URL in response: got %s, want %s", decodedResponse.URL, urlSegment)
+	}
+
+	if decodedResponse.Body == nil {
+		t.Errorf("unexpected body in response: got %s, want non-empty", string(decodedResponse.Body))
+	}
+
+	if decodedResponse.Method != http.MethodPut {
+		t.Errorf("unexpected method in response: got %s, want %s", decodedResponse.Method, http.MethodPut)
+	}
+
+	if string(decodedResponse.Body) != testData {
+		t.Errorf("unexpected body in response: got %s, want %s", string(decodedResponse.Body), testData)
+	}
+
+	for _, val := range resp.Header["Content-Type"] {
+		if val != "application/json" {
+			t.Errorf("unexpected Content-Type header value: got %s, want %s", val, "application/json")
+		}
+	}
+}
+
+// Validate calls to a non-existent backend yields a not-found status code.
 func TestNoBackend(t *testing.T) {
 	t.Parallel()
 
