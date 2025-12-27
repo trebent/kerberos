@@ -4,6 +4,7 @@ go 1.25.5
 
 require (
 	github.com/go-logr/logr v1.4.3
+	github.com/prometheus/common v0.65.0
 	github.com/trebent/envparser v1.0.5
 	github.com/trebent/zerologr v1.0.1
 	github.com/xeipuuv/gojsonschema v1.2.0
@@ -29,7 +30,6 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/prometheus/client_golang v1.23.0 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
-	github.com/prometheus/common v0.65.0 // indirect
 	github.com/prometheus/otlptranslator v0.0.2 // indirect
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
