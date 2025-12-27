@@ -28,7 +28,7 @@ jobs:
 
   image:
     needs: version
-    uses: ./.github/workflows/image.yaml
+    uses: ./.github/workflows/callable-image.yaml
     secrets: inherit
     with:
       version: ${{ needs.version.outputs.version }}
@@ -36,7 +36,7 @@ jobs:
 
   test:
     needs: [version, image]
-    uses: ./.github/workflows/test.yaml
+    uses: ./.github/workflows/callable-test.yaml
     secrets: inherit
     with:
       version: ${{ needs.version.outputs.version }}
