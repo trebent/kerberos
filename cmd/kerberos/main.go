@@ -11,7 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/prometheus/common/version"
 	"github.com/trebent/envparser"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/composer/custom"
@@ -77,7 +76,7 @@ func main() {
 	)
 	defer signalCancel()
 
-	cleanup, err := obs.Instrument(signalCtx, serviceName, version.Version)
+	cleanup, err := obs.Instrument(signalCtx, serviceName, env.Version.Value())
 	if err != nil {
 		startLogger.Error(err, "Failed to instrument OpenTelemetry")
 		os.Exit(1) // nolint: gocritic
