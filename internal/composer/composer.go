@@ -36,6 +36,6 @@ func New(opts *Opts) http.Handler {
 	}
 }
 
-func (c *impl) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	c.Observability.ServeHTTP(w, r)
+func (c *impl) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	c.Observability.ServeHTTP(w, req)
 }

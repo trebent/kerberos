@@ -61,23 +61,23 @@ func (o *obs) Next(next composertypes.FlowComponent) {
 }
 
 // ServeHTTP implements [types.FlowComponent].
-func (o *obs) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// Check request trace context
-	ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+	ctx := otel.GetTextMapPropagator().Extract(req.Context(), propagation.HeaderCarrier(req.Header))
 
 	// Start a span here to include ALL operations of KRB
 	// TODO: add more to the span name?
-	ctx, span := tracer.Start(ctx, r.Method, o.spanOpts...)
+	ctx, span := tracer.Start(ctx, req.Method, o.spanOpts...)
 	defer span.End() // Stop the span after EVERYTHING is done
 
-	rLogger := o.logger.WithValues("path", r.URL.Path, "method", r.Method)
-	rLogger.Info(r.Method + " " + r.URL.Path)
+	rLogger := o.logger.WithValues("path", req.URL.Path, "method", req.Method)
+	rLogger.Info(req.Method + " " + req.URL.Path)
 	ctx = logr.NewContext(ctx, rLogger)
 
 	// Wrap the request body to extract size
-	bw, _ := response.NewBodyWrapper(r.Body).(*response.BodyWrapper)
-	if r.Body != nil && r.Body != http.NoBody {
-		r.Body = bw
+	bw, _ := response.NewBodyWrapper(req.Body).(*response.BodyWrapper)
+	if req.Body != nil && req.Body != http.NoBody {
+		req.Body = bw
 	}
 
 	// Wrap the response to extract:
@@ -88,7 +88,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Since the duration metric is directly related to the route forwarded to, keep the time
 	// measurement as close to the forwarding call as possible.
 	start := time.Now()
-	o.next.ServeHTTP(wrapped, r.WithContext(ctx))
+	o.next.ServeHTTP(wrapped, req.WithContext(ctx))
 	duration := time.Since(start)
 
 	// Process the response, update the span with attributes.
@@ -101,7 +101,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Update metrics, can't separate request and response handling since the handler is
 	// called by ServeHTTP, no
 	statusCodeOpt := metric.WithAttributes(semconv.HTTPStatusCode(wrapper.StatusCode()))
-	requestMeta := metric.WithAttributes(semconv.HTTPMethod(r.Method))
+	requestMeta := metric.WithAttributes(semconv.HTTPMethod(req.Method))
 	krbMetricMeta := metric.WithAttributes(krbAttributes...)
 
 	// Request
@@ -119,7 +119,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	o.responseSizeHistogram.Record(ctx, wrapper.NumBytes(), requestMeta, krbMetricMeta)
 
 	rLogger.Info(
-		r.Method+" "+r.URL.Path+" "+strconv.Itoa(wrapper.StatusCode()),
+		req.Method+" "+req.URL.Path+" "+strconv.Itoa(wrapper.StatusCode()),
 		string(semconv.HTTPStatusCodeKey), wrapper.StatusCode(),
 	)
 }

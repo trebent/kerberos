@@ -54,27 +54,27 @@ func (f *forwarder) Next(_ composertypes.FlowComponent) {
 }
 
 // ServeHTTP implements [types.FlowComponent].
-func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, r *http.Request) {
+func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	// Obtain matching backend to route to.
 	// Forward request and pipe forwarded response into origin response.
-	rLogger, _ := logr.FromContext(r.Context())
+	rLogger, _ := logr.FromContext(req.Context())
 	rLogger = rLogger.WithName("forwarder")
 	rLogger.Info("Forwarding request")
 
-	target, ok := r.Context().Value(f.targetContextKey).(Target)
+	target, ok := req.Context().Value(f.targetContextKey).(Target)
 	if !ok {
 		rLogger.Error(
-			fmt.Errorf("%w: %s", ErrFailedTargetExtract, r.URL.Path),
+			fmt.Errorf("%w: %s", ErrFailedTargetExtract, req.URL.Path),
 			"Target extract failed",
 		)
 		response.JSONError(wrapped, ErrFailedForwarding, http.StatusInternalServerError)
 		return
 	}
 
-	forwardURL := forwardPattern.FindStringSubmatch(r.URL.Path)
+	forwardURL := forwardPattern.FindStringSubmatch(req.URL.Path)
 	if len(forwardURL) != expectedPatternMatches {
 		rLogger.Error(
-			fmt.Errorf("%w: %s", ErrFailedPatternMatch, r.URL.Path),
+			fmt.Errorf("%w: %s", ErrFailedPatternMatch, req.URL.Path),
 			"Pattern match failed",
 		)
 		response.JSONError(wrapped, ErrFailedForwarding, http.StatusInternalServerError)
@@ -82,14 +82,14 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, r *http.Request) {
 	}
 
 	forwardRequest, err := http.NewRequestWithContext(
-		r.Context(),
-		r.Method,
+		req.Context(),
+		req.Method,
 		fmt.Sprintf(
 			"http://%s/%s",
 			net.JoinHostPort(target.Host(), strconv.Itoa(target.Port())),
 			forwardURL[1],
 		),
-		r.Body,
+		req.Body,
 	)
 	if err != nil {
 		rLogger.Error(err, "Failed to create request")
@@ -97,9 +97,9 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	forwardRequest.Header = r.Header
+	forwardRequest.Header = req.Header
 	otel.GetTextMapPropagator().
-		Inject(r.Context(), propagation.HeaderCarrier(forwardRequest.Header))
+		Inject(req.Context(), propagation.HeaderCarrier(forwardRequest.Header))
 
 	client := http.Client{}
 	resp, err := client.Do(forwardRequest)
