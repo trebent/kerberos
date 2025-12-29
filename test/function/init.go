@@ -8,17 +8,19 @@ import (
 )
 
 var (
-	port        = 0
-	metricsPort = 0
-	host        = ""
-	client      = &http.Client{}
+	port              = 0
+	metricsPort       = 0
+	jaegerReadAPIPort = 0
+	host              = ""
+	client            = &http.Client{}
 )
 
 const (
-	defaultHost          = "localhost"
-	defaultKerberosPort  = 30000
-	defaultMetricsPort   = 9464
-	defaultClientTimeout = 4 * time.Second
+	defaultHost              = "localhost"
+	defaultKerberosPort      = 30000
+	defaultMetricsPort       = 9464
+	defaultJaegerReadAPIPort = 16685
+	defaultClientTimeout     = 4 * time.Second
 )
 
 func init() {
@@ -53,5 +55,17 @@ func init() {
 		metricsPort = defaultMetricsPort
 	} else {
 		metricsPort = decodedMetricsPort
+	}
+
+	jaegerPortVal, found := os.LookupEnv("KRB_FT_JAEGER_PORT")
+	if !found {
+		jaegerReadAPIPort = defaultJaegerReadAPIPort
+	}
+
+	decodedJaegerPort, err := strconv.Atoi(jaegerPortVal)
+	if err != nil {
+		jaegerReadAPIPort = defaultJaegerReadAPIPort
+	} else {
+		jaegerReadAPIPort = decodedJaegerPort
 	}
 }

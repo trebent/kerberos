@@ -66,6 +66,7 @@ services:
     pull_policy: if_not_present
     ports:
       - 4317:4317
+      - 16685:16685
       - 16686:16686
     environment:
       - COLLECTOR_OTLP_ENABLED=true
