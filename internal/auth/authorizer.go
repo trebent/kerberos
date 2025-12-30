@@ -18,9 +18,7 @@ type (
 	}
 )
 
-var (
-	_ Authorizer = (*authorizer)(nil)
-)
+var _ Authorizer = (*authorizer)(nil)
 
 func New() composertypes.FlowComponent {
 	return &authorizer{}

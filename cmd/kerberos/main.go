@@ -118,6 +118,10 @@ func setupConfig() config.Map {
 		cfg.MustLoad(obsConfigName, obsData)
 	}
 
+	if env.AuthJSONFile.Value() != "" {
+		zerologr.Info("Auth configuration detected, loading")
+	}
+
 	routerData, _ := os.ReadFile(env.RouteJSONFile.Value())
 	cfg.MustLoad(routerConfigName, routerData)
 
