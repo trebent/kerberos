@@ -22,4 +22,4 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Build
-        run: make build
+        run: make go-build
