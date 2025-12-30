@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"syscall"
 
-	obs "github.com/trebent/kerberos/internal/composer/observability"
+	intotel "github.com/trebent/kerberos/internal/otel"
 	"github.com/trebent/zerologr"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -60,7 +60,7 @@ func main() {
 	logger := zerologr.New(&zerologr.Opts{Console: true}).WithName("echo")
 	zerologr.Set(logger)
 
-	shutdown, err := obs.Instrument(signalCtx, "echo", "0.1.0")
+	shutdown, err := intotel.Instrument(signalCtx, "echo", "0.1.0")
 	if err != nil {
 		zerologr.Error(err, "Failed to initialize OpenTelemetry")
 		os.Exit(1)

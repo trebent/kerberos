@@ -76,7 +76,7 @@ func main() {
 	)
 	defer signalCancel()
 
-	cleanup, err := obs.Instrument(signalCtx, serviceName, env.Version.Value())
+	cleanup, err := obs.Instrument(signalCtx, cfg, serviceName, env.Version.Value())
 	if err != nil {
 		startLogger.Error(err, "Failed to instrument OpenTelemetry")
 		os.Exit(1) // nolint: gocritic
@@ -146,7 +146,7 @@ func startServer(ctx context.Context, cfg config.Map) error {
 	// stop tracing/metrics/logs
 	zerologr.Info("Loading router")
 
-	observability := obs.NewComponent()
+	observability := obs.NewComponent(&obs.Opts{Cfg: cfg})
 	router := router.NewComponent(&router.Opts{Cfg: cfg})
 	custom := custom.NewComponent()
 	forwarder := forwarder.NewComponent(

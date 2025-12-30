@@ -22,7 +22,7 @@ define cecho
 	@echo -e "${2}${1}${RESET}"
 endef
 
-default: validate build
+default: lint vulncheck go-build
 
 lint:
 	$(call cecho,Running linter for Kerberos...,$(BOLD_YELLOW))
@@ -48,7 +48,7 @@ vulncheck:
 staticcheck: lint unittest vulncheck
 	$(call cecho,Static analysis complete.,$(BOLD_GREEN))
 
-build:
+go-build:
 	$(call cecho,Building Kerberos binary...,$(BOLD_YELLOW))
 	CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/kerberos ./cmd/kerberos
 	$(call cecho,Build complete.,$(BOLD_GREEN))

@@ -1,4 +1,4 @@
-package otel
+package obs
 
 import (
 	_ "embed"

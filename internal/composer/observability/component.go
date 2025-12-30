@@ -1,5 +1,5 @@
 // nolint: mnd
-package otel
+package obs
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-logr/logr"
 	composertypes "github.com/trebent/kerberos/internal/composer/types"
+	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/env"
 	"github.com/trebent/kerberos/internal/response"
 	"github.com/trebent/zerologr"
@@ -23,6 +24,7 @@ import (
 type (
 	obs struct {
 		next composertypes.FlowComponent
+		cfg  *obsConfig
 
 		logger                   logr.Logger
 		spanOpts                 []trace.SpanStartOption
@@ -31,6 +33,9 @@ type (
 		requestDurationHistogram metric.Float64Histogram
 		responseCounter          metric.Int64Counter
 		responseSizeHistogram    metric.Int64Histogram
+	}
+	Opts struct {
+		Cfg config.Map
 	}
 )
 
@@ -51,84 +56,12 @@ var (
 	_      composertypes.FlowComponent = (*obs)(nil)
 )
 
-func NewComponent() composertypes.FlowComponent {
-	return newObs()
-}
-
-// Next implements [types.FlowComponent].
-func (o *obs) Next(next composertypes.FlowComponent) {
-	o.next = next
-}
-
-// ServeHTTP implements [types.FlowComponent].
-func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	// Check request trace context
-	ctx := otel.GetTextMapPropagator().Extract(req.Context(), propagation.HeaderCarrier(req.Header))
-
-	// Start a span here to include ALL operations of KRB
-	// TODO: add more to the span name?
-	ctx, span := tracer.Start(ctx, req.Method, o.spanOpts...)
-	defer span.End() // Stop the span after EVERYTHING is done
-
-	rLogger := o.logger.WithValues("path", req.URL.Path, "method", req.Method)
-	rLogger.Info(req.Method + " " + req.URL.Path)
-	ctx = logr.NewContext(ctx, rLogger)
-
-	// Wrap the request body to extract size
-	bw, _ := response.NewBodyWrapper(req.Body).(*response.BodyWrapper)
-	if req.Body != nil && req.Body != http.NoBody {
-		req.Body = bw
-	}
-
-	// Wrap the response to extract:
-	// - status code
-	// - response body size
-	wrapped := response.NewResponseWrapper(w)
-
-	// Since the duration metric is directly related to the route forwarded to, keep the time
-	// measurement as close to the forwarding call as possible.
-	start := time.Now()
-	o.next.ServeHTTP(wrapped, req.WithContext(ctx))
-	duration := time.Since(start)
-
-	// Process the response, update the span with attributes.
-	wrapper, _ := wrapped.(*response.Wrapper)
-	krbAttributes := extractKrbAttributes(wrapper.GetRequestContext())
-
-	span.SetStatus(wrapper.SpanStatus())
-	span.SetAttributes(krbAttributes...)
-
-	// Update metrics, can't separate request and response handling since the handler is
-	// called by ServeHTTP, no
-	statusCodeOpt := metric.WithAttributes(semconv.HTTPStatusCode(wrapper.StatusCode()))
-	requestMeta := metric.WithAttributes(semconv.HTTPMethod(req.Method))
-	krbMetricMeta := metric.WithAttributes(krbAttributes...)
-
-	// Request
-	o.requestCountCounter.Add(ctx, 1, requestMeta, krbMetricMeta)
-	o.requestSizeHistogram.Record(ctx, bw.NumBytes(), requestMeta, krbMetricMeta)
-	o.requestDurationHistogram.Record(
-		ctx,
-		float64(duration/time.Millisecond),
-		requestMeta,
-		krbMetricMeta,
-	)
-
-	// Response
-	o.responseCounter.Add(ctx, 1, statusCodeOpt, requestMeta, krbMetricMeta)
-	o.responseSizeHistogram.Record(ctx, wrapper.NumBytes(), requestMeta, krbMetricMeta)
-
-	rLogger.Info(
-		req.Method+" "+req.URL.Path+" "+strconv.Itoa(wrapper.StatusCode()),
-		string(semconv.HTTPStatusCodeKey), wrapper.StatusCode(),
-	)
-}
-
-func newObs() *obs {
+func NewComponent(opts *Opts) composertypes.FlowComponent {
 	o := &obs{
 		spanOpts: []trace.SpanStartOption{
 			trace.WithSpanKind(trace.SpanKindServer),
 		},
+		cfg: config.AccessAs[*obsConfig](opts.Cfg, configName),
 	}
 
 	o.logger = zerologr.WithName("request")
@@ -198,6 +131,75 @@ func newObs() *obs {
 	o.responseSizeHistogram = responseSizeHistogram
 
 	return o
+}
+
+// Next implements [types.FlowComponent].
+func (o *obs) Next(next composertypes.FlowComponent) {
+	o.next = next
+}
+
+// ServeHTTP implements [types.FlowComponent].
+func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	// Check request trace context
+	ctx := otel.GetTextMapPropagator().Extract(req.Context(), propagation.HeaderCarrier(req.Header))
+
+	// Start a span here to include ALL operations of KRB
+	// TODO: add more to the span name?
+	ctx, span := tracer.Start(ctx, req.Method, o.spanOpts...)
+	defer span.End() // Stop the span after EVERYTHING is done
+
+	rLogger := o.logger.WithValues("path", req.URL.Path, "method", req.Method)
+	rLogger.Info(req.Method + " " + req.URL.Path)
+	ctx = logr.NewContext(ctx, rLogger)
+
+	// Wrap the request body to extract size
+	bw, _ := response.NewBodyWrapper(req.Body).(*response.BodyWrapper)
+	if req.Body != nil && req.Body != http.NoBody {
+		req.Body = bw
+	}
+
+	// Wrap the response to extract:
+	// - status code
+	// - response body size
+	wrapped := response.NewResponseWrapper(w)
+
+	// Since the duration metric is directly related to the route forwarded to, keep the time
+	// measurement as close to the forwarding call as possible.
+	start := time.Now()
+	o.next.ServeHTTP(wrapped, req.WithContext(ctx))
+	duration := time.Since(start)
+
+	// Process the response, update the span with attributes.
+	wrapper, _ := wrapped.(*response.Wrapper)
+	krbAttributes := extractKrbAttributes(wrapper.GetRequestContext())
+
+	span.SetStatus(wrapper.SpanStatus())
+	span.SetAttributes(krbAttributes...)
+
+	// Update metrics, can't separate request and response handling since the handler is
+	// called by ServeHTTP, no
+	statusCodeOpt := metric.WithAttributes(semconv.HTTPStatusCode(wrapper.StatusCode()))
+	requestMeta := metric.WithAttributes(semconv.HTTPMethod(req.Method))
+	krbMetricMeta := metric.WithAttributes(krbAttributes...)
+
+	// Request
+	o.requestCountCounter.Add(ctx, 1, requestMeta, krbMetricMeta)
+	o.requestSizeHistogram.Record(ctx, bw.NumBytes(), requestMeta, krbMetricMeta)
+	o.requestDurationHistogram.Record(
+		ctx,
+		float64(duration/time.Millisecond),
+		requestMeta,
+		krbMetricMeta,
+	)
+
+	// Response
+	o.responseCounter.Add(ctx, 1, statusCodeOpt, requestMeta, krbMetricMeta)
+	o.responseSizeHistogram.Record(ctx, wrapper.NumBytes(), requestMeta, krbMetricMeta)
+
+	rLogger.Info(
+		req.Method+" "+req.URL.Path+" "+strconv.Itoa(wrapper.StatusCode()),
+		string(semconv.HTTPStatusCodeKey), wrapper.StatusCode(),
+	)
 }
 
 func must(err error) {

@@ -44,8 +44,15 @@ func TestTracing(t *testing.T) {
 func findSpans(conn *grpc.ClientConn, traceID model.TraceID, start time.Time, spanCount int, t *testing.T) []*model.Span {
 	t.Logf("Trace ID: %v", traceID)
 
-	timeout := time.Now().Add(15 * time.Second)
-	spans := make([]*model.Span, 0)
+	begin := time.Now()
+	defer func(b time.Time) {
+		t.Logf("Took %s to find the spans", time.Since(b).String())
+	}(begin)
+	timeout := begin.Add(15 * time.Second)
+	spans := make(map[string]*model.Span, 0)
+
+	// Small initial delay to hopefully fetch on try #1
+	time.Sleep(2 * time.Second)
 
 	for {
 		if time.Now().After(timeout) {
@@ -56,7 +63,8 @@ func findSpans(conn *grpc.ClientConn, traceID model.TraceID, start time.Time, sp
 		client := tracingv2.NewQueryServiceClient(conn)
 		findTracesClient, err := client.FindTraces(t.Context(), &tracingv2.FindTracesRequest{
 			Query: &tracingv2.TraceQueryParameters{
-				ServiceName: "echo",
+				ServiceName:  "echo",
+				StartTimeMin: start,
 			},
 		})
 		if err != nil {
@@ -75,11 +83,16 @@ func findSpans(conn *grpc.ClientConn, traceID model.TraceID, start time.Time, sp
 
 				if span.TraceID == traceID {
 					t.Log("Found a matching trace ID")
-					spans = append(spans, &span)
+
+					spans[span.SpanID.String()] = &span
 				}
 
 				if len(spans) == spanCount {
-					return spans
+					spanSlice := make([]*model.Span, 0, 2)
+					for _, span := range spans {
+						spanSlice = append(spanSlice, span)
+					}
+					return spanSlice
 				}
 			}
 
@@ -89,7 +102,7 @@ func findSpans(conn *grpc.ClientConn, traceID model.TraceID, start time.Time, sp
 			}
 		}
 
-		time.Sleep(3 * time.Second)
+		time.Sleep(500 * time.Millisecond)
 	}
 }
 
