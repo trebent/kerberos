@@ -2,7 +2,7 @@ package auth
 
 import "net/http"
 
-type Backend interface {
+type Method interface {
 	Authenticate(*http.Request) error
 
 	Authenticated(*http.Request) error

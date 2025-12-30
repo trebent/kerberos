@@ -13,14 +13,6 @@ import (
 )
 
 type (
-	// Router is used to route incoming requests to matching backends. Failure to route is terminal
-	// and will yield a 404.
-	Router interface {
-		// GetBackend returns the backend for the given request. The backend is determined by
-		// matching the request to the registered backends. If no backend is found, an error is
-		// returned.
-		GetBackend(http.Request) (Backend, error)
-	}
 	// Opts are the options used to configure the router.
 	Opts struct {
 		Cfg config.Map
