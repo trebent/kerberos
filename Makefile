@@ -174,22 +174,22 @@ echo-docker-run:
 
 generate-echo-test-requests:
 	$(call cecho,Generating test HTTP requests for the echo backend...,$(BOLD_YELLOW))
-	curl -X GET -i localhost:$(KERBEROS_PORT)/gw/backend/echo/test
-	curl -X PUT -i localhost:$(KERBEROS_PORT)/gw/backend/echo/test
-	curl -X POST -i localhost:$(KERBEROS_PORT)/gw/backend/echo/test
-	curl -X PATCH -i localhost:$(KERBEROS_PORT)/gw/backend/echo/test
-	curl -X DELETE -i localhost:$(KERBEROS_PORT)/gw/backend/echo/test
-	curl -X OPTIONS -i localhost:$(KERBEROS_PORT)/gw/backend/echo/test
+	curl -X GET -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
+	curl -X PUT -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
+	curl -X POST -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
+	curl -X PATCH -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
+	curl -X DELETE -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
+	curl -X OPTIONS -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
 
 generate-test-requests:
 	$(call cecho,Generating test HTTP requests to Kerberos...,$(BOLD_YELLOW))
-	curl -X GET -i localhost:$(KERBEROS_PORT)/test
-	curl -X GET -i localhost:$(KERBEROS_PORT)/test?status_code=400
-	curl -X PUT -i localhost:$(KERBEROS_PORT)/test
-	curl -X PUT -i localhost:$(KERBEROS_PORT)/test?status_code=500
-	curl -X POST -i localhost:$(KERBEROS_PORT)/test
-	curl -X POST -i localhost:$(KERBEROS_PORT)/test?status_code=204
-	curl -X PATCH -i localhost:$(KERBEROS_PORT)/test
-	curl -X PATCH -i localhost:$(KERBEROS_PORT)/test?status_code=404
-	curl -X DELETE -i localhost:$(KERBEROS_PORT)/test
-	curl -X OPTIONS -i localhost:$(KERBEROS_PORT)/test
+	curl -X GET -I localhost:$(KERBEROS_PORT)/test
+	curl -X GET -I localhost:$(KERBEROS_PORT)/test?status_code=400
+	curl -X PUT -I localhost:$(KERBEROS_PORT)/test
+	curl -X PUT -I localhost:$(KERBEROS_PORT)/test?status_code=500
+	curl -X POST -I localhost:$(KERBEROS_PORT)/test
+	curl -X POST -I localhost:$(KERBEROS_PORT)/test?status_code=204
+	curl -X PATCH -I localhost:$(KERBEROS_PORT)/test
+	curl -X PATCH -I localhost:$(KERBEROS_PORT)/test?status_code=404
+	curl -X DELETE -I localhost:$(KERBEROS_PORT)/test
+	curl -X OPTIONS -I localhost:$(KERBEROS_PORT)/test
