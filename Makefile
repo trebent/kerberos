@@ -172,6 +172,15 @@ echo-docker-run:
 # TEST
 #
 
+generate-echo-test-requests:
+	$(call cecho,Generating test HTTP requests for the echo backend...,$(BOLD_YELLOW))
+	curl -X GET -i localhost:$(KERBEROS_PORT)/gw/backend/echo/test
+	curl -X PUT -i localhost:$(KERBEROS_PORT)/gw/backend/echo/test
+	curl -X POST -i localhost:$(KERBEROS_PORT)/gw/backend/echo/test
+	curl -X PATCH -i localhost:$(KERBEROS_PORT)/gw/backend/echo/test
+	curl -X DELETE -i localhost:$(KERBEROS_PORT)/gw/backend/echo/test
+	curl -X OPTIONS -i localhost:$(KERBEROS_PORT)/gw/backend/echo/test
+
 generate-test-requests:
 	$(call cecho,Generating test HTTP requests to Kerberos...,$(BOLD_YELLOW))
 	curl -X GET -i localhost:$(KERBEROS_PORT)/test

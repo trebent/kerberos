@@ -31,13 +31,6 @@
           "color": {
             "mode": "thresholds"
           },
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "inspect": false
-          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -52,78 +45,46 @@
             ]
           }
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "job"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 266
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
-        "h": 7,
-        "w": 19,
+        "h": 9,
+        "w": 24,
         "x": 0,
         "y": 0
       },
-      "id": 1,
+      "id": 27,
       "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
           ],
-          "show": false
+          "fields": "",
+          "values": false
         },
-        "showHeader": true,
-        "sortBy": []
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto"
       },
       "pluginVersion": "12.0.0",
       "targets": [
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "exemplar": false,
-          "expr": "otel_scope_info",
-          "format": "table",
+          "expr": "rate(request_count_total[$__rate_interval])",
           "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": true,
-          "legendFormat": "__auto",
-          "range": false,
+          "includeNullMetadata": false,
+          "legendFormat": "{{krb_backend}}: {{http_method}}",
+          "range": true,
           "refId": "A",
           "useBackend": false
         }
       ],
-      "title": "Scope information",
-      "transformations": [
-        {
-          "id": "labelsToFields",
-          "options": {}
-        },
-        {
-          "id": "filterFieldsByName",
-          "options": {
-            "include": {
-              "names": [
-                "job",
-                "otel_scope_name",
-                "otel_scope_version"
-              ]
-            }
-          }
-        }
-      ],
-      "type": "table"
+      "title": "Rate of requests",
+      "type": "gauge"
     },
     {
       "datasource": {
@@ -187,9 +148,9 @@
       },
       "gridPos": {
         "h": 13,
-        "w": 11,
+        "w": 12,
         "x": 0,
-        "y": 7
+        "y": 9
       },
       "id": 5,
       "options": {
@@ -286,9 +247,9 @@
       },
       "gridPos": {
         "h": 13,
-        "w": 11,
-        "x": 11,
-        "y": 7
+        "w": 12,
+        "x": 12,
+        "y": 9
       },
       "id": 19,
       "options": {
@@ -327,7 +288,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 20
+        "y": 22
       },
       "id": 20,
       "panels": [],
@@ -398,7 +359,7 @@
         "h": 11,
         "w": 8,
         "x": 0,
-        "y": 21
+        "y": 23
       },
       "id": 21,
       "options": {
@@ -421,10 +382,10 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "{\"response.size_bytes_bucket\", \"http.method\"=\"GET\"}",
+          "expr": "response_size_bytes_bucket{http_method=\"GET\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{krb.backend}}: le {{le}}",
+          "legendFormat": "{{krb_backend}}: le {{le}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -497,7 +458,7 @@
         "h": 11,
         "w": 8,
         "x": 8,
-        "y": 21
+        "y": 23
       },
       "id": 22,
       "options": {
@@ -520,10 +481,10 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "{\"response.size_bytes_bucket\", \"http.method\"=\"POST\"}",
+          "expr": "response_size_bytes_bucket{http_method=\"POST\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{krb.backend}}: le {{le}}",
+          "legendFormat": "{{krb_backend}}: le {{le}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -596,7 +557,7 @@
         "h": 11,
         "w": 8,
         "x": 16,
-        "y": 21
+        "y": 23
       },
       "id": 23,
       "options": {
@@ -619,10 +580,10 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "{\"response.size_bytes_bucket\", \"http.method\"=\"PUT\"}",
+          "expr": "response_size_bytes_bucket{http_method=\"PUT\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{krb.backend}}: le {{le}}",
+          "legendFormat": "{{krb_backend}}: le {{le}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -695,7 +656,7 @@
         "h": 11,
         "w": 8,
         "x": 0,
-        "y": 32
+        "y": 34
       },
       "id": 24,
       "options": {
@@ -718,10 +679,10 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "{\"response.size_bytes_bucket\", \"http.method\"=\"PATCH\"}",
+          "expr": "response_size_bytes_bucket{http_method=\"PATCH\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{krb.backend}}: le {{le}}",
+          "legendFormat": "{{krb_backend}}: le {{le}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -794,7 +755,7 @@
         "h": 11,
         "w": 8,
         "x": 8,
-        "y": 32
+        "y": 34
       },
       "id": 25,
       "options": {
@@ -817,10 +778,10 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "{\"response.size_bytes_bucket\", \"http.method\"=\"DELETE\"}",
+          "expr": "response_size_bytes_bucket{http_method=\"DELETE\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{krb.backend}}: le {{le}}",
+          "legendFormat": "{{krb_backend}}: le {{le}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -893,7 +854,7 @@
         "h": 11,
         "w": 8,
         "x": 16,
-        "y": 32
+        "y": 34
       },
       "id": 26,
       "options": {
@@ -916,10 +877,10 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "{\"response.size_bytes_bucket\", \"http.method\"=\"DELETE\"}",
+          "expr": "response_size_bytes_bucket{http_method=\"OPTIONS\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{krb.backend}}: le {{le}}",
+          "legendFormat": "{{krb_backend}}: le {{le}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -934,7 +895,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 43
+        "y": 45
       },
       "id": 4,
       "panels": [],
@@ -1005,7 +966,7 @@
         "h": 11,
         "w": 8,
         "x": 0,
-        "y": 44
+        "y": 46
       },
       "id": 6,
       "options": {
@@ -1028,10 +989,10 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "{\"request.duration_milliseconds_bucket\", \"http.method\"=\"GET\"}",
+          "expr": "request_duration_milliseconds_bucket{http_method=\"GET\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{krb.backend}}: le {{le}}",
+          "legendFormat": "{{krb_backend}}: le {{le}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -1104,7 +1065,7 @@
         "h": 11,
         "w": 8,
         "x": 8,
-        "y": 44
+        "y": 46
       },
       "id": 7,
       "options": {
@@ -1127,10 +1088,10 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "{\"request.duration_milliseconds_bucket\", \"http.method\"=\"POST\"}",
+          "expr": "request_duration_milliseconds_bucket{http_method=\"POST\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{krb.backend}}: le {{le}}",
+          "legendFormat": "{{krb_backend}}: le {{le}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -1203,7 +1164,7 @@
         "h": 11,
         "w": 8,
         "x": 16,
-        "y": 44
+        "y": 46
       },
       "id": 11,
       "options": {
@@ -1226,10 +1187,10 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "{\"request.duration_milliseconds_bucket\", \"http.method\"=\"PUT\"}",
+          "expr": "request_duration_milliseconds_bucket{http_method=\"PUT\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{krb.backend}}: le {{le}}",
+          "legendFormat": "{{krb_backend}}: le {{le}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -1302,7 +1263,7 @@
         "h": 11,
         "w": 8,
         "x": 0,
-        "y": 55
+        "y": 57
       },
       "id": 10,
       "options": {
@@ -1325,10 +1286,10 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "{\"request.duration_milliseconds_bucket\", \"http.method\"=\"PATCH\"}",
+          "expr": "request_duration_milliseconds_bucket{http_method=\"PATCH\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{krb.backend}}: le {{le}}",
+          "legendFormat": "{{krb_backend}}: le {{le}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -1401,7 +1362,7 @@
         "h": 11,
         "w": 8,
         "x": 8,
-        "y": 55
+        "y": 57
       },
       "id": 8,
       "options": {
@@ -1424,10 +1385,10 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "{\"request.duration_milliseconds_bucket\", \"http.method\"=\"DELETE\"}",
+          "expr": "request_duration_milliseconds_bucket{http_method=\"DELETE\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{krb.backend}}: le {{le}}",
+          "legendFormat": "{{krb_backend}}: le {{le}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -1500,7 +1461,7 @@
         "h": 11,
         "w": 8,
         "x": 16,
-        "y": 55
+        "y": 57
       },
       "id": 9,
       "options": {
@@ -1523,10 +1484,10 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "{\"request.duration_milliseconds_bucket\", \"http.method\"=\"OPTIONS\"}",
+          "expr": "request_duration_milliseconds_bucket{http_method=\"OPTIONS\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{krb.backend}}: le {{le}}",
+          "legendFormat": "{{krb_backend}}: le {{le}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -1599,7 +1560,7 @@
         "h": 11,
         "w": 8,
         "x": 0,
-        "y": 66
+        "y": 68
       },
       "id": 13,
       "options": {
@@ -1622,10 +1583,10 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "{\"request.size_bytes_bucket\", \"http.method\"=\"GET\"}",
+          "expr": "request_size_bytes_bucket{http_method=\"GET\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{krb.backend}}: le {{le}}",
+          "legendFormat": "{{krb_backend}}: le {{le}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -1698,7 +1659,7 @@
         "h": 11,
         "w": 8,
         "x": 8,
-        "y": 66
+        "y": 68
       },
       "id": 16,
       "options": {
@@ -1721,10 +1682,10 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "{\"request.size_bytes_bucket\", \"http.method\"=\"POST\"}",
+          "expr": "request_size_bytes_bucket{http_method=\"POST\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{krb.backend}}: le {{le}}",
+          "legendFormat": "{{krb_backend}}: le {{le}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -1797,7 +1758,7 @@
         "h": 11,
         "w": 8,
         "x": 16,
-        "y": 66
+        "y": 68
       },
       "id": 17,
       "options": {
@@ -1820,10 +1781,10 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "{\"request.size_bytes_bucket\", \"http.method\"=\"PUT\"}",
+          "expr": "request_size_bytes_bucket{http_method=\"PUT\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{krb.backend}}: le {{le}}",
+          "legendFormat": "{{krb_backend}}: le {{le}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -1896,7 +1857,7 @@
         "h": 11,
         "w": 8,
         "x": 0,
-        "y": 77
+        "y": 79
       },
       "id": 15,
       "options": {
@@ -1919,10 +1880,10 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "{\"request.duration_milliseconds_bucket\", \"http.method\"=\"PATCH\"}",
+          "expr": "request_size_bytes_bucket{http_method=\"PATCH\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{krb.backend}}: le {{le}}",
+          "legendFormat": "{{krb_backend}}: le {{le}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -1995,7 +1956,7 @@
         "h": 11,
         "w": 8,
         "x": 8,
-        "y": 77
+        "y": 79
       },
       "id": 12,
       "options": {
@@ -2018,10 +1979,10 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "{\"request.size_bytes_bucket\", \"http.method\"=\"DELETE\"}",
+          "expr": "request_size_bytes_bucket{http_method=\"DELETE\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{krb.backend}}: le {{le}}",
+          "legendFormat": "{{krb_backend}}: le {{le}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -2094,7 +2055,7 @@
         "h": 11,
         "w": 8,
         "x": 16,
-        "y": 77
+        "y": 79
       },
       "id": 14,
       "options": {
@@ -2117,10 +2078,10 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "{\"request.size_bytes_bucket\", \"http.method\"=\"OPTIONS\"}",
+          "expr": "request_size_bytes_bucket{http_method=\"OPTIONS\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{krb.backend}}: le {{le}}",
+          "legendFormat": "{{krb_backend}}: le {{le}}",
           "range": true,
           "refId": "A",
           "useBackend": false
