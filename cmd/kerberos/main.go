@@ -11,8 +11,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/prometheus/common/version"
 	"github.com/trebent/envparser"
+	"github.com/trebent/kerberos/internal/composer"
+	"github.com/trebent/kerberos/internal/composer/custom"
 	"github.com/trebent/kerberos/internal/composer/forwarder"
 	obs "github.com/trebent/kerberos/internal/composer/observability"
 	"github.com/trebent/kerberos/internal/composer/router"
@@ -75,7 +76,7 @@ func main() {
 	)
 	defer signalCancel()
 
-	cleanup, err := obs.Instrument(signalCtx, serviceName, version.Version)
+	cleanup, err := obs.Instrument(signalCtx, serviceName, env.Version.Value())
 	if err != nil {
 		startLogger.Error(err, "Failed to instrument OpenTelemetry")
 		os.Exit(1) // nolint: gocritic
@@ -143,30 +144,25 @@ func startServer(ctx context.Context, cfg config.Map) error {
 	// start tracing/metrics/logs
 	// resp = forward(request)
 	// stop tracing/metrics/logs
-	if env.TestEndpoint.Value() {
-		testHandler := obs.Middleware(forwarder.Test())
-
-		mux.Handle("/test", testHandler)
-		zerologr.Info("Test endpoint enabled")
-	}
-
 	zerologr.Info("Loading router")
 
-	// This is the main endpoint for the API GW. Every incoming request passes through the backend
-	// middleware for backend detection, and the route middleware for route matching. A failure to
-	// match a backend yields a 404. Route matching is optional, it's use is limited to enrich
-	// metrics with route information which can't be derived from the raw URL (as the metric
-	// dimensions would grow out of control).
-	r := router.New(
-		&router.Opts{Cfg: cfg},
+	observability := obs.NewComponent()
+	router := router.NewComponent(&router.Opts{Cfg: cfg})
+	custom := custom.NewComponent()
+	forwarder := forwarder.NewComponent(
+		&forwarder.Opts{
+			TargetContextKey: composertypes.TargetContextKey,
+		},
 	)
-	zerologr.Info("Router loaded")
 
-	gwHandler := obs.Middleware(
-		router.Middleware(forwarder.Forwarder(composertypes.TargetContextKey), r),
-	)
-	mux.Handle("/gw/", gwHandler)
+	composer := composer.New(&composer.Opts{
+		Observability: observability,
+		Router:        router,
+		Custom:        custom,
+		Forwarder:     forwarder,
+	})
 
+	mux.Handle("/gw/", composer)
 	server := http.Server{
 		Addr:         fmt.Sprintf(":%d", env.Port.Value()),
 		ReadTimeout:  readTimeout,

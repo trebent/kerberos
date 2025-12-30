@@ -212,10 +212,10 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "{\"request.count_total\"}",
+          "expr": "request_count_total",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{krb.backend}}: {{http.method}}",
+          "legendFormat": "{{krb_backend}}: {{http_method}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -312,7 +312,7 @@
           "expr": "response_total",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{krb.backend}}: {{http.method}} {{http.status_code}}",
+          "legendFormat": "{{krb_backend}}: {{http_method}} {{http_status_code}}",
           "range": true,
           "refId": "A",
           "useBackend": false

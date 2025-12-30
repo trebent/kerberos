@@ -10,7 +10,7 @@ services:
       - ${KERBEROS_METRICS_PORT}:${KERBEROS_METRICS_PORT}
     environment:
       - LOG_TO_CONSOLE=1
-      - LOG_VERBOSITY=100
+      - LOG_VERBOSITY=10
       - OTEL_METRICS_EXPORTER=prometheus
       - OTEL_TRACES_EXPORTER=otlp
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
@@ -66,6 +66,7 @@ services:
     pull_policy: if_not_present
     ports:
       - 4317:4317
+      - 16685:16685
       - 16686:16686
     environment:
       - COLLECTOR_OTLP_ENABLED=true
