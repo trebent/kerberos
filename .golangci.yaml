@@ -360,17 +360,26 @@ linters:
     # Excluding configuration per-path, per-linter, per-text and per-source.
     rules:
       - source: "TODO"
-        linters: [godot]
+        linters:
+          - godot
       - text: "should have a package comment"
-        linters: [revive]
+        linters:
+          - revive
       - text: 'exported \S+ \S+ should have comment( \(or a comment on this block\))? or be unexported'
-        linters: [revive]
+        linters:
+          - revive
       - text: 'package comment should be of the form ".+"'
         source: "// ?(nolint|TODO)"
-        linters: [revive]
+        linters: 
+          - revive
       - text: 'comment on exported \S+ \S+ should be of the form ".+"'
         source: "// ?(nolint|TODO)"
-        linters: [revive, staticcheck]
+        linters:
+          - revive
+          - staticcheck
+      - text: 'avoid meaningless package names'
+        linters: 
+          - revive
       - path: '_test\.go'
         linters:
           - bodyclose
