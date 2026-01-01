@@ -7,7 +7,15 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
-type authConfig struct{}
+type (
+	authConfig struct {
+		Methods *methods `json:"methods"`
+	}
+	methods struct {
+		Basic *basicAuthentication `json:"basic"`
+	}
+	basicAuthentication struct{}
+)
 
 const configName = "auth"
 

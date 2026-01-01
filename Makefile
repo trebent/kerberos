@@ -29,11 +29,21 @@ lint:
 	@golangci-lint run --fix
 	$(call cecho,Linter complete.,$(BOLD_GREEN))
 
+codegen:
+	$(call cecho,Running codegen for Kerberos...,$(BOLD_YELLOW))
+	@go generate ./...
+	$(call cecho,Codegen complete.,$(BOLD_GREEN))
+
 unittest:
 	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
-	@go test -v ./... -coverprofile=coverage.out
-	@go tool cover -html=coverage.out -o coverage.html
+	@mkdir -p build
+	@go test -v ./... -coverprofile=build/coverage.out
+	@go tool cover -html=build/coverage.out -o build/coverage.html
+	@go tool cover -func=build/coverage.out
 	$(call cecho,Unit tests complete.,$(BOLD_GREEN))
+
+total-coverage:
+	@go tool cover -func=build/coverage.out | awk 'END {print $$3}'
 
 functiontest:
 	$(call cecho,Running function tests for Kerberos...,$(BOLD_YELLOW))
@@ -50,6 +60,7 @@ staticcheck: lint unittest vulncheck
 
 go-build:
 	$(call cecho,Building Kerberos binary...,$(BOLD_YELLOW))
+	@mkdir -p build
 	CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/kerberos ./cmd/kerberos
 	$(call cecho,Build complete.,$(BOLD_GREEN))
 

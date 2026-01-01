@@ -14,7 +14,7 @@ type custom struct {
 
 var _ types.FlowComponent = (*custom)(nil)
 
-func NewComponent(flowComponents ...types.FlowComponent) types.FlowComponent {
+func NewComponent(_ ...types.FlowComponent) types.FlowComponent {
 	return &custom{}
 }
 

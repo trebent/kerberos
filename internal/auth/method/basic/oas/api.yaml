@@ -1,0 +1,171 @@
+# yaml-language-server: $schema=https://spec.openapis.org/oas/3.0/schema/2024-10-18
+openapi: "3.0.4"
+info:
+  version: 0.1.0
+  title: Kerberos authentication API.
+  description: |
+    The Kerberos authentication API provides support for logging in using a simple user-created
+    username and password. 
+    
+    Organisations provide
+    support for user isolation. A user in org. A cannot access information protected by org. B.
+    Organisations provide isolation by associating sets of users with an organisation entity,
+    the target backend will receive an information element pointing out which organisation a
+    request was made for. This method of isolation only works if Kerberos is the only possible
+    path to reach the target backend service, or the information element will be possible to
+    spoof.
+
+    The authentication API provides user group support, allowing for role-based
+    authorization.
+components:
+  schemas:
+    # base types
+    Pong:
+      type: object
+      required:
+        - ping
+      properties:
+        ping:
+          type: string
+          example: pong
+  parameters:
+    userid:
+      name: userID
+      in: path
+      required: true
+      description: A user ID.
+      schema:
+        type: string
+    orgid:
+      name: orgID
+      in: path
+      required: true
+      description: An organisation ID.
+      schema:
+        type: string
+    groupid:
+      name: groupID
+      in: path
+      required: true
+      description: A group ID.
+      schema:
+        type: string
+
+paths:
+  # When invoking the /user path, the requests are automatically executed on the
+  # organisation the executing user belongs to. This is ALWAYS the case, except when creating the
+  # first user, which is done behind the scenes when creating a new organisation.
+  /user:
+    post:
+      responses:
+        '200':
+          description: Created a new user.
+    get:
+      responses:
+        '200':
+          description: Listed all users.
+
+  /user/{userID}:
+    parameters:
+      - "$ref": "#/components/parameters/userid"
+    get:
+      responses:
+        '200':
+          description: Got a user.
+    put:
+      responses:
+        '200':
+          description: Updated a user.
+    delete:
+      responses:
+        '204':
+          description: Deleted a user.
+
+  /user/{userID}/group:
+    parameters:
+      - "$ref": "#/components/parameters/userid"
+    put:
+      responses:
+        '200':
+          description: Updated the user's group bindings.
+    get:
+      responses:
+        '200':
+          description: Got a user's group bindings.
+
+  /user/{userID}/password:
+    parameters:
+      - "$ref": "#/components/parameters/userid"
+    put:
+      responses:
+        '204':
+          description: Changed a user's password.
+
+  /login:
+    post:
+      responses:
+        '204':
+          description: Logged a user in.
+
+  /logout:
+    post:
+      responses:
+        '204':
+          description: Logged a user out.
+  
+  # Creating a new organisation will automatically create an admin user.
+  /organisation:
+    post:
+      responses:
+        '204':
+          description: Created a new organisation.
+    get:
+      responses:
+        '200':
+          description: Listed all organisations.
+
+  /organisation/{orgID}:
+    parameters:
+      - "$ref": "#/components/parameters/orgid"
+    put:
+      responses:
+        '200':
+          description: Updated an organisation.
+    get:
+      responses:
+        '200':
+          description: Got an organisation.
+    delete:
+      responses:
+        '204':
+          description: Deleted an organisation.
+
+  /organisation/{orgID}/group:
+    parameters:
+      - "$ref": "#/components/parameters/orgid"
+    post:
+      responses:
+        '200':
+          description: Created a group in the organisation.
+    get:
+      responses:
+        '200':
+          description: Listed all groups in the organisation.
+
+  /organisation/{orgID}/group/{groupID}:
+    parameters:
+      - "$ref": "#/components/parameters/orgid"
+      - "$ref": "#/components/parameters/groupid"
+    put:
+      responses:
+        '200':
+          description: Updated a group.
+    get:
+      responses:
+        '200':
+          description: Got a group.
+    delete:
+      responses:
+        '204':
+          description: Deleted a group.
+

@@ -43,13 +43,13 @@ func (a *authorizer) Next(next composertypes.FlowComponent) {
 }
 
 func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if err := a.authenticate(req); err != nil {
+	if err := a.authenticated(req); err != nil {
 		zerologr.Error(err, "User tried to perform an authenticated action while unauthenticated")
 		response.JSONError(w, errAuth, http.StatusUnauthorized)
 		return
 	}
 
-	if err := a.authorize(req); err != nil {
+	if err := a.authorized(req); err != nil {
 		zerologr.Error(err, "User tried to perform an action they were not authorized to do")
 		response.JSONError(w, errAuth, http.StatusForbidden)
 		return
@@ -59,10 +59,10 @@ func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	a.next.ServeHTTP(w, req)
 }
 
-func (a *authorizer) authenticate(req *http.Request) error {
+func (a *authorizer) authenticated(_ *http.Request) error {
 	return nil
 }
 
-func (a *authorizer) authorize(req *http.Request) error {
+func (a *authorizer) authorized(_ *http.Request) error {
 	return nil
 }
