@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/trebent/kerberos/internal/auth/method"
+	"github.com/trebent/kerberos/internal/auth/method/basic"
 	composertypes "github.com/trebent/kerberos/internal/composer/types"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/response"
@@ -20,7 +22,8 @@ type (
 	authorizer struct {
 		next composertypes.FlowComponent
 
-		cfg *authConfig
+		cfg   *authConfig
+		basic method.Method
 	}
 )
 
@@ -32,10 +35,14 @@ var (
 
 func New(opts *Opts) composertypes.FlowComponent {
 	cfg := config.AccessAs[*authConfig](opts.Cfg, configName)
+	authorizer := &authorizer{cfg: cfg}
 
-	return &authorizer{
-		cfg: cfg,
+	if cfg.BasicEnabled() {
+		// If basic auth, populate the mux with http endpoints.
+		authorizer.registerBasicAPI(opts)
 	}
+
+	return authorizer
 }
 
 func (a *authorizer) Next(next composertypes.FlowComponent) {
@@ -60,9 +67,15 @@ func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func (a *authorizer) authenticated(_ *http.Request) error {
+	// TODO: check if the route is protected, check which method is used to protect the route, call the configured auth method.
 	return nil
 }
 
 func (a *authorizer) authorized(_ *http.Request) error {
+	// TODO: check if the route is protected, check which method is used to protect the route, call the configured auth method.
 	return nil
+}
+
+func (a *authorizer) registerBasicAPI(opts *Opts) {
+	a.basic = basic.New(opts.Mux)
 }

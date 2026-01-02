@@ -6,10 +6,7 @@
       "type": "object",
       "properties": {
         "basic": {
-          "type": "object",
-          "properties": {
-            
-          }
+          "type": "object"
         }
       },
       "additionalProperties": false

@@ -35,6 +35,10 @@ func (a *authConfig) Schema() *gojsonschema.Schema {
 	return s
 }
 
+func (a *authConfig) BasicEnabled() bool {
+	return a.Methods.Basic != nil
+}
+
 func RegisterWith(cfg config.Map) (string, error) {
 	cfg.Register(configName, &authConfig{})
 	return configName, nil

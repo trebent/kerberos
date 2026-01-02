@@ -380,6 +380,9 @@ linters:
       - text: 'avoid meaningless package names'
         linters: 
           - revive
+      - text: 'shadow: declaration'
+        linters:
+          - govet
       - path: '_test\.go'
         linters:
           - bodyclose

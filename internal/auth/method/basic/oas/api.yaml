@@ -2,32 +2,46 @@
 openapi: "3.0.4"
 info:
   version: 0.1.0
-  title: Kerberos authentication API.
+  title: Kerberos basic authentication API.
   description: |
-    The Kerberos authentication API provides support for logging in using a simple user-created
-    username and password. 
+    The Kerberos basic authentication API provides support for managing user accounts, groups,
+    and organisations.
     
-    Organisations provide
-    support for user isolation. A user in org. A cannot access information protected by org. B.
-    Organisations provide isolation by associating sets of users with an organisation entity,
-    the target backend will receive an information element pointing out which organisation a
-    request was made for. This method of isolation only works if Kerberos is the only possible
-    path to reach the target backend service, or the information element will be possible to
-    spoof.
+    Organisations provide support for user isolation. A user in org. A cannot access information
+    protected by org. B. Organisations provide isolation by associating sets of users with an
+    organisation entity, the target backend will receive an information element pointing out 
+    which organisation a request was made for. This method of isolation only works if Kerberos
+    is the only possible path to reach the target backend service, or the information element 
+    will be possible to spoof.
 
-    The authentication API provides user group support, allowing for role-based
-    authorization.
+    The basic authentication API provides user group support, allowing for role-based authorization.
 components:
   schemas:
-    # base types
-    Pong:
+    User:
       type: object
-      required:
-        - ping
       properties:
-        ping:
+        name:
           type: string
-          example: pong
+      required:
+        - name
+    Group:
+      type: object
+      properties:
+        name:
+          type: string
+      required:
+        - name
+    UserGroups:
+      type: array
+      items:
+        type: string
+    Organisation:
+      type: object
+      properties:
+        name:
+          type: string
+      required:
+        - name
   parameters:
     userid:
       name: userID
@@ -52,31 +66,89 @@ components:
         type: string
 
 paths:
+  /login:
+    post:
+      operationId: Login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+              required:
+                - username
+                - password
+      responses:
+        '204':
+          description: Logged a user in.
+
+  /logout:
+    post:
+      operationId: Logout
+      responses:
+        '204':
+          description: Logged a user out.
+  
+
   # When invoking the /user path, the requests are automatically executed on the
   # organisation the executing user belongs to. This is ALWAYS the case, except when creating the
   # first user, which is done behind the scenes when creating a new organisation.
   /user:
     post:
+      operationId: CreateUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/User"
+        required: true
       responses:
         '200':
           description: Created a new user.
     get:
+      operationId: ListUsers
       responses:
         '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
           description: Listed all users.
 
   /user/{userID}:
     parameters:
       - "$ref": "#/components/parameters/userid"
     get:
+      operationId: GetUser
       responses:
         '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
           description: Got a user.
     put:
+      operationId: UpdateUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/User"
       responses:
         '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
           description: Updated a user.
     delete:
+      operationId: DeleteUser
       responses:
         '204':
           description: Deleted a user.
@@ -85,57 +157,114 @@ paths:
     parameters:
       - "$ref": "#/components/parameters/userid"
     put:
+      operationId: UpdateUserGroups
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserGroups"
       responses:
         '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserGroups"
           description: Updated the user's group bindings.
     get:
+      operationId: GetUserGroups
       responses:
         '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserGroups"
           description: Got a user's group bindings.
 
   /user/{userID}/password:
     parameters:
       - "$ref": "#/components/parameters/userid"
     put:
+      operationId: ChangePassword
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+              required:
+                - password
       responses:
         '204':
           description: Changed a user's password.
 
-  /login:
-    post:
-      responses:
-        '204':
-          description: Logged a user in.
-
-  /logout:
-    post:
-      responses:
-        '204':
-          description: Logged a user out.
-  
   # Creating a new organisation will automatically create an admin user.
   /organisation:
     post:
-      responses:
-        '204':
-          description: Created a new organisation.
-    get:
+      operationId: CreateOrganisation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Organisation"
       responses:
         '200':
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Organisation"
+                  - type: object
+                    properties:
+                      adminUser:
+                        type: string
+                      adminPassword:
+                        type: string
+                    required:
+                      - adminUser
+                      - adminPassword
+          description: Created a new organisation.
+    get:
+      operationId: ListOrganisations
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Organisation"
           description: Listed all organisations.
 
   /organisation/{orgID}:
     parameters:
       - "$ref": "#/components/parameters/orgid"
     put:
+      operationId: UpdateOrganisation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Organisation"
       responses:
         '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organisation"
           description: Updated an organisation.
     get:
+      operationId: GetOrganisation
       responses:
         '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organisation"
           description: Got an organisation.
     delete:
+      operationId: DeleteOrganisation
       responses:
         '204':
           description: Deleted an organisation.
@@ -144,12 +273,32 @@ paths:
     parameters:
       - "$ref": "#/components/parameters/orgid"
     post:
+      operationId: CreateGroup
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Group"
       responses:
         '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Group"
           description: Created a group in the organisation.
     get:
+      operationId: ListGroups
       responses:
         '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Group"
+              example:
+                - name: Group 1
+                - name: Group 2
           description: Listed all groups in the organisation.
 
   /organisation/{orgID}/group/{groupID}:
@@ -157,14 +306,30 @@ paths:
       - "$ref": "#/components/parameters/orgid"
       - "$ref": "#/components/parameters/groupid"
     put:
+      operationId: UpdateGroup
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Group"
       responses:
         '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Group"
           description: Updated a group.
     get:
+      operationId: GetGroup
       responses:
         '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Group"
           description: Got a group.
     delete:
+      operationId: DeleteGroup
       responses:
         '204':
           description: Deleted a group.
