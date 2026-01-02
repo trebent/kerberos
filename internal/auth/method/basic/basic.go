@@ -34,6 +34,6 @@ func (a *basic) registerAPI(mux *http.ServeMux) {
 	_ = HandlerFromMuxWithBaseURL(
 		NewStrictHandler(NewSSI(a.db), []StrictMiddlewareFunc{}),
 		mux,
-		"/api/auth",
+		"/api/auth/basic",
 	)
 }

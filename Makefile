@@ -66,10 +66,11 @@ go-build:
 
 run:
 	$(call cecho,Running Kerberos...,$(BOLD_YELLOW))
-	@OTEL_METRICS_EXPORTER=prometheus \
+	OTEL_METRICS_EXPORTER=prometheus \
 		OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
 		LOG_TO_CONSOLE=true \
 		LOG_VERBOSITY=100 \
+		ROUTE_JSON_FILE=./test/routes/echo.json \
 		go run ./cmd/kerberos
 
 docker-build:
@@ -162,6 +163,10 @@ echo-build:
 	$(call cecho,Building Echo binary...,$(BOLD_YELLOW))
 	@CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/echo ./cmd/echo
 	$(call cecho,Echo build complete.,$(BOLD_GREEN))
+
+echo-run:
+	$(call cecho,Running echo...,$(BOLD_YELLOW))
+	OTEL_METRICS_EXPORTER=prometheus OTEL_EXPORTER_PROMETHEUS_PORT=$(ECHO_METRICS_PORT) go run ./cmd/echo
 
 echo-docker-build:
 	$(call cecho,Building Echo Docker image...,$(BOLD_YELLOW))

@@ -129,6 +129,10 @@ func setupConfig() config.Map {
 	}
 
 	routerData, _ := os.ReadFile(env.RouteJSONFile.Value())
+	if len(routerData) == 0 {
+		zerologr.Error(errors.New("missing router data"), "Router data empty")
+		os.Exit(1)
+	}
 	cfg.MustLoad(routerConfigName, routerData)
 
 	// Parse configurations.
