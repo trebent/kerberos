@@ -18,7 +18,11 @@ var _ method.Method = (*basic)(nil)
 
 // New will return an authentication method and register API endpoints with the input serve mux.
 func New(mux *http.ServeMux) method.Method {
-	a := &basic{db: sqlite.New(&sqlite.Opts{DSN: filepath.Join(internalenv.DbDirectory.Value(), "auth.db")})}
+	a := &basic{
+		db: sqlite.New(
+			&sqlite.Opts{DSN: filepath.Join(internalenv.DBDirectory.Value(), "auth.db")},
+		),
+	}
 	a.registerAPI(mux)
 	return a
 }
