@@ -10,6 +10,7 @@ import (
 	composertypes "github.com/trebent/kerberos/internal/composer/types"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/response"
+	"github.com/trebent/zerologr"
 )
 
 type (
@@ -34,7 +35,16 @@ var (
 const expectedPatternMatches = 2
 
 func NewComponent(opts *Opts) composertypes.FlowComponent {
-	return &router{cfg: config.AccessAs[*routerConfig](opts.Cfg, configName)}
+	cfg := config.AccessAs[*routerConfig](opts.Cfg, configName)
+	for _, backend := range cfg.Backends {
+		zerologr.Info(
+			"Configured backend",
+			"backend", backend.Name(),
+			"host", backend.Host(),
+			"port", backend.Port(),
+		)
+	}
+	return &router{cfg: cfg}
 }
 
 // Next implements [types.FlowComponent].

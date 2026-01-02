@@ -2,10 +2,12 @@ package basic
 
 import (
 	"net/http"
+	"path/filepath"
 
 	"github.com/trebent/kerberos/internal/auth/method"
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/kerberos/internal/db/sqlite"
+	internalenv "github.com/trebent/kerberos/internal/env"
 )
 
 type basic struct {
@@ -16,7 +18,7 @@ var _ method.Method = (*basic)(nil)
 
 // New will return an authentication method and register API endpoints with the input serve mux.
 func New(mux *http.ServeMux) method.Method {
-	a := &basic{db: sqlite.New(&sqlite.Opts{DSN: "auth.db"})}
+	a := &basic{db: sqlite.New(&sqlite.Opts{DSN: filepath.Join(internalenv.DbDirectory.Value(), "auth.db")})}
 	a.registerAPI(mux)
 	return a
 }

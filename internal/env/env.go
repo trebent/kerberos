@@ -101,6 +101,13 @@ var (
 		Value:    "",
 		Validate: validateFilePath,
 	})
+
+	DbDirectory = envparser.Register(&envparser.Opts[string]{
+		Name:     "DB_DIRECTORY",
+		Desc:     "Path to the directory where DB files will be stored.",
+		Value:    "",
+		Validate: validateDirPath,
+	})
 )
 
 func Parse() error {

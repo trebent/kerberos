@@ -19,6 +19,14 @@ var validateFilePath = func(path string) error {
 	return nil
 }
 
+var validateDirPath = func(path string) error {
+	_, err := os.ReadDir(path)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 var validatePort = func(v int) error {
 	if v < 1000 || v > 65535 {
 		return fmt.Errorf("must be between 1000 and 65535: %d", v)

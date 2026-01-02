@@ -69,8 +69,12 @@ run:
 	OTEL_METRICS_EXPORTER=prometheus \
 		OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
 		LOG_TO_CONSOLE=true \
-		LOG_VERBOSITY=100 \
-		ROUTE_JSON_FILE=./test/routes/echo.json \
+		LOG_VERBOSITY=10 \
+		ROUTE_JSON_FILE=./test/config/route.json \
+		OBS_JSON_FILE=./test/config/obs.json \
+		AUTH_JSON_FILE=./test/config/auth.json \
+		DB_DIRECTORY=$(PWD)/build \
+		VERSION=$(VERSION) \
 		go run ./cmd/kerberos
 
 docker-build:

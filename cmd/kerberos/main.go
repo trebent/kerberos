@@ -158,17 +158,20 @@ func startServer(ctx context.Context, cfg config.Map) error {
 	// start tracing/metrics/logs
 	// resp = forward(request)
 	// stop tracing/metrics/logs
-	zerologr.Info("Loading router")
 
+	zerologr.Info("Loading observability")
 	observability := obs.NewComponent(&obs.Opts{Cfg: cfg})
+	zerologr.Info("Loading router")
 	router := router.NewComponent(&router.Opts{Cfg: cfg})
 
 	/*
 		TODO: figure out a pretty way of excluding non-configured custom FCs. Check env presence again?
 	*/
+	zerologr.Info("Loading custom")
 	customFlowComponents := make([]composertypes.FlowComponent, 0)
 
 	if env.AuthJSONFile.Value() != "" {
+		zerologr.Info("Loading auth")
 		authorizer := auth.New(&auth.Opts{
 			Cfg: cfg,
 			Mux: mux,
@@ -177,6 +180,7 @@ func startServer(ctx context.Context, cfg config.Map) error {
 	}
 	custom := custom.NewComponent(customFlowComponents...)
 
+	zerologr.Info("Loading forwarder")
 	forwarder := forwarder.NewComponent(
 		&forwarder.Opts{
 			TargetContextKey: composertypes.TargetContextKey,
