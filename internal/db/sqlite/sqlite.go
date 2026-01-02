@@ -35,6 +35,11 @@ func New(opts *Opts) db.SQLClient {
 	return &impl{conn}
 }
 
-func (i *impl) Select() error {
+func (i *impl) ApplySchema(ctx context.Context, bs []byte) error {
+	_, err := i.conn.ExecContext(ctx, string(bs))
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

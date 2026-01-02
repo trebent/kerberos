@@ -1,5 +1,7 @@
 package db
 
+import "context"
+
 type SQLClient interface {
-	Select() error
+	ApplySchema(ctx context.Context, bs []byte) error
 }

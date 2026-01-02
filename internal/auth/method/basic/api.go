@@ -49,10 +49,10 @@ func (i *impl) CreateGroup(
 
 // CreateOrganisation implements [StrictServerInterface].
 func (i *impl) CreateOrganisation(
-	_ context.Context,
-	_ CreateOrganisationRequestObject,
+	ctx context.Context,
+	req CreateOrganisationRequestObject,
 ) (CreateOrganisationResponseObject, error) {
-	panic("unimplemented")
+	panic("")
 }
 
 // CreateUser implements [StrictServerInterface].

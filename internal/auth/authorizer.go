@@ -38,8 +38,9 @@ func New(opts *Opts) composertypes.FlowComponent {
 	authorizer := &authorizer{cfg: cfg}
 
 	if cfg.BasicEnabled() {
-		// If basic auth, populate the mux with http endpoints.
-		authorizer.registerBasicAPI(opts)
+		zerologr.Info("Basic authentication enabled")
+		// If basic auth, create the method.
+		authorizer.basic = basic.New(opts.Mux)
 	}
 
 	return authorizer
@@ -74,8 +75,4 @@ func (a *authorizer) authenticated(_ *http.Request) error {
 func (a *authorizer) authorized(_ *http.Request) error {
 	// TODO: check if the route is protected, check which method is used to protect the route, call the configured auth method.
 	return nil
-}
-
-func (a *authorizer) registerBasicAPI(opts *Opts) {
-	a.basic = basic.New(opts.Mux)
 }

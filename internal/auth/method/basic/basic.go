@@ -1,8 +1,11 @@
 package basic
 
 import (
+	"context"
+	_ "embed"
 	"net/http"
 	"path/filepath"
+	"time"
 
 	"github.com/trebent/kerberos/internal/auth/method"
 	"github.com/trebent/kerberos/internal/db"
@@ -14,17 +17,24 @@ type basic struct {
 	db db.SQLClient
 }
 
-var _ method.Method = (*basic)(nil)
+var (
+	_ method.Method = (*basic)(nil)
+
+	//go:embed dbschema/schema.sql
+	schemaBytes []byte
+)
 
 // New will return an authentication method and register API endpoints with the input serve mux.
 func New(mux *http.ServeMux) method.Method {
-	a := &basic{
+	b := &basic{
 		db: sqlite.New(
 			&sqlite.Opts{DSN: filepath.Join(internalenv.DBDirectory.Value(), "auth.db")},
 		),
 	}
-	a.registerAPI(mux)
-	return a
+
+	b.applySchemas()
+	b.registerAPI(mux)
+	return b
 }
 
 func (a *basic) Authenticated(*http.Request) error {
@@ -42,4 +52,12 @@ func (a *basic) registerAPI(mux *http.ServeMux) {
 		mux,
 		"/api/auth/basic",
 	)
+}
+
+func (a *basic) applySchemas() {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := a.db.ApplySchema(timeoutCtx, schemaBytes); err != nil {
+		panic(err)
+	}
 }
