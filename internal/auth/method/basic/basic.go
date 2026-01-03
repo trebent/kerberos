@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/trebent/kerberos/internal/auth/method"
+	"github.com/trebent/kerberos/internal/auth/method/basic/api"
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/kerberos/internal/db/sqlite"
 	internalenv "github.com/trebent/kerberos/internal/env"
@@ -23,6 +24,8 @@ var (
 	//go:embed dbschema/schema.sql
 	schemaBytes []byte
 )
+
+const schemaApplyTimeout = 10 * time.Second
 
 // New will return an authentication method and register API endpoints with the input serve mux.
 func New(mux *http.ServeMux) method.Method {
@@ -47,17 +50,17 @@ func (a *basic) Authorized(*http.Request) error {
 }
 
 func (a *basic) registerAPI(mux *http.ServeMux) {
-	_ = HandlerFromMuxWithBaseURL(
-		NewStrictHandler(NewSSI(a.db), []StrictMiddlewareFunc{}),
+	_ = api.HandlerFromMuxWithBaseURL(
+		api.NewStrictHandler(api.NewSSI(a.db), []api.StrictMiddlewareFunc{}),
 		mux,
 		"/api/auth/basic",
 	)
 }
 
 func (a *basic) applySchemas() {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), schemaApplyTimeout)
 	defer cancel()
-	if err := a.db.ApplySchema(timeoutCtx, schemaBytes); err != nil {
+	if _, err := a.db.Exec(timeoutCtx, string(schemaBytes)); err != nil {
 		panic(err)
 	}
 }

@@ -3,6 +3,8 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 
 	"github.com/trebent/kerberos/internal/db"
 	// this is how it works.
@@ -13,33 +15,86 @@ type (
 	Opts struct {
 		DSN string
 	}
+	// PRAGMA foreign_keys=ON; needs to be run per connection to enforce FKs.
 	impl struct {
-		conn *sql.DB
+		db *sql.DB
+		tx *sql.Tx
 	}
 )
 
-var _ db.SQLClient = (*impl)(nil)
+var (
+	_ db.SQLClient = (*impl)(nil)
 
-const driver = "sqlite"
+	ErrNoTransaction = errors.New("no transaction")
+)
+
+const (
+	driver = "sqlite"
+
+	queryEnableForeignKeys = "PRAGMA foreign_keys=ON;"
+)
 
 func New(opts *Opts) db.SQLClient {
-	conn, err := sql.Open(driver, opts.DSN)
+	db, err := sql.Open(driver, opts.DSN)
 	if err != nil {
 		panic(err)
 	}
 
-	if err := conn.PingContext(context.Background()); err != nil {
+	// Sqlite does not like concurrency.
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+
+	if err := db.PingContext(context.Background()); err != nil {
 		panic(err)
 	}
 
-	return &impl{conn}
+	return &impl{db: db}
 }
 
-func (i *impl) ApplySchema(ctx context.Context, bs []byte) error {
-	_, err := i.conn.ExecContext(ctx, string(bs))
+func (i *impl) Begin(ctx context.Context) (db.SQLClient, error) {
+	ni := *i
+	tx, err := i.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	_, err = tx.ExecContext(ctx, queryEnableForeignKeys)
+	if err != nil {
+		return nil, err
+	}
+
+	ni.tx = tx
+	return &ni, err
+}
+
+func (i *impl) Exec(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	if i.tx != nil {
+		return i.tx.ExecContext(ctx, query, args...)
+	}
+
+	return i.db.ExecContext(ctx, query, args...)
+}
+
+func (i *impl) Query(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	if i.tx != nil {
+		return i.tx.QueryContext(ctx, query, args...)
+	}
+
+	return i.db.QueryContext(ctx, query, args...)
+}
+
+func (i *impl) Commit() error {
+	if i.tx != nil {
+		return i.tx.Commit()
+	}
+
+	return fmt.Errorf("%w: cannot commit", ErrNoTransaction)
+}
+
+func (i *impl) Rollback() error {
+	if i.tx != nil {
+		return i.tx.Rollback()
+	}
+
+	return fmt.Errorf("%w: cannot rollback", ErrNoTransaction)
 }

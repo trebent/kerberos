@@ -17,6 +17,13 @@ info:
     The basic authentication API provides user group support, allowing for role-based authorization.
 components:
   schemas:
+    GenericErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
     User:
       type: object
       properties:
@@ -42,6 +49,12 @@ components:
           type: string
       required:
         - name
+  headers:
+    sessionid:
+      required: true
+      description: A session ID.
+      schema:
+        type: string
   parameters:
     userid:
       name: userID
@@ -84,7 +97,22 @@ paths:
                 - password
       responses:
         '204':
+          headers:
+            x-krb-session:
+              $ref: "#/components/headers/sessionid"
           description: Logged a user in.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Failed to log a user in.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
 
   /logout:
     post:
@@ -92,6 +120,12 @@ paths:
       responses:
         '204':
           description: Logged a user out.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
   
 
   # When invoking the /user path, the requests are automatically executed on the
@@ -109,6 +143,12 @@ paths:
       responses:
         '200':
           description: Created a new user.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
     get:
       operationId: ListUsers
       responses:
@@ -120,6 +160,12 @@ paths:
                 items:
                   $ref: "#/components/schemas/User"
           description: Listed all users.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
 
   /user/{userID}:
     parameters:
@@ -133,6 +179,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/User"
           description: Got a user.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
     put:
       operationId: UpdateUser
       requestBody:
@@ -147,11 +199,23 @@ paths:
               schema:
                 $ref: "#/components/schemas/User"
           description: Updated a user.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
     delete:
       operationId: DeleteUser
       responses:
         '204':
           description: Deleted a user.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
 
   /user/{userID}/group:
     parameters:
@@ -170,6 +234,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/UserGroups"
           description: Updated the user's group bindings.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
     get:
       operationId: GetUserGroups
       responses:
@@ -179,6 +249,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/UserGroups"
           description: Got a user's group bindings.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
 
   /user/{userID}/password:
     parameters:
@@ -198,6 +274,12 @@ paths:
       responses:
         '204':
           description: Changed a user's password.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
 
   # Creating a new organisation will automatically create an admin user.
   /organisation:
@@ -217,14 +299,20 @@ paths:
                   - $ref: "#/components/schemas/Organisation"
                   - type: object
                     properties:
-                      adminUser:
+                      adminUsername:
                         type: string
                       adminPassword:
                         type: string
                     required:
-                      - adminUser
+                      - adminUsername
                       - adminPassword
           description: Created a new organisation.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
     get:
       operationId: ListOrganisations
       responses:
@@ -236,6 +324,12 @@ paths:
                 items:
                   $ref: "#/components/schemas/Organisation"
           description: Listed all organisations.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
 
   /organisation/{orgID}:
     parameters:
@@ -254,6 +348,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/Organisation"
           description: Updated an organisation.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
     get:
       operationId: GetOrganisation
       responses:
@@ -263,11 +363,23 @@ paths:
               schema:
                 $ref: "#/components/schemas/Organisation"
           description: Got an organisation.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
     delete:
       operationId: DeleteOrganisation
       responses:
         '204':
           description: Deleted an organisation.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
 
   /organisation/{orgID}/group:
     parameters:
@@ -286,6 +398,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/Group"
           description: Created a group in the organisation.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
     get:
       operationId: ListGroups
       responses:
@@ -300,6 +418,12 @@ paths:
                 - name: Group 1
                 - name: Group 2
           description: Listed all groups in the organisation.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
 
   /organisation/{orgID}/group/{groupID}:
     parameters:
@@ -319,6 +443,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/Group"
           description: Updated a group.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
     get:
       operationId: GetGroup
       responses:
@@ -328,9 +458,20 @@ paths:
               schema:
                 $ref: "#/components/schemas/Group"
           description: Got a group.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
     delete:
       operationId: DeleteGroup
       responses:
         '204':
           description: Deleted a group.
-
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.

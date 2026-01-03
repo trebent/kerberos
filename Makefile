@@ -45,7 +45,7 @@ unittest:
 total-coverage:
 	@go tool cover -func=build/coverage.out | awk 'END {print $$3}'
 
-functiontest:
+functest:
 	$(call cecho,Running function tests for Kerberos...,$(BOLD_YELLOW))
 	@cd test/function && go test -v ./... -count=1
 	$(call cecho,Function tests complete.,$(BOLD_GREEN))
@@ -77,12 +77,12 @@ run:
 		VERSION=$(VERSION) \
 		go run ./cmd/kerberos
 
-docker-build:
+d-build:
 	$(call cecho,Building Kerberos Docker image...,$(BOLD_YELLOW))
 	docker build --build-arg VERSION=$(VERSION) -t ghcr.io/trebent/kerberos:$(VERSION) .
 	$(call cecho,Docker image build complete.,$(BOLD_GREEN))
 
-docker-run:
+d-run:
 	$(call cecho,Running Kerberos Docker container...,$(BOLD_YELLOW))
 	docker run -d \
 		-p $(KERBEROS_PORT):$(KERBEROS_PORT) \
@@ -96,20 +96,20 @@ docker-run:
 		ghcr.io/trebent/kerberos:$(VERSION)
 	$(call cecho,Kerberos Docker container is running.,$(BOLD_GREEN))
 
-docker-stop:
+d-stop:
 	$(call cecho,Stopping Kerberos Docker container...,$(BOLD_YELLOW))
 	@docker stop kerberos
 	$(call cecho,Kerberos Docker container has been stopped.,$(BOLD_GREEN))
 
-docker-rm:
+d-rm:
 	$(call cecho,Removing Kerberos Docker container...,$(BOLD_YELLOW))
 	@docker rm kerberos
 	$(call cecho,Kerberos Docker container has been removed.,$(BOLD_GREEN))
 
-docker-logs:
+d-logs:
 	@docker logs -f kerberos
 
-docker-compose-up:
+compose-ft:
 	$(call cecho,Composing Kerberos test environment...,$(BOLD_YELLOW))
 	VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
@@ -121,7 +121,7 @@ docker-compose-up:
 		docker compose -f test/compose/compose.yaml up -d --force-recreate
 	$(call cecho,Kerberos test environment is running.,$(BOLD_GREEN))
 
-docker-compose-logs:
+compose-logs:
 	VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
 		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
@@ -131,7 +131,7 @@ docker-compose-logs:
 		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
 		docker compose -f test/compose/compose.yaml logs kerberos echo
 
-docker-compose-logs-f:
+compose-logs-f:
 	VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
 		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
@@ -141,7 +141,7 @@ docker-compose-logs-f:
 		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
 		docker compose -f test/compose/compose.yaml logs -f kerberos echo
 
-docker-compose-ps:
+compose-ps:
 	VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
 		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
@@ -151,7 +151,7 @@ docker-compose-ps:
 		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
 		docker compose -f test/compose/compose.yaml ps
 
-docker-compose-down:
+compose-down:
 	$(call cecho,Tearing down Kerberos test environment...,$(BOLD_YELLOW))
 	VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
@@ -172,12 +172,12 @@ echo-run:
 	$(call cecho,Running echo...,$(BOLD_YELLOW))
 	OTEL_METRICS_EXPORTER=prometheus OTEL_EXPORTER_PROMETHEUS_PORT=$(ECHO_METRICS_PORT) go run ./cmd/echo
 
-echo-docker-build:
+echo-d-build:
 	$(call cecho,Building Echo Docker image...,$(BOLD_YELLOW))
 	@docker build --build-arg VERSION=$(VERSION) -f cmd/echo/Dockerfile -t ghcr.io/trebent/kerberos/echo:$(VERSION) .
 	$(call cecho,Echo Docker image build complete.,$(BOLD_GREEN))
 
-echo-docker-run:
+echo-d-run:
 	$(call cecho,Running Echo Docker container...,$(BOLD_YELLOW))
 	docker run -d \ 
 		-p $(ECHO_PORT):$(ECHO_PORT) \
