@@ -138,6 +138,7 @@ func (i *impl) CreateOrganisation(
 			Message: "Internal error.",
 		}, nil
 	}
+	//nolint:errcheck // no reason to
 	defer tx.Rollback() // Just in case
 
 	// Create an organisation.
