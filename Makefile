@@ -29,13 +29,23 @@ lint:
 	@golangci-lint run --fix
 	$(call cecho,Linter complete.,$(BOLD_GREEN))
 
+codegen:
+	$(call cecho,Running codegen for Kerberos...,$(BOLD_YELLOW))
+	@go generate ./...
+	$(call cecho,Codegen complete.,$(BOLD_GREEN))
+
 unittest:
 	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
-	@go test -v ./... -coverprofile=coverage.out
-	@go tool cover -html=coverage.out -o coverage.html
+	@mkdir -p build
+	@go test -v ./... -coverprofile=build/coverage.out
+	@go tool cover -html=build/coverage.out -o build/coverage.html
+	@go tool cover -func=build/coverage.out
 	$(call cecho,Unit tests complete.,$(BOLD_GREEN))
 
-functiontest:
+total-coverage:
+	@go tool cover -func=build/coverage.out | awk 'END {print $$3}'
+
+functest:
 	$(call cecho,Running function tests for Kerberos...,$(BOLD_YELLOW))
 	@cd test/function && go test -v ./... -count=1
 	$(call cecho,Function tests complete.,$(BOLD_GREEN))
@@ -50,23 +60,29 @@ staticcheck: lint unittest vulncheck
 
 go-build:
 	$(call cecho,Building Kerberos binary...,$(BOLD_YELLOW))
+	@mkdir -p build
 	CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/kerberos ./cmd/kerberos
 	$(call cecho,Build complete.,$(BOLD_GREEN))
 
 run:
 	$(call cecho,Running Kerberos...,$(BOLD_YELLOW))
-	@OTEL_METRICS_EXPORTER=prometheus \
+	OTEL_METRICS_EXPORTER=prometheus \
 		OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
 		LOG_TO_CONSOLE=true \
-		LOG_VERBOSITY=100 \
+		LOG_VERBOSITY=10 \
+		ROUTE_JSON_FILE=./test/config/route.json \
+		OBS_JSON_FILE=./test/config/obs.json \
+		AUTH_JSON_FILE=./test/config/auth.json \
+		DB_DIRECTORY=$(PWD)/build \
+		VERSION=$(VERSION) \
 		go run ./cmd/kerberos
 
-docker-build:
+d-build:
 	$(call cecho,Building Kerberos Docker image...,$(BOLD_YELLOW))
 	docker build --build-arg VERSION=$(VERSION) -t ghcr.io/trebent/kerberos:$(VERSION) .
 	$(call cecho,Docker image build complete.,$(BOLD_GREEN))
 
-docker-run:
+d-run:
 	$(call cecho,Running Kerberos Docker container...,$(BOLD_YELLOW))
 	docker run -d \
 		-p $(KERBEROS_PORT):$(KERBEROS_PORT) \
@@ -80,20 +96,20 @@ docker-run:
 		ghcr.io/trebent/kerberos:$(VERSION)
 	$(call cecho,Kerberos Docker container is running.,$(BOLD_GREEN))
 
-docker-stop:
+d-stop:
 	$(call cecho,Stopping Kerberos Docker container...,$(BOLD_YELLOW))
 	@docker stop kerberos
 	$(call cecho,Kerberos Docker container has been stopped.,$(BOLD_GREEN))
 
-docker-rm:
+d-rm:
 	$(call cecho,Removing Kerberos Docker container...,$(BOLD_YELLOW))
 	@docker rm kerberos
 	$(call cecho,Kerberos Docker container has been removed.,$(BOLD_GREEN))
 
-docker-logs:
+d-logs:
 	@docker logs -f kerberos
 
-docker-compose-up:
+compose-ft:
 	$(call cecho,Composing Kerberos test environment...,$(BOLD_YELLOW))
 	VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
@@ -105,7 +121,7 @@ docker-compose-up:
 		docker compose -f test/compose/compose.yaml up -d --force-recreate
 	$(call cecho,Kerberos test environment is running.,$(BOLD_GREEN))
 
-docker-compose-logs:
+compose-logs:
 	VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
 		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
@@ -115,7 +131,7 @@ docker-compose-logs:
 		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
 		docker compose -f test/compose/compose.yaml logs kerberos echo
 
-docker-compose-logs-f:
+compose-logs-f:
 	VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
 		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
@@ -125,7 +141,7 @@ docker-compose-logs-f:
 		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
 		docker compose -f test/compose/compose.yaml logs -f kerberos echo
 
-docker-compose-ps:
+compose-ps:
 	VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
 		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
@@ -135,7 +151,7 @@ docker-compose-ps:
 		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
 		docker compose -f test/compose/compose.yaml ps
 
-docker-compose-down:
+compose-ft-down:
 	$(call cecho,Tearing down Kerberos test environment...,$(BOLD_YELLOW))
 	VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
@@ -152,12 +168,16 @@ echo-build:
 	@CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/echo ./cmd/echo
 	$(call cecho,Echo build complete.,$(BOLD_GREEN))
 
-echo-docker-build:
+echo-run:
+	$(call cecho,Running echo...,$(BOLD_YELLOW))
+	OTEL_METRICS_EXPORTER=prometheus OTEL_EXPORTER_PROMETHEUS_PORT=$(ECHO_METRICS_PORT) go run ./cmd/echo
+
+echo-d-build:
 	$(call cecho,Building Echo Docker image...,$(BOLD_YELLOW))
 	@docker build --build-arg VERSION=$(VERSION) -f cmd/echo/Dockerfile -t ghcr.io/trebent/kerberos/echo:$(VERSION) .
 	$(call cecho,Echo Docker image build complete.,$(BOLD_GREEN))
 
-echo-docker-run:
+echo-d-run:
 	$(call cecho,Running Echo Docker container...,$(BOLD_YELLOW))
 	docker run -d \ 
 		-p $(ECHO_PORT):$(ECHO_PORT) \

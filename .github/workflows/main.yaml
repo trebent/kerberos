@@ -34,3 +34,5 @@ jobs:
   test:
     uses: ./.github/workflows/callable-test.yaml
     secrets: inherit
+    with:
+      functional: true

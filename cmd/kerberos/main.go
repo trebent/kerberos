@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/trebent/envparser"
+	"github.com/trebent/kerberos/internal/auth"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/composer/custom"
 	"github.com/trebent/kerberos/internal/composer/forwarder"
@@ -103,12 +104,15 @@ func setupConfig() config.Map {
 		err              error
 		obsConfigName    string
 		routerConfigName string
+		authConfigName   string
 	)
 
 	// Register all configurations.
 	obsConfigName, err = obs.RegisterWith(cfg)
 	must(err)
 	routerConfigName, err = router.RegisterWith(cfg)
+	must(err)
+	authConfigName, err = auth.RegisterWith(cfg)
 	must(err)
 
 	// Load all input configuration data.
@@ -118,7 +122,17 @@ func setupConfig() config.Map {
 		cfg.MustLoad(obsConfigName, obsData)
 	}
 
+	if env.AuthJSONFile.Value() != "" {
+		zerologr.Info("Auth configuration detected, loading")
+		authData, _ := os.ReadFile(env.AuthJSONFile.Value())
+		cfg.MustLoad(authConfigName, authData)
+	}
+
 	routerData, _ := os.ReadFile(env.RouteJSONFile.Value())
+	if len(routerData) == 0 {
+		zerologr.Error(errors.New("missing router data"), "Router data empty")
+		os.Exit(1)
+	}
 	cfg.MustLoad(routerConfigName, routerData)
 
 	// Parse configurations.
@@ -144,11 +158,29 @@ func startServer(ctx context.Context, cfg config.Map) error {
 	// start tracing/metrics/logs
 	// resp = forward(request)
 	// stop tracing/metrics/logs
-	zerologr.Info("Loading router")
 
+	zerologr.Info("Loading observability")
 	observability := obs.NewComponent(&obs.Opts{Cfg: cfg})
+	zerologr.Info("Loading router")
 	router := router.NewComponent(&router.Opts{Cfg: cfg})
-	custom := custom.NewComponent()
+
+	/*
+		TODO: figure out a pretty way of excluding non-configured custom FCs. Check env presence again?
+	*/
+	zerologr.Info("Loading custom")
+	customFlowComponents := make([]composertypes.FlowComponent, 0)
+
+	if env.AuthJSONFile.Value() != "" {
+		zerologr.Info("Loading auth")
+		authorizer := auth.New(&auth.Opts{
+			Cfg: cfg,
+			Mux: mux,
+		})
+		customFlowComponents = append(customFlowComponents, authorizer)
+	}
+	custom := custom.NewComponent(customFlowComponents...)
+
+	zerologr.Info("Loading forwarder")
 	forwarder := forwarder.NewComponent(
 		&forwarder.Opts{
 			TargetContextKey: composertypes.TargetContextKey,

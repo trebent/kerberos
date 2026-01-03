@@ -8,7 +8,8 @@ import (
 )
 
 type obsConfig struct {
-	Enabled bool `json:"enabled"`
+	Enabled        bool `json:"enabled"`
+	RuntimeMetrics bool `json:"runtimeMetrics"`
 }
 
 const configName = "observability"
@@ -30,6 +31,9 @@ func (o *obsConfig) Schema() *gojsonschema.Schema {
 }
 
 func RegisterWith(cfg config.Map) (string, error) {
-	cfg.Register(configName, &obsConfig{Enabled: true})
+	cfg.Register(configName, &obsConfig{
+		Enabled:        true,
+		RuntimeMetrics: true,
+	})
 	return configName, nil
 }

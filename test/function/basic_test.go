@@ -115,11 +115,23 @@ func TestNoBackend(t *testing.T) {
 	t.Parallel()
 
 	testData := "{\"test\": \"value\"}"
-	urlSegment := "/idontexist"
+	urlSegment := "/idontexist/"
 	url := fmt.Sprintf("http://localhost:%d/gw/backend%s", port, urlSegment)
+	t.Logf("Sending to non-existent backend url %s", url)
 	response := post(url, []byte(testData), t)
 
 	_ = verifyResponse(response, http.StatusNotFound, t)
+}
+
+func TestBackendFormat(t *testing.T) {
+	t.Parallel()
+
+	testData := "{\"test\": \"value\"}"
+	url := fmt.Sprintf("http://localhost:%d/gw/back", port)
+	t.Logf("Sending to funky url %s", url)
+	response := post(url, []byte(testData), t)
+
+	_ = verifyResponse(response, http.StatusBadRequest, t)
 }
 
 func verifyResponse(resp *http.Response, expectedCode int, t *testing.T) *EchoResponse {

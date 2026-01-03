@@ -57,11 +57,18 @@ var (
 )
 
 func NewComponent(opts *Opts) composertypes.FlowComponent {
+	cfg := config.AccessAs[*obsConfig](opts.Cfg, configName)
+
+	if !cfg.Enabled {
+		zerologr.Info("Observability has been disabled")
+		return &composertypes.Dummy{}
+	}
+
 	o := &obs{
 		spanOpts: []trace.SpanStartOption{
 			trace.WithSpanKind(trace.SpanKindServer),
 		},
-		cfg: config.AccessAs[*obsConfig](opts.Cfg, configName),
+		cfg: cfg,
 	}
 
 	o.logger = zerologr.WithName("request")
