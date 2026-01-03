@@ -151,7 +151,7 @@ compose-ps:
 		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
 		docker compose -f test/compose/compose.yaml ps
 
-compose-down:
+compose-ft-down:
 	$(call cecho,Tearing down Kerberos test environment...,$(BOLD_YELLOW))
 	VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \

@@ -44,12 +44,12 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Run Kerberos test environment
-        run: make docker-compose-up
+        run: make compose-ft
       - name: Run functional tests
-        run: make functiontest
+        run: make functest
       - name: Output logs if tests fail
         if: failure()
-        run: make docker-compose-logs
+        run: make compose-logs
       - name: Tear down Kerberos test environment
         if: always()
-        run: make docker-compose-down
+        run: make compose-ft-down

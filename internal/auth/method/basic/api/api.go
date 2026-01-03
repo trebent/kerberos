@@ -138,6 +138,7 @@ func (i *impl) CreateOrganisation(
 			Message: "Internal error.",
 		}, nil
 	}
+	defer tx.Rollback() // Just in case
 
 	// Create an organisation.
 	res, err := tx.Exec(ctx, queryCreateOrg, sql.NamedArg{Name: "name", Value: req.Body.Name})
@@ -172,7 +173,6 @@ func (i *impl) CreateOrganisation(
 
 	err = tx.Commit()
 	if err != nil {
-		_ = tx.Rollback() // Just in case
 		zerologr.Error(err, "Failed to commit transaction")
 		return CreateOrganisation500JSONResponse{
 			Message: "Internal error.",
