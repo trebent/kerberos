@@ -18,9 +18,12 @@ services:
       - OTEL_EXPORTER_PROMETHEUS_PORT=${KERBEROS_METRICS_PORT}
       - PORT=${KERBEROS_PORT}
       - TEST_ENDPOINT=1
+      - VERSION=${VERSION}
       - ROUTE_JSON_FILE=/echo.json
+      - AUTH_JSON_FILE=/auth.json
     volumes:
-      - ./routes/echo.json:/echo.json
+      - ../config/compose-echo.json:/echo.json
+      - ../config/auth.json:/auth.json
   
   echo:
     image: "ghcr.io/trebent/kerberos/echo:${VERSION}"

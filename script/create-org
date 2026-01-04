@@ -1,14 +1,18 @@
 #! /bin/bash
 
+set -e
+
 if [ -z $1 ]; then
   echo "no org identifier given"
   exit 1
 fi
 
-org=$(curl localhost:30000/api/auth/basic/organisations \
+echo "Running organisation creation..."
+org=$(curl http://localhost:30000/api/auth/basic/organisations \
   -X POST \
   -H "Content-Type: application/json" \
   --data "{\"name\": \"Corp $1\"}")
+echo "Created org:"
 echo $org
 
 orgid=$(echo $org | jq -r .id)
