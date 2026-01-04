@@ -77,6 +77,13 @@ components:
       description: A group ID.
       schema:
         type: string
+    sessionid:
+      name: X-KRB-Session
+      in: header
+      required: true
+      description: A session ID.
+      schema:
+        type: string
 
 paths:
   /login:
@@ -101,7 +108,7 @@ paths:
             x-krb-session:
               $ref: "#/components/headers/sessionid"
           description: Logged a user in.
-        '403':
+        '401':
           content:
             application/json:
               schema:
@@ -117,6 +124,8 @@ paths:
   /logout:
     post:
       operationId: Logout
+      parameters:
+        - $ref: "#/components/parameters/sessionid"
       responses:
         '204':
           description: Logged a user out.

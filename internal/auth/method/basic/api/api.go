@@ -28,8 +28,10 @@ var (
 	// queryCreateGroup = "INSERT INTO groups (name, organisation) VALUES(@name, @orgID);".
 	queryCreateUser = "INSERT INTO users (name, salt, hashed_password, organisation, administrator) VALUES(@name, @salt, @hashed_password, @orgID, @isAdmin);"
 
-	queryLoginLookup   = "SELECT id, name, salt, hashed_password, organisation FROM users WHERE name = @username;"
-	queryCreateSession = "INSERT INTO sessions (user_id, session_id, expires) VALUES(@userID, @session, @expires);"
+	queryLoginLookup        = "SELECT id, name, salt, hashed_password, organisation FROM users WHERE name = @username;"
+	queryCreateSession      = "INSERT INTO sessions (user_id, session_id, expires) VALUES(@userID, @session, @expires);"
+	quertGetSession         = "SELECT user_id, session_id, expires FROM sessions WHERE session_id = @sessionID;"
+	queryDeleteUserSessions = "DELETE FROM sessions WHERE user_id = @userID;"
 )
 
 const sessionExpiry = 15 * time.Minute
@@ -55,7 +57,7 @@ func (i *impl) Login(ctx context.Context, req LoginRequestObject) (LoginResponse
 			zerologr.Error(err, "Failed to prepare rows for scanning")
 		}
 
-		return Login403JSONResponse{Message: "Login failed."}, nil
+		return Login401JSONResponse{Message: "Login failed."}, nil
 	}
 
 	id := 0
@@ -78,7 +80,7 @@ func (i *impl) Login(ctx context.Context, req LoginRequestObject) (LoginResponse
 	inputHashed := hex.EncodeToString(hash.Sum(nil))
 
 	if inputHashed != storedHashed {
-		return Login403JSONResponse{Message: "Login failed."}, nil
+		return Login401JSONResponse{Message: "Login failed."}, nil
 	}
 	zerologr.V(10).Info("User has logged in successfully", "username", req.Body.Username)
 
@@ -104,10 +106,49 @@ func (i *impl) Login(ctx context.Context, req LoginRequestObject) (LoginResponse
 
 // Logout implements [StrictServerInterface].
 func (i *impl) Logout(
-	_ context.Context,
-	_ LogoutRequestObject,
+	ctx context.Context,
+	req LogoutRequestObject,
 ) (LogoutResponseObject, error) {
-	panic("unimplemented")
+	rows, err := i.db.Query(
+		ctx,
+		quertGetSession,
+		sql.NamedArg{Name: "sessionID", Value: req.Params.XKRBSession},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to query session")
+		return Logout500JSONResponse{Message: "Internal error."}, nil
+	}
+
+	if !rows.Next() {
+		if err := rows.Err(); err != nil {
+			zerologr.Error(err, "Failed to prepare rows for scanning")
+			return Logout500JSONResponse{Message: "Internal error."}, nil
+		}
+
+		zerologr.Info("Logout not possible since no session exists")
+		return Logout204Response{}, nil
+	}
+
+	userID := 0
+	err = rows.Scan(&userID, new(string), new(int64))
+	//nolint:sqlclosecheck // won't help here
+	_ = rows.Close()
+	if err != nil {
+		zerologr.Error(err, "Failed to scan row")
+		return Logout500JSONResponse{Message: "Internal error."}, nil
+	}
+	zerologr.V(10).Info("Clearing user sessions", "user_id", userID)
+
+	if _, err := i.db.Exec(
+		ctx,
+		queryDeleteUserSessions,
+		sql.NamedArg{Name: "userID", Value: userID},
+	); err != nil {
+		zerologr.Error(err, "Failed to clear user sessions")
+		return Logout500JSONResponse{Message: "Internal error."}, nil
+	}
+
+	return Logout204Response{}, nil
 }
 
 // ChangePassword implements [StrictServerInterface].

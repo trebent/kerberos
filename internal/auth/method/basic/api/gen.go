@@ -51,6 +51,9 @@ type Groupid = string
 // Orgid defines model for orgid.
 type Orgid = string
 
+// Sessionid defines model for sessionid.
+type Sessionid = string
+
 // Userid defines model for userid.
 type Userid = string
 
@@ -58,6 +61,12 @@ type Userid = string
 type LoginJSONBody struct {
 	Password string `json:"password"`
 	Username string `json:"username"`
+}
+
+// LogoutParams defines parameters for Logout.
+type LogoutParams struct {
+	// XKRBSession A session ID.
+	XKRBSession Sessionid `json:"X-KRB-Session"`
 }
 
 // ChangePasswordJSONBody defines parameters for ChangePassword.
@@ -99,7 +108,7 @@ type ServerInterface interface {
 	Login(w http.ResponseWriter, r *http.Request)
 
 	// (POST /logout)
-	Logout(w http.ResponseWriter, r *http.Request)
+	Logout(w http.ResponseWriter, r *http.Request, params LogoutParams)
 
 	// (GET /organisation)
 	ListOrganisations(w http.ResponseWriter, r *http.Request)
@@ -182,8 +191,38 @@ func (siw *ServerInterfaceWrapper) Login(w http.ResponseWriter, r *http.Request)
 // Logout operation middleware
 func (siw *ServerInterfaceWrapper) Logout(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params LogoutParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-KRB-Session" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-KRB-Session")]; found {
+		var XKRBSession Sessionid
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-KRB-Session", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-KRB-Session", valueList[0], &XKRBSession, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-KRB-Session", Err: err})
+			return
+		}
+
+		params.XKRBSession = XKRBSession
+
+	} else {
+		err := fmt.Errorf("Header parameter X-KRB-Session is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-KRB-Session", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.Logout(w, r)
+		siw.Handler.Logout(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -792,11 +831,11 @@ func (response Login204Response) VisitLoginResponse(w http.ResponseWriter) error
 	return nil
 }
 
-type Login403JSONResponse GenericErrorResponse
+type Login401JSONResponse GenericErrorResponse
 
-func (response Login403JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
+func (response Login401JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
+	w.WriteHeader(401)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -811,6 +850,7 @@ func (response Login500JSONResponse) VisitLoginResponse(w http.ResponseWriter) e
 }
 
 type LogoutRequestObject struct {
+	Params LogoutParams
 }
 
 type LogoutResponseObject interface {
@@ -1433,8 +1473,10 @@ func (sh *strictHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 // Logout operation middleware
-func (sh *strictHandler) Logout(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) Logout(w http.ResponseWriter, r *http.Request, params LogoutParams) {
 	var request LogoutRequestObject
+
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.Logout(ctx, request.(LogoutRequestObject))
@@ -1978,29 +2020,29 @@ func (sh *strictHandler) ChangePassword(w http.ResponseWriter, r *http.Request, 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+RZS4/bNhD+KwRboBfFdh69+JZHu1g0QIIiOcU50NJYYiJxWA61jrvQfy9IypZlyw/t",
-	"xhttetq1OJrhvL6PQ93yGAuNCpQlPr3lGYgEjP+XgEiikon7kQDFRmorUfEpf8nqRXb9ZsQjbuCfUhpI",
-	"+NSaEiJOcQaFcO/ZlQY+5WSNVCmvqiriWhhRgK2tpAZL3W3DL9UWpHukhc14xJUonE6/fP2ml/mIo0k7",
-	"rSmGJhVKkrCNXx1W0aS9bZYEpttFt3LYllvtaaxaL/rgXoECI+M/jEHzN5BGReCea4MajJXgpQogEil0",
-	"770x/Wkj+DlaC+L8C8SWVxG/ctnY1x08OaXYS3VpfbeVk++u/COBuYhSHwuvTFooqEPb5kVhjFiFvEm1",
-	"wP0a+ZAB+wvMHAwSmwuSMROlzUBZGYdSffn+mmmDNzIBYlRqjcayBRpWCCVSqdJQZSKOsVSWotBXFM2U",
-	"UEmr6mk0UzO1HXNaa24p9vokYe5lRqyuY+l7yP2MhVJonUkgYs4xU3jZmdIGLcQWEjZfBfFXI9ZtcmPB",
-	"iQoijKWwzh8CSwwX3iqxpbQZE2qmWg3sAmRXEbMZMCtMCpbNRfwVVMKWMs+ZgRjkDTChtvfHIIcClGUa",
-	"pfK2sLRsppaZjLM2Qgjm6gHIsqUgVogEXGxG7EMmiRVgM0zcHhsnUOUrtkTzlZhcbHI6U5L8Jv2yRiI5",
-	"z4E5IGAWmQERZ11OEJgbGUPE0PjlLidmyrs6h0avRUYaceEz7WrrdEn53AYsrosgYiLPcenC48rBYA5P",
-	"5oIg8XrQyH9DYcwUj7iVNneVfrKIHQjegKFQ95PR09HENQpqUEJLPuXPR5PRCx55kPRNNc4xlQEXkKz7",
-	"6xrZK7xO+JS/9cuhcYHsK0xWTihGZUF5eaF1Xm9h/IUCxjTg2gYGLYiWaJLOdnZBOg85NpJRo3EfSKrw",
-	"WoBsb/7Z5MU+OrzFNHVhXzegi+EWhX978tXMn9Rc7R78amDBp/yXccP641p+3PC9N/5i8rxXsLpU11Q0",
-	"7uQhb6Xtzp9C5pC4Is0x3faqivjvk8mD7+daWZesnIGTHNVpcWWHpT1ad269fwKxtEPzFXcYOIUuhyXZ",
-	"Fobv+97PoQ1vHvOsdTjopNSdWEtyvCPyfIf1BhTy6EBJvTYgLLQ8vjuunR/ULhjqFyeR5+8WfPqpVyp3",
-	"oVckhVTvj+Gvl/h4Ngi3xaMdA/tw/LkjeyElrncVLFsVNeQeHt/6CaYKUJSDhf1ie+Of7xXbKSwLryXu",
-	"SDXUaETd+HUF9ri3k4v11+6mr9y5ecgB3B7fD3R1IzIO43b1OeK67Aj8R508Tli7T4qD04Puk0OoMU7X",
-	"Y/7Bc0A9/N4pvvBNFNpNC5/Wc3i4V2BPPSm0Hj3zVdXzyBBuKfqdFcK47KZbP6b9fI155MAR4nWZlqxz",
-	"cdle3Bg5zN5htB14eo835Pi2vgw9g9ablJ7N5yFEj4PHD7j3ABXlmXuIoboTMEQnBdc39yfI/eeFkA2P",
-	"Dy/pDi7K+nr7IFO7+edhJnV/096Pdf3d7uOZzL2HlynyELz2BGtNCQdq/tiQ6oI6xDId34ZPXWfQ1ybQ",
-	"57PX0Lw+TF7dzk0uUEpd1DW8OPVjrvoz6wk+eoBOrX5AChsyGnyTnxgi6z64zxx5fihrK0d74jeqZ4S5",
-	"VIlUKf0/mmQrAZdplSb21Q/L8rpt3Ow3+Fzvd9L2N8nvWwevM6FS2FyJP8BH1J0r+vt/HA0uJE0Xr1UO",
-	"KqdV9V8AAAD//wsa66yEJQAA",
+	"H4sIAAAAAAAC/+RZTY/bNhP+KwTfF+hFaztpevEtH+1ikQAJ0gQoEOdAS2OJiUSyHGodd6H/XgwpW5Yt",
+	"fyiJN9r0tGtxNMP5eh4OdcdjXRitQDnk0zuegUjA+n8REKVWMqEfCWBspXFSKz7lT1m9yG5ejHjELfxd",
+	"SgsJnzpbQsQxzqAQ9J5bGeBTjs5KlfKqqiJuhBUFuNpKanVpum34pdqCpEdGuIxHXImCdPrlmxe9zEdc",
+	"27TTmmLapkJJFK7xq8Oqtmlvmz0i6S2GJDQ2/7p6+fbZ1Z9BsKftEsF2G6aVw37Sak9Hq/WiT+w1KLAy",
+	"/t1abd8CGq0Q6Lmx2oB1ErxUAYgihe69N6Y/bAQ/RmtBPf8EseNVxK+pEvZ1B09OKfZSXVpfb9XDd1f+",
+	"HsFeRKmPhVcmHRTYoW3zorBWrELepFro/Rp5lwF7CXYOViObC5QxE6XLQDkZhzZ5+uaGGatvZQLIsDRG",
+	"W8cW2rJCKJFKlYYqE3GsS+UwCj2N0UwJlbQ6DkczNVPbMce15pZir0+izr3MiNV1LH3/0s9YKKUdmQRE",
+	"Ro7ZwsvOlLHaQewgYfNVEH82Yt0mNxZIVCDqWApH/iA4ZHrhrSJbSpcxoWaqBR4UILeKmMuAOWFTcGwu",
+	"4s+gEraUec4sxCBvgQm1vT8GORSgHDNaKm9Ll47N1DKTcdZGJ8GoHgAdWwpkhUiAYjNi7zKJrACX6YT2",
+	"2DihVb5iS20/I5OLTU5nSqLfpF82GlHOc2AEBMxpZkHEWZcTCPZWxhAxbf1ylxMz5V2dQ6PXaYZG64XP",
+	"NNXW6ZLyuQ08UBdBxESe6yWFh8rB6hyu5gIh8Xq0lf+EwpgRUDrpcqr0k0VMIHgLFkPdT0aPRhNqFG1A",
+	"CSP5lP86moye8MiDpG+qca5TGXBBo6O/1Mhe4U3Cp/yVXw6NC+ie6WRFQrFWDpSXF8bk9RbGnzBgTAOu",
+	"bWAwAnGpbdLZzhSk85BjIxk1GveBpAqvBcj25h9PnuyjwyudphT2dQNSDLeOD1+uPtv5Vc1u9OD/FhZ8",
+	"yv83bk4c41p+3DCkN/5k8qhXsLpU11Q07uQhb6Xtzh9C5pBQkeY63faqivhvk8m97+dGOUpWzoAkR3Va",
+	"qOx06Y7WHa23j1kfurfUiGwn4GP/5OvSDS1Oeoe9U+gKlkTXwn++53s/hzace8yz1sGik453Yi2ROEvk",
+	"+Q5jDijk0YFyfG5BOGh5/PWYeH5QuyCsX5xEnr9eHOycA6nchW2RFFK9OYbdXuL92QDeFo92DOxD+ceO",
+	"7IWUUO8qWLYqasg9PL7zk1cVoCgHB/vF9sI/3yu2U1gWXkvoODbUaETd+HUN7ri3k4v11+6mr+nMPeQA",
+	"9uPDcE1AXGjKjsC/N8nDhLVvSXFwetB9cgg1xun6iuDgOaAenL8qvvBFFIYmjQ/rGT7cSbBHnhRajx77",
+	"qup5ZAg3HP3OCmHUpsnYj3g/X2MeOXCEeF2mJetcXLYXN0YOs3cYiwee3uMNOb6rL3HPoPUmpWfzeQjR",
+	"w+DxA+7dQ0V55h5iqL4KGKKTgusvDifI/eeFkA2PDy/pBBdlfTV+kKlp/rmfSd3f0vdjXX8v/HAmc+/h",
+	"ZYo8BK89wTpbwoGaPzakUlCHWKbju/CZ7Az62gT6fPYamteHyavbuckFSqmLuoYXp37MVX+iPcFH99Cp",
+	"1Q9IYUNGg2/yE0Nk3QffMkeeH8raytGe+AXrGWEuVSJViv+NJtlKwGVapYl99cOyvG4bmv0Gn+v9Ttr+",
+	"nvl96+B5JlQKmyvxe/gAu3NF/+0fVoMLSdPFa5WDymlV/RsAAP//p3hWCDwmAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
