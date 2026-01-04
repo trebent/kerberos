@@ -22,6 +22,13 @@ import (
 	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
 )
 
+// CreateUserRequest defines model for CreateUserRequest.
+type CreateUserRequest struct {
+	Id       *int64 `json:"id,omitempty"`
+	Name     string `json:"name"`
+	Password string `json:"password"`
+}
+
 // GenericErrorResponse defines model for GenericErrorResponse.
 type GenericErrorResponse struct {
 	Message string `json:"message"`
@@ -29,9 +36,8 @@ type GenericErrorResponse struct {
 
 // Group defines model for Group.
 type Group struct {
-	Id           *int64 `json:"id,omitempty"`
-	Name         string `json:"name"`
-	Organisation *int64 `json:"organisation,omitempty"`
+	Id   *int64 `json:"id,omitempty"`
+	Name string `json:"name"`
 }
 
 // Organisation defines model for Organisation.
@@ -42,9 +48,8 @@ type Organisation struct {
 
 // User defines model for User.
 type User struct {
-	Id           *int64 `json:"id,omitempty"`
-	Name         string `json:"name"`
-	Organisation *int64 `json:"organisation,omitempty"`
+	Id   *int64 `json:"id,omitempty"`
+	Name string `json:"name"`
 }
 
 // UserGroups defines model for UserGroups.
@@ -102,7 +107,7 @@ type CreateGroupJSONRequestBody = Group
 type UpdateGroupJSONRequestBody = Group
 
 // CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
-type CreateUserJSONRequestBody = User
+type CreateUserJSONRequestBody = CreateUserRequest
 
 // UpdateUserJSONRequestBody defines body for UpdateUser for application/json ContentType.
 type UpdateUserJSONRequestBody = User
@@ -987,6 +992,14 @@ func (response DeleteOrganisation204Response) VisitDeleteOrganisationResponse(w 
 	return nil
 }
 
+type DeleteOrganisation404Response struct {
+}
+
+func (response DeleteOrganisation404Response) VisitDeleteOrganisationResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
 type DeleteOrganisation500JSONResponse GenericErrorResponse
 
 func (response DeleteOrganisation500JSONResponse) VisitDeleteOrganisationResponse(w http.ResponseWriter) error {
@@ -1011,6 +1024,14 @@ func (response GetOrganisation200JSONResponse) VisitGetOrganisationResponse(w ht
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
+}
+
+type GetOrganisation404Response struct {
+}
+
+func (response GetOrganisation404Response) VisitGetOrganisationResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
 }
 
 type GetOrganisation500JSONResponse GenericErrorResponse
@@ -1038,6 +1059,14 @@ func (response UpdateOrganisation200JSONResponse) VisitUpdateOrganisationRespons
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateOrganisation404Response struct {
+}
+
+func (response UpdateOrganisation404Response) VisitUpdateOrganisationResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
 }
 
 type UpdateOrganisation500JSONResponse GenericErrorResponse
@@ -1128,6 +1157,14 @@ func (response DeleteGroup204Response) VisitDeleteGroupResponse(w http.ResponseW
 	return nil
 }
 
+type DeleteGroup404Response struct {
+}
+
+func (response DeleteGroup404Response) VisitDeleteGroupResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
 type DeleteGroup500JSONResponse GenericErrorResponse
 
 func (response DeleteGroup500JSONResponse) VisitDeleteGroupResponse(w http.ResponseWriter) error {
@@ -1153,6 +1190,14 @@ func (response GetGroup200JSONResponse) VisitGetGroupResponse(w http.ResponseWri
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
+}
+
+type GetGroup404Response struct {
+}
+
+func (response GetGroup404Response) VisitGetGroupResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
 }
 
 type GetGroup500JSONResponse GenericErrorResponse
@@ -1181,6 +1226,14 @@ func (response UpdateGroup200JSONResponse) VisitUpdateGroupResponse(w http.Respo
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateGroup404Response struct {
+}
+
+func (response UpdateGroup404Response) VisitUpdateGroupResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
 }
 
 type UpdateGroup500JSONResponse GenericErrorResponse
@@ -1259,6 +1312,14 @@ func (response DeleteUser204Response) VisitDeleteUserResponse(w http.ResponseWri
 	return nil
 }
 
+type DeleteUser404Response struct {
+}
+
+func (response DeleteUser404Response) VisitDeleteUserResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
 type DeleteUser500JSONResponse GenericErrorResponse
 
 func (response DeleteUser500JSONResponse) VisitDeleteUserResponse(w http.ResponseWriter) error {
@@ -1283,6 +1344,14 @@ func (response GetUser200JSONResponse) VisitGetUserResponse(w http.ResponseWrite
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
+}
+
+type GetUser404Response struct {
+}
+
+func (response GetUser404Response) VisitGetUserResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
 }
 
 type GetUser500JSONResponse GenericErrorResponse
@@ -1310,6 +1379,14 @@ func (response UpdateUser200JSONResponse) VisitUpdateUserResponse(w http.Respons
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateUser404Response struct {
+}
+
+func (response UpdateUser404Response) VisitUpdateUserResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
 }
 
 type UpdateUser500JSONResponse GenericErrorResponse
@@ -2083,31 +2160,31 @@ func (sh *strictHandler) ChangePassword(w http.ResponseWriter, r *http.Request, 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"kl2GaikAAA==",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

@@ -21,17 +21,15 @@ echo "Username: $user"
 echo "UserID: $userid"
 echo "Password: $pass"
 
-login=$(curl -i localhost:30000/api/auth/basic/login \
+curl -i localhost:30000/api/auth/basic/login \
   -X POST \
   -H "Content-Type: application/json" \
-  --data "{\"username\": \"$user\", \"password\": \"$pass\"}")
+  --data "{\"username\": \"$user\", \"password\": \"$pass\"}" > login
 
 echo "Login result:"
-echo "$login"
+cat login
 
-echo $login | awk -F': ' 'NR > 1 {print $1}'
-
-session=$(echo $login | awk -F': ' 'NR == 1 {print $2}' | awk '{print $1}' | tr -d '\r\n ')
+session=$(cat login | grep X-Krb-Session | awk -F': ' '{print $2}' | tr -d '\r\n ')
 echo "Got session: $session"
 
 echo "Changing password..."
@@ -48,3 +46,17 @@ curl -i localhost:30000/api/auth/basic/organisations/$orgid/groups \
   -X POST \
   -H "x-krb-session: $session" \
   --data '{"name": "Staff"}'
+curl -i localhost:30000/api/auth/basic/organisations/$orgid/groups \
+  -X POST \
+  -H "x-krb-session: $session" \
+  --data '{"name": "Servant"}'
+curl -i localhost:30000/api/auth/basic/organisations/$orgid/groups \
+  -X POST \
+  -H "x-krb-session: $session" \
+  --data '{"name": "Admin"}'
+
+echo "Creating group bindings..."
+curl -i localhost:30000/api/auth/basic/users/$userid/groups \
+  -X PUT \
+  -H "x-krb-session: $session" \
+  --data '["Staff", "Servant"]'

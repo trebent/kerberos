@@ -24,6 +24,15 @@ components:
           type: string
       required:
         - message
+    CreateUserRequest:
+      allOf:
+      - $ref: "#/components/schemas/User"
+      - type: object
+        properties:
+          password:
+            type: string
+        required:
+          - password
     User:
       type: object
       properties:
@@ -32,9 +41,6 @@ components:
           format: int64
         name:
           type: string
-        organisation:
-          type: integer
-          format: int64
       required:
         - name
     Group:
@@ -45,9 +51,6 @@ components:
           format: int64
         name:
           type: string
-        organisation:
-          type: integer
-          format: int64
       required:
         - name
     UserGroups:
@@ -165,7 +168,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/User"
+              $ref: "#/components/schemas/CreateUserRequest"
         required: true
       responses:
         '200':
@@ -210,6 +213,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/User"
           description: Got a user.
+        '404':
+          description: User does not exist.
         '500':
           content:
             application/json:
@@ -230,6 +235,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/User"
           description: Updated a user.
+        '404':
+          description: User does not exist.
         '500':
           content:
             application/json:
@@ -241,6 +248,8 @@ paths:
       responses:
         '204':
           description: Deleted a user.
+        '404':
+          description: User does not exist.
         '500':
           content:
             application/json:
@@ -393,6 +402,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Organisation"
           description: Updated an organisation.
+        '404':
+          description: Organisation does not exist.
         '500':
           content:
             application/json:
@@ -408,6 +419,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Organisation"
           description: Got an organisation.
+        '404':
+          description: Organisation does not exist.
         '500':
           content:
             application/json:
@@ -419,6 +432,8 @@ paths:
       responses:
         '204':
           description: Deleted an organisation.
+        '404':
+          description: Organisation does not exist.
         '500':
           content:
             application/json:
@@ -494,6 +509,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Group"
           description: Updated a group.
+        '404':
+          description: Groups does not exist.
         '500':
           content:
             application/json:
@@ -509,6 +526,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Group"
           description: Got a group.
+        '404':
+          description: Group does not exist.
         '500':
           content:
             application/json:
@@ -520,6 +539,8 @@ paths:
       responses:
         '204':
           description: Deleted a group.
+        '404':
+          description: Groups does not exist.
         '500':
           content:
             application/json:

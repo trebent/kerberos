@@ -122,7 +122,7 @@ func withUser(ctx context.Context, userID int64) context.Context {
 	return context.WithValue(ctx, userContextKey, userID)
 }
 
-// func userFromContext(ctx context.Context) int64 {
-// 	//nolint:errcheck // welp
-// 	return ctx.Value(userContextKey).(int64)
-// }
+func userFromContext(ctx context.Context) int64 {
+	//nolint:errcheck // welp
+	return ctx.Value(userContextKey).(int64)
+}

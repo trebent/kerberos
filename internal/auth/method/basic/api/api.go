@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,16 +27,34 @@ var (
 
 	// Organisations.
 	queryCreateOrg = "INSERT INTO organisations (name) VALUES(@name);"
+	queryDeleteOrg = "DELETE FROM organisations WHERE id = @orgID;"
+	queryGetOrg    = "SELECT id, name FROM organisations WHERE id = @orgID;"
+	queryListOrgs  = "SELECT id, name FROM organisations;"
+	queryUpdateOrg = "UPDATE organisations SET name = @name WHERE id = @orgID;"
 
-	// Grouos.
+	// Groups.
 	queryCreateGroup = "INSERT INTO groups (name, organisation_id) VALUES(@name, @orgID);"
+	queryDeleteGroup = "DELETE FROM groups WHERE organisation_id = @orgID AND group_id = @groupID;"
+	queryGetGroup    = "SELECT id, name FROM groups WHERE id = @groupID AND organisation_id = @orgID;"
+	queryListGroups  = "SELECT id, name FROM groups WHERE organisation_id = @orgID;"
+	queryUpdateGroup = "UPDATE groups SET name = @name WHERE id = @groupID AND organisation_id = @orgID;"
 
 	// Users.
 	queryCreateUser = "INSERT INTO users (name, salt, hashed_password, organisation_id, administrator) VALUES(@name, @salt, @hashed_password, @orgID, @isAdmin);"
+	queryDeleteUser = "DELETE FROM users WHERE id = @userID;"
+	queryGetUser    = "SELECT id, name FROM users WHERE id = @userID;"
+	queryListUsers  = "SELECT id, name FROM users WHERE organisation_id = @orgID;"
+	queryUpdateUser = "UPDATE users SET name = @name WHERE id = @userID;"
 	//nolint:gosec // not a password
 	queryUpdateUserPassword = "UPDATE users SET salt = @salt, hashed_password = @hashed_password WHERE id = @id;"
-	queryGetUserFromSession = "SELECT id, name, salt, hashed_password, organisation_id FROM users WHERE id = (SELECT user_id FROM sessions WHERE session_id = @sessionID);"
+	queryGetUserFromSession = "SELECT id, name, salt, hashed_password FROM users WHERE id = (SELECT user_id FROM sessions WHERE session_id = @sessionID);"
 	queryLoginLookup        = "SELECT id, name, salt, hashed_password, organisation_id FROM users WHERE name = @username;"
+
+	// Group bindings.
+	queryListUserGroups     = "SELECT name FROM groups WHERE id IN (SELECT group_id FROM group_bindings WHERE user_id = @userID);"
+	queryListGroupBindings  = "SELECT g.id, g.name FROM group_bindings gb INNER JOIN groups g on gb.group_id = g.id WHERE user_id = @userID AND organisation_id = @orgID;"
+	queryDeleteGroupBinding = "DELETE FROM group_bindings WHERE user_id = @userID AND group_id = @groupID;"
+	queryCreateGroupBinding = "INSERT INTO group_bindings (user_id, group_id) VALUES (@userID, (SELECT id FROM groups WHERE organisation_id = @orgID AND name = @groupName));"
 
 	// Sessions.
 	queryCreateSession      = "INSERT INTO sessions (user_id, organisation_id, session_id, expires) VALUES(@userID, @orgID, @session, @expires);"
@@ -111,38 +130,9 @@ func (i *impl) Login(ctx context.Context, req LoginRequestObject) (LoginResponse
 // Logout implements [StrictServerInterface].
 func (i *impl) Logout(
 	ctx context.Context,
-	req LogoutRequestObject,
+	_ LogoutRequestObject,
 ) (LogoutResponseObject, error) {
-	rows, err := i.db.Query(
-		ctx,
-		queryGetSession,
-		sql.NamedArg{Name: "sessionID", Value: req.Params.XKRBSession},
-	)
-	if err != nil {
-		zerologr.Error(err, "Failed to query session")
-		return Logout500JSONResponse{Message: "Internal error."}, nil
-	}
-
-	if !rows.Next() {
-		if err := rows.Err(); err != nil {
-			zerologr.Error(err, "Failed to prepare rows for scanning")
-			return Logout500JSONResponse{Message: "Internal error."}, nil
-		}
-
-		zerologr.Info("Logout not possible since no session exists")
-		return Logout204Response{}, nil
-	}
-
-	userID := 0
-	err = rows.Scan(&userID, new(int64), new(string), new(int64))
-	//nolint:sqlclosecheck // won't help here
-	_ = rows.Close()
-	if err != nil {
-		zerologr.Error(err, "Failed to scan row")
-		return Logout500JSONResponse{Message: "Internal error."}, nil
-	}
-	zerologr.V(10).Info("Clearing user sessions", "user_id", userID)
-
+	userID := userFromContext(ctx)
 	if _, err := i.db.Exec(
 		ctx,
 		queryDeleteUserSessions,
@@ -182,7 +172,7 @@ func (i *impl) ChangePassword(
 	id := 0
 	salt := ""
 	hashedPassword := ""
-	err = rows.Scan(&id, new(string), &salt, &hashedPassword, new(int))
+	err = rows.Scan(&id, new(string), &salt, &hashedPassword)
 	//nolint:sqlclosecheck // won't help here
 	_ = rows.Close()
 	if err != nil {
@@ -235,9 +225,8 @@ func (i *impl) CreateGroup(
 
 	id, _ := res.LastInsertId()
 	return CreateGroup200JSONResponse{
-		Id:           &id,
-		Name:         req.Body.Name,
-		Organisation: &req.OrgID,
+		Id:   &id,
+		Name: req.Body.Name,
 	}, nil
 }
 
@@ -310,7 +299,17 @@ func (i *impl) CreateUser(
 	ctx context.Context,
 	req CreateUserRequestObject,
 ) (CreateUserResponseObject, error) {
-	res, err := i.db.Exec(ctx, queryCreateUser, sql.NamedArg{Name: req.Body.Name})
+	_, salt, hashedPassword := makePassword(req.Body.Password)
+	orgID := orgFromContext(ctx)
+	res, err := i.db.Exec(
+		ctx,
+		queryCreateUser,
+		sql.NamedArg{Name: "name", Value: req.Body.Name},
+		sql.NamedArg{Name: "salt", Value: salt},
+		sql.NamedArg{Name: "hashed_password", Value: hashedPassword},
+		sql.NamedArg{Name: "orgID", Value: orgID},
+		sql.NamedArg{Name: "isAdmin", Value: false},
+	)
 	if err != nil {
 		zerologr.Error(err, "Failed to insert new user")
 		return CreateUser500JSONResponse{Message: "Internal error."}, nil
@@ -318,122 +317,528 @@ func (i *impl) CreateUser(
 
 	id, _ := res.LastInsertId()
 	return CreateUser200JSONResponse{
-		Id:           &id,
-		Name:         req.Body.Name,
-		Organisation: req.Body.Organisation,
+		Id:   &id,
+		Name: req.Body.Name,
 	}, nil
 }
 
 // DeleteGroup implements [StrictServerInterface].
 func (i *impl) DeleteGroup(
-	_ context.Context,
-	_ DeleteGroupRequestObject,
+	ctx context.Context,
+	req DeleteGroupRequestObject,
 ) (DeleteGroupResponseObject, error) {
-	panic("unimplemented")
+	_, err := i.db.Exec(
+		ctx,
+		queryDeleteGroup,
+		sql.NamedArg{Name: "orgID", Value: req.OrgID},
+		sql.NamedArg{Name: "groupID", Value: req.GroupID},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to delete group")
+		return DeleteGroup500JSONResponse{Message: "Internal error."}, nil
+	}
+
+	return DeleteGroup204Response{}, nil
 }
 
 // DeleteOrganisation implements [StrictServerInterface].
 func (i *impl) DeleteOrganisation(
-	_ context.Context,
-	_ DeleteOrganisationRequestObject,
+	ctx context.Context,
+	req DeleteOrganisationRequestObject,
 ) (DeleteOrganisationResponseObject, error) {
-	panic("unimplemented")
+	_, err := i.db.Exec(
+		ctx,
+		queryDeleteOrg,
+		sql.NamedArg{Name: "orgID", Value: req.OrgID},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to delete org")
+		return DeleteOrganisation500JSONResponse{Message: "Internal error."}, nil
+	}
+
+	return DeleteOrganisation204Response{}, nil
 }
 
 // DeleteUser implements [StrictServerInterface].
 func (i *impl) DeleteUser(
-	_ context.Context,
-	_ DeleteUserRequestObject,
+	ctx context.Context,
+	req DeleteUserRequestObject,
 ) (DeleteUserResponseObject, error) {
-	panic("unimplemented")
+	_, err := i.db.Exec(
+		ctx,
+		queryDeleteUser,
+		sql.NamedArg{Name: "userID", Value: req.UserID},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to delete user")
+		return DeleteUser500JSONResponse{Message: "Internal error."}, nil
+	}
+
+	return DeleteUser204Response{}, nil
 }
 
 // GetGroup implements [StrictServerInterface].
 func (i *impl) GetGroup(
-	_ context.Context,
-	_ GetGroupRequestObject,
+	ctx context.Context,
+	req GetGroupRequestObject,
 ) (GetGroupResponseObject, error) {
-	panic("unimplemented")
+	rows, err := i.db.Query(
+		ctx,
+		queryGetGroup,
+		sql.NamedArg{Name: "groupID", Value: req.GroupID},
+		sql.NamedArg{Name: "orgID", Value: req.OrgID},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to query groups")
+		return GetGroup500JSONResponse{Message: "Internal error."}, nil
+	}
+
+	if !rows.Next() {
+		if err := rows.Err(); err != nil {
+			zerologr.Error(err, "Failed to scan next row")
+			return GetGroup500JSONResponse{Message: "Internal error."}, nil
+		}
+
+		return GetGroup404Response{}, nil
+	}
+
+	var (
+		id   int64
+		name string
+	)
+	err = rows.Scan(&id, &name)
+	//nolint:sqlclosecheck // won't help here
+	_ = rows.Close()
+	if err != nil {
+		zerologr.Error(err, "Failed to scan row")
+		return GetGroup500JSONResponse{Message: "Internal error."}, nil
+	}
+
+	return GetGroup200JSONResponse{
+		Id:   &id,
+		Name: name,
+	}, nil
 }
 
 // GetOrganisation implements [StrictServerInterface].
+//
+//nolint:dupl // welp
 func (i *impl) GetOrganisation(
-	_ context.Context,
-	_ GetOrganisationRequestObject,
+	ctx context.Context,
+	req GetOrganisationRequestObject,
 ) (GetOrganisationResponseObject, error) {
-	panic("unimplemented")
+	rows, err := i.db.Query(
+		ctx,
+		queryGetOrg,
+		sql.NamedArg{Name: "orgID", Value: req.OrgID},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to query organisations")
+		return GetOrganisation500JSONResponse{Message: "Internal error."}, nil
+	}
+
+	if !rows.Next() {
+		if err := rows.Err(); err != nil {
+			zerologr.Error(err, "Failed to scan next row")
+			return GetOrganisation500JSONResponse{Message: "Internal error."}, nil
+		}
+
+		return GetOrganisation404Response{}, nil
+	}
+
+	var (
+		id   int64
+		name string
+	)
+	err = rows.Scan(&id, &name)
+	//nolint:sqlclosecheck // won't help here
+	_ = rows.Close()
+	if err != nil {
+		zerologr.Error(err, "Failed to scan row")
+		return GetOrganisation500JSONResponse{Message: "Internal error."}, nil
+	}
+
+	return GetOrganisation200JSONResponse{
+		Id:   &id,
+		Name: name,
+	}, nil
 }
 
 // GetUser implements [StrictServerInterface].
+//
+//nolint:dupl // welp
 func (i *impl) GetUser(
-	_ context.Context,
-	_ GetUserRequestObject,
+	ctx context.Context,
+	req GetUserRequestObject,
 ) (GetUserResponseObject, error) {
-	panic("unimplemented")
+	rows, err := i.db.Query(
+		ctx,
+		queryGetUser,
+		sql.NamedArg{Name: "userID", Value: req.UserID},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to query users")
+		return GetUser500JSONResponse{Message: "Internal error."}, nil
+	}
+
+	if !rows.Next() {
+		if err := rows.Err(); err != nil {
+			zerologr.Error(err, "Failed to scan next row")
+			return GetUser500JSONResponse{Message: "Internal error."}, nil
+		}
+
+		return GetUser404Response{}, nil
+	}
+
+	var (
+		id   int64
+		name string
+	)
+	err = rows.Scan(&id, &name)
+	//nolint:sqlclosecheck // won't help here
+	_ = rows.Close()
+	if err != nil {
+		zerologr.Error(err, "Failed to scan row")
+		return GetUser500JSONResponse{Message: "Internal error."}, nil
+	}
+
+	return GetUser200JSONResponse{
+		Id:   &id,
+		Name: name,
+	}, nil
 }
 
 // GetUserGroups implements [StrictServerInterface].
 func (i *impl) GetUserGroups(
-	_ context.Context,
-	_ GetUserGroupsRequestObject,
+	ctx context.Context,
+	req GetUserGroupsRequestObject,
 ) (GetUserGroupsResponseObject, error) {
-	panic("unimplemented")
+	rows, err := i.db.Query(
+		ctx,
+		queryListUserGroups,
+		sql.NamedArg{Name: "userID", Value: req.UserID},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to query user groups")
+		return GetUserGroups500JSONResponse{Message: "Internal error."}, nil
+	}
+	// Fine to defer since we're iterating, not just doing one scan.
+	defer rows.Close()
+
+	userGroups := make([]string, 0)
+	for {
+		if !rows.Next() {
+			if err := rows.Err(); err != nil {
+				zerologr.Error(err, "Failed to scan next row")
+				return GetUserGroups500JSONResponse{Message: "Internal error."}, nil
+			}
+
+			return GetUserGroups200JSONResponse(userGroups), nil
+		}
+
+		groupName := ""
+		if err = rows.Scan(&groupName); err != nil {
+			zerologr.Error(err, "Failed to scan row")
+			return GetUserGroups500JSONResponse{Message: "Internal error."}, nil
+		}
+
+		userGroups = append(userGroups, groupName)
+	}
 }
 
 // ListGroups implements [StrictServerInterface].
 func (i *impl) ListGroups(
-	_ context.Context,
-	_ ListGroupsRequestObject,
+	ctx context.Context,
+	req ListGroupsRequestObject,
 ) (ListGroupsResponseObject, error) {
-	panic("unimplemented")
+	rows, err := i.db.Query(
+		ctx,
+		queryListGroups,
+		sql.NamedArg{Name: "orgID", Value: req.OrgID},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to query groups")
+		return ListGroups500JSONResponse{Message: "Internal error."}, nil
+	}
+	// Fine to defer since we're iterating, not just doing one scan.
+	defer rows.Close()
+
+	groups := make([]Group, 0)
+	for {
+		if !rows.Next() {
+			if err := rows.Err(); err != nil {
+				zerologr.Error(err, "Failed to scan next row")
+				return ListGroups500JSONResponse{Message: "Internal error."}, nil
+			}
+
+			return ListGroups200JSONResponse(groups), nil
+		}
+
+		var (
+			id   int64
+			name string
+		)
+		if err = rows.Scan(&id, &name); err != nil {
+			zerologr.Error(err, "Failed to scan row")
+			return ListGroups500JSONResponse{Message: "Internal error."}, nil
+		}
+
+		groups = append(groups, Group{Id: &id, Name: name})
+	}
 }
 
 // ListOrganisations implements [StrictServerInterface].
 func (i *impl) ListOrganisations(
-	_ context.Context,
+	ctx context.Context,
 	_ ListOrganisationsRequestObject,
 ) (ListOrganisationsResponseObject, error) {
-	panic("unimplemented")
+	rows, err := i.db.Query(
+		ctx,
+		queryListOrgs,
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to query organisations")
+		return ListOrganisations500JSONResponse{Message: "Internal error."}, nil
+	}
+	// Fine to defer since we're iterating, not just doing one scan.
+	defer rows.Close()
+
+	orgs := make([]Organisation, 0)
+	for {
+		if !rows.Next() {
+			if err := rows.Err(); err != nil {
+				zerologr.Error(err, "Failed to scan next row")
+				return ListOrganisations500JSONResponse{Message: "Internal error."}, nil
+			}
+
+			return ListOrganisations200JSONResponse(orgs), nil
+		}
+
+		var (
+			id   int64
+			name string
+		)
+		if err = rows.Scan(&id, &name); err != nil {
+			zerologr.Error(err, "Failed to scan row")
+			return ListOrganisations500JSONResponse{Message: "Internal error."}, nil
+		}
+
+		orgs = append(orgs, Organisation{Id: &id, Name: name})
+	}
 }
 
 // ListUsers implements [StrictServerInterface].
 func (i *impl) ListUsers(
-	_ context.Context,
+	ctx context.Context,
 	_ ListUsersRequestObject,
 ) (ListUsersResponseObject, error) {
-	panic("unimplemented")
+	orgID := orgFromContext(ctx)
+	rows, err := i.db.Query(
+		ctx,
+		queryListUsers,
+		sql.NamedArg{Name: "orgID", Value: orgID},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to query users")
+		return ListUsers500JSONResponse{Message: "Internal error."}, nil
+	}
+	// Fine to defer since we're iterating, not just doing one scan.
+	defer rows.Close()
+
+	users := make([]User, 0)
+	for {
+		if !rows.Next() {
+			if err := rows.Err(); err != nil {
+				zerologr.Error(err, "Failed to scan next row")
+				return ListUsers500JSONResponse{Message: "Internal error."}, nil
+			}
+
+			return ListUsers200JSONResponse(users), nil
+		}
+
+		var (
+			id   int64
+			name string
+		)
+		if err = rows.Scan(&id, &name); err != nil {
+			zerologr.Error(err, "Failed to scan row")
+			return ListUsers500JSONResponse{Message: "Internal error."}, nil
+		}
+
+		users = append(users, User{Id: &id, Name: name})
+	}
 }
 
 // UpdateGroup implements [StrictServerInterface].
 func (i *impl) UpdateGroup(
-	_ context.Context,
-	_ UpdateGroupRequestObject,
+	ctx context.Context,
+	req UpdateGroupRequestObject,
 ) (UpdateGroupResponseObject, error) {
-	panic("unimplemented")
+	_, err := i.db.Exec(
+		ctx,
+		queryUpdateGroup,
+		sql.NamedArg{Name: "name", Value: req.Body.Name},
+		sql.NamedArg{Name: "groupID", Value: req.GroupID},
+		sql.NamedArg{Name: "orgID", Value: req.OrgID},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to update group")
+		return UpdateGroup500JSONResponse{Message: "Internal error."}, nil
+	}
+
+	return UpdateGroup200JSONResponse{
+		Id:   &req.GroupID,
+		Name: req.Body.Name,
+	}, nil
 }
 
 // UpdateOrganisation implements [StrictServerInterface].
 func (i *impl) UpdateOrganisation(
-	_ context.Context,
-	_ UpdateOrganisationRequestObject,
+	ctx context.Context,
+	req UpdateOrganisationRequestObject,
 ) (UpdateOrganisationResponseObject, error) {
-	panic("unimplemented")
+	_, err := i.db.Exec(
+		ctx,
+		queryUpdateOrg,
+		sql.NamedArg{Name: "name", Value: req.Body.Name},
+		sql.NamedArg{Name: "orgID", Value: req.OrgID},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to update organisation")
+		return UpdateOrganisation500JSONResponse{Message: "Internal error."}, nil
+	}
+
+	return UpdateOrganisation200JSONResponse{
+		Id:   &req.OrgID,
+		Name: req.Body.Name,
+	}, nil
 }
 
 // UpdateUser implements [StrictServerInterface].
 func (i *impl) UpdateUser(
-	_ context.Context,
-	_ UpdateUserRequestObject,
+	ctx context.Context,
+	req UpdateUserRequestObject,
 ) (UpdateUserResponseObject, error) {
-	panic("unimplemented")
+	_, err := i.db.Exec(
+		ctx,
+		queryUpdateUser,
+		sql.NamedArg{Name: "name", Value: req.Body.Name},
+		sql.NamedArg{Name: "userID", Value: req.UserID},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to update user")
+		return UpdateUser500JSONResponse{Message: "Internal error."}, nil
+	}
+
+	return UpdateUser200JSONResponse{
+		Id:   &req.UserID,
+		Name: req.Body.Name,
+	}, nil
 }
 
 // UpdateUserGroups implements [StrictServerInterface].
+//
+//nolint:gocognit // welp
 func (i *impl) UpdateUserGroups(
-	_ context.Context,
-	_ UpdateUserGroupsRequestObject,
+	ctx context.Context,
+	req UpdateUserGroupsRequestObject,
 ) (UpdateUserGroupsResponseObject, error) {
-	panic("unimplemented")
+	userID := userFromContext(ctx)
+	orgID := orgFromContext(ctx)
+	rows, err := i.db.Query(
+		ctx,
+		queryListGroupBindings,
+		sql.NamedArg{Name: "userID", Value: userID},
+		sql.NamedArg{Name: "orgID", Value: orgID},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to query group bindings")
+		return UpdateUserGroups500JSONResponse{Message: "Internal error."}, nil
+	}
+	defer rows.Close()
+
+	type internalGroupBinding struct {
+		groupID int64
+		name    string
+	}
+	bindings := make([]*internalGroupBinding, 0)
+	for {
+		if !rows.Next() {
+			if err := rows.Err(); err != nil {
+				zerologr.Error(err, "Failed to scan next row")
+				return UpdateUserGroups500JSONResponse{Message: "Internal error."}, nil
+			}
+
+			break
+		}
+
+		binding := &internalGroupBinding{}
+		if err = rows.Scan(&binding.groupID, &binding.name); err != nil {
+			zerologr.Error(err, "Failed to scan row")
+			return UpdateUserGroups500JSONResponse{Message: "Internal error."}, nil
+		}
+
+		bindings = append(bindings, binding)
+	}
+
+	toDelete := make([]*internalGroupBinding, 0)
+	for _, existingBinding := range bindings {
+		if !slices.Contains(*req.Body, existingBinding.name) {
+			toDelete = append(toDelete, existingBinding)
+		}
+	}
+
+	tx, err := i.db.Begin(ctx)
+	if err != nil {
+		zerologr.Error(err, "Failed to start transaction")
+		return UpdateUserGroups500JSONResponse{Message: "Internal error."}, nil
+	}
+	//nolint:errcheck // no reason to
+	defer tx.Rollback()
+
+	for _, bindingToDelete := range toDelete {
+		_, err := tx.Exec(
+			ctx,
+			queryDeleteGroupBinding,
+			sql.NamedArg{Name: "userID", Value: userID},
+			sql.NamedArg{Name: "groupID", Value: bindingToDelete.groupID},
+		)
+		if err != nil {
+			zerologr.Error(err, "Failed to run group binding deletion")
+			return UpdateUserGroups500JSONResponse{Message: "Internal error."}, nil
+		}
+
+		bindings = slices.DeleteFunc(
+			bindings,
+			func(binding *internalGroupBinding) bool { return binding.name == bindingToDelete.name },
+		)
+	}
+
+	for _, requestBinding := range *req.Body {
+		if !slices.ContainsFunc(
+			bindings,
+			func(binding *internalGroupBinding) bool { return binding.name == requestBinding },
+		) {
+			_, err = tx.Exec(
+				ctx,
+				queryCreateGroupBinding,
+				sql.NamedArg{Name: "userID", Value: userID},
+				sql.NamedArg{Name: "orgID", Value: orgID},
+				sql.NamedArg{Name: "groupName", Value: requestBinding},
+			)
+			if err != nil {
+				zerologr.Error(err, "Failed to insert new binding")
+				return UpdateUserGroups500JSONResponse{Message: "Internal error."}, nil
+			}
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		zerologr.Error(err, "Failed to commit transaction")
+		return UpdateUserGroups500JSONResponse{Message: "Internal error."}, nil
+	}
+
+	return UpdateUserGroups200JSONResponse(*req.Body), nil
 }
 
 // makePassword creates a random password if the input password is "". It will return the input/generated
