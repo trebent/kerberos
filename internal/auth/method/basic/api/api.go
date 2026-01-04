@@ -38,7 +38,7 @@ var (
 
 	// Sessions
 	queryCreateSession      = "INSERT INTO sessions (user_id, organisation_id, session_id, expires) VALUES(@userID, @orgID, @session, @expires);"
-	quertGetSession         = "SELECT user_id, organisation_id, session_id, expires FROM sessions WHERE session_id = @sessionID;"
+	queryGetSession         = "SELECT user_id, organisation_id, session_id, expires FROM sessions WHERE session_id = @sessionID;"
 	queryDeleteUserSessions = "DELETE FROM sessions WHERE user_id = @userID;"
 )
 
@@ -114,7 +114,7 @@ func (i *impl) Logout(
 ) (LogoutResponseObject, error) {
 	rows, err := i.db.Query(
 		ctx,
-		quertGetSession,
+		queryGetSession,
 		sql.NamedArg{Name: "sessionID", Value: req.Params.XKRBSession},
 	)
 	if err != nil {
@@ -215,11 +215,17 @@ func (i *impl) CreateGroup(
 	ctx context.Context,
 	req CreateGroupRequestObject,
 ) (CreateGroupResponseObject, error) {
+	org := orgFromContext(ctx)
+
+	if org != req.OrgID {
+		return CreateGroup401JSONResponse{Message: "You don't have permission to do that."}, nil
+	}
+
 	res, err := i.db.Exec(
 		ctx,
 		queryCreateGroup,
 		sql.NamedArg{Name: "name", Value: req.Body.Name},
-		sql.NamedArg{Name: "orgID", Value: req.OrgID},
+		sql.NamedArg{Name: "orgID", Value: org},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to insert group")
@@ -264,7 +270,7 @@ func (i *impl) CreateOrganisation(
 	adminUsername := fmt.Sprintf("%s-%s", "admin", req.Body.Name)
 
 	adminPassword, salt, hashedAdminPassword := makePassword("")
-	_, err = tx.Exec(
+	res, err = tx.Exec(
 		ctx,
 		queryCreateUser,
 		sql.NamedArg{Name: "name", Value: adminUsername},
@@ -288,8 +294,11 @@ func (i *impl) CreateOrganisation(
 		}, nil
 	}
 
+	userID, _ := res.LastInsertId()
 	return CreateOrganisation200JSONResponse{
+		Id:            &id,
 		Name:          req.Body.Name,
+		AdminUserId:   &userID,
 		AdminPassword: adminPassword,
 		AdminUsername: adminUsername,
 	}, nil
@@ -297,10 +306,21 @@ func (i *impl) CreateOrganisation(
 
 // CreateUser implements [StrictServerInterface].
 func (i *impl) CreateUser(
-	_ context.Context,
-	_ CreateUserRequestObject,
+	ctx context.Context,
+	req CreateUserRequestObject,
 ) (CreateUserResponseObject, error) {
-	panic("unimplemented")
+	res, err := i.db.Exec(ctx, queryCreateUser, sql.NamedArg{Name: req.Body.Name})
+	if err != nil {
+		zerologr.Error(err, "Failed to insert new user")
+		return CreateUser500JSONResponse{Message: "Internal error."}, nil
+	}
+
+	id, _ := res.LastInsertId()
+	return CreateUser200JSONResponse{
+		Id:           &id,
+		Name:         req.Body.Name,
+		Organisation: req.Body.Organisation,
+	}, nil
 }
 
 // DeleteGroup implements [StrictServerInterface].

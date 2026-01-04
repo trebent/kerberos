@@ -1,0 +1,50 @@
+#! /bin/bash
+
+if [ -z $1 ]; then
+  echo "no org identifier given"
+  exit 1
+fi
+
+org=$(curl localhost:30000/api/auth/basic/organisations \
+  -X POST \
+  -H "Content-Type: application/json" \
+  --data "{\"name\": \"Corp $1\"}")
+echo $org
+
+orgid=$(echo $org | jq -r .id)
+userid=$(echo $org | jq -r .adminUserId)
+pass=$(echo $org | jq -r .adminPassword)
+user=$(echo $org | jq -r .adminUsername)
+
+echo "Org ID: $orgid"
+echo "Username: $user"
+echo "UserID: $userid"
+echo "Password: $pass"
+
+login=$(curl -i localhost:30000/api/auth/basic/login \
+  -X POST \
+  -H "Content-Type: application/json" \
+  --data "{\"username\": \"$user\", \"password\": \"$pass\"}")
+
+echo "Login result:"
+echo "$login"
+
+echo $login | awk -F': ' 'NR > 1 {print $1}'
+
+session=$(echo $login | awk -F': ' 'NR == 1 {print $2}' | awk '{print $1}' | tr -d '\r\n ')
+echo "Got session: $session"
+
+echo "Changing password..."
+data="{\"oldPassword\": \"$pass\", \"password\": \"abc123\"}"
+echo "Body: $data"
+
+curl -i localhost:30000/api/auth/basic/users/$userid/password \
+  -X PUT \
+  -H "x-krb-session: $session" \
+  --data "$data"
+
+echo "Creating base groups..."
+curl -i localhost:30000/api/auth/basic/organisations/$orgid/groups \
+  -X POST \
+  -H "x-krb-session: $session" \
+  --data '{"name": "Staff"}'

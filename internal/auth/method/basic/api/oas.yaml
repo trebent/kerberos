@@ -27,8 +27,14 @@ components:
     User:
       type: object
       properties:
+        id:
+          type: integer
+          format: int64
         name:
           type: string
+        organisation:
+          type: integer
+          format: int64
       required:
         - name
     Group:
@@ -40,7 +46,8 @@ components:
         name:
           type: string
         organisation:
-          type: string
+          type: integer
+          format: int64
       required:
         - name
     UserGroups:
@@ -50,6 +57,9 @@ components:
     Organisation:
       type: object
       properties:
+        id:
+          type: integer
+          format: int64
         name:
           type: string
       required:
@@ -67,21 +77,24 @@ components:
       required: true
       description: A user ID.
       schema:
-        type: string
+        type: integer
+        format: int64
     orgid:
       name: orgID
       in: path
       required: true
       description: An organisation ID.
       schema:
-        type: string
+        type: integer
+        format: int64
     groupid:
       name: groupID
       in: path
       required: true
       description: A group ID.
       schema:
-        type: string
+        type: integer
+        format: int64
     sessionid:
       name: X-KRB-Session
       in: header
@@ -156,6 +169,10 @@ paths:
         required: true
       responses:
         '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
           description: Created a new user.
         '500':
           content:
@@ -324,6 +341,9 @@ paths:
                   - $ref: "#/components/schemas/Organisation"
                   - type: object
                     properties:
+                      adminUserId:
+                        type: integer
+                        format: int64
                       adminUsername:
                         type: string
                       adminPassword:
@@ -423,6 +443,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/Group"
           description: Created a group in the organisation.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Failed to create group.
         '500':
           content:
             application/json:
