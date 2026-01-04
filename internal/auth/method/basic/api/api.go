@@ -26,8 +26,10 @@ var (
 
 	queryCreateOrg = "INSERT INTO organisations (name) VALUES(@name);"
 	// queryCreateGroup = "INSERT INTO groups (name, organisation) VALUES(@name, @orgID);".
-	queryCreateUser = "INSERT INTO users (name, salt, hashed_password, organisation, administrator) VALUES(@name, @salt, @hashed_password, @orgID, @isAdmin);"
+	queryCreateUser         = "INSERT INTO users (name, salt, hashed_password, organisation, administrator) VALUES(@name, @salt, @hashed_password, @orgID, @isAdmin);"
+	queryUpdateUserPassword = "UPDATE users SET salt = @salt, hashed_password = @hashed_password WHERE id = @id;"
 
+	queryGetUserFromSession = "SELECT id, name, salt, hashed_password, organisation FROM users WHERE id = (SELECT user_id FROM sessions WHERE session_id = @sessionID);"
 	queryLoginLookup        = "SELECT id, name, salt, hashed_password, organisation FROM users WHERE name = @username;"
 	queryCreateSession      = "INSERT INTO sessions (user_id, session_id, expires) VALUES(@userID, @session, @expires);"
 	quertGetSession         = "SELECT user_id, session_id, expires FROM sessions WHERE session_id = @sessionID;"
@@ -73,13 +75,8 @@ func (i *impl) Login(ctx context.Context, req LoginRequestObject) (LoginResponse
 		return Login500JSONResponse{Message: "Internal error."}, nil
 	}
 
-	decodedSalt, _ := hex.DecodeString(salt)
-	hash := sha256.New()
-	_, _ = hash.Write(decodedSalt)
-	_, _ = hash.Write([]byte(req.Body.Password))
-	inputHashed := hex.EncodeToString(hash.Sum(nil))
-
-	if inputHashed != storedHashed {
+	if !passwordMatch(salt, storedHashed, req.Body.Password) {
+		zerologr.Info("User login failed due to password mismatch")
 		return Login401JSONResponse{Message: "Login failed."}, nil
 	}
 	zerologr.V(10).Info("User has logged in successfully", "username", req.Body.Username)
@@ -153,10 +150,58 @@ func (i *impl) Logout(
 
 // ChangePassword implements [StrictServerInterface].
 func (i *impl) ChangePassword(
-	_ context.Context,
-	_ ChangePasswordRequestObject,
+	ctx context.Context,
+	req ChangePasswordRequestObject,
 ) (ChangePasswordResponseObject, error) {
-	panic("unimplemented")
+	rows, err := i.db.Query(
+		ctx,
+		queryGetUserFromSession,
+		sql.NamedArg{Name: "sessionID", Value: req.Params.XKRBSession},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to get user from session")
+		return ChangePassword500JSONResponse{Message: "Internal error."}, nil
+	}
+
+	if !rows.Next() {
+		if err := rows.Err(); err != nil {
+			zerologr.Error(err, "Failed to scan rows")
+			return ChangePassword500JSONResponse{Message: "Internal error."}, nil
+		}
+
+		return ChangePassword401JSONResponse{Message: "Failed to change user password."}, nil
+	}
+
+	id := 0
+	salt := ""
+	hashedPassword := ""
+	err = rows.Scan(&id, new(string), &salt, &hashedPassword, new(int))
+	//nolint:sqlclosecheck // won't help here
+	_ = rows.Close()
+	if err != nil {
+		zerologr.Error(err, "Failed to scan row")
+		return ChangePassword500JSONResponse{Message: "Internal error."}, nil
+	}
+
+	if !passwordMatch(salt, hashedPassword, req.Body.OldPassword) {
+		zerologr.Error(err, "Mismatched old password")
+		return ChangePassword401JSONResponse{Message: "Failed to change user password."}, nil
+	}
+
+	_, newSalt, newHashedPassword := makePassword(req.Body.Password)
+	_, err = i.db.Exec(
+		ctx,
+		queryUpdateUserPassword,
+		sql.NamedArg{Name: "salt", Value: newSalt},
+		sql.NamedArg{Name: "hashed_password", Value: newHashedPassword},
+		sql.NamedArg{Name: "id", Value: id},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to update user password")
+		return ChangePassword500JSONResponse{Message: "Internal error."}, nil
+	}
+
+	return ChangePassword204Response{}, nil
 }
 
 // CreateGroup implements [StrictServerInterface].
@@ -366,4 +411,14 @@ func makePassword(password string) (string, string, string) {
 	_, _ = hash.Write(salt)
 	_, _ = hash.Write([]byte(password))
 	return password, hex.EncodeToString(salt), hex.EncodeToString(hash.Sum(nil))
+}
+
+func passwordMatch(salt, hashedPassword, clearTextPassword string) bool {
+	decodedSalt, _ := hex.DecodeString(salt)
+	hash := sha256.New()
+	_, _ = hash.Write(decodedSalt)
+	_, _ = hash.Write([]byte(clearTextPassword))
+	inputHashed := hex.EncodeToString(hash.Sum(nil))
+
+	return inputHashed == hashedPassword
 }

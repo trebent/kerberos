@@ -71,7 +71,14 @@ type LogoutParams struct {
 
 // ChangePasswordJSONBody defines parameters for ChangePassword.
 type ChangePasswordJSONBody struct {
-	Password string `json:"password"`
+	OldPassword string `json:"oldPassword"`
+	Password    string `json:"password"`
+}
+
+// ChangePasswordParams defines parameters for ChangePassword.
+type ChangePasswordParams struct {
+	// XKRBSession A session ID.
+	XKRBSession Sessionid `json:"X-KRB-Session"`
 }
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
@@ -162,7 +169,7 @@ type ServerInterface interface {
 	UpdateUserGroups(w http.ResponseWriter, r *http.Request, userID Userid)
 
 	// (PUT /user/{userID}/password)
-	ChangePassword(w http.ResponseWriter, r *http.Request, userID Userid)
+	ChangePassword(w http.ResponseWriter, r *http.Request, userID Userid, params ChangePasswordParams)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -654,8 +661,36 @@ func (siw *ServerInterfaceWrapper) ChangePassword(w http.ResponseWriter, r *http
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ChangePasswordParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-KRB-Session" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-KRB-Session")]; found {
+		var XKRBSession Sessionid
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-KRB-Session", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-KRB-Session", valueList[0], &XKRBSession, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-KRB-Session", Err: err})
+			return
+		}
+
+		params.XKRBSession = XKRBSession
+
+	} else {
+		err := fmt.Errorf("Header parameter X-KRB-Session is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-KRB-Session", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ChangePassword(w, r, userID)
+		siw.Handler.ChangePassword(w, r, userID, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1324,6 +1359,7 @@ func (response UpdateUserGroups500JSONResponse) VisitUpdateUserGroupsResponse(w 
 
 type ChangePasswordRequestObject struct {
 	UserID Userid `json:"userID"`
+	Params ChangePasswordParams
 	Body   *ChangePasswordJSONRequestBody
 }
 
@@ -1337,6 +1373,15 @@ type ChangePassword204Response struct {
 func (response ChangePassword204Response) VisitChangePasswordResponse(w http.ResponseWriter) error {
 	w.WriteHeader(204)
 	return nil
+}
+
+type ChangePassword401JSONResponse GenericErrorResponse
+
+func (response ChangePassword401JSONResponse) VisitChangePasswordResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
 }
 
 type ChangePassword500JSONResponse GenericErrorResponse
@@ -1985,10 +2030,11 @@ func (sh *strictHandler) UpdateUserGroups(w http.ResponseWriter, r *http.Request
 }
 
 // ChangePassword operation middleware
-func (sh *strictHandler) ChangePassword(w http.ResponseWriter, r *http.Request, userID Userid) {
+func (sh *strictHandler) ChangePassword(w http.ResponseWriter, r *http.Request, userID Userid, params ChangePasswordParams) {
 	var request ChangePasswordRequestObject
 
 	request.UserID = userID
+	request.Params = params
 
 	var body ChangePasswordJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -2020,29 +2066,30 @@ func (sh *strictHandler) ChangePassword(w http.ResponseWriter, r *http.Request, 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"DQAA//+y7XTmOCcAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

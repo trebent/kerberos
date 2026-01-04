@@ -270,19 +270,30 @@ paths:
       - "$ref": "#/components/parameters/userid"
     put:
       operationId: ChangePassword
+      parameters:
+        - $ref: "#/components/parameters/sessionid"
       requestBody:
         content:
           application/json:
             schema:
               type: object
               properties:
+                oldPassword:
+                  type: string
                 password:
                   type: string
               required:
+                - oldPassword
                 - password
       responses:
         '204':
           description: Changed a user's password.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Failed to change password.
         '500':
           content:
             application/json:
