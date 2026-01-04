@@ -24,15 +24,21 @@ type impl struct {
 var (
 	_ StrictServerInterface = (*impl)(nil)
 
+	// Organisations
 	queryCreateOrg = "INSERT INTO organisations (name) VALUES(@name);"
-	// queryCreateGroup = "INSERT INTO groups (name, organisation) VALUES(@name, @orgID);".
-	queryCreateUser         = "INSERT INTO users (name, salt, hashed_password, organisation, administrator) VALUES(@name, @salt, @hashed_password, @orgID, @isAdmin);"
-	queryUpdateUserPassword = "UPDATE users SET salt = @salt, hashed_password = @hashed_password WHERE id = @id;"
 
-	queryGetUserFromSession = "SELECT id, name, salt, hashed_password, organisation FROM users WHERE id = (SELECT user_id FROM sessions WHERE session_id = @sessionID);"
-	queryLoginLookup        = "SELECT id, name, salt, hashed_password, organisation FROM users WHERE name = @username;"
-	queryCreateSession      = "INSERT INTO sessions (user_id, session_id, expires) VALUES(@userID, @session, @expires);"
-	quertGetSession         = "SELECT user_id, session_id, expires FROM sessions WHERE session_id = @sessionID;"
+	// Grouos
+	queryCreateGroup = "INSERT INTO groups (name, organisation_id) VALUES(@name, @orgID);"
+
+	// Users
+	queryCreateUser         = "INSERT INTO users (name, salt, hashed_password, organisation_id, administrator) VALUES(@name, @salt, @hashed_password, @orgID, @isAdmin);"
+	queryUpdateUserPassword = "UPDATE users SET salt = @salt, hashed_password = @hashed_password WHERE id = @id;"
+	queryGetUserFromSession = "SELECT id, name, salt, hashed_password, organisation_id FROM users WHERE id = (SELECT user_id FROM sessions WHERE session_id = @sessionID);"
+	queryLoginLookup        = "SELECT id, name, salt, hashed_password, organisation_id FROM users WHERE name = @username;"
+
+	// Sessions
+	queryCreateSession      = "INSERT INTO sessions (user_id, organisation_id, session_id, expires) VALUES(@userID, @orgID, @session, @expires);"
+	quertGetSession         = "SELECT user_id, organisation_id, session_id, expires FROM sessions WHERE session_id = @sessionID;"
 	queryDeleteUserSessions = "DELETE FROM sessions WHERE user_id = @userID;"
 )
 
@@ -63,11 +69,10 @@ func (i *impl) Login(ctx context.Context, req LoginRequestObject) (LoginResponse
 	}
 
 	id := 0
-	name := ""
 	salt := ""
 	storedHashed := ""
 	organisationID := 0
-	err = rows.Scan(&id, &name, &salt, &storedHashed, &organisationID)
+	err = rows.Scan(&id, new(string), &salt, &storedHashed, &organisationID)
 	//nolint:sqlclosecheck // won't help here
 	_ = rows.Close()
 	if err != nil {
@@ -86,6 +91,7 @@ func (i *impl) Login(ctx context.Context, req LoginRequestObject) (LoginResponse
 		ctx,
 		queryCreateSession,
 		sql.NamedArg{Name: "userID", Value: id},
+		sql.NamedArg{Name: "orgID", Value: organisationID},
 		sql.NamedArg{Name: "session", Value: sessionID},
 		sql.NamedArg{Name: "expires", Value: time.Now().Add(sessionExpiry).UnixMilli()},
 	)
@@ -127,7 +133,7 @@ func (i *impl) Logout(
 	}
 
 	userID := 0
-	err = rows.Scan(&userID, new(string), new(int64))
+	err = rows.Scan(&userID, new(int64), new(string), new(int64))
 	//nolint:sqlclosecheck // won't help here
 	_ = rows.Close()
 	if err != nil {
@@ -206,10 +212,26 @@ func (i *impl) ChangePassword(
 
 // CreateGroup implements [StrictServerInterface].
 func (i *impl) CreateGroup(
-	_ context.Context,
-	_ CreateGroupRequestObject,
+	ctx context.Context,
+	req CreateGroupRequestObject,
 ) (CreateGroupResponseObject, error) {
-	panic("unimplemented")
+	res, err := i.db.Exec(
+		ctx,
+		queryCreateGroup,
+		sql.NamedArg{Name: "name", Value: req.Body.Name},
+		sql.NamedArg{Name: "orgID", Value: req.OrgID},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to insert group")
+		return CreateGroup500JSONResponse{Message: "Internal error."}, nil
+	}
+
+	id, _ := res.LastInsertId()
+	return CreateGroup200JSONResponse{
+		Id:           &id,
+		Name:         req.Body.Name,
+		Organisation: &req.OrgID,
+	}, nil
 }
 
 // CreateOrganisation implements [StrictServerInterface].

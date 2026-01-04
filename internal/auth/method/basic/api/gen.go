@@ -29,7 +29,9 @@ type GenericErrorResponse struct {
 
 // Group defines model for Group.
 type Group struct {
-	Name string `json:"name"`
+	Id           *int64  `json:"id,omitempty"`
+	Name         string  `json:"name"`
+	Organisation *string `json:"organisation,omitempty"`
 }
 
 // Organisation defines model for Organisation.
@@ -117,58 +119,58 @@ type ServerInterface interface {
 	// (POST /logout)
 	Logout(w http.ResponseWriter, r *http.Request, params LogoutParams)
 
-	// (GET /organisation)
+	// (GET /organisations)
 	ListOrganisations(w http.ResponseWriter, r *http.Request)
 
-	// (POST /organisation)
+	// (POST /organisations)
 	CreateOrganisation(w http.ResponseWriter, r *http.Request)
 
-	// (DELETE /organisation/{orgID})
+	// (DELETE /organisations/{orgID})
 	DeleteOrganisation(w http.ResponseWriter, r *http.Request, orgID Orgid)
 
-	// (GET /organisation/{orgID})
+	// (GET /organisations/{orgID})
 	GetOrganisation(w http.ResponseWriter, r *http.Request, orgID Orgid)
 
-	// (PUT /organisation/{orgID})
+	// (PUT /organisations/{orgID})
 	UpdateOrganisation(w http.ResponseWriter, r *http.Request, orgID Orgid)
 
-	// (GET /organisation/{orgID}/group)
+	// (GET /organisations/{orgID}/groups)
 	ListGroups(w http.ResponseWriter, r *http.Request, orgID Orgid)
 
-	// (POST /organisation/{orgID}/group)
+	// (POST /organisations/{orgID}/groups)
 	CreateGroup(w http.ResponseWriter, r *http.Request, orgID Orgid)
 
-	// (DELETE /organisation/{orgID}/group/{groupID})
+	// (DELETE /organisations/{orgID}/groups/{groupID})
 	DeleteGroup(w http.ResponseWriter, r *http.Request, orgID Orgid, groupID Groupid)
 
-	// (GET /organisation/{orgID}/group/{groupID})
+	// (GET /organisations/{orgID}/groups/{groupID})
 	GetGroup(w http.ResponseWriter, r *http.Request, orgID Orgid, groupID Groupid)
 
-	// (PUT /organisation/{orgID}/group/{groupID})
+	// (PUT /organisations/{orgID}/groups/{groupID})
 	UpdateGroup(w http.ResponseWriter, r *http.Request, orgID Orgid, groupID Groupid)
 
-	// (GET /user)
+	// (GET /users)
 	ListUsers(w http.ResponseWriter, r *http.Request)
 
-	// (POST /user)
+	// (POST /users)
 	CreateUser(w http.ResponseWriter, r *http.Request)
 
-	// (DELETE /user/{userID})
+	// (DELETE /users/{userID})
 	DeleteUser(w http.ResponseWriter, r *http.Request, userID Userid)
 
-	// (GET /user/{userID})
+	// (GET /users/{userID})
 	GetUser(w http.ResponseWriter, r *http.Request, userID Userid)
 
-	// (PUT /user/{userID})
+	// (PUT /users/{userID})
 	UpdateUser(w http.ResponseWriter, r *http.Request, userID Userid)
 
-	// (GET /user/{userID}/group)
+	// (GET /users/{userID}/groups)
 	GetUserGroups(w http.ResponseWriter, r *http.Request, userID Userid)
 
-	// (PUT /user/{userID}/group)
+	// (PUT /users/{userID}/groups)
 	UpdateUserGroups(w http.ResponseWriter, r *http.Request, userID Userid)
 
-	// (PUT /user/{userID}/password)
+	// (PUT /users/{userID}/password)
 	ChangePassword(w http.ResponseWriter, r *http.Request, userID Userid, params ChangePasswordParams)
 }
 
@@ -822,24 +824,24 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 
 	m.HandleFunc("POST "+options.BaseURL+"/login", wrapper.Login)
 	m.HandleFunc("POST "+options.BaseURL+"/logout", wrapper.Logout)
-	m.HandleFunc("GET "+options.BaseURL+"/organisation", wrapper.ListOrganisations)
-	m.HandleFunc("POST "+options.BaseURL+"/organisation", wrapper.CreateOrganisation)
-	m.HandleFunc("DELETE "+options.BaseURL+"/organisation/{orgID}", wrapper.DeleteOrganisation)
-	m.HandleFunc("GET "+options.BaseURL+"/organisation/{orgID}", wrapper.GetOrganisation)
-	m.HandleFunc("PUT "+options.BaseURL+"/organisation/{orgID}", wrapper.UpdateOrganisation)
-	m.HandleFunc("GET "+options.BaseURL+"/organisation/{orgID}/group", wrapper.ListGroups)
-	m.HandleFunc("POST "+options.BaseURL+"/organisation/{orgID}/group", wrapper.CreateGroup)
-	m.HandleFunc("DELETE "+options.BaseURL+"/organisation/{orgID}/group/{groupID}", wrapper.DeleteGroup)
-	m.HandleFunc("GET "+options.BaseURL+"/organisation/{orgID}/group/{groupID}", wrapper.GetGroup)
-	m.HandleFunc("PUT "+options.BaseURL+"/organisation/{orgID}/group/{groupID}", wrapper.UpdateGroup)
-	m.HandleFunc("GET "+options.BaseURL+"/user", wrapper.ListUsers)
-	m.HandleFunc("POST "+options.BaseURL+"/user", wrapper.CreateUser)
-	m.HandleFunc("DELETE "+options.BaseURL+"/user/{userID}", wrapper.DeleteUser)
-	m.HandleFunc("GET "+options.BaseURL+"/user/{userID}", wrapper.GetUser)
-	m.HandleFunc("PUT "+options.BaseURL+"/user/{userID}", wrapper.UpdateUser)
-	m.HandleFunc("GET "+options.BaseURL+"/user/{userID}/group", wrapper.GetUserGroups)
-	m.HandleFunc("PUT "+options.BaseURL+"/user/{userID}/group", wrapper.UpdateUserGroups)
-	m.HandleFunc("PUT "+options.BaseURL+"/user/{userID}/password", wrapper.ChangePassword)
+	m.HandleFunc("GET "+options.BaseURL+"/organisations", wrapper.ListOrganisations)
+	m.HandleFunc("POST "+options.BaseURL+"/organisations", wrapper.CreateOrganisation)
+	m.HandleFunc("DELETE "+options.BaseURL+"/organisations/{orgID}", wrapper.DeleteOrganisation)
+	m.HandleFunc("GET "+options.BaseURL+"/organisations/{orgID}", wrapper.GetOrganisation)
+	m.HandleFunc("PUT "+options.BaseURL+"/organisations/{orgID}", wrapper.UpdateOrganisation)
+	m.HandleFunc("GET "+options.BaseURL+"/organisations/{orgID}/groups", wrapper.ListGroups)
+	m.HandleFunc("POST "+options.BaseURL+"/organisations/{orgID}/groups", wrapper.CreateGroup)
+	m.HandleFunc("DELETE "+options.BaseURL+"/organisations/{orgID}/groups/{groupID}", wrapper.DeleteGroup)
+	m.HandleFunc("GET "+options.BaseURL+"/organisations/{orgID}/groups/{groupID}", wrapper.GetGroup)
+	m.HandleFunc("PUT "+options.BaseURL+"/organisations/{orgID}/groups/{groupID}", wrapper.UpdateGroup)
+	m.HandleFunc("GET "+options.BaseURL+"/users", wrapper.ListUsers)
+	m.HandleFunc("POST "+options.BaseURL+"/users", wrapper.CreateUser)
+	m.HandleFunc("DELETE "+options.BaseURL+"/users/{userID}", wrapper.DeleteUser)
+	m.HandleFunc("GET "+options.BaseURL+"/users/{userID}", wrapper.GetUser)
+	m.HandleFunc("PUT "+options.BaseURL+"/users/{userID}", wrapper.UpdateUser)
+	m.HandleFunc("GET "+options.BaseURL+"/users/{userID}/groups", wrapper.GetUserGroups)
+	m.HandleFunc("PUT "+options.BaseURL+"/users/{userID}/groups", wrapper.UpdateUserGroups)
+	m.HandleFunc("PUT "+options.BaseURL+"/users/{userID}/password", wrapper.ChangePassword)
 
 	return m
 }
@@ -1402,58 +1404,58 @@ type StrictServerInterface interface {
 	// (POST /logout)
 	Logout(ctx context.Context, request LogoutRequestObject) (LogoutResponseObject, error)
 
-	// (GET /organisation)
+	// (GET /organisations)
 	ListOrganisations(ctx context.Context, request ListOrganisationsRequestObject) (ListOrganisationsResponseObject, error)
 
-	// (POST /organisation)
+	// (POST /organisations)
 	CreateOrganisation(ctx context.Context, request CreateOrganisationRequestObject) (CreateOrganisationResponseObject, error)
 
-	// (DELETE /organisation/{orgID})
+	// (DELETE /organisations/{orgID})
 	DeleteOrganisation(ctx context.Context, request DeleteOrganisationRequestObject) (DeleteOrganisationResponseObject, error)
 
-	// (GET /organisation/{orgID})
+	// (GET /organisations/{orgID})
 	GetOrganisation(ctx context.Context, request GetOrganisationRequestObject) (GetOrganisationResponseObject, error)
 
-	// (PUT /organisation/{orgID})
+	// (PUT /organisations/{orgID})
 	UpdateOrganisation(ctx context.Context, request UpdateOrganisationRequestObject) (UpdateOrganisationResponseObject, error)
 
-	// (GET /organisation/{orgID}/group)
+	// (GET /organisations/{orgID}/groups)
 	ListGroups(ctx context.Context, request ListGroupsRequestObject) (ListGroupsResponseObject, error)
 
-	// (POST /organisation/{orgID}/group)
+	// (POST /organisations/{orgID}/groups)
 	CreateGroup(ctx context.Context, request CreateGroupRequestObject) (CreateGroupResponseObject, error)
 
-	// (DELETE /organisation/{orgID}/group/{groupID})
+	// (DELETE /organisations/{orgID}/groups/{groupID})
 	DeleteGroup(ctx context.Context, request DeleteGroupRequestObject) (DeleteGroupResponseObject, error)
 
-	// (GET /organisation/{orgID}/group/{groupID})
+	// (GET /organisations/{orgID}/groups/{groupID})
 	GetGroup(ctx context.Context, request GetGroupRequestObject) (GetGroupResponseObject, error)
 
-	// (PUT /organisation/{orgID}/group/{groupID})
+	// (PUT /organisations/{orgID}/groups/{groupID})
 	UpdateGroup(ctx context.Context, request UpdateGroupRequestObject) (UpdateGroupResponseObject, error)
 
-	// (GET /user)
+	// (GET /users)
 	ListUsers(ctx context.Context, request ListUsersRequestObject) (ListUsersResponseObject, error)
 
-	// (POST /user)
+	// (POST /users)
 	CreateUser(ctx context.Context, request CreateUserRequestObject) (CreateUserResponseObject, error)
 
-	// (DELETE /user/{userID})
+	// (DELETE /users/{userID})
 	DeleteUser(ctx context.Context, request DeleteUserRequestObject) (DeleteUserResponseObject, error)
 
-	// (GET /user/{userID})
+	// (GET /users/{userID})
 	GetUser(ctx context.Context, request GetUserRequestObject) (GetUserResponseObject, error)
 
-	// (PUT /user/{userID})
+	// (PUT /users/{userID})
 	UpdateUser(ctx context.Context, request UpdateUserRequestObject) (UpdateUserResponseObject, error)
 
-	// (GET /user/{userID}/group)
+	// (GET /users/{userID}/groups)
 	GetUserGroups(ctx context.Context, request GetUserGroupsRequestObject) (GetUserGroupsResponseObject, error)
 
-	// (PUT /user/{userID}/group)
+	// (PUT /users/{userID}/groups)
 	UpdateUserGroups(ctx context.Context, request UpdateUserGroupsRequestObject) (UpdateUserGroupsResponseObject, error)
 
-	// (PUT /user/{userID}/password)
+	// (PUT /users/{userID}/password)
 	ChangePassword(ctx context.Context, request ChangePasswordRequestObject) (ChangePasswordResponseObject, error)
 }
 
@@ -2066,30 +2068,30 @@ func (sh *strictHandler) ChangePassword(w http.ResponseWriter, r *http.Request, 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+RZTY/bOA/+K4LeF9iLJ0m73Utu/dgdDFqgRbcFFmh6UGzGVmuLWlGeNDvwf19IcuI4",
-	"cT7cTqZu99SOxZAi+fChKN3xGAuNCpQlPr3jGYgEjP8vAZFEJRP3RwIUG6mtRMWn/CmrF9nNixGPuIG/",
-	"S2kg4VNrSog4xRkUwv3OrjTwKSdrpEp5VVUR18KIAmxtJTVY6m4bfqm2IN0nLWzGI65E4XT65ZsXvcxH",
-	"HE3aaU0xNKlQkoRt/OqwiibtbbNHJL3FkITG5l9XL98+u/ozCPa0XRKYbsNu5bCfbrWno9V60Sf2GhQY",
-	"Gf9uDJq3QBoVgfuuDWowVoKXKoBIpNC998b0h43gx2gtiPNPEFteRfzaIWFfd/DklGIv1aX19RYe7l35",
-	"ewJzEaU+Fl6ZtFBQh7bND4UxYhXyJtUC9zHyLgP2EswcDBKbC5IxE6XNQFkZhzJ5+uaGaYO3MgFiVGqN",
-	"xrIFGlYIJVKp0oAyEcdYKktRqGmKZkqopFVxNJqpmdqOOa01txR7fZIw9zIjVuNY+vp1f8ZCKbTOJBAx",
-	"55gpvOxMaYMWYgsJm6+C+LMR6za5seBEBRHGUljnD4ElhgtvldhS2owJNVMt8nABsquI2QyYFSYFy+Yi",
-	"/gwqYUuZ58xADPIWmFDb+2OQQwHKMo1SeVtYWjZTy0zGWZudBHN4ALJsKYgVIgEXmxF7l0liBdgME7fH",
-	"xglU+Yot0XwmJhebnM6UJL9Jv6yRSM5zYI4ImEVmQMRZlxME5lbGEDE0frnLiZnyrs6h0WuRkUZc+Ew7",
-	"bJ2GlM9t6AM1CCIm8hyXLjwODgZzuJoLgsTrQSP/CcCYOaK00uYO6SdB7EjwFgwF3E9Gj0YTVyioQQkt",
-	"+ZT/OpqMnvDIk6QvqnGOqQy8gGTdv66QvcKbhE/5K78cChfIPsNk5YRiVBaUlxda5/UWxp8ocExDrm1i",
-	"0IJoiSbpLGcXpPOYYyMZNRr3iaQKPwuU7c0/njzZZ4dXmKYu7OsCdDHcOj58ufps5ld1d3Mf/m9gwaf8",
-	"f+PmxDGu5cdNh/TGn0we9QpWl+q6FY07+5C30nbnDyFzSBxIc0y3vaoi/ttk8uD7uVHWJStn4CRHdVoc",
-	"7LC0R3Hn1tvHrA/dW2pEthPwsX/ysbRDixPudO8UuoIlybb4n+/53s+hTc895lnrYNHZjndiLcn1LJHn",
-	"Ox1zQCGPDsDxuQFhoeXx13Pi+UHtorB+cRJ5/npxsHIOpHKXtkVSSPXmGHd7ifdnE3hbPNoxsE/lHzuy",
-	"F1LialfBsoWoIdfw+M5PXlWgohws7IPthf++B7ZTXBZ+lrjj2FCjEXXz1zXY495OLlZfu5u+dmfuIQew",
-	"Xz8M1wSuF+qyI/DvdfJj0tq3pDg4Peg6OcQa43R9RXDwHFAPzl8VX/giCu0mjQ/rGT7cSbBHvim0Pj32",
-	"qOp5ZAg3HP3OCmHUdpOxH/F+vsI8cuAI8bpMSda5uGwtbowc7t5hLB54eo8X5PiuvsQ9o603KT27n4cQ",
-	"/Rh9/IB7D4Ao37mHGKqvIobopOD6xeFEc/95KWTTx4eXdEcXZX01frBTu/nnYSZ1f0vfr+v6e+EfZzL3",
-	"Hl4G5CF47QnWmhIOYP7YkOqCOkSYju/CM9kZ7WsT6PO719C8Pty8up2bXABKXa1reHHq17nqJ9oT/egB",
-	"KrX6DilsmtHgi/zEEFnXwbfMkeeHsrZytCZ+oXpGmEuVSJXSf6NIthJwmVJpYl99tyyvy8bNfoPP9X4l",
-	"bb9n3i8OnmdCpbC5Ev/Wd7D7eLzFPDn6BnDkcXfn+n9b03084YZgJQ1frFV69HzfV9jY7629o6Hguar+",
-	"DQAA//+y7XTmOCcAAA==",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

@@ -192,7 +192,7 @@ echo-d-run:
 # TEST
 #
 
-generate-echo-test-requests:
+test-echo-methods:
 	$(call cecho,Generating test HTTP requests for the echo backend...,$(BOLD_YELLOW))
 	curl -X GET -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
 	curl -X PUT -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
@@ -200,16 +200,3 @@ generate-echo-test-requests:
 	curl -X PATCH -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
 	curl -X DELETE -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
 	curl -X OPTIONS -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
-
-generate-test-requests:
-	$(call cecho,Generating test HTTP requests to Kerberos...,$(BOLD_YELLOW))
-	curl -X GET -I localhost:$(KERBEROS_PORT)/test
-	curl -X GET -I localhost:$(KERBEROS_PORT)/test?status_code=400
-	curl -X PUT -I localhost:$(KERBEROS_PORT)/test
-	curl -X PUT -I localhost:$(KERBEROS_PORT)/test?status_code=500
-	curl -X POST -I localhost:$(KERBEROS_PORT)/test
-	curl -X POST -I localhost:$(KERBEROS_PORT)/test?status_code=204
-	curl -X PATCH -I localhost:$(KERBEROS_PORT)/test
-	curl -X PATCH -I localhost:$(KERBEROS_PORT)/test?status_code=404
-	curl -X DELETE -I localhost:$(KERBEROS_PORT)/test
-	curl -X OPTIONS -I localhost:$(KERBEROS_PORT)/test

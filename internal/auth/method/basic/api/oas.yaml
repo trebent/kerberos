@@ -34,7 +34,12 @@ components:
     Group:
       type: object
       properties:
+        id:
+          type: integer
+          format: int64
         name:
+          type: string
+        organisation:
           type: string
       required:
         - name
@@ -140,7 +145,7 @@ paths:
   # When invoking the /user path, the requests are automatically executed on the
   # organisation the executing user belongs to. This is ALWAYS the case, except when creating the
   # first user, which is done behind the scenes when creating a new organisation.
-  /user:
+  /users:
     post:
       operationId: CreateUser
       requestBody:
@@ -176,7 +181,7 @@ paths:
                 $ref: "#/components/schemas/GenericErrorResponse"
           description: Internal error.
 
-  /user/{userID}:
+  /users/{userID}:
     parameters:
       - "$ref": "#/components/parameters/userid"
     get:
@@ -226,7 +231,7 @@ paths:
                 $ref: "#/components/schemas/GenericErrorResponse"
           description: Internal error.
 
-  /user/{userID}/group:
+  /users/{userID}/groups:
     parameters:
       - "$ref": "#/components/parameters/userid"
     put:
@@ -265,7 +270,7 @@ paths:
                 $ref: "#/components/schemas/GenericErrorResponse"
           description: Internal error.
 
-  /user/{userID}/password:
+  /users/{userID}/password:
     parameters:
       - "$ref": "#/components/parameters/userid"
     put:
@@ -302,7 +307,7 @@ paths:
           description: Internal error.
 
   # Creating a new organisation will automatically create an admin user.
-  /organisation:
+  /organisations:
     post:
       operationId: CreateOrganisation
       requestBody:
@@ -351,7 +356,7 @@ paths:
                 $ref: "#/components/schemas/GenericErrorResponse"
           description: Internal error.
 
-  /organisation/{orgID}:
+  /organisations/{orgID}:
     parameters:
       - "$ref": "#/components/parameters/orgid"
     put:
@@ -401,7 +406,7 @@ paths:
                 $ref: "#/components/schemas/GenericErrorResponse"
           description: Internal error.
 
-  /organisation/{orgID}/group:
+  /organisations/{orgID}/groups:
     parameters:
       - "$ref": "#/components/parameters/orgid"
     post:
@@ -445,7 +450,7 @@ paths:
                 $ref: "#/components/schemas/GenericErrorResponse"
           description: Internal error.
 
-  /organisation/{orgID}/group/{groupID}:
+  /organisations/{orgID}/groups/{groupID}:
     parameters:
       - "$ref": "#/components/parameters/orgid"
       - "$ref": "#/components/parameters/groupid"
