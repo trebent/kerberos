@@ -1,3 +1,4 @@
+//nolint:gocognit // ?
 package api
 
 import (
@@ -21,6 +22,7 @@ var (
 )
 
 func AuthMiddleware(ssi StrictServerInterface) StrictMiddlewareFunc {
+	//nolint:errcheck // welp
 	apiImpl := ssi.(*impl)
 
 	return func(f nethttp.StrictHTTPHandlerFunc, operationID string) nethttp.StrictHTTPHandlerFunc {
@@ -28,7 +30,8 @@ func AuthMiddleware(ssi StrictServerInterface) StrictMiddlewareFunc {
 			ctx context.Context,
 			w http.ResponseWriter,
 			r *http.Request,
-			request any) (response any, err error) {
+			request any,
+		) (any, error) {
 			zerologr.V(20).Info("Running basic auth API middleware", "url", r.URL.Path)
 
 			// No middleware operations needed for logging in or out.
@@ -43,14 +46,18 @@ func AuthMiddleware(ssi StrictServerInterface) StrictMiddlewareFunc {
 				return f(ctx, w, r, request)
 			}
 
-			sessionID := r.Header.Get("x-krb-session")
+			sessionID := r.Header.Get("X-Krb-Session")
 			if sessionID == "" {
 				zerologr.Error(ErrNoSession, "Failed to find a session header")
 				w.WriteHeader(http.StatusUnauthorized)
 				return nil, ErrNoSession
 			}
 
-			rows, err := apiImpl.db.Query(ctx, queryGetSession, sql.NamedArg{Name: "sessionID", Value: sessionID})
+			rows, err := apiImpl.db.Query(
+				ctx,
+				queryGetSession,
+				sql.NamedArg{Name: "sessionID", Value: sessionID},
+			)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return nil, ErrInternal
@@ -69,8 +76,8 @@ func AuthMiddleware(ssi StrictServerInterface) StrictMiddlewareFunc {
 			}
 
 			var (
-				userID         int64 = 0
-				organisationID int64 = 0
+				userID         int64
+				organisationID int64
 			)
 			err = rows.Scan(&userID, &organisationID, new(string), new(int64))
 			//nolint:sqlclosecheck // won't help here
@@ -83,7 +90,13 @@ func AuthMiddleware(ssi StrictServerInterface) StrictMiddlewareFunc {
 			ctx = withOrg(ctx, organisationID)
 			ctx = withUser(ctx, userID)
 			switch operationID {
-			case "CreateUser", "ListUsers", "GetUser", "UpdateUser", "DeleteUser", "UpdateUserGroups", "ChangePassword":
+			case "CreateUser",
+				"ListUsers",
+				"GetUser",
+				"UpdateUser",
+				"DeleteUser",
+				"UpdateUserGroups",
+				"ChangePassword":
 				zerologr.V(20).Info("Validating auth for user paths")
 			case "ListOrganisations", "UpdateOrganisation", "GetOrganisation", "DeleteOrganisation":
 				zerologr.V(20).Info("Validating auth for org paths")
@@ -101,6 +114,7 @@ func withOrg(ctx context.Context, orgID int64) context.Context {
 }
 
 func orgFromContext(ctx context.Context) int64 {
+	//nolint:errcheck // welp
 	return ctx.Value(orgContextKey).(int64)
 }
 
@@ -108,6 +122,7 @@ func withUser(ctx context.Context, userID int64) context.Context {
 	return context.WithValue(ctx, userContextKey, userID)
 }
 
-func userFromContext(ctx context.Context) int64 {
-	return ctx.Value(userContextKey).(int64)
-}
+// func userFromContext(ctx context.Context) int64 {
+// 	//nolint:errcheck // welp
+// 	return ctx.Value(userContextKey).(int64)
+// }

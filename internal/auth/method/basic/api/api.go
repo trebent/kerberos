@@ -24,19 +24,20 @@ type impl struct {
 var (
 	_ StrictServerInterface = (*impl)(nil)
 
-	// Organisations
+	// Organisations.
 	queryCreateOrg = "INSERT INTO organisations (name) VALUES(@name);"
 
-	// Grouos
+	// Grouos.
 	queryCreateGroup = "INSERT INTO groups (name, organisation_id) VALUES(@name, @orgID);"
 
-	// Users
-	queryCreateUser         = "INSERT INTO users (name, salt, hashed_password, organisation_id, administrator) VALUES(@name, @salt, @hashed_password, @orgID, @isAdmin);"
+	// Users.
+	queryCreateUser = "INSERT INTO users (name, salt, hashed_password, organisation_id, administrator) VALUES(@name, @salt, @hashed_password, @orgID, @isAdmin);"
+	//nolint:gosec // not a password
 	queryUpdateUserPassword = "UPDATE users SET salt = @salt, hashed_password = @hashed_password WHERE id = @id;"
 	queryGetUserFromSession = "SELECT id, name, salt, hashed_password, organisation_id FROM users WHERE id = (SELECT user_id FROM sessions WHERE session_id = @sessionID);"
 	queryLoginLookup        = "SELECT id, name, salt, hashed_password, organisation_id FROM users WHERE name = @username;"
 
-	// Sessions
+	// Sessions.
 	queryCreateSession      = "INSERT INTO sessions (user_id, organisation_id, session_id, expires) VALUES(@userID, @orgID, @session, @expires);"
 	queryGetSession         = "SELECT user_id, organisation_id, session_id, expires FROM sessions WHERE session_id = @sessionID;"
 	queryDeleteUserSessions = "DELETE FROM sessions WHERE user_id = @userID;"
