@@ -22,7 +22,7 @@ func TestHappy(t *testing.T) {
 	t.Parallel()
 
 	urlSegment := "/hi"
-	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", port, urlSegment)
+	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", getPort(), urlSegment)
 
 	response := get(url, t)
 	decodedResponse := verifyResponse(response, http.StatusOK, t)
@@ -47,7 +47,7 @@ func TestRoot(t *testing.T) {
 	testData := "{\"test\": \"value\"}"
 	buf := bytes.NewBuffer([]byte(testData))
 	urlSegment := "/"
-	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", port, urlSegment)
+	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", getPort(), urlSegment)
 
 	response := post(url, buf.Bytes(), t)
 	decodedResponse := verifyResponse(response, http.StatusOK, t)
@@ -82,7 +82,7 @@ func TestNested(t *testing.T) {
 	testData := "{\"test\": \"value\"}"
 	buf := bytes.NewBuffer([]byte(testData))
 	urlSegment := "/soi/mae"
-	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", port, urlSegment)
+	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", getPort(), urlSegment)
 
 	response := put(url, buf.Bytes(), t)
 	decodedResponse := verifyResponse(response, http.StatusOK, t)
@@ -116,7 +116,7 @@ func TestNoBackend(t *testing.T) {
 
 	testData := "{\"test\": \"value\"}"
 	urlSegment := "/idontexist/"
-	url := fmt.Sprintf("http://localhost:%d/gw/backend%s", port, urlSegment)
+	url := fmt.Sprintf("http://localhost:%d/gw/backend%s", getPort(), urlSegment)
 	t.Logf("Sending to non-existent backend url %s", url)
 	response := post(url, []byte(testData), t)
 
@@ -127,7 +127,7 @@ func TestBackendFormat(t *testing.T) {
 	t.Parallel()
 
 	testData := "{\"test\": \"value\"}"
-	url := fmt.Sprintf("http://localhost:%d/gw/back", port)
+	url := fmt.Sprintf("http://localhost:%d/gw/back", getPort())
 	t.Logf("Sending to funky url %s", url)
 	response := post(url, []byte(testData), t)
 

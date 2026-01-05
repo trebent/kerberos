@@ -73,6 +73,11 @@ components:
       description: A session ID.
       schema:
         type: string
+  securitySchemes:
+    sessionid:
+      type: apiKey
+      in: header
+      name: x-krb-session
   parameters:
     userid:
       name: userID
@@ -98,18 +103,15 @@ components:
       schema:
         type: integer
         format: int64
-    sessionid:
-      name: X-KRB-Session
-      in: header
-      required: true
-      description: A session ID.
-      schema:
-        type: string
+
+security:
+  - sessionid: []
 
 paths:
   /login:
     post:
       operationId: Login
+      security: []
       requestBody:
         content:
           application/json:
@@ -145,8 +147,6 @@ paths:
   /logout:
     post:
       operationId: Logout
-      parameters:
-        - $ref: "#/components/parameters/sessionid"
       responses:
         '204':
           description: Logged a user out.
@@ -171,7 +171,7 @@ paths:
               $ref: "#/components/schemas/CreateUserRequest"
         required: true
       responses:
-        '200':
+        '201':
           content:
             application/json:
               schema:
@@ -301,8 +301,6 @@ paths:
       - "$ref": "#/components/parameters/userid"
     put:
       operationId: ChangePassword
-      parameters:
-        - $ref: "#/components/parameters/sessionid"
       requestBody:
         content:
           application/json:
@@ -342,7 +340,7 @@ paths:
             schema:
               $ref: "#/components/schemas/Organisation"
       responses:
-        '200':
+        '201':
           content:
             application/json:
               schema:
@@ -452,7 +450,7 @@ paths:
             schema:
               $ref: "#/components/schemas/Group"
       responses:
-        '200':
+        '201':
           content:
             application/json:
               schema:

@@ -32,6 +32,7 @@ lint:
 codegen:
 	$(call cecho,Running codegen for Kerberos...,$(BOLD_YELLOW))
 	@go generate ./...
+	@cd test/function && go generate ./...
 	$(call cecho,Codegen complete.,$(BOLD_GREEN))
 
 unittest:

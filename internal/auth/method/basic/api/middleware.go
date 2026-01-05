@@ -49,6 +49,10 @@ func AuthMiddleware(ssi StrictServerInterface) StrictMiddlewareFunc {
 			sessionID := r.Header.Get("X-Krb-Session")
 			if sessionID == "" {
 				zerologr.Error(ErrNoSession, "Failed to find a session header")
+				for key, values := range r.Header {
+					zerologr.Info("Header "+key, "values", values)
+				}
+
 				w.WriteHeader(http.StatusUnauthorized)
 				return nil, ErrNoSession
 			}

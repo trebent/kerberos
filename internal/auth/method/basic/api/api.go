@@ -16,7 +16,7 @@ import (
 	"github.com/trebent/zerologr"
 )
 
-//go:generate go tool oapi-codegen -config config.yaml -o ./gen.go oas.yaml
+//go:generate go tool oapi-codegen -config config.yaml -o ./gen.go ../../../../../api/basic_auth.yaml
 
 type impl struct {
 	db db.SQLClient
@@ -40,14 +40,14 @@ var (
 	queryUpdateGroup = "UPDATE groups SET name = @name WHERE id = @groupID AND organisation_id = @orgID;"
 
 	// Users.
-	queryCreateUser = "INSERT INTO users (name, salt, hashed_password, organisation_id, administrator) VALUES(@name, @salt, @hashed_password, @orgID, @isAdmin);"
-	queryDeleteUser = "DELETE FROM users WHERE id = @userID;"
-	queryGetUser    = "SELECT id, name FROM users WHERE id = @userID;"
-	queryListUsers  = "SELECT id, name FROM users WHERE organisation_id = @orgID;"
-	queryUpdateUser = "UPDATE users SET name = @name WHERE id = @userID;"
+	queryCreateUser  = "INSERT INTO users (name, salt, hashed_password, organisation_id, administrator) VALUES(@name, @salt, @hashed_password, @orgID, @isAdmin);"
+	queryDeleteUser  = "DELETE FROM users WHERE id = @userID;"
+	queryGetUser     = "SELECT id, name FROM users WHERE id = @userID;"
+	queryGetFullUser = "SELECT id, name, salt, hashed_password FROM users WHERE id = @userID;"
+	queryListUsers   = "SELECT id, name FROM users WHERE organisation_id = @orgID;"
+	queryUpdateUser  = "UPDATE users SET name = @name WHERE id = @userID;"
 	//nolint:gosec // not a password
 	queryUpdateUserPassword = "UPDATE users SET salt = @salt, hashed_password = @hashed_password WHERE id = @id;"
-	queryGetUserFromSession = "SELECT id, name, salt, hashed_password FROM users WHERE id = (SELECT user_id FROM sessions WHERE session_id = @sessionID);"
 	queryLoginLookup        = "SELECT id, name, salt, hashed_password, organisation_id FROM users WHERE name = @username;"
 
 	// Group bindings.
@@ -150,10 +150,11 @@ func (i *impl) ChangePassword(
 	ctx context.Context,
 	req ChangePasswordRequestObject,
 ) (ChangePasswordResponseObject, error) {
+	userID := userFromContext(ctx)
 	rows, err := i.db.Query(
 		ctx,
-		queryGetUserFromSession,
-		sql.NamedArg{Name: "sessionID", Value: req.Params.XKRBSession},
+		queryGetFullUser,
+		sql.NamedArg{Name: "userID", Value: userID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to get user from session")
@@ -224,7 +225,7 @@ func (i *impl) CreateGroup(
 	}
 
 	id, _ := res.LastInsertId()
-	return CreateGroup200JSONResponse{
+	return CreateGroup201JSONResponse{
 		Id:   &id,
 		Name: req.Body.Name,
 	}, nil
@@ -285,7 +286,7 @@ func (i *impl) CreateOrganisation(
 	}
 
 	userID, _ := res.LastInsertId()
-	return CreateOrganisation200JSONResponse{
+	return CreateOrganisation201JSONResponse{
 		Id:            &id,
 		Name:          req.Body.Name,
 		AdminUserId:   &userID,
@@ -316,7 +317,7 @@ func (i *impl) CreateUser(
 	}
 
 	id, _ := res.LastInsertId()
-	return CreateUser200JSONResponse{
+	return CreateUser201JSONResponse{
 		Id:   &id,
 		Name: req.Body.Name,
 	}, nil

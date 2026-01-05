@@ -9,21 +9,20 @@ services:
       - ${KERBEROS_PORT}:${KERBEROS_PORT}
       - ${KERBEROS_METRICS_PORT}:${KERBEROS_METRICS_PORT}
     environment:
-      - LOG_TO_CONSOLE=1
-      - LOG_VERBOSITY=10
       - OTEL_METRICS_EXPORTER=prometheus
       - OTEL_TRACES_EXPORTER=otlp
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
       - OTEL_EXPORTER_PROMETHEUS_HOST=kerberos
       - OTEL_EXPORTER_PROMETHEUS_PORT=${KERBEROS_METRICS_PORT}
+      - LOG_TO_CONSOLE=1
+      - LOG_VERBOSITY=20
       - PORT=${KERBEROS_PORT}
-      - TEST_ENDPOINT=1
       - VERSION=${VERSION}
       - ROUTE_JSON_FILE=/echo.json
       - AUTH_JSON_FILE=/auth.json
     volumes:
-      - ../config/compose-echo.json:/echo.json
-      - ../config/auth.json:/auth.json
+      - ../config/compose-route-echo.json:/echo.json
+      - ../config/auth-basic.json:/auth.json
   
   echo:
     image: "ghcr.io/trebent/kerberos/echo:${VERSION}"

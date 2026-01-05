@@ -1,18 +1,8 @@
 package ft
 
 import (
-	"net/http"
 	"os"
 	"strconv"
-	"time"
-)
-
-var (
-	port              = 0
-	metricsPort       = 0
-	jaegerReadAPIPort = 0
-	host              = ""
-	client            = &http.Client{}
 )
 
 const (
@@ -20,52 +10,55 @@ const (
 	defaultKerberosPort      = 30000
 	defaultMetricsPort       = 9464
 	defaultJaegerReadAPIPort = 16685
-	defaultClientTimeout     = 4 * time.Second
 )
 
-func init() {
-	client.Timeout = defaultClientTimeout
-
+func getPort() int {
 	val, found := os.LookupEnv("KRB_FT_PORT")
 	if !found {
-		port = defaultKerberosPort
+		return defaultKerberosPort
 	}
 
 	decoded, err := strconv.Atoi(val)
 	if err != nil {
-		port = defaultKerberosPort
+		return defaultKerberosPort
 	} else {
-		port = decoded
+		return decoded
 	}
+}
 
+func getHost() string {
 	hostVal, found := os.LookupEnv("KRB_FT_HOST")
 	if !found {
-		host = defaultHost
+		return defaultHost
 	} else {
-		host = hostVal
+		return hostVal
 	}
+}
 
+func getMetricsPort() int {
 	metricsPortVal, found := os.LookupEnv("KRB_FT_METRICS_PORT")
 	if !found {
-		metricsPort = defaultMetricsPort
+		return defaultMetricsPort
 	}
 
 	decodedMetricsPort, err := strconv.Atoi(metricsPortVal)
 	if err != nil {
-		metricsPort = defaultMetricsPort
+		return defaultMetricsPort
 	} else {
-		metricsPort = decodedMetricsPort
+		return decodedMetricsPort
 	}
+}
 
+func getJaegerAPIPort() int {
 	jaegerPortVal, found := os.LookupEnv("KRB_FT_JAEGER_PORT")
 	if !found {
-		jaegerReadAPIPort = defaultJaegerReadAPIPort
+		return defaultJaegerReadAPIPort
 	}
 
 	decodedJaegerPort, err := strconv.Atoi(jaegerPortVal)
 	if err != nil {
-		jaegerReadAPIPort = defaultJaegerReadAPIPort
+		return defaultJaegerReadAPIPort
 	} else {
-		jaegerReadAPIPort = decodedJaegerPort
+		return decodedJaegerPort
 	}
 }

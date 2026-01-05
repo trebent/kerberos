@@ -22,6 +22,10 @@ import (
 	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
 )
 
+const (
+	SessionidScopes = "sessionid.Scopes"
+)
+
 // CreateUserRequest defines model for CreateUserRequest.
 type CreateUserRequest struct {
 	Id       *int64 `json:"id,omitempty"`
@@ -61,9 +65,6 @@ type Groupid = int64
 // Orgid defines model for orgid.
 type Orgid = int64
 
-// Sessionid defines model for sessionid.
-type Sessionid = string
-
 // Userid defines model for userid.
 type Userid = int64
 
@@ -73,22 +74,10 @@ type LoginJSONBody struct {
 	Username string `json:"username"`
 }
 
-// LogoutParams defines parameters for Logout.
-type LogoutParams struct {
-	// XKRBSession A session ID.
-	XKRBSession Sessionid `json:"X-KRB-Session"`
-}
-
 // ChangePasswordJSONBody defines parameters for ChangePassword.
 type ChangePasswordJSONBody struct {
 	OldPassword string `json:"oldPassword"`
 	Password    string `json:"password"`
-}
-
-// ChangePasswordParams defines parameters for ChangePassword.
-type ChangePasswordParams struct {
-	// XKRBSession A session ID.
-	XKRBSession Sessionid `json:"X-KRB-Session"`
 }
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
@@ -125,7 +114,7 @@ type ServerInterface interface {
 	Login(w http.ResponseWriter, r *http.Request)
 
 	// (POST /logout)
-	Logout(w http.ResponseWriter, r *http.Request, params LogoutParams)
+	Logout(w http.ResponseWriter, r *http.Request)
 
 	// (GET /organisations)
 	ListOrganisations(w http.ResponseWriter, r *http.Request)
@@ -179,7 +168,7 @@ type ServerInterface interface {
 	UpdateUserGroups(w http.ResponseWriter, r *http.Request, userID Userid)
 
 	// (PUT /users/{userID}/password)
-	ChangePassword(w http.ResponseWriter, r *http.Request, userID Userid, params ChangePasswordParams)
+	ChangePassword(w http.ResponseWriter, r *http.Request, userID Userid)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -208,38 +197,14 @@ func (siw *ServerInterfaceWrapper) Login(w http.ResponseWriter, r *http.Request)
 // Logout operation middleware
 func (siw *ServerInterfaceWrapper) Logout(w http.ResponseWriter, r *http.Request) {
 
-	var err error
+	ctx := r.Context()
 
-	// Parameter object where we will unmarshal all parameters from the context
-	var params LogoutParams
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
 
-	headers := r.Header
-
-	// ------------- Required header parameter "X-KRB-Session" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-KRB-Session")]; found {
-		var XKRBSession Sessionid
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-KRB-Session", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-KRB-Session", valueList[0], &XKRBSession, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-KRB-Session", Err: err})
-			return
-		}
-
-		params.XKRBSession = XKRBSession
-
-	} else {
-		err := fmt.Errorf("Header parameter X-KRB-Session is required, but not found")
-		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-KRB-Session", Err: err})
-		return
-	}
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.Logout(w, r, params)
+		siw.Handler.Logout(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -251,6 +216,12 @@ func (siw *ServerInterfaceWrapper) Logout(w http.ResponseWriter, r *http.Request
 
 // ListOrganisations operation middleware
 func (siw *ServerInterfaceWrapper) ListOrganisations(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListOrganisations(w, r)
@@ -265,6 +236,12 @@ func (siw *ServerInterfaceWrapper) ListOrganisations(w http.ResponseWriter, r *h
 
 // CreateOrganisation operation middleware
 func (siw *ServerInterfaceWrapper) CreateOrganisation(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateOrganisation(w, r)
@@ -291,6 +268,12 @@ func (siw *ServerInterfaceWrapper) DeleteOrganisation(w http.ResponseWriter, r *
 		return
 	}
 
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteOrganisation(w, r, orgID)
 	}))
@@ -315,6 +298,12 @@ func (siw *ServerInterfaceWrapper) GetOrganisation(w http.ResponseWriter, r *htt
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "orgID", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetOrganisation(w, r, orgID)
@@ -341,6 +330,12 @@ func (siw *ServerInterfaceWrapper) UpdateOrganisation(w http.ResponseWriter, r *
 		return
 	}
 
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateOrganisation(w, r, orgID)
 	}))
@@ -366,6 +361,12 @@ func (siw *ServerInterfaceWrapper) ListGroups(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListGroups(w, r, orgID)
 	}))
@@ -390,6 +391,12 @@ func (siw *ServerInterfaceWrapper) CreateGroup(w http.ResponseWriter, r *http.Re
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "orgID", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateGroup(w, r, orgID)
@@ -425,6 +432,12 @@ func (siw *ServerInterfaceWrapper) DeleteGroup(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteGroup(w, r, orgID, groupID)
 	}))
@@ -458,6 +471,12 @@ func (siw *ServerInterfaceWrapper) GetGroup(w http.ResponseWriter, r *http.Reque
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "groupID", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetGroup(w, r, orgID, groupID)
@@ -493,6 +512,12 @@ func (siw *ServerInterfaceWrapper) UpdateGroup(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateGroup(w, r, orgID, groupID)
 	}))
@@ -507,6 +532,12 @@ func (siw *ServerInterfaceWrapper) UpdateGroup(w http.ResponseWriter, r *http.Re
 // ListUsers operation middleware
 func (siw *ServerInterfaceWrapper) ListUsers(w http.ResponseWriter, r *http.Request) {
 
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListUsers(w, r)
 	}))
@@ -520,6 +551,12 @@ func (siw *ServerInterfaceWrapper) ListUsers(w http.ResponseWriter, r *http.Requ
 
 // CreateUser operation middleware
 func (siw *ServerInterfaceWrapper) CreateUser(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateUser(w, r)
@@ -546,6 +583,12 @@ func (siw *ServerInterfaceWrapper) DeleteUser(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteUser(w, r, userID)
 	}))
@@ -570,6 +613,12 @@ func (siw *ServerInterfaceWrapper) GetUser(w http.ResponseWriter, r *http.Reques
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userID", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetUser(w, r, userID)
@@ -596,6 +645,12 @@ func (siw *ServerInterfaceWrapper) UpdateUser(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateUser(w, r, userID)
 	}))
@@ -620,6 +675,12 @@ func (siw *ServerInterfaceWrapper) GetUserGroups(w http.ResponseWriter, r *http.
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userID", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetUserGroups(w, r, userID)
@@ -646,6 +707,12 @@ func (siw *ServerInterfaceWrapper) UpdateUserGroups(w http.ResponseWriter, r *ht
 		return
 	}
 
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateUserGroups(w, r, userID)
 	}))
@@ -671,36 +738,14 @@ func (siw *ServerInterfaceWrapper) ChangePassword(w http.ResponseWriter, r *http
 		return
 	}
 
-	// Parameter object where we will unmarshal all parameters from the context
-	var params ChangePasswordParams
+	ctx := r.Context()
 
-	headers := r.Header
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
 
-	// ------------- Required header parameter "X-KRB-Session" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-KRB-Session")]; found {
-		var XKRBSession Sessionid
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-KRB-Session", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-KRB-Session", valueList[0], &XKRBSession, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-KRB-Session", Err: err})
-			return
-		}
-
-		params.XKRBSession = XKRBSession
-
-	} else {
-		err := fmt.Errorf("Header parameter X-KRB-Session is required, but not found")
-		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-KRB-Session", Err: err})
-		return
-	}
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ChangePassword(w, r, userID, params)
+		siw.Handler.ChangePassword(w, r, userID)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -895,7 +940,6 @@ func (response Login500JSONResponse) VisitLoginResponse(w http.ResponseWriter) e
 }
 
 type LogoutRequestObject struct {
-	Params LogoutParams
 }
 
 type LogoutResponseObject interface {
@@ -952,7 +996,7 @@ type CreateOrganisationResponseObject interface {
 	VisitCreateOrganisationResponse(w http.ResponseWriter) error
 }
 
-type CreateOrganisation200JSONResponse struct {
+type CreateOrganisation201JSONResponse struct {
 	AdminPassword string `json:"adminPassword"`
 	AdminUserId   *int64 `json:"adminUserId,omitempty"`
 	AdminUsername string `json:"adminUsername"`
@@ -960,9 +1004,9 @@ type CreateOrganisation200JSONResponse struct {
 	Name          string `json:"name"`
 }
 
-func (response CreateOrganisation200JSONResponse) VisitCreateOrganisationResponse(w http.ResponseWriter) error {
+func (response CreateOrganisation201JSONResponse) VisitCreateOrganisationResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(201)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -1113,11 +1157,11 @@ type CreateGroupResponseObject interface {
 	VisitCreateGroupResponse(w http.ResponseWriter) error
 }
 
-type CreateGroup200JSONResponse Group
+type CreateGroup201JSONResponse Group
 
-func (response CreateGroup200JSONResponse) VisitCreateGroupResponse(w http.ResponseWriter) error {
+func (response CreateGroup201JSONResponse) VisitCreateGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(201)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -1278,11 +1322,11 @@ type CreateUserResponseObject interface {
 	VisitCreateUserResponse(w http.ResponseWriter) error
 }
 
-type CreateUser200JSONResponse User
+type CreateUser201JSONResponse User
 
-func (response CreateUser200JSONResponse) VisitCreateUserResponse(w http.ResponseWriter) error {
+func (response CreateUser201JSONResponse) VisitCreateUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(201)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -1453,7 +1497,6 @@ func (response UpdateUserGroups500JSONResponse) VisitUpdateUserGroupsResponse(w 
 
 type ChangePasswordRequestObject struct {
 	UserID Userid `json:"userID"`
-	Params ChangePasswordParams
 	Body   *ChangePasswordJSONRequestBody
 }
 
@@ -1612,10 +1655,8 @@ func (sh *strictHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 // Logout operation middleware
-func (sh *strictHandler) Logout(w http.ResponseWriter, r *http.Request, params LogoutParams) {
+func (sh *strictHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	var request LogoutRequestObject
-
-	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.Logout(ctx, request.(LogoutRequestObject))
@@ -2124,11 +2165,10 @@ func (sh *strictHandler) UpdateUserGroups(w http.ResponseWriter, r *http.Request
 }
 
 // ChangePassword operation middleware
-func (sh *strictHandler) ChangePassword(w http.ResponseWriter, r *http.Request, userID Userid, params ChangePasswordParams) {
+func (sh *strictHandler) ChangePassword(w http.ResponseWriter, r *http.Request, userID Userid) {
 	var request ChangePasswordRequestObject
 
 	request.UserID = userID
-	request.Params = params
 
 	var body ChangePasswordJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -2160,31 +2200,32 @@ func (sh *strictHandler) ChangePassword(w http.ResponseWriter, r *http.Request, 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"yv8CAAD//9DF8LrtKgAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
