@@ -178,6 +178,33 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(listUsersResp.StatusCode(), http.StatusForbidden, t)
+
+	getUserResp, err := basicAuthClient.GetUserWithResponse(
+		t.Context(),
+		*createOrg1.JSON201.Id,
+		*createOrg1.JSON201.AdminUserId,
+		requestEditorSessionID(session2),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getUserResp.StatusCode(), http.StatusForbidden, t)
+
+	createGroup1Resp, err := basicAuthClient.CreateGroupWithResponse(
+		t.Context(),
+		*createOrg1.JSON201.Id,
+		basicauth.CreateGroupJSONRequestBody{Name: groupNameStaff},
+		requestEditorSessionID(session1),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createGroup1Resp.StatusCode(), http.StatusCreated, t)
+
+	getGroupResp, err := basicAuthClient.GetGroupWithResponse(
+		t.Context(),
+		*createOrg1.JSON201.Id,
+		*createGroup1Resp.JSON201.Id,
+		requestEditorSessionID(session2),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getGroupResp.StatusCode(), http.StatusForbidden, t)
 }
 
 func requestEditorSessionID(sessionID string) basicauth.RequestEditorFn {
