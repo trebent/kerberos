@@ -58,11 +58,17 @@ var (
 
 	// Sessions.
 	queryCreateSession      = "INSERT INTO sessions (user_id, organisation_id, session_id, expires) VALUES(@userID, @orgID, @session, @expires);"
-	queryGetSession         = "SELECT user_id, organisation_id, session_id, expires FROM sessions WHERE session_id = @sessionID;"
+	queryGetSession         = "SELECT user_id, organisation_id, expires FROM sessions WHERE session_id = @sessionID;"
 	queryDeleteUserSessions = "DELETE FROM sessions WHERE organisation_id = @orgID AND user_id = @userID;"
+
+	GenErrInternal = APIErrorResponse{Errors: []string{ErrInternal.Error()}}
 )
 
 const sessionExpiry = 15 * time.Minute
+
+func makeGenAPIError(msg string) APIErrorResponse {
+	return APIErrorResponse{Errors: []string{msg}}
+}
 
 func NewSSI(db db.SQLClient) StrictServerInterface {
 	return &impl{db}
@@ -78,7 +84,7 @@ func (i *impl) Login(ctx context.Context, req LoginRequestObject) (LoginResponse
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query for a user")
-		return Login500JSONResponse{Message: "Internal error."}, nil
+		return Login500JSONResponse(GenErrInternal), nil
 	}
 
 	if !rows.Next() {
@@ -86,7 +92,7 @@ func (i *impl) Login(ctx context.Context, req LoginRequestObject) (LoginResponse
 			zerologr.Error(err, "Failed to prepare rows for scanning")
 		}
 
-		return Login401JSONResponse{Message: "Login failed."}, nil
+		return Login401JSONResponse(makeGenAPIError("Login failed.")), nil
 	}
 
 	id := 0
@@ -98,12 +104,12 @@ func (i *impl) Login(ctx context.Context, req LoginRequestObject) (LoginResponse
 	_ = rows.Close()
 	if err != nil {
 		zerologr.Error(err, "Failed to scan for a matching user row")
-		return Login500JSONResponse{Message: "Internal error."}, nil
+		return Login500JSONResponse(GenErrInternal), nil
 	}
 
 	if !passwordMatch(salt, storedHashed, req.Body.Password) {
 		zerologr.Info("User login failed due to password mismatch")
-		return Login401JSONResponse{Message: "Login failed."}, nil
+		return Login401JSONResponse(makeGenAPIError("Login failed.")), nil
 	}
 	zerologr.V(10).Info("User has logged in successfully", "username", req.Body.Username)
 
@@ -118,7 +124,7 @@ func (i *impl) Login(ctx context.Context, req LoginRequestObject) (LoginResponse
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to store new session ID")
-		return Login500JSONResponse{Message: "Internal error."}, nil
+		return Login500JSONResponse(GenErrInternal), nil
 	}
 
 	return Login204Response{
@@ -141,7 +147,7 @@ func (i *impl) Logout(
 		sql.NamedArg{Name: "userID", Value: userID},
 	); err != nil {
 		zerologr.Error(err, "Failed to clear user sessions")
-		return Logout500JSONResponse{Message: "Internal error."}, nil
+		return Logout500JSONResponse(GenErrInternal), nil
 	}
 
 	return Logout204Response{}, nil
@@ -160,16 +166,18 @@ func (i *impl) ChangePassword(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to get user from session")
-		return ChangePassword500JSONResponse{Message: "Internal error."}, nil
+		return ChangePassword500JSONResponse(GenErrInternal), nil
 	}
 
 	if !rows.Next() {
 		if err := rows.Err(); err != nil {
 			zerologr.Error(err, "Failed to scan rows")
-			return ChangePassword500JSONResponse{Message: "Internal error."}, nil
+			return ChangePassword500JSONResponse(GenErrInternal), nil
 		}
 
-		return ChangePassword401JSONResponse{Message: "Failed to change user password."}, nil
+		return ChangePassword401JSONResponse(
+			makeGenAPIError("Failed to change user password."),
+		), nil
 	}
 
 	salt := ""
@@ -179,12 +187,14 @@ func (i *impl) ChangePassword(
 	_ = rows.Close()
 	if err != nil {
 		zerologr.Error(err, "Failed to scan row")
-		return ChangePassword500JSONResponse{Message: "Internal error."}, nil
+		return ChangePassword500JSONResponse(GenErrInternal), nil
 	}
 
 	if !passwordMatch(salt, hashedPassword, req.Body.OldPassword) {
 		zerologr.Error(err, "Mismatched old password")
-		return ChangePassword401JSONResponse{Message: "Failed to change user password."}, nil
+		return ChangePassword401JSONResponse(
+			makeGenAPIError("Failed to change user password."),
+		), nil
 	}
 
 	_, newSalt, newHashedPassword := makePassword(req.Body.Password)
@@ -197,7 +207,7 @@ func (i *impl) ChangePassword(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to update user password")
-		return ChangePassword500JSONResponse{Message: "Internal error."}, nil
+		return ChangePassword500JSONResponse(GenErrInternal), nil
 	}
 
 	return ChangePassword204Response{}, nil
@@ -208,21 +218,15 @@ func (i *impl) CreateGroup(
 	ctx context.Context,
 	req CreateGroupRequestObject,
 ) (CreateGroupResponseObject, error) {
-	org := orgFromContext(ctx)
-
-	if org != req.OrgID {
-		return CreateGroup401JSONResponse{Message: "You don't have permission to do that."}, nil
-	}
-
 	res, err := i.db.Exec(
 		ctx,
 		queryCreateGroup,
 		sql.NamedArg{Name: "name", Value: req.Body.Name},
-		sql.NamedArg{Name: "orgID", Value: org},
+		sql.NamedArg{Name: "orgID", Value: req.OrgID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to insert group")
-		return CreateGroup500JSONResponse{Message: "Internal error."}, nil
+		return CreateGroup500JSONResponse(GenErrInternal), nil
 	}
 
 	id, _ := res.LastInsertId()
@@ -240,9 +244,7 @@ func (i *impl) CreateOrganisation(
 	tx, err := i.db.Begin(ctx)
 	if err != nil {
 		zerologr.Error(err, "Failed to start transaction")
-		return CreateOrganisation500JSONResponse{
-			Message: "Internal error.",
-		}, nil
+		return CreateOrganisation500JSONResponse(GenErrInternal), nil
 	}
 	//nolint:errcheck // no reason to
 	defer tx.Rollback() // Just in case
@@ -251,9 +253,7 @@ func (i *impl) CreateOrganisation(
 	res, err := tx.Exec(ctx, queryCreateOrg, sql.NamedArg{Name: "name", Value: req.Body.Name})
 	if err != nil {
 		zerologr.Error(err, "Failed to create org")
-		return CreateOrganisation500JSONResponse{
-			Message: "Internal error.",
-		}, nil
+		return CreateOrganisation500JSONResponse(GenErrInternal), nil
 	}
 	id, _ := res.LastInsertId()
 	zerologr.Info(fmt.Sprintf("Created organisation with id %d", id))
@@ -273,17 +273,13 @@ func (i *impl) CreateOrganisation(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to create admin user")
-		return CreateOrganisation500JSONResponse{
-			Message: "Internal error.",
-		}, nil
+		return CreateOrganisation500JSONResponse(GenErrInternal), nil
 	}
 
 	err = tx.Commit()
 	if err != nil {
 		zerologr.Error(err, "Failed to commit transaction")
-		return CreateOrganisation500JSONResponse{
-			Message: "Internal error.",
-		}, nil
+		return CreateOrganisation500JSONResponse(GenErrInternal), nil
 	}
 
 	userID, _ := res.LastInsertId()
@@ -313,7 +309,7 @@ func (i *impl) CreateUser(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to insert new user")
-		return CreateUser500JSONResponse{Message: "Internal error."}, nil
+		return CreateUser500JSONResponse(GenErrInternal), nil
 	}
 
 	id, _ := res.LastInsertId()
@@ -336,7 +332,7 @@ func (i *impl) DeleteGroup(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to delete group")
-		return DeleteGroup500JSONResponse{Message: "Internal error."}, nil
+		return DeleteGroup500JSONResponse(GenErrInternal), nil
 	}
 
 	return DeleteGroup204Response{}, nil
@@ -354,7 +350,7 @@ func (i *impl) DeleteOrganisation(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to delete org")
-		return DeleteOrganisation500JSONResponse{Message: "Internal error."}, nil
+		return DeleteOrganisation500JSONResponse(GenErrInternal), nil
 	}
 
 	return DeleteOrganisation204Response{}, nil
@@ -373,13 +369,15 @@ func (i *impl) DeleteUser(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to delete user")
-		return DeleteUser500JSONResponse{Message: "Internal error."}, nil
+		return DeleteUser500JSONResponse(GenErrInternal), nil
 	}
 
 	return DeleteUser204Response{}, nil
 }
 
 // GetGroup implements [StrictServerInterface].
+//
+//nolint:dupl // welp
 func (i *impl) GetGroup(
 	ctx context.Context,
 	req GetGroupRequestObject,
@@ -392,13 +390,13 @@ func (i *impl) GetGroup(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query groups")
-		return GetGroup500JSONResponse{Message: "Internal error."}, nil
+		return GetGroup500JSONResponse(GenErrInternal), nil
 	}
 
 	if !rows.Next() {
 		if err := rows.Err(); err != nil {
 			zerologr.Error(err, "Failed to scan next row")
-			return GetGroup500JSONResponse{Message: "Internal error."}, nil
+			return GetGroup500JSONResponse(GenErrInternal), nil
 		}
 
 		return GetGroup404Response{}, nil
@@ -413,7 +411,7 @@ func (i *impl) GetGroup(
 	_ = rows.Close()
 	if err != nil {
 		zerologr.Error(err, "Failed to scan row")
-		return GetGroup500JSONResponse{Message: "Internal error."}, nil
+		return GetGroup500JSONResponse(GenErrInternal), nil
 	}
 
 	return GetGroup200JSONResponse{
@@ -436,13 +434,13 @@ func (i *impl) GetOrganisation(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query organisations")
-		return GetOrganisation500JSONResponse{Message: "Internal error."}, nil
+		return GetOrganisation500JSONResponse(GenErrInternal), nil
 	}
 
 	if !rows.Next() {
 		if err := rows.Err(); err != nil {
 			zerologr.Error(err, "Failed to scan next row")
-			return GetOrganisation500JSONResponse{Message: "Internal error."}, nil
+			return GetOrganisation500JSONResponse(GenErrInternal), nil
 		}
 
 		return GetOrganisation404Response{}, nil
@@ -457,7 +455,7 @@ func (i *impl) GetOrganisation(
 	_ = rows.Close()
 	if err != nil {
 		zerologr.Error(err, "Failed to scan row")
-		return GetOrganisation500JSONResponse{Message: "Internal error."}, nil
+		return GetOrganisation500JSONResponse(GenErrInternal), nil
 	}
 
 	return GetOrganisation200JSONResponse{
@@ -481,13 +479,13 @@ func (i *impl) GetUser(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query users")
-		return GetUser500JSONResponse{Message: "Internal error."}, nil
+		return GetUser500JSONResponse(GenErrInternal), nil
 	}
 
 	if !rows.Next() {
 		if err := rows.Err(); err != nil {
 			zerologr.Error(err, "Failed to scan next row")
-			return GetUser500JSONResponse{Message: "Internal error."}, nil
+			return GetUser500JSONResponse(GenErrInternal), nil
 		}
 
 		return GetUser404Response{}, nil
@@ -502,7 +500,7 @@ func (i *impl) GetUser(
 	_ = rows.Close()
 	if err != nil {
 		zerologr.Error(err, "Failed to scan row")
-		return GetUser500JSONResponse{Message: "Internal error."}, nil
+		return GetUser500JSONResponse(GenErrInternal), nil
 	}
 
 	return GetUser200JSONResponse{
@@ -524,7 +522,7 @@ func (i *impl) GetUserGroups(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query user groups")
-		return GetUserGroups500JSONResponse{Message: "Internal error."}, nil
+		return GetUserGroups500JSONResponse(GenErrInternal), nil
 	}
 	// Fine to defer since we're iterating, not just doing one scan.
 	defer rows.Close()
@@ -534,7 +532,7 @@ func (i *impl) GetUserGroups(
 		if !rows.Next() {
 			if err := rows.Err(); err != nil {
 				zerologr.Error(err, "Failed to scan next row")
-				return GetUserGroups500JSONResponse{Message: "Internal error."}, nil
+				return GetUserGroups500JSONResponse(GenErrInternal), nil
 			}
 
 			return GetUserGroups200JSONResponse(userGroups), nil
@@ -543,7 +541,7 @@ func (i *impl) GetUserGroups(
 		groupName := ""
 		if err = rows.Scan(&groupName); err != nil {
 			zerologr.Error(err, "Failed to scan row")
-			return GetUserGroups500JSONResponse{Message: "Internal error."}, nil
+			return GetUserGroups500JSONResponse(GenErrInternal), nil
 		}
 
 		userGroups = append(userGroups, groupName)
@@ -551,6 +549,8 @@ func (i *impl) GetUserGroups(
 }
 
 // ListGroups implements [StrictServerInterface].
+//
+//nolint:dupl // welp
 func (i *impl) ListGroups(
 	ctx context.Context,
 	req ListGroupsRequestObject,
@@ -562,7 +562,7 @@ func (i *impl) ListGroups(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query groups")
-		return ListGroups500JSONResponse{Message: "Internal error."}, nil
+		return ListGroups500JSONResponse(GenErrInternal), nil
 	}
 	// Fine to defer since we're iterating, not just doing one scan.
 	defer rows.Close()
@@ -572,7 +572,7 @@ func (i *impl) ListGroups(
 		if !rows.Next() {
 			if err := rows.Err(); err != nil {
 				zerologr.Error(err, "Failed to scan next row")
-				return ListGroups500JSONResponse{Message: "Internal error."}, nil
+				return ListGroups500JSONResponse(GenErrInternal), nil
 			}
 
 			return ListGroups200JSONResponse(groups), nil
@@ -584,7 +584,7 @@ func (i *impl) ListGroups(
 		)
 		if err = rows.Scan(&id, &name); err != nil {
 			zerologr.Error(err, "Failed to scan row")
-			return ListGroups500JSONResponse{Message: "Internal error."}, nil
+			return ListGroups500JSONResponse(GenErrInternal), nil
 		}
 
 		groups = append(groups, Group{Id: &id, Name: name})
@@ -602,7 +602,7 @@ func (i *impl) ListOrganisations(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query organisations")
-		return ListOrganisations500JSONResponse{Message: "Internal error."}, nil
+		return ListOrganisations500JSONResponse(GenErrInternal), nil
 	}
 	// Fine to defer since we're iterating, not just doing one scan.
 	defer rows.Close()
@@ -612,7 +612,7 @@ func (i *impl) ListOrganisations(
 		if !rows.Next() {
 			if err := rows.Err(); err != nil {
 				zerologr.Error(err, "Failed to scan next row")
-				return ListOrganisations500JSONResponse{Message: "Internal error."}, nil
+				return ListOrganisations500JSONResponse(GenErrInternal), nil
 			}
 
 			return ListOrganisations200JSONResponse(orgs), nil
@@ -624,7 +624,7 @@ func (i *impl) ListOrganisations(
 		)
 		if err = rows.Scan(&id, &name); err != nil {
 			zerologr.Error(err, "Failed to scan row")
-			return ListOrganisations500JSONResponse{Message: "Internal error."}, nil
+			return ListOrganisations500JSONResponse(GenErrInternal), nil
 		}
 
 		orgs = append(orgs, Organisation{Id: &id, Name: name})
@@ -632,6 +632,8 @@ func (i *impl) ListOrganisations(
 }
 
 // ListUsers implements [StrictServerInterface].
+//
+//nolint:dupl // welp
 func (i *impl) ListUsers(
 	ctx context.Context,
 	req ListUsersRequestObject,
@@ -643,7 +645,7 @@ func (i *impl) ListUsers(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query users")
-		return ListUsers500JSONResponse{Message: "Internal error."}, nil
+		return ListUsers500JSONResponse(GenErrInternal), nil
 	}
 	// Fine to defer since we're iterating, not just doing one scan.
 	defer rows.Close()
@@ -653,7 +655,7 @@ func (i *impl) ListUsers(
 		if !rows.Next() {
 			if err := rows.Err(); err != nil {
 				zerologr.Error(err, "Failed to scan next row")
-				return ListUsers500JSONResponse{Message: "Internal error."}, nil
+				return ListUsers500JSONResponse(GenErrInternal), nil
 			}
 
 			return ListUsers200JSONResponse(users), nil
@@ -665,7 +667,7 @@ func (i *impl) ListUsers(
 		)
 		if err = rows.Scan(&id, &name); err != nil {
 			zerologr.Error(err, "Failed to scan row")
-			return ListUsers500JSONResponse{Message: "Internal error."}, nil
+			return ListUsers500JSONResponse(GenErrInternal), nil
 		}
 
 		users = append(users, User{Id: &id, Name: name})
@@ -686,7 +688,7 @@ func (i *impl) UpdateGroup(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to update group")
-		return UpdateGroup500JSONResponse{Message: "Internal error."}, nil
+		return UpdateGroup500JSONResponse(GenErrInternal), nil
 	}
 
 	return UpdateGroup200JSONResponse{
@@ -708,7 +710,7 @@ func (i *impl) UpdateOrganisation(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to update organisation")
-		return UpdateOrganisation500JSONResponse{Message: "Internal error."}, nil
+		return UpdateOrganisation500JSONResponse(GenErrInternal), nil
 	}
 
 	return UpdateOrganisation200JSONResponse{
@@ -731,7 +733,7 @@ func (i *impl) UpdateUser(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to update user")
-		return UpdateUser500JSONResponse{Message: "Internal error."}, nil
+		return UpdateUser500JSONResponse(GenErrInternal), nil
 	}
 
 	return UpdateUser200JSONResponse{
@@ -755,7 +757,7 @@ func (i *impl) UpdateUserGroups(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query group bindings")
-		return UpdateUserGroups500JSONResponse{Message: "Internal error."}, nil
+		return UpdateUserGroups500JSONResponse(GenErrInternal), nil
 	}
 	defer rows.Close()
 
@@ -768,7 +770,7 @@ func (i *impl) UpdateUserGroups(
 		if !rows.Next() {
 			if err := rows.Err(); err != nil {
 				zerologr.Error(err, "Failed to scan next row")
-				return UpdateUserGroups500JSONResponse{Message: "Internal error."}, nil
+				return UpdateUserGroups500JSONResponse(GenErrInternal), nil
 			}
 
 			break
@@ -777,7 +779,7 @@ func (i *impl) UpdateUserGroups(
 		binding := &internalGroupBinding{}
 		if err = rows.Scan(&binding.groupID, &binding.name); err != nil {
 			zerologr.Error(err, "Failed to scan row")
-			return UpdateUserGroups500JSONResponse{Message: "Internal error."}, nil
+			return UpdateUserGroups500JSONResponse(GenErrInternal), nil
 		}
 
 		bindings = append(bindings, binding)
@@ -793,7 +795,7 @@ func (i *impl) UpdateUserGroups(
 	tx, err := i.db.Begin(ctx)
 	if err != nil {
 		zerologr.Error(err, "Failed to start transaction")
-		return UpdateUserGroups500JSONResponse{Message: "Internal error."}, nil
+		return UpdateUserGroups500JSONResponse(GenErrInternal), nil
 	}
 	//nolint:errcheck // no reason to
 	defer tx.Rollback()
@@ -807,7 +809,7 @@ func (i *impl) UpdateUserGroups(
 		)
 		if err != nil {
 			zerologr.Error(err, "Failed to run group binding deletion")
-			return UpdateUserGroups500JSONResponse{Message: "Internal error."}, nil
+			return UpdateUserGroups500JSONResponse(GenErrInternal), nil
 		}
 
 		bindings = slices.DeleteFunc(
@@ -830,14 +832,14 @@ func (i *impl) UpdateUserGroups(
 			)
 			if err != nil {
 				zerologr.Error(err, "Failed to insert new binding")
-				return UpdateUserGroups500JSONResponse{Message: "Internal error."}, nil
+				return UpdateUserGroups500JSONResponse(GenErrInternal), nil
 			}
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
 		zerologr.Error(err, "Failed to commit transaction")
-		return UpdateUserGroups500JSONResponse{Message: "Internal error."}, nil
+		return UpdateUserGroups500JSONResponse(GenErrInternal), nil
 	}
 
 	return UpdateUserGroups200JSONResponse(*req.Body), nil

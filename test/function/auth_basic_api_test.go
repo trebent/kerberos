@@ -117,6 +117,69 @@ func TestAuthBasicAPIBasic(t *testing.T) {
 	containsAll([]string(*getUserGroupsResp.JSON200), []string{groupNameStaff}, t)
 }
 
+func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
+	createOrg1, err := basicAuthClient.CreateOrganisationWithResponse(
+		t.Context(),
+		basicauth.CreateOrganisationJSONRequestBody{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
+	)
+	checkErr(err, t)
+	verifyStatusCode(createOrg1.StatusCode(), http.StatusCreated, t)
+
+	loginResp1, err := basicAuthClient.LoginWithResponse(
+		t.Context(),
+		*createOrg1.JSON201.Id,
+		basicauth.LoginJSONRequestBody{
+			Username: createOrg1.JSON201.AdminUsername,
+			Password: createOrg1.JSON201.AdminPassword,
+		},
+	)
+	checkErr(err, t)
+	verifyStatusCode(loginResp1.StatusCode(), http.StatusNoContent, t)
+	session1 := loginResp1.HTTPResponse.Header.Get("x-krb-session")
+	if session1 == "" {
+		t.Fatal("Did not get a session header")
+	}
+
+	createOrg2, err := basicAuthClient.CreateOrganisationWithResponse(
+		t.Context(),
+		basicauth.CreateOrganisationJSONRequestBody{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
+	)
+	checkErr(err, t)
+	verifyStatusCode(createOrg2.StatusCode(), http.StatusCreated, t)
+
+	loginResp2, err := basicAuthClient.LoginWithResponse(
+		t.Context(),
+		*createOrg2.JSON201.Id,
+		basicauth.LoginJSONRequestBody{
+			Username: createOrg2.JSON201.AdminUsername,
+			Password: createOrg2.JSON201.AdminPassword,
+		},
+	)
+	checkErr(err, t)
+	verifyStatusCode(loginResp2.StatusCode(), http.StatusNoContent, t)
+	session2 := loginResp2.HTTPResponse.Header.Get("x-krb-session")
+	if session2 == "" {
+		t.Fatal("Did not get a session header")
+	}
+
+	// Test accessing endpoints across organisations, all operations below shall fail.
+	listGroupsResp, err := basicAuthClient.ListGroupsWithResponse(
+		t.Context(),
+		*createOrg1.JSON201.Id,
+		requestEditorSessionID(session2),
+	)
+	checkErr(err, t)
+	verifyStatusCode(listGroupsResp.StatusCode(), http.StatusForbidden, t)
+
+	listUsersResp, err := basicAuthClient.ListUsersWithResponse(
+		t.Context(),
+		*createOrg1.JSON201.Id,
+		requestEditorSessionID(session2),
+	)
+	checkErr(err, t)
+	verifyStatusCode(listUsersResp.StatusCode(), http.StatusForbidden, t)
+}
+
 func requestEditorSessionID(sessionID string) basicauth.RequestEditorFn {
 	return func(ctx context.Context, req *http.Request) error {
 		req.Header.Set("x-krb-session", sessionID)

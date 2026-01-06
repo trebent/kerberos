@@ -26,16 +26,16 @@ const (
 	SessionidScopes = "sessionid.Scopes"
 )
 
+// APIErrorResponse defines model for APIErrorResponse.
+type APIErrorResponse struct {
+	Errors []string `json:"errors"`
+}
+
 // CreateUserRequest defines model for CreateUserRequest.
 type CreateUserRequest struct {
 	Id       *int64 `json:"id,omitempty"`
 	Name     string `json:"name"`
 	Password string `json:"password"`
-}
-
-// GenericErrorResponse defines model for GenericErrorResponse.
-type GenericErrorResponse struct {
-	Message string `json:"message"`
 }
 
 // Group defines model for Group.
@@ -1013,7 +1013,16 @@ func (response ListOrganisations200JSONResponse) VisitListOrganisationsResponse(
 	return json.NewEncoder(w).Encode(response)
 }
 
-type ListOrganisations500JSONResponse GenericErrorResponse
+type ListOrganisations401JSONResponse APIErrorResponse
+
+func (response ListOrganisations401JSONResponse) VisitListOrganisationsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListOrganisations500JSONResponse APIErrorResponse
 
 func (response ListOrganisations500JSONResponse) VisitListOrganisationsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1045,7 +1054,16 @@ func (response CreateOrganisation201JSONResponse) VisitCreateOrganisationRespons
 	return json.NewEncoder(w).Encode(response)
 }
 
-type CreateOrganisation500JSONResponse GenericErrorResponse
+type CreateOrganisation401JSONResponse APIErrorResponse
+
+func (response CreateOrganisation401JSONResponse) VisitCreateOrganisationResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateOrganisation500JSONResponse APIErrorResponse
 
 func (response CreateOrganisation500JSONResponse) VisitCreateOrganisationResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1070,6 +1088,24 @@ func (response DeleteOrganisation204Response) VisitDeleteOrganisationResponse(w 
 	return nil
 }
 
+type DeleteOrganisation401JSONResponse APIErrorResponse
+
+func (response DeleteOrganisation401JSONResponse) VisitDeleteOrganisationResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteOrganisation403JSONResponse APIErrorResponse
+
+func (response DeleteOrganisation403JSONResponse) VisitDeleteOrganisationResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type DeleteOrganisation404Response struct {
 }
 
@@ -1078,7 +1114,7 @@ func (response DeleteOrganisation404Response) VisitDeleteOrganisationResponse(w 
 	return nil
 }
 
-type DeleteOrganisation500JSONResponse GenericErrorResponse
+type DeleteOrganisation500JSONResponse APIErrorResponse
 
 func (response DeleteOrganisation500JSONResponse) VisitDeleteOrganisationResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1104,6 +1140,24 @@ func (response GetOrganisation200JSONResponse) VisitGetOrganisationResponse(w ht
 	return json.NewEncoder(w).Encode(response)
 }
 
+type GetOrganisation401JSONResponse APIErrorResponse
+
+func (response GetOrganisation401JSONResponse) VisitGetOrganisationResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetOrganisation403JSONResponse APIErrorResponse
+
+func (response GetOrganisation403JSONResponse) VisitGetOrganisationResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type GetOrganisation404Response struct {
 }
 
@@ -1112,7 +1166,7 @@ func (response GetOrganisation404Response) VisitGetOrganisationResponse(w http.R
 	return nil
 }
 
-type GetOrganisation500JSONResponse GenericErrorResponse
+type GetOrganisation500JSONResponse APIErrorResponse
 
 func (response GetOrganisation500JSONResponse) VisitGetOrganisationResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1139,6 +1193,24 @@ func (response UpdateOrganisation200JSONResponse) VisitUpdateOrganisationRespons
 	return json.NewEncoder(w).Encode(response)
 }
 
+type UpdateOrganisation401JSONResponse APIErrorResponse
+
+func (response UpdateOrganisation401JSONResponse) VisitUpdateOrganisationResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateOrganisation403JSONResponse APIErrorResponse
+
+func (response UpdateOrganisation403JSONResponse) VisitUpdateOrganisationResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type UpdateOrganisation404Response struct {
 }
 
@@ -1147,7 +1219,7 @@ func (response UpdateOrganisation404Response) VisitUpdateOrganisationResponse(w 
 	return nil
 }
 
-type UpdateOrganisation500JSONResponse GenericErrorResponse
+type UpdateOrganisation500JSONResponse APIErrorResponse
 
 func (response UpdateOrganisation500JSONResponse) VisitUpdateOrganisationResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1173,7 +1245,25 @@ func (response ListGroups200JSONResponse) VisitListGroupsResponse(w http.Respons
 	return json.NewEncoder(w).Encode(response)
 }
 
-type ListGroups500JSONResponse GenericErrorResponse
+type ListGroups401JSONResponse APIErrorResponse
+
+func (response ListGroups401JSONResponse) VisitListGroupsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListGroups403JSONResponse APIErrorResponse
+
+func (response ListGroups403JSONResponse) VisitListGroupsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListGroups500JSONResponse APIErrorResponse
 
 func (response ListGroups500JSONResponse) VisitListGroupsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1200,7 +1290,7 @@ func (response CreateGroup201JSONResponse) VisitCreateGroupResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
-type CreateGroup401JSONResponse GenericErrorResponse
+type CreateGroup401JSONResponse APIErrorResponse
 
 func (response CreateGroup401JSONResponse) VisitCreateGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1209,7 +1299,16 @@ func (response CreateGroup401JSONResponse) VisitCreateGroupResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
-type CreateGroup500JSONResponse GenericErrorResponse
+type CreateGroup403JSONResponse APIErrorResponse
+
+func (response CreateGroup403JSONResponse) VisitCreateGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateGroup500JSONResponse APIErrorResponse
 
 func (response CreateGroup500JSONResponse) VisitCreateGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1235,6 +1334,24 @@ func (response DeleteGroup204Response) VisitDeleteGroupResponse(w http.ResponseW
 	return nil
 }
 
+type DeleteGroup401JSONResponse APIErrorResponse
+
+func (response DeleteGroup401JSONResponse) VisitDeleteGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteGroup403JSONResponse APIErrorResponse
+
+func (response DeleteGroup403JSONResponse) VisitDeleteGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type DeleteGroup404Response struct {
 }
 
@@ -1243,7 +1360,7 @@ func (response DeleteGroup404Response) VisitDeleteGroupResponse(w http.ResponseW
 	return nil
 }
 
-type DeleteGroup500JSONResponse GenericErrorResponse
+type DeleteGroup500JSONResponse APIErrorResponse
 
 func (response DeleteGroup500JSONResponse) VisitDeleteGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1270,6 +1387,24 @@ func (response GetGroup200JSONResponse) VisitGetGroupResponse(w http.ResponseWri
 	return json.NewEncoder(w).Encode(response)
 }
 
+type GetGroup401JSONResponse APIErrorResponse
+
+func (response GetGroup401JSONResponse) VisitGetGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetGroup403JSONResponse APIErrorResponse
+
+func (response GetGroup403JSONResponse) VisitGetGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type GetGroup404Response struct {
 }
 
@@ -1278,7 +1413,7 @@ func (response GetGroup404Response) VisitGetGroupResponse(w http.ResponseWriter)
 	return nil
 }
 
-type GetGroup500JSONResponse GenericErrorResponse
+type GetGroup500JSONResponse APIErrorResponse
 
 func (response GetGroup500JSONResponse) VisitGetGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1306,6 +1441,24 @@ func (response UpdateGroup200JSONResponse) VisitUpdateGroupResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
+type UpdateGroup401JSONResponse APIErrorResponse
+
+func (response UpdateGroup401JSONResponse) VisitUpdateGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateGroup403JSONResponse APIErrorResponse
+
+func (response UpdateGroup403JSONResponse) VisitUpdateGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type UpdateGroup404Response struct {
 }
 
@@ -1314,7 +1467,7 @@ func (response UpdateGroup404Response) VisitUpdateGroupResponse(w http.ResponseW
 	return nil
 }
 
-type UpdateGroup500JSONResponse GenericErrorResponse
+type UpdateGroup500JSONResponse APIErrorResponse
 
 func (response UpdateGroup500JSONResponse) VisitUpdateGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1346,7 +1499,7 @@ func (response Login204Response) VisitLoginResponse(w http.ResponseWriter) error
 	return nil
 }
 
-type Login401JSONResponse GenericErrorResponse
+type Login401JSONResponse APIErrorResponse
 
 func (response Login401JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1355,7 +1508,7 @@ func (response Login401JSONResponse) VisitLoginResponse(w http.ResponseWriter) e
 	return json.NewEncoder(w).Encode(response)
 }
 
-type Login500JSONResponse GenericErrorResponse
+type Login500JSONResponse APIErrorResponse
 
 func (response Login500JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1380,7 +1533,16 @@ func (response Logout204Response) VisitLogoutResponse(w http.ResponseWriter) err
 	return nil
 }
 
-type Logout500JSONResponse GenericErrorResponse
+type Logout401JSONResponse APIErrorResponse
+
+func (response Logout401JSONResponse) VisitLogoutResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type Logout500JSONResponse APIErrorResponse
 
 func (response Logout500JSONResponse) VisitLogoutResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1406,7 +1568,25 @@ func (response ListUsers200JSONResponse) VisitListUsersResponse(w http.ResponseW
 	return json.NewEncoder(w).Encode(response)
 }
 
-type ListUsers500JSONResponse GenericErrorResponse
+type ListUsers401JSONResponse APIErrorResponse
+
+func (response ListUsers401JSONResponse) VisitListUsersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListUsers403JSONResponse APIErrorResponse
+
+func (response ListUsers403JSONResponse) VisitListUsersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListUsers500JSONResponse APIErrorResponse
 
 func (response ListUsers500JSONResponse) VisitListUsersResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1433,7 +1613,25 @@ func (response CreateUser201JSONResponse) VisitCreateUserResponse(w http.Respons
 	return json.NewEncoder(w).Encode(response)
 }
 
-type CreateUser500JSONResponse GenericErrorResponse
+type CreateUser401JSONResponse APIErrorResponse
+
+func (response CreateUser401JSONResponse) VisitCreateUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateUser403JSONResponse APIErrorResponse
+
+func (response CreateUser403JSONResponse) VisitCreateUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateUser500JSONResponse APIErrorResponse
 
 func (response CreateUser500JSONResponse) VisitCreateUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1459,6 +1657,24 @@ func (response DeleteUser204Response) VisitDeleteUserResponse(w http.ResponseWri
 	return nil
 }
 
+type DeleteUser401JSONResponse APIErrorResponse
+
+func (response DeleteUser401JSONResponse) VisitDeleteUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteUser403JSONResponse APIErrorResponse
+
+func (response DeleteUser403JSONResponse) VisitDeleteUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type DeleteUser404Response struct {
 }
 
@@ -1467,7 +1683,7 @@ func (response DeleteUser404Response) VisitDeleteUserResponse(w http.ResponseWri
 	return nil
 }
 
-type DeleteUser500JSONResponse GenericErrorResponse
+type DeleteUser500JSONResponse APIErrorResponse
 
 func (response DeleteUser500JSONResponse) VisitDeleteUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1494,6 +1710,24 @@ func (response GetUser200JSONResponse) VisitGetUserResponse(w http.ResponseWrite
 	return json.NewEncoder(w).Encode(response)
 }
 
+type GetUser401JSONResponse APIErrorResponse
+
+func (response GetUser401JSONResponse) VisitGetUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetUser403JSONResponse APIErrorResponse
+
+func (response GetUser403JSONResponse) VisitGetUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type GetUser404Response struct {
 }
 
@@ -1502,7 +1736,7 @@ func (response GetUser404Response) VisitGetUserResponse(w http.ResponseWriter) e
 	return nil
 }
 
-type GetUser500JSONResponse GenericErrorResponse
+type GetUser500JSONResponse APIErrorResponse
 
 func (response GetUser500JSONResponse) VisitGetUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1530,6 +1764,24 @@ func (response UpdateUser200JSONResponse) VisitUpdateUserResponse(w http.Respons
 	return json.NewEncoder(w).Encode(response)
 }
 
+type UpdateUser401JSONResponse APIErrorResponse
+
+func (response UpdateUser401JSONResponse) VisitUpdateUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateUser403JSONResponse APIErrorResponse
+
+func (response UpdateUser403JSONResponse) VisitUpdateUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type UpdateUser404Response struct {
 }
 
@@ -1538,7 +1790,7 @@ func (response UpdateUser404Response) VisitUpdateUserResponse(w http.ResponseWri
 	return nil
 }
 
-type UpdateUser500JSONResponse GenericErrorResponse
+type UpdateUser500JSONResponse APIErrorResponse
 
 func (response UpdateUser500JSONResponse) VisitUpdateUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1565,7 +1817,25 @@ func (response GetUserGroups200JSONResponse) VisitGetUserGroupsResponse(w http.R
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetUserGroups500JSONResponse GenericErrorResponse
+type GetUserGroups401JSONResponse APIErrorResponse
+
+func (response GetUserGroups401JSONResponse) VisitGetUserGroupsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetUserGroups403JSONResponse APIErrorResponse
+
+func (response GetUserGroups403JSONResponse) VisitGetUserGroupsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetUserGroups500JSONResponse APIErrorResponse
 
 func (response GetUserGroups500JSONResponse) VisitGetUserGroupsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1593,7 +1863,25 @@ func (response UpdateUserGroups200JSONResponse) VisitUpdateUserGroupsResponse(w 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateUserGroups500JSONResponse GenericErrorResponse
+type UpdateUserGroups401JSONResponse APIErrorResponse
+
+func (response UpdateUserGroups401JSONResponse) VisitUpdateUserGroupsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateUserGroups403JSONResponse APIErrorResponse
+
+func (response UpdateUserGroups403JSONResponse) VisitUpdateUserGroupsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateUserGroups500JSONResponse APIErrorResponse
 
 func (response UpdateUserGroups500JSONResponse) VisitUpdateUserGroupsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1620,7 +1908,7 @@ func (response ChangePassword204Response) VisitChangePasswordResponse(w http.Res
 	return nil
 }
 
-type ChangePassword401JSONResponse GenericErrorResponse
+type ChangePassword401JSONResponse APIErrorResponse
 
 func (response ChangePassword401JSONResponse) VisitChangePasswordResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1629,7 +1917,16 @@ func (response ChangePassword401JSONResponse) VisitChangePasswordResponse(w http
 	return json.NewEncoder(w).Encode(response)
 }
 
-type ChangePassword500JSONResponse GenericErrorResponse
+type ChangePassword403JSONResponse APIErrorResponse
+
+func (response ChangePassword403JSONResponse) VisitChangePasswordResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ChangePassword500JSONResponse APIErrorResponse
 
 func (response ChangePassword500JSONResponse) VisitChangePasswordResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -2322,32 +2619,35 @@ func (sh *strictHandler) ChangePassword(w http.ResponseWriter, r *http.Request, 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

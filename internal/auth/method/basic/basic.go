@@ -52,7 +52,14 @@ func (a *basic) Authorized(*http.Request) error {
 func (a *basic) registerAPI(mux *http.ServeMux) {
 	ssi := api.NewSSI(a.db)
 	_ = api.HandlerFromMuxWithBaseURL(
-		api.NewStrictHandler(ssi, []api.StrictMiddlewareFunc{api.AuthMiddleware(ssi)}),
+		api.NewStrictHandlerWithOptions(
+			ssi,
+			[]api.StrictMiddlewareFunc{api.AuthMiddleware(ssi)},
+			api.StrictHTTPServerOptions{
+				RequestErrorHandlerFunc:  api.RequestErrorHandler,
+				ResponseErrorHandlerFunc: api.ResponseErrorHandler,
+			},
+		),
 		mux,
 		"/api/auth/basic",
 	)
