@@ -3,6 +3,7 @@ package ft
 import (
 	"bytes"
 	"net/http"
+	"slices"
 	"testing"
 	"time"
 )
@@ -90,5 +91,19 @@ func checkErr(err error, t *testing.T) {
 func verifyStatusCode(in int, expected int, t *testing.T) {
 	if in != expected {
 		t.Fatalf("Expected status code %d, got %d", expected, in)
+	}
+}
+
+func matches[T comparable](one, two T, t *testing.T) {
+	if one != two {
+		t.Fatalf("%v is not equal to %v", one, two)
+	}
+}
+
+func containsAll[T comparable](source, reference []T, t *testing.T) {
+	for _, item := range source {
+		if !slices.Contains(reference, item) {
+			t.Fatalf("Reference slice does not contain %v", item)
+		}
 	}
 }

@@ -16,11 +16,11 @@ import (
 )
 
 // Verifies that basic tracing works as expected.
-func TestTracing(t *testing.T) {
+func TestTracingBasic(t *testing.T) {
 	start := time.Now()
-	response := get(fmt.Sprintf("http://localhost:%d/gw/backend/echo/tracing-test", getPort()), t)
+	response := get(fmt.Sprintf("http://%s:%d/gw/backend/echo/tracing-test", getHost(), getPort()), t)
 
-	decodedResponse := verifyResponse(response, http.StatusOK, t)
+	decodedResponse := verifyGWResponse(response, http.StatusOK, t)
 
 	traceParent, exists := decodedResponse.Headers["Traceparent"]
 	if !exists || len(traceParent) == 0 {

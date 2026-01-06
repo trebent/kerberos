@@ -41,17 +41,17 @@ var (
 
 	// Users.
 	queryCreateUser  = "INSERT INTO users (name, salt, hashed_password, organisation_id, administrator) VALUES(@name, @salt, @hashed_password, @orgID, @isAdmin);"
-	queryDeleteUser  = "DELETE FROM users WHERE id = @userID;"
-	queryGetUser     = "SELECT id, name FROM users WHERE id = @userID;"
-	queryGetFullUser = "SELECT id, name, salt, hashed_password FROM users WHERE id = @userID;"
+	queryDeleteUser  = "DELETE FROM users WHERE id = @userID AND organisation_id = @orgID;"
+	queryGetUser     = "SELECT id, name FROM users WHERE id = @userID AND organisation_id = @orgID;"
+	queryGetFullUser = "SELECT id, name, salt, hashed_password FROM users WHERE id = @userID AND organisation_id = @orgID;"
 	queryListUsers   = "SELECT id, name FROM users WHERE organisation_id = @orgID;"
-	queryUpdateUser  = "UPDATE users SET name = @name WHERE id = @userID;"
+	queryUpdateUser  = "UPDATE users SET name = @name WHERE id = @userID AND organisation_id = @orgID;"
 	//nolint:gosec // not a password
 	queryUpdateUserPassword = "UPDATE users SET salt = @salt, hashed_password = @hashed_password WHERE id = @id;"
-	queryLoginLookup        = "SELECT id, name, salt, hashed_password, organisation_id FROM users WHERE name = @username;"
+	queryLoginLookup        = "SELECT id, name, salt, hashed_password, organisation_id FROM users WHERE organisation_id = @orgID AND name = @username;"
 
 	// Group bindings.
-	queryListUserGroups     = "SELECT name FROM groups WHERE id IN (SELECT group_id FROM group_bindings WHERE user_id = @userID);"
+	queryListUserGroups     = "SELECT name FROM groups WHERE id IN (SELECT group_id FROM group_bindings WHERE user_id = @userID) AND organisation_id = @orgID;"
 	queryListGroupBindings  = "SELECT g.id, g.name FROM group_bindings gb INNER JOIN groups g on gb.group_id = g.id WHERE user_id = @userID AND organisation_id = @orgID;"
 	queryDeleteGroupBinding = "DELETE FROM group_bindings WHERE user_id = @userID AND group_id = @groupID;"
 	queryCreateGroupBinding = "INSERT INTO group_bindings (user_id, group_id) VALUES (@userID, (SELECT id FROM groups WHERE organisation_id = @orgID AND name = @groupName));"
@@ -59,7 +59,7 @@ var (
 	// Sessions.
 	queryCreateSession      = "INSERT INTO sessions (user_id, organisation_id, session_id, expires) VALUES(@userID, @orgID, @session, @expires);"
 	queryGetSession         = "SELECT user_id, organisation_id, session_id, expires FROM sessions WHERE session_id = @sessionID;"
-	queryDeleteUserSessions = "DELETE FROM sessions WHERE user_id = @userID;"
+	queryDeleteUserSessions = "DELETE FROM sessions WHERE organisation_id = @orgID AND user_id = @userID;"
 )
 
 const sessionExpiry = 15 * time.Minute
@@ -73,6 +73,7 @@ func (i *impl) Login(ctx context.Context, req LoginRequestObject) (LoginResponse
 	rows, err := i.db.Query(
 		ctx,
 		queryLoginLookup,
+		sql.NamedArg{Name: "orgID", Value: req.OrgID},
 		sql.NamedArg{Name: "username", Value: req.Body.Username},
 	)
 	if err != nil {
@@ -130,12 +131,13 @@ func (i *impl) Login(ctx context.Context, req LoginRequestObject) (LoginResponse
 // Logout implements [StrictServerInterface].
 func (i *impl) Logout(
 	ctx context.Context,
-	_ LogoutRequestObject,
+	req LogoutRequestObject,
 ) (LogoutResponseObject, error) {
 	userID := userFromContext(ctx)
 	if _, err := i.db.Exec(
 		ctx,
 		queryDeleteUserSessions,
+		sql.NamedArg{Name: "orgID", Value: req.OrgID},
 		sql.NamedArg{Name: "userID", Value: userID},
 	); err != nil {
 		zerologr.Error(err, "Failed to clear user sessions")
@@ -150,11 +152,11 @@ func (i *impl) ChangePassword(
 	ctx context.Context,
 	req ChangePasswordRequestObject,
 ) (ChangePasswordResponseObject, error) {
-	userID := userFromContext(ctx)
 	rows, err := i.db.Query(
 		ctx,
 		queryGetFullUser,
-		sql.NamedArg{Name: "userID", Value: userID},
+		sql.NamedArg{Name: "orgID", Value: req.OrgID},
+		sql.NamedArg{Name: "userID", Value: req.UserID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to get user from session")
@@ -170,10 +172,9 @@ func (i *impl) ChangePassword(
 		return ChangePassword401JSONResponse{Message: "Failed to change user password."}, nil
 	}
 
-	id := 0
 	salt := ""
 	hashedPassword := ""
-	err = rows.Scan(&id, new(string), &salt, &hashedPassword)
+	err = rows.Scan(new(int64), new(string), &salt, &hashedPassword)
 	//nolint:sqlclosecheck // won't help here
 	_ = rows.Close()
 	if err != nil {
@@ -192,7 +193,7 @@ func (i *impl) ChangePassword(
 		queryUpdateUserPassword,
 		sql.NamedArg{Name: "salt", Value: newSalt},
 		sql.NamedArg{Name: "hashed_password", Value: newHashedPassword},
-		sql.NamedArg{Name: "id", Value: id},
+		sql.NamedArg{Name: "id", Value: req.UserID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to update user password")
@@ -301,14 +302,13 @@ func (i *impl) CreateUser(
 	req CreateUserRequestObject,
 ) (CreateUserResponseObject, error) {
 	_, salt, hashedPassword := makePassword(req.Body.Password)
-	orgID := orgFromContext(ctx)
 	res, err := i.db.Exec(
 		ctx,
 		queryCreateUser,
 		sql.NamedArg{Name: "name", Value: req.Body.Name},
 		sql.NamedArg{Name: "salt", Value: salt},
 		sql.NamedArg{Name: "hashed_password", Value: hashedPassword},
-		sql.NamedArg{Name: "orgID", Value: orgID},
+		sql.NamedArg{Name: "orgID", Value: req.OrgID},
 		sql.NamedArg{Name: "isAdmin", Value: false},
 	)
 	if err != nil {
@@ -368,6 +368,7 @@ func (i *impl) DeleteUser(
 	_, err := i.db.Exec(
 		ctx,
 		queryDeleteUser,
+		sql.NamedArg{Name: "orgID", Value: req.OrgID},
 		sql.NamedArg{Name: "userID", Value: req.UserID},
 	)
 	if err != nil {
@@ -475,6 +476,7 @@ func (i *impl) GetUser(
 	rows, err := i.db.Query(
 		ctx,
 		queryGetUser,
+		sql.NamedArg{Name: "orgID", Value: req.OrgID},
 		sql.NamedArg{Name: "userID", Value: req.UserID},
 	)
 	if err != nil {
@@ -517,6 +519,7 @@ func (i *impl) GetUserGroups(
 	rows, err := i.db.Query(
 		ctx,
 		queryListUserGroups,
+		sql.NamedArg{Name: "orgID", Value: req.OrgID},
 		sql.NamedArg{Name: "userID", Value: req.UserID},
 	)
 	if err != nil {
@@ -631,13 +634,12 @@ func (i *impl) ListOrganisations(
 // ListUsers implements [StrictServerInterface].
 func (i *impl) ListUsers(
 	ctx context.Context,
-	_ ListUsersRequestObject,
+	req ListUsersRequestObject,
 ) (ListUsersResponseObject, error) {
-	orgID := orgFromContext(ctx)
 	rows, err := i.db.Query(
 		ctx,
 		queryListUsers,
-		sql.NamedArg{Name: "orgID", Value: orgID},
+		sql.NamedArg{Name: "orgID", Value: req.OrgID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query users")
@@ -724,6 +726,7 @@ func (i *impl) UpdateUser(
 		ctx,
 		queryUpdateUser,
 		sql.NamedArg{Name: "name", Value: req.Body.Name},
+		sql.NamedArg{Name: "orgID", Value: req.OrgID},
 		sql.NamedArg{Name: "userID", Value: req.UserID},
 	)
 	if err != nil {
@@ -744,13 +747,11 @@ func (i *impl) UpdateUserGroups(
 	ctx context.Context,
 	req UpdateUserGroupsRequestObject,
 ) (UpdateUserGroupsResponseObject, error) {
-	userID := userFromContext(ctx)
-	orgID := orgFromContext(ctx)
 	rows, err := i.db.Query(
 		ctx,
 		queryListGroupBindings,
-		sql.NamedArg{Name: "userID", Value: userID},
-		sql.NamedArg{Name: "orgID", Value: orgID},
+		sql.NamedArg{Name: "orgID", Value: req.OrgID},
+		sql.NamedArg{Name: "userID", Value: req.UserID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query group bindings")
@@ -801,7 +802,7 @@ func (i *impl) UpdateUserGroups(
 		_, err := tx.Exec(
 			ctx,
 			queryDeleteGroupBinding,
-			sql.NamedArg{Name: "userID", Value: userID},
+			sql.NamedArg{Name: "userID", Value: req.UserID},
 			sql.NamedArg{Name: "groupID", Value: bindingToDelete.groupID},
 		)
 		if err != nil {
@@ -823,8 +824,8 @@ func (i *impl) UpdateUserGroups(
 			_, err = tx.Exec(
 				ctx,
 				queryCreateGroupBinding,
-				sql.NamedArg{Name: "userID", Value: userID},
-				sql.NamedArg{Name: "orgID", Value: orgID},
+				sql.NamedArg{Name: "userID", Value: req.UserID},
+				sql.NamedArg{Name: "orgID", Value: req.OrgID},
 				sql.NamedArg{Name: "groupName", Value: requestBinding},
 			)
 			if err != nil {

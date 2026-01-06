@@ -18,14 +18,14 @@ type (
 )
 
 // Validate happy path forwarding to a backend service.
-func TestHappy(t *testing.T) {
+func TestGWHappy(t *testing.T) {
 	t.Parallel()
 
 	urlSegment := "/hi"
 	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", getPort(), urlSegment)
 
 	response := get(url, t)
-	decodedResponse := verifyResponse(response, http.StatusOK, t)
+	decodedResponse := verifyGWResponse(response, http.StatusOK, t)
 
 	if decodedResponse.URL != urlSegment {
 		t.Errorf("unexpected URL in response: got %s, want %s", decodedResponse.URL, urlSegment)
@@ -41,7 +41,7 @@ func TestHappy(t *testing.T) {
 }
 
 // Validate calls to a backend's root path works.
-func TestRoot(t *testing.T) {
+func TestGWRoot(t *testing.T) {
 	t.Parallel()
 
 	testData := "{\"test\": \"value\"}"
@@ -50,7 +50,7 @@ func TestRoot(t *testing.T) {
 	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", getPort(), urlSegment)
 
 	response := post(url, buf.Bytes(), t)
-	decodedResponse := verifyResponse(response, http.StatusOK, t)
+	decodedResponse := verifyGWResponse(response, http.StatusOK, t)
 
 	if decodedResponse.URL != urlSegment {
 		t.Errorf("unexpected URL in response: got %s, want %s", decodedResponse.URL, urlSegment)
@@ -76,7 +76,7 @@ func TestRoot(t *testing.T) {
 }
 
 // Validate calls to a backend's nested path works.
-func TestNested(t *testing.T) {
+func TestGWNested(t *testing.T) {
 	t.Parallel()
 
 	testData := "{\"test\": \"value\"}"
@@ -85,7 +85,7 @@ func TestNested(t *testing.T) {
 	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", getPort(), urlSegment)
 
 	response := put(url, buf.Bytes(), t)
-	decodedResponse := verifyResponse(response, http.StatusOK, t)
+	decodedResponse := verifyGWResponse(response, http.StatusOK, t)
 
 	if decodedResponse.URL != urlSegment {
 		t.Errorf("unexpected URL in response: got %s, want %s", decodedResponse.URL, urlSegment)
@@ -111,7 +111,7 @@ func TestNested(t *testing.T) {
 }
 
 // Validate calls to a non-existent backend yields a not-found status code.
-func TestNoBackend(t *testing.T) {
+func TestGWNoBackend(t *testing.T) {
 	t.Parallel()
 
 	testData := "{\"test\": \"value\"}"
@@ -120,10 +120,10 @@ func TestNoBackend(t *testing.T) {
 	t.Logf("Sending to non-existent backend url %s", url)
 	response := post(url, []byte(testData), t)
 
-	_ = verifyResponse(response, http.StatusNotFound, t)
+	_ = verifyGWResponse(response, http.StatusNotFound, t)
 }
 
-func TestBackendFormat(t *testing.T) {
+func TestGWBackendFormat(t *testing.T) {
 	t.Parallel()
 
 	testData := "{\"test\": \"value\"}"
@@ -131,10 +131,10 @@ func TestBackendFormat(t *testing.T) {
 	t.Logf("Sending to funky url %s", url)
 	response := post(url, []byte(testData), t)
 
-	_ = verifyResponse(response, http.StatusBadRequest, t)
+	_ = verifyGWResponse(response, http.StatusBadRequest, t)
 }
 
-func verifyResponse(resp *http.Response, expectedCode int, t *testing.T) *EchoResponse {
+func verifyGWResponse(resp *http.Response, expectedCode int, t *testing.T) *EchoResponse {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != expectedCode {

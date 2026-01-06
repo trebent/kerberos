@@ -80,9 +80,6 @@ type ChangePasswordJSONBody struct {
 	Password    string `json:"password"`
 }
 
-// LoginJSONRequestBody defines body for Login for application/json ContentType.
-type LoginJSONRequestBody LoginJSONBody
-
 // CreateOrganisationJSONRequestBody defines body for CreateOrganisation for application/json ContentType.
 type CreateOrganisationJSONRequestBody = Organisation
 
@@ -94,6 +91,9 @@ type CreateGroupJSONRequestBody = Group
 
 // UpdateGroupJSONRequestBody defines body for UpdateGroup for application/json ContentType.
 type UpdateGroupJSONRequestBody = Group
+
+// LoginJSONRequestBody defines body for Login for application/json ContentType.
+type LoginJSONRequestBody LoginJSONBody
 
 // CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
 type CreateUserJSONRequestBody = CreateUserRequest
@@ -109,12 +109,6 @@ type ChangePasswordJSONRequestBody ChangePasswordJSONBody
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-
-	// (POST /login)
-	Login(w http.ResponseWriter, r *http.Request)
-
-	// (POST /logout)
-	Logout(w http.ResponseWriter, r *http.Request)
 
 	// (GET /organisations)
 	ListOrganisations(w http.ResponseWriter, r *http.Request)
@@ -146,29 +140,35 @@ type ServerInterface interface {
 	// (PUT /organisations/{orgID}/groups/{groupID})
 	UpdateGroup(w http.ResponseWriter, r *http.Request, orgID Orgid, groupID Groupid)
 
-	// (GET /users)
-	ListUsers(w http.ResponseWriter, r *http.Request)
+	// (POST /organisations/{orgID}/login)
+	Login(w http.ResponseWriter, r *http.Request, orgID Orgid)
 
-	// (POST /users)
-	CreateUser(w http.ResponseWriter, r *http.Request)
+	// (POST /organisations/{orgID}/logout)
+	Logout(w http.ResponseWriter, r *http.Request, orgID Orgid)
 
-	// (DELETE /users/{userID})
-	DeleteUser(w http.ResponseWriter, r *http.Request, userID Userid)
+	// (GET /organisations/{orgID}/users)
+	ListUsers(w http.ResponseWriter, r *http.Request, orgID Orgid)
 
-	// (GET /users/{userID})
-	GetUser(w http.ResponseWriter, r *http.Request, userID Userid)
+	// (POST /organisations/{orgID}/users)
+	CreateUser(w http.ResponseWriter, r *http.Request, orgID Orgid)
 
-	// (PUT /users/{userID})
-	UpdateUser(w http.ResponseWriter, r *http.Request, userID Userid)
+	// (DELETE /organisations/{orgID}/users/{userID})
+	DeleteUser(w http.ResponseWriter, r *http.Request, orgID Orgid, userID Userid)
 
-	// (GET /users/{userID}/groups)
-	GetUserGroups(w http.ResponseWriter, r *http.Request, userID Userid)
+	// (GET /organisations/{orgID}/users/{userID})
+	GetUser(w http.ResponseWriter, r *http.Request, orgID Orgid, userID Userid)
 
-	// (PUT /users/{userID}/groups)
-	UpdateUserGroups(w http.ResponseWriter, r *http.Request, userID Userid)
+	// (PUT /organisations/{orgID}/users/{userID})
+	UpdateUser(w http.ResponseWriter, r *http.Request, orgID Orgid, userID Userid)
 
-	// (PUT /users/{userID}/password)
-	ChangePassword(w http.ResponseWriter, r *http.Request, userID Userid)
+	// (GET /organisations/{orgID}/users/{userID}/groups)
+	GetUserGroups(w http.ResponseWriter, r *http.Request, orgID Orgid, userID Userid)
+
+	// (PUT /organisations/{orgID}/users/{userID}/groups)
+	UpdateUserGroups(w http.ResponseWriter, r *http.Request, orgID Orgid, userID Userid)
+
+	// (PUT /organisations/{orgID}/users/{userID}/password)
+	ChangePassword(w http.ResponseWriter, r *http.Request, orgID Orgid, userID Userid)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -179,40 +179,6 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
-
-// Login operation middleware
-func (siw *ServerInterfaceWrapper) Login(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.Login(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// Logout operation middleware
-func (siw *ServerInterfaceWrapper) Logout(w http.ResponseWriter, r *http.Request) {
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, SessionidScopes, []string{})
-
-	r = r.WithContext(ctx)
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.Logout(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
 
 // ListOrganisations operation middleware
 func (siw *ServerInterfaceWrapper) ListOrganisations(w http.ResponseWriter, r *http.Request) {
@@ -529,8 +495,44 @@ func (siw *ServerInterfaceWrapper) UpdateGroup(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
-// ListUsers operation middleware
-func (siw *ServerInterfaceWrapper) ListUsers(w http.ResponseWriter, r *http.Request) {
+// Login operation middleware
+func (siw *ServerInterfaceWrapper) Login(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "orgID" -------------
+	var orgID Orgid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "orgID", r.PathValue("orgID"), &orgID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "orgID", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.Login(w, r, orgID)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// Logout operation middleware
+func (siw *ServerInterfaceWrapper) Logout(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "orgID" -------------
+	var orgID Orgid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "orgID", r.PathValue("orgID"), &orgID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "orgID", Err: err})
+		return
+	}
 
 	ctx := r.Context()
 
@@ -539,7 +541,38 @@ func (siw *ServerInterfaceWrapper) ListUsers(w http.ResponseWriter, r *http.Requ
 	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListUsers(w, r)
+		siw.Handler.Logout(w, r, orgID)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListUsers operation middleware
+func (siw *ServerInterfaceWrapper) ListUsers(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "orgID" -------------
+	var orgID Orgid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "orgID", r.PathValue("orgID"), &orgID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "orgID", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListUsers(w, r, orgID)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -552,6 +585,17 @@ func (siw *ServerInterfaceWrapper) ListUsers(w http.ResponseWriter, r *http.Requ
 // CreateUser operation middleware
 func (siw *ServerInterfaceWrapper) CreateUser(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+
+	// ------------- Path parameter "orgID" -------------
+	var orgID Orgid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "orgID", r.PathValue("orgID"), &orgID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "orgID", Err: err})
+		return
+	}
+
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, SessionidScopes, []string{})
@@ -559,7 +603,7 @@ func (siw *ServerInterfaceWrapper) CreateUser(w http.ResponseWriter, r *http.Req
 	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateUser(w, r)
+		siw.Handler.CreateUser(w, r, orgID)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -574,6 +618,15 @@ func (siw *ServerInterfaceWrapper) DeleteUser(w http.ResponseWriter, r *http.Req
 
 	var err error
 
+	// ------------- Path parameter "orgID" -------------
+	var orgID Orgid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "orgID", r.PathValue("orgID"), &orgID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "orgID", Err: err})
+		return
+	}
+
 	// ------------- Path parameter "userID" -------------
 	var userID Userid
 
@@ -590,7 +643,7 @@ func (siw *ServerInterfaceWrapper) DeleteUser(w http.ResponseWriter, r *http.Req
 	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DeleteUser(w, r, userID)
+		siw.Handler.DeleteUser(w, r, orgID, userID)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -605,6 +658,15 @@ func (siw *ServerInterfaceWrapper) GetUser(w http.ResponseWriter, r *http.Reques
 
 	var err error
 
+	// ------------- Path parameter "orgID" -------------
+	var orgID Orgid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "orgID", r.PathValue("orgID"), &orgID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "orgID", Err: err})
+		return
+	}
+
 	// ------------- Path parameter "userID" -------------
 	var userID Userid
 
@@ -621,7 +683,7 @@ func (siw *ServerInterfaceWrapper) GetUser(w http.ResponseWriter, r *http.Reques
 	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetUser(w, r, userID)
+		siw.Handler.GetUser(w, r, orgID, userID)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -636,6 +698,15 @@ func (siw *ServerInterfaceWrapper) UpdateUser(w http.ResponseWriter, r *http.Req
 
 	var err error
 
+	// ------------- Path parameter "orgID" -------------
+	var orgID Orgid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "orgID", r.PathValue("orgID"), &orgID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "orgID", Err: err})
+		return
+	}
+
 	// ------------- Path parameter "userID" -------------
 	var userID Userid
 
@@ -652,7 +723,7 @@ func (siw *ServerInterfaceWrapper) UpdateUser(w http.ResponseWriter, r *http.Req
 	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UpdateUser(w, r, userID)
+		siw.Handler.UpdateUser(w, r, orgID, userID)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -667,6 +738,15 @@ func (siw *ServerInterfaceWrapper) GetUserGroups(w http.ResponseWriter, r *http.
 
 	var err error
 
+	// ------------- Path parameter "orgID" -------------
+	var orgID Orgid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "orgID", r.PathValue("orgID"), &orgID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "orgID", Err: err})
+		return
+	}
+
 	// ------------- Path parameter "userID" -------------
 	var userID Userid
 
@@ -683,7 +763,7 @@ func (siw *ServerInterfaceWrapper) GetUserGroups(w http.ResponseWriter, r *http.
 	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetUserGroups(w, r, userID)
+		siw.Handler.GetUserGroups(w, r, orgID, userID)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -698,6 +778,15 @@ func (siw *ServerInterfaceWrapper) UpdateUserGroups(w http.ResponseWriter, r *ht
 
 	var err error
 
+	// ------------- Path parameter "orgID" -------------
+	var orgID Orgid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "orgID", r.PathValue("orgID"), &orgID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "orgID", Err: err})
+		return
+	}
+
 	// ------------- Path parameter "userID" -------------
 	var userID Userid
 
@@ -714,7 +803,7 @@ func (siw *ServerInterfaceWrapper) UpdateUserGroups(w http.ResponseWriter, r *ht
 	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UpdateUserGroups(w, r, userID)
+		siw.Handler.UpdateUserGroups(w, r, orgID, userID)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -729,6 +818,15 @@ func (siw *ServerInterfaceWrapper) ChangePassword(w http.ResponseWriter, r *http
 
 	var err error
 
+	// ------------- Path parameter "orgID" -------------
+	var orgID Orgid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "orgID", r.PathValue("orgID"), &orgID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "orgID", Err: err})
+		return
+	}
+
 	// ------------- Path parameter "userID" -------------
 	var userID Userid
 
@@ -745,7 +843,7 @@ func (siw *ServerInterfaceWrapper) ChangePassword(w http.ResponseWriter, r *http
 	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ChangePassword(w, r, userID)
+		siw.Handler.ChangePassword(w, r, orgID, userID)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -875,8 +973,6 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
-	m.HandleFunc("POST "+options.BaseURL+"/login", wrapper.Login)
-	m.HandleFunc("POST "+options.BaseURL+"/logout", wrapper.Logout)
 	m.HandleFunc("GET "+options.BaseURL+"/organisations", wrapper.ListOrganisations)
 	m.HandleFunc("POST "+options.BaseURL+"/organisations", wrapper.CreateOrganisation)
 	m.HandleFunc("DELETE "+options.BaseURL+"/organisations/{orgID}", wrapper.DeleteOrganisation)
@@ -887,80 +983,18 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("DELETE "+options.BaseURL+"/organisations/{orgID}/groups/{groupID}", wrapper.DeleteGroup)
 	m.HandleFunc("GET "+options.BaseURL+"/organisations/{orgID}/groups/{groupID}", wrapper.GetGroup)
 	m.HandleFunc("PUT "+options.BaseURL+"/organisations/{orgID}/groups/{groupID}", wrapper.UpdateGroup)
-	m.HandleFunc("GET "+options.BaseURL+"/users", wrapper.ListUsers)
-	m.HandleFunc("POST "+options.BaseURL+"/users", wrapper.CreateUser)
-	m.HandleFunc("DELETE "+options.BaseURL+"/users/{userID}", wrapper.DeleteUser)
-	m.HandleFunc("GET "+options.BaseURL+"/users/{userID}", wrapper.GetUser)
-	m.HandleFunc("PUT "+options.BaseURL+"/users/{userID}", wrapper.UpdateUser)
-	m.HandleFunc("GET "+options.BaseURL+"/users/{userID}/groups", wrapper.GetUserGroups)
-	m.HandleFunc("PUT "+options.BaseURL+"/users/{userID}/groups", wrapper.UpdateUserGroups)
-	m.HandleFunc("PUT "+options.BaseURL+"/users/{userID}/password", wrapper.ChangePassword)
+	m.HandleFunc("POST "+options.BaseURL+"/organisations/{orgID}/login", wrapper.Login)
+	m.HandleFunc("POST "+options.BaseURL+"/organisations/{orgID}/logout", wrapper.Logout)
+	m.HandleFunc("GET "+options.BaseURL+"/organisations/{orgID}/users", wrapper.ListUsers)
+	m.HandleFunc("POST "+options.BaseURL+"/organisations/{orgID}/users", wrapper.CreateUser)
+	m.HandleFunc("DELETE "+options.BaseURL+"/organisations/{orgID}/users/{userID}", wrapper.DeleteUser)
+	m.HandleFunc("GET "+options.BaseURL+"/organisations/{orgID}/users/{userID}", wrapper.GetUser)
+	m.HandleFunc("PUT "+options.BaseURL+"/organisations/{orgID}/users/{userID}", wrapper.UpdateUser)
+	m.HandleFunc("GET "+options.BaseURL+"/organisations/{orgID}/users/{userID}/groups", wrapper.GetUserGroups)
+	m.HandleFunc("PUT "+options.BaseURL+"/organisations/{orgID}/users/{userID}/groups", wrapper.UpdateUserGroups)
+	m.HandleFunc("PUT "+options.BaseURL+"/organisations/{orgID}/users/{userID}/password", wrapper.ChangePassword)
 
 	return m
-}
-
-type LoginRequestObject struct {
-	Body *LoginJSONRequestBody
-}
-
-type LoginResponseObject interface {
-	VisitLoginResponse(w http.ResponseWriter) error
-}
-
-type Login204ResponseHeaders struct {
-	XKrbSession string
-}
-
-type Login204Response struct {
-	Headers Login204ResponseHeaders
-}
-
-func (response Login204Response) VisitLoginResponse(w http.ResponseWriter) error {
-	w.Header().Set("x-krb-session", fmt.Sprint(response.Headers.XKrbSession))
-	w.WriteHeader(204)
-	return nil
-}
-
-type Login401JSONResponse GenericErrorResponse
-
-func (response Login401JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type Login500JSONResponse GenericErrorResponse
-
-func (response Login500JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type LogoutRequestObject struct {
-}
-
-type LogoutResponseObject interface {
-	VisitLogoutResponse(w http.ResponseWriter) error
-}
-
-type Logout204Response struct {
-}
-
-func (response Logout204Response) VisitLogoutResponse(w http.ResponseWriter) error {
-	w.WriteHeader(204)
-	return nil
-}
-
-type Logout500JSONResponse GenericErrorResponse
-
-func (response Logout500JSONResponse) VisitLogoutResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
-
-	return json.NewEncoder(w).Encode(response)
 }
 
 type ListOrganisationsRequestObject struct {
@@ -1289,7 +1323,74 @@ func (response UpdateGroup500JSONResponse) VisitUpdateGroupResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
+type LoginRequestObject struct {
+	OrgID Orgid `json:"orgID"`
+	Body  *LoginJSONRequestBody
+}
+
+type LoginResponseObject interface {
+	VisitLoginResponse(w http.ResponseWriter) error
+}
+
+type Login204ResponseHeaders struct {
+	XKrbSession string
+}
+
+type Login204Response struct {
+	Headers Login204ResponseHeaders
+}
+
+func (response Login204Response) VisitLoginResponse(w http.ResponseWriter) error {
+	w.Header().Set("x-krb-session", fmt.Sprint(response.Headers.XKrbSession))
+	w.WriteHeader(204)
+	return nil
+}
+
+type Login401JSONResponse GenericErrorResponse
+
+func (response Login401JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type Login500JSONResponse GenericErrorResponse
+
+func (response Login500JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type LogoutRequestObject struct {
+	OrgID Orgid `json:"orgID"`
+}
+
+type LogoutResponseObject interface {
+	VisitLogoutResponse(w http.ResponseWriter) error
+}
+
+type Logout204Response struct {
+}
+
+func (response Logout204Response) VisitLogoutResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type Logout500JSONResponse GenericErrorResponse
+
+func (response Logout500JSONResponse) VisitLogoutResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type ListUsersRequestObject struct {
+	OrgID Orgid `json:"orgID"`
 }
 
 type ListUsersResponseObject interface {
@@ -1315,7 +1416,8 @@ func (response ListUsers500JSONResponse) VisitListUsersResponse(w http.ResponseW
 }
 
 type CreateUserRequestObject struct {
-	Body *CreateUserJSONRequestBody
+	OrgID Orgid `json:"orgID"`
+	Body  *CreateUserJSONRequestBody
 }
 
 type CreateUserResponseObject interface {
@@ -1341,6 +1443,7 @@ func (response CreateUser500JSONResponse) VisitCreateUserResponse(w http.Respons
 }
 
 type DeleteUserRequestObject struct {
+	OrgID  Orgid  `json:"orgID"`
 	UserID Userid `json:"userID"`
 }
 
@@ -1374,6 +1477,7 @@ func (response DeleteUser500JSONResponse) VisitDeleteUserResponse(w http.Respons
 }
 
 type GetUserRequestObject struct {
+	OrgID  Orgid  `json:"orgID"`
 	UserID Userid `json:"userID"`
 }
 
@@ -1408,6 +1512,7 @@ func (response GetUser500JSONResponse) VisitGetUserResponse(w http.ResponseWrite
 }
 
 type UpdateUserRequestObject struct {
+	OrgID  Orgid  `json:"orgID"`
 	UserID Userid `json:"userID"`
 	Body   *UpdateUserJSONRequestBody
 }
@@ -1443,6 +1548,7 @@ func (response UpdateUser500JSONResponse) VisitUpdateUserResponse(w http.Respons
 }
 
 type GetUserGroupsRequestObject struct {
+	OrgID  Orgid  `json:"orgID"`
 	UserID Userid `json:"userID"`
 }
 
@@ -1469,6 +1575,7 @@ func (response GetUserGroups500JSONResponse) VisitGetUserGroupsResponse(w http.R
 }
 
 type UpdateUserGroupsRequestObject struct {
+	OrgID  Orgid  `json:"orgID"`
 	UserID Userid `json:"userID"`
 	Body   *UpdateUserGroupsJSONRequestBody
 }
@@ -1496,6 +1603,7 @@ func (response UpdateUserGroups500JSONResponse) VisitUpdateUserGroupsResponse(w 
 }
 
 type ChangePasswordRequestObject struct {
+	OrgID  Orgid  `json:"orgID"`
 	UserID Userid `json:"userID"`
 	Body   *ChangePasswordJSONRequestBody
 }
@@ -1533,12 +1641,6 @@ func (response ChangePassword500JSONResponse) VisitChangePasswordResponse(w http
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
-	// (POST /login)
-	Login(ctx context.Context, request LoginRequestObject) (LoginResponseObject, error)
-
-	// (POST /logout)
-	Logout(ctx context.Context, request LogoutRequestObject) (LogoutResponseObject, error)
-
 	// (GET /organisations)
 	ListOrganisations(ctx context.Context, request ListOrganisationsRequestObject) (ListOrganisationsResponseObject, error)
 
@@ -1569,28 +1671,34 @@ type StrictServerInterface interface {
 	// (PUT /organisations/{orgID}/groups/{groupID})
 	UpdateGroup(ctx context.Context, request UpdateGroupRequestObject) (UpdateGroupResponseObject, error)
 
-	// (GET /users)
+	// (POST /organisations/{orgID}/login)
+	Login(ctx context.Context, request LoginRequestObject) (LoginResponseObject, error)
+
+	// (POST /organisations/{orgID}/logout)
+	Logout(ctx context.Context, request LogoutRequestObject) (LogoutResponseObject, error)
+
+	// (GET /organisations/{orgID}/users)
 	ListUsers(ctx context.Context, request ListUsersRequestObject) (ListUsersResponseObject, error)
 
-	// (POST /users)
+	// (POST /organisations/{orgID}/users)
 	CreateUser(ctx context.Context, request CreateUserRequestObject) (CreateUserResponseObject, error)
 
-	// (DELETE /users/{userID})
+	// (DELETE /organisations/{orgID}/users/{userID})
 	DeleteUser(ctx context.Context, request DeleteUserRequestObject) (DeleteUserResponseObject, error)
 
-	// (GET /users/{userID})
+	// (GET /organisations/{orgID}/users/{userID})
 	GetUser(ctx context.Context, request GetUserRequestObject) (GetUserResponseObject, error)
 
-	// (PUT /users/{userID})
+	// (PUT /organisations/{orgID}/users/{userID})
 	UpdateUser(ctx context.Context, request UpdateUserRequestObject) (UpdateUserResponseObject, error)
 
-	// (GET /users/{userID}/groups)
+	// (GET /organisations/{orgID}/users/{userID}/groups)
 	GetUserGroups(ctx context.Context, request GetUserGroupsRequestObject) (GetUserGroupsResponseObject, error)
 
-	// (PUT /users/{userID}/groups)
+	// (PUT /organisations/{orgID}/users/{userID}/groups)
 	UpdateUserGroups(ctx context.Context, request UpdateUserGroupsRequestObject) (UpdateUserGroupsResponseObject, error)
 
-	// (PUT /users/{userID}/password)
+	// (PUT /organisations/{orgID}/users/{userID}/password)
 	ChangePassword(ctx context.Context, request ChangePasswordRequestObject) (ChangePasswordResponseObject, error)
 }
 
@@ -1621,61 +1729,6 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
-}
-
-// Login operation middleware
-func (sh *strictHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var request LoginRequestObject
-
-	var body LoginJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.Login(ctx, request.(LoginRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "Login")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(LoginResponseObject); ok {
-		if err := validResponse.VisitLoginResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// Logout operation middleware
-func (sh *strictHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	var request LogoutRequestObject
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.Logout(ctx, request.(LogoutRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "Logout")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(LogoutResponseObject); ok {
-		if err := validResponse.VisitLogoutResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
 }
 
 // ListOrganisations operation middleware
@@ -1965,9 +2018,70 @@ func (sh *strictHandler) UpdateGroup(w http.ResponseWriter, r *http.Request, org
 	}
 }
 
+// Login operation middleware
+func (sh *strictHandler) Login(w http.ResponseWriter, r *http.Request, orgID Orgid) {
+	var request LoginRequestObject
+
+	request.OrgID = orgID
+
+	var body LoginJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.Login(ctx, request.(LoginRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "Login")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(LoginResponseObject); ok {
+		if err := validResponse.VisitLoginResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// Logout operation middleware
+func (sh *strictHandler) Logout(w http.ResponseWriter, r *http.Request, orgID Orgid) {
+	var request LogoutRequestObject
+
+	request.OrgID = orgID
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.Logout(ctx, request.(LogoutRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "Logout")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(LogoutResponseObject); ok {
+		if err := validResponse.VisitLogoutResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListUsers operation middleware
-func (sh *strictHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) ListUsers(w http.ResponseWriter, r *http.Request, orgID Orgid) {
 	var request ListUsersRequestObject
+
+	request.OrgID = orgID
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.ListUsers(ctx, request.(ListUsersRequestObject))
@@ -1990,8 +2104,10 @@ func (sh *strictHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateUser operation middleware
-func (sh *strictHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) CreateUser(w http.ResponseWriter, r *http.Request, orgID Orgid) {
 	var request CreateUserRequestObject
+
+	request.OrgID = orgID
 
 	var body CreateUserJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -2021,9 +2137,10 @@ func (sh *strictHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteUser operation middleware
-func (sh *strictHandler) DeleteUser(w http.ResponseWriter, r *http.Request, userID Userid) {
+func (sh *strictHandler) DeleteUser(w http.ResponseWriter, r *http.Request, orgID Orgid, userID Userid) {
 	var request DeleteUserRequestObject
 
+	request.OrgID = orgID
 	request.UserID = userID
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
@@ -2047,9 +2164,10 @@ func (sh *strictHandler) DeleteUser(w http.ResponseWriter, r *http.Request, user
 }
 
 // GetUser operation middleware
-func (sh *strictHandler) GetUser(w http.ResponseWriter, r *http.Request, userID Userid) {
+func (sh *strictHandler) GetUser(w http.ResponseWriter, r *http.Request, orgID Orgid, userID Userid) {
 	var request GetUserRequestObject
 
+	request.OrgID = orgID
 	request.UserID = userID
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
@@ -2073,9 +2191,10 @@ func (sh *strictHandler) GetUser(w http.ResponseWriter, r *http.Request, userID 
 }
 
 // UpdateUser operation middleware
-func (sh *strictHandler) UpdateUser(w http.ResponseWriter, r *http.Request, userID Userid) {
+func (sh *strictHandler) UpdateUser(w http.ResponseWriter, r *http.Request, orgID Orgid, userID Userid) {
 	var request UpdateUserRequestObject
 
+	request.OrgID = orgID
 	request.UserID = userID
 
 	var body UpdateUserJSONRequestBody
@@ -2106,9 +2225,10 @@ func (sh *strictHandler) UpdateUser(w http.ResponseWriter, r *http.Request, user
 }
 
 // GetUserGroups operation middleware
-func (sh *strictHandler) GetUserGroups(w http.ResponseWriter, r *http.Request, userID Userid) {
+func (sh *strictHandler) GetUserGroups(w http.ResponseWriter, r *http.Request, orgID Orgid, userID Userid) {
 	var request GetUserGroupsRequestObject
 
+	request.OrgID = orgID
 	request.UserID = userID
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
@@ -2132,9 +2252,10 @@ func (sh *strictHandler) GetUserGroups(w http.ResponseWriter, r *http.Request, u
 }
 
 // UpdateUserGroups operation middleware
-func (sh *strictHandler) UpdateUserGroups(w http.ResponseWriter, r *http.Request, userID Userid) {
+func (sh *strictHandler) UpdateUserGroups(w http.ResponseWriter, r *http.Request, orgID Orgid, userID Userid) {
 	var request UpdateUserGroupsRequestObject
 
+	request.OrgID = orgID
 	request.UserID = userID
 
 	var body UpdateUserGroupsJSONRequestBody
@@ -2165,9 +2286,10 @@ func (sh *strictHandler) UpdateUserGroups(w http.ResponseWriter, r *http.Request
 }
 
 // ChangePassword operation middleware
-func (sh *strictHandler) ChangePassword(w http.ResponseWriter, r *http.Request, userID Userid) {
+func (sh *strictHandler) ChangePassword(w http.ResponseWriter, r *http.Request, orgID Orgid, userID Userid) {
 	var request ChangePasswordRequestObject
 
+	request.OrgID = orgID
 	request.UserID = userID
 
 	var body ChangePasswordJSONRequestBody
@@ -2200,32 +2322,32 @@ func (sh *strictHandler) ChangePassword(w http.ResponseWriter, r *http.Request, 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"yv8CAAD//9DF8LrtKgAA",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

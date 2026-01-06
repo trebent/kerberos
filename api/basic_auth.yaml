@@ -108,228 +108,6 @@ security:
   - sessionid: []
 
 paths:
-  /login:
-    post:
-      operationId: Login
-      security: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                username:
-                  type: string
-                password:
-                  type: string
-              required:
-                - username
-                - password
-      responses:
-        '204':
-          headers:
-            x-krb-session:
-              $ref: "#/components/headers/sessionid"
-          description: Logged a user in.
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericErrorResponse"
-          description: Failed to log a user in.
-        '500':
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericErrorResponse"
-          description: Internal error.
-
-  /logout:
-    post:
-      operationId: Logout
-      responses:
-        '204':
-          description: Logged a user out.
-        '500':
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericErrorResponse"
-          description: Internal error.
-  
-
-  # When invoking the /user path, the requests are automatically executed on the
-  # organisation the executing user belongs to. This is ALWAYS the case, except when creating the
-  # first user, which is done behind the scenes when creating a new organisation.
-  /users:
-    post:
-      operationId: CreateUser
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateUserRequest"
-        required: true
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
-          description: Created a new user.
-        '500':
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericErrorResponse"
-          description: Internal error.
-    get:
-      operationId: ListUsers
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/User"
-          description: Listed all users.
-        '500':
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericErrorResponse"
-          description: Internal error.
-
-  /users/{userID}:
-    parameters:
-      - "$ref": "#/components/parameters/userid"
-    get:
-      operationId: GetUser
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
-          description: Got a user.
-        '404':
-          description: User does not exist.
-        '500':
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericErrorResponse"
-          description: Internal error.
-    put:
-      operationId: UpdateUser
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/User"
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
-          description: Updated a user.
-        '404':
-          description: User does not exist.
-        '500':
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericErrorResponse"
-          description: Internal error.
-    delete:
-      operationId: DeleteUser
-      responses:
-        '204':
-          description: Deleted a user.
-        '404':
-          description: User does not exist.
-        '500':
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericErrorResponse"
-          description: Internal error.
-
-  /users/{userID}/groups:
-    parameters:
-      - "$ref": "#/components/parameters/userid"
-    put:
-      operationId: UpdateUserGroups
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UserGroups"
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UserGroups"
-          description: Updated the user's group bindings.
-        '500':
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericErrorResponse"
-          description: Internal error.
-    get:
-      operationId: GetUserGroups
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UserGroups"
-          description: Got a user's group bindings.
-        '500':
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericErrorResponse"
-          description: Internal error.
-
-  /users/{userID}/password:
-    parameters:
-      - "$ref": "#/components/parameters/userid"
-    put:
-      operationId: ChangePassword
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                oldPassword:
-                  type: string
-                password:
-                  type: string
-              required:
-                - oldPassword
-                - password
-      responses:
-        '204':
-          description: Changed a user's password.
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericErrorResponse"
-          description: Failed to change password.
-        '500':
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericErrorResponse"
-          description: Internal error.
-
   # Creating a new organisation will automatically create an admin user.
   /organisations:
     post:
@@ -432,6 +210,237 @@ paths:
           description: Deleted an organisation.
         '404':
           description: Organisation does not exist.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
+
+  /organisations/{orgID}/login:
+    parameters:
+      - $ref: "#/components/parameters/orgid"
+    post:
+      operationId: Login
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+              required:
+                - username
+                - password
+      responses:
+        '204':
+          headers:
+            x-krb-session:
+              $ref: "#/components/headers/sessionid"
+          description: Logged a user in.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Failed to log a user in.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
+
+  /organisations/{orgID}/logout:
+    parameters:
+      - $ref: "#/components/parameters/orgid"
+    post:
+      operationId: Logout
+      responses:
+        '204':
+          description: Logged a user out.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
+  
+
+  # When invoking the /user path, the requests are automatically executed on the
+  # organisation the executing user belongs to. This is ALWAYS the case, except when creating the
+  # first user, which is done behind the scenes when creating a new organisation.
+  /organisations/{orgID}/users:
+    parameters:
+      - $ref: "#/components/parameters/orgid"
+    post:
+      operationId: CreateUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+          description: Created a new user.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
+    get:
+      operationId: ListUsers
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+          description: Listed all users.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
+
+  /organisations/{orgID}/users/{userID}:
+    parameters:
+      - $ref: "#/components/parameters/orgid"
+      - $ref: "#/components/parameters/userid"
+    get:
+      operationId: GetUser
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+          description: Got a user.
+        '404':
+          description: User does not exist.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
+    put:
+      operationId: UpdateUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/User"
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+          description: Updated a user.
+        '404':
+          description: User does not exist.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
+    delete:
+      operationId: DeleteUser
+      responses:
+        '204':
+          description: Deleted a user.
+        '404':
+          description: User does not exist.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
+
+  /organisations/{orgID}/users/{userID}/groups:
+    parameters:
+      - $ref: "#/components/parameters/orgid"
+      - $ref: "#/components/parameters/userid"
+    put:
+      operationId: UpdateUserGroups
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserGroups"
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserGroups"
+          description: Updated the user's group bindings.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
+    get:
+      operationId: GetUserGroups
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserGroups"
+          description: Got a user's group bindings.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Internal error.
+
+  /organisations/{orgID}/users/{userID}/password:
+    parameters:
+      - $ref: "#/components/parameters/orgid"
+      - $ref: "#/components/parameters/userid"
+    put:
+      operationId: ChangePassword
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                oldPassword:
+                  type: string
+                password:
+                  type: string
+              required:
+                - oldPassword
+                - password
+      responses:
+        '204':
+          description: Changed a user's password.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericErrorResponse"
+          description: Failed to change password.
         '500':
           content:
             application/json:

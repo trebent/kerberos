@@ -26,7 +26,7 @@ var basicAuthClient, _ = basicauth.NewClientWithResponses(
 )
 
 // Validate org., group, user, binding creation.
-func TestFullSetup(t *testing.T) {
+func TestAuthBasicAPIBasic(t *testing.T) {
 	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(), basicauth.Organisation{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
 	)
@@ -35,7 +35,9 @@ func TestFullSetup(t *testing.T) {
 	orgID := orgResp.JSON201.Id
 
 	loginResp, err := basicAuthClient.LoginWithResponse(
-		t.Context(), basicauth.LoginJSONRequestBody{
+		t.Context(),
+		*orgID,
+		basicauth.LoginJSONRequestBody{
 			Username: orgResp.JSON201.AdminUsername,
 			Password: orgResp.JSON201.AdminPassword,
 		},
@@ -49,7 +51,8 @@ func TestFullSetup(t *testing.T) {
 
 	userResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
-		basicauth.CreateUserRequest{Name: fmt.Sprintf("%s-%s", userName, time.Now().String())},
+		*orgID,
+		basicauth.CreateUserRequest{Name: userName},
 		requestEditorSessionID(session),
 	)
 	checkErr(err, t)
@@ -66,12 +69,52 @@ func TestFullSetup(t *testing.T) {
 
 	bindResp, err := basicAuthClient.UpdateUserGroupsWithResponse(
 		t.Context(),
+		*orgID,
 		*userResp.JSON201.Id,
 		basicauth.UpdateUserGroupsJSONRequestBody{groupNameStaff},
 		requestEditorSessionID(session),
 	)
 	checkErr(err, t)
 	verifyStatusCode(bindResp.StatusCode(), http.StatusOK, t)
+
+	getOrgResp, err := basicAuthClient.GetOrganisationWithResponse(
+		t.Context(),
+		*orgID,
+		requestEditorSessionID(session),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getOrgResp.StatusCode(), http.StatusOK, t)
+	matches(*getOrgResp.JSON200.Id, *orgID, t)
+
+	getUserResp, err := basicAuthClient.GetUserWithResponse(
+		t.Context(),
+		*orgID,
+		*userResp.JSON201.Id,
+		requestEditorSessionID(session),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getUserResp.StatusCode(), http.StatusOK, t)
+	matches(*getUserResp.JSON200.Id, *userResp.JSON201.Id, t)
+
+	getGroupResp, err := basicAuthClient.GetGroupWithResponse(
+		t.Context(),
+		*orgID,
+		*groupResp.JSON201.Id,
+		requestEditorSessionID(session),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getGroupResp.StatusCode(), http.StatusOK, t)
+	matches(*getGroupResp.JSON200.Id, *groupResp.JSON201.Id, t)
+
+	getUserGroupsResp, err := basicAuthClient.GetUserGroupsWithResponse(
+		t.Context(),
+		*orgID,
+		*userResp.JSON201.Id,
+		requestEditorSessionID(session),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getUserGroupsResp.StatusCode(), http.StatusOK, t)
+	containsAll([]string(*getUserGroupsResp.JSON200), []string{groupNameStaff}, t)
 }
 
 func requestEditorSessionID(sessionID string) basicauth.RequestEditorFn {

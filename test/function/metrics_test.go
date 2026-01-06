@@ -11,10 +11,10 @@ import (
 )
 
 // Verifies that basic metrics are present and incremented as expected.
-func TestQuery(t *testing.T) {
+func TestMetricsBasic(t *testing.T) {
 	startMetrics := fetchMetrics(t)
 
-	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo/metrics-test", getPort())
+	url := fmt.Sprintf("http://%s:%d/gw/backend/echo/metrics-test", getHost(), getPort())
 	_ = get(url, t)
 	_ = put(url, []byte("metrics test"), t)
 	_ = post(url, []byte("metrics test"), t)

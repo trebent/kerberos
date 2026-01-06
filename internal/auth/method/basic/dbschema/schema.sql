@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS users (
   FOREIGN KEY(organisation_id) REFERENCES organisations(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS user_name ON users(name);
+CREATE UNIQUE INDEX IF NOT EXISTS user_name ON users(organisation_id, name);
 
 CREATE TABLE IF NOT EXISTS group_bindings (
   user_id INTEGER,

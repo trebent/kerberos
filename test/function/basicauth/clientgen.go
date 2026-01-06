@@ -74,9 +74,6 @@ type ChangePasswordJSONBody struct {
 	Password    string `json:"password"`
 }
 
-// LoginJSONRequestBody defines body for Login for application/json ContentType.
-type LoginJSONRequestBody LoginJSONBody
-
 // CreateOrganisationJSONRequestBody defines body for CreateOrganisation for application/json ContentType.
 type CreateOrganisationJSONRequestBody = Organisation
 
@@ -88,6 +85,9 @@ type CreateGroupJSONRequestBody = Group
 
 // UpdateGroupJSONRequestBody defines body for UpdateGroup for application/json ContentType.
 type UpdateGroupJSONRequestBody = Group
+
+// LoginJSONRequestBody defines body for Login for application/json ContentType.
+type LoginJSONRequestBody LoginJSONBody
 
 // CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
 type CreateUserJSONRequestBody = CreateUserRequest
@@ -174,14 +174,6 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
-	// LoginWithBody request with any body
-	LoginWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	Login(ctx context.Context, body LoginJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// Logout request
-	Logout(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// ListOrganisations request
 	ListOrganisations(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -220,73 +212,45 @@ type ClientInterface interface {
 
 	UpdateGroup(ctx context.Context, orgID Orgid, groupID Groupid, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// LoginWithBody request with any body
+	LoginWithBody(ctx context.Context, orgID Orgid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	Login(ctx context.Context, orgID Orgid, body LoginJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// Logout request
+	Logout(ctx context.Context, orgID Orgid, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListUsers request
-	ListUsers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListUsers(ctx context.Context, orgID Orgid, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateUserWithBody request with any body
-	CreateUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateUserWithBody(ctx context.Context, orgID Orgid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateUser(ctx context.Context, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateUser(ctx context.Context, orgID Orgid, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteUser request
-	DeleteUser(ctx context.Context, userID Userid, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteUser(ctx context.Context, orgID Orgid, userID Userid, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetUser request
-	GetUser(ctx context.Context, userID Userid, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetUser(ctx context.Context, orgID Orgid, userID Userid, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateUserWithBody request with any body
-	UpdateUserWithBody(ctx context.Context, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateUserWithBody(ctx context.Context, orgID Orgid, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateUser(ctx context.Context, userID Userid, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateUser(ctx context.Context, orgID Orgid, userID Userid, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetUserGroups request
-	GetUserGroups(ctx context.Context, userID Userid, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetUserGroups(ctx context.Context, orgID Orgid, userID Userid, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateUserGroupsWithBody request with any body
-	UpdateUserGroupsWithBody(ctx context.Context, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateUserGroupsWithBody(ctx context.Context, orgID Orgid, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateUserGroups(ctx context.Context, userID Userid, body UpdateUserGroupsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateUserGroups(ctx context.Context, orgID Orgid, userID Userid, body UpdateUserGroupsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ChangePasswordWithBody request with any body
-	ChangePasswordWithBody(ctx context.Context, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ChangePasswordWithBody(ctx context.Context, orgID Orgid, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	ChangePassword(ctx context.Context, userID Userid, body ChangePasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-}
-
-func (c *Client) LoginWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewLoginRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) Login(ctx context.Context, body LoginJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewLoginRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) Logout(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewLogoutRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	ChangePassword(ctx context.Context, orgID Orgid, userID Userid, body ChangePasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) ListOrganisations(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -457,8 +421,8 @@ func (c *Client) UpdateGroup(ctx context.Context, orgID Orgid, groupID Groupid, 
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListUsers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListUsersRequest(c.Server)
+func (c *Client) LoginWithBody(ctx context.Context, orgID Orgid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLoginRequestWithBody(c.Server, orgID, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -469,8 +433,8 @@ func (c *Client) ListUsers(ctx context.Context, reqEditors ...RequestEditorFn) (
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateUserRequestWithBody(c.Server, contentType, body)
+func (c *Client) Login(ctx context.Context, orgID Orgid, body LoginJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLoginRequest(c.Server, orgID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -481,8 +445,8 @@ func (c *Client) CreateUserWithBody(ctx context.Context, contentType string, bod
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateUser(ctx context.Context, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateUserRequest(c.Server, body)
+func (c *Client) Logout(ctx context.Context, orgID Orgid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLogoutRequest(c.Server, orgID)
 	if err != nil {
 		return nil, err
 	}
@@ -493,8 +457,8 @@ func (c *Client) CreateUser(ctx context.Context, body CreateUserJSONRequestBody,
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteUser(ctx context.Context, userID Userid, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteUserRequest(c.Server, userID)
+func (c *Client) ListUsers(ctx context.Context, orgID Orgid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListUsersRequest(c.Server, orgID)
 	if err != nil {
 		return nil, err
 	}
@@ -505,8 +469,8 @@ func (c *Client) DeleteUser(ctx context.Context, userID Userid, reqEditors ...Re
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetUser(ctx context.Context, userID Userid, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetUserRequest(c.Server, userID)
+func (c *Client) CreateUserWithBody(ctx context.Context, orgID Orgid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateUserRequestWithBody(c.Server, orgID, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -517,8 +481,8 @@ func (c *Client) GetUser(ctx context.Context, userID Userid, reqEditors ...Reque
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateUserWithBody(ctx context.Context, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateUserRequestWithBody(c.Server, userID, contentType, body)
+func (c *Client) CreateUser(ctx context.Context, orgID Orgid, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateUserRequest(c.Server, orgID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -529,8 +493,8 @@ func (c *Client) UpdateUserWithBody(ctx context.Context, userID Userid, contentT
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateUser(ctx context.Context, userID Userid, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateUserRequest(c.Server, userID, body)
+func (c *Client) DeleteUser(ctx context.Context, orgID Orgid, userID Userid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteUserRequest(c.Server, orgID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -541,8 +505,8 @@ func (c *Client) UpdateUser(ctx context.Context, userID Userid, body UpdateUserJ
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetUserGroups(ctx context.Context, userID Userid, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetUserGroupsRequest(c.Server, userID)
+func (c *Client) GetUser(ctx context.Context, orgID Orgid, userID Userid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetUserRequest(c.Server, orgID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -553,8 +517,8 @@ func (c *Client) GetUserGroups(ctx context.Context, userID Userid, reqEditors ..
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateUserGroupsWithBody(ctx context.Context, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateUserGroupsRequestWithBody(c.Server, userID, contentType, body)
+func (c *Client) UpdateUserWithBody(ctx context.Context, orgID Orgid, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateUserRequestWithBody(c.Server, orgID, userID, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -565,8 +529,8 @@ func (c *Client) UpdateUserGroupsWithBody(ctx context.Context, userID Userid, co
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateUserGroups(ctx context.Context, userID Userid, body UpdateUserGroupsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateUserGroupsRequest(c.Server, userID, body)
+func (c *Client) UpdateUser(ctx context.Context, orgID Orgid, userID Userid, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateUserRequest(c.Server, orgID, userID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -577,8 +541,8 @@ func (c *Client) UpdateUserGroups(ctx context.Context, userID Userid, body Updat
 	return c.Client.Do(req)
 }
 
-func (c *Client) ChangePasswordWithBody(ctx context.Context, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewChangePasswordRequestWithBody(c.Server, userID, contentType, body)
+func (c *Client) GetUserGroups(ctx context.Context, orgID Orgid, userID Userid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetUserGroupsRequest(c.Server, orgID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -589,8 +553,8 @@ func (c *Client) ChangePasswordWithBody(ctx context.Context, userID Userid, cont
 	return c.Client.Do(req)
 }
 
-func (c *Client) ChangePassword(ctx context.Context, userID Userid, body ChangePasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewChangePasswordRequest(c.Server, userID, body)
+func (c *Client) UpdateUserGroupsWithBody(ctx context.Context, orgID Orgid, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateUserGroupsRequestWithBody(c.Server, orgID, userID, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -601,71 +565,40 @@ func (c *Client) ChangePassword(ctx context.Context, userID Userid, body ChangeP
 	return c.Client.Do(req)
 }
 
-// NewLoginRequest calls the generic Login builder with application/json body
-func NewLoginRequest(server string, body LoginJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
+func (c *Client) UpdateUserGroups(ctx context.Context, orgID Orgid, userID Userid, body UpdateUserGroupsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateUserGroupsRequest(c.Server, orgID, userID, body)
 	if err != nil {
 		return nil, err
 	}
-	bodyReader = bytes.NewReader(buf)
-	return NewLoginRequestWithBody(server, "application/json", bodyReader)
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
-// NewLoginRequestWithBody generates requests for Login with any type of body
-func NewLoginRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
+func (c *Client) ChangePasswordWithBody(ctx context.Context, orgID Orgid, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewChangePasswordRequestWithBody(c.Server, orgID, userID, contentType, body)
 	if err != nil {
 		return nil, err
 	}
-
-	operationPath := fmt.Sprintf("/login")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
 		return nil, err
 	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
+	return c.Client.Do(req)
 }
 
-// NewLogoutRequest generates requests for Logout
-func NewLogoutRequest(server string) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
+func (c *Client) ChangePassword(ctx context.Context, orgID Orgid, userID Userid, body ChangePasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewChangePasswordRequest(c.Server, orgID, userID, body)
 	if err != nil {
 		return nil, err
 	}
-
-	operationPath := fmt.Sprintf("/logout")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
 		return nil, err
 	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
+	return c.Client.Do(req)
 }
 
 // NewListOrganisationsRequest generates requests for ListOrganisations
@@ -1067,16 +1000,104 @@ func NewUpdateGroupRequestWithBody(server string, orgID Orgid, groupID Groupid, 
 	return req, nil
 }
 
-// NewListUsersRequest generates requests for ListUsers
-func NewListUsersRequest(server string) (*http.Request, error) {
+// NewLoginRequest calls the generic Login builder with application/json body
+func NewLoginRequest(server string, orgID Orgid, body LoginJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewLoginRequestWithBody(server, orgID, "application/json", bodyReader)
+}
+
+// NewLoginRequestWithBody generates requests for Login with any type of body
+func NewLoginRequestWithBody(server string, orgID Orgid, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "orgID", runtime.ParamLocationPath, orgID)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/users")
+	operationPath := fmt.Sprintf("/organisations/%s/login", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewLogoutRequest generates requests for Logout
+func NewLogoutRequest(server string, orgID Orgid) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "orgID", runtime.ParamLocationPath, orgID)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/organisations/%s/logout", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListUsersRequest generates requests for ListUsers
+func NewListUsersRequest(server string, orgID Orgid) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "orgID", runtime.ParamLocationPath, orgID)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/organisations/%s/users", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1095,26 +1116,33 @@ func NewListUsersRequest(server string) (*http.Request, error) {
 }
 
 // NewCreateUserRequest calls the generic CreateUser builder with application/json body
-func NewCreateUserRequest(server string, body CreateUserJSONRequestBody) (*http.Request, error) {
+func NewCreateUserRequest(server string, orgID Orgid, body CreateUserJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateUserRequestWithBody(server, "application/json", bodyReader)
+	return NewCreateUserRequestWithBody(server, orgID, "application/json", bodyReader)
 }
 
 // NewCreateUserRequestWithBody generates requests for CreateUser with any type of body
-func NewCreateUserRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateUserRequestWithBody(server string, orgID Orgid, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "orgID", runtime.ParamLocationPath, orgID)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/users")
+	operationPath := fmt.Sprintf("/organisations/%s/users", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1135,12 +1163,19 @@ func NewCreateUserRequestWithBody(server string, contentType string, body io.Rea
 }
 
 // NewDeleteUserRequest generates requests for DeleteUser
-func NewDeleteUserRequest(server string, userID Userid) (*http.Request, error) {
+func NewDeleteUserRequest(server string, orgID Orgid, userID Userid) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "userID", runtime.ParamLocationPath, userID)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "orgID", runtime.ParamLocationPath, orgID)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "userID", runtime.ParamLocationPath, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -1150,7 +1185,7 @@ func NewDeleteUserRequest(server string, userID Userid) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/users/%s", pathParam0)
+	operationPath := fmt.Sprintf("/organisations/%s/users/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1169,12 +1204,19 @@ func NewDeleteUserRequest(server string, userID Userid) (*http.Request, error) {
 }
 
 // NewGetUserRequest generates requests for GetUser
-func NewGetUserRequest(server string, userID Userid) (*http.Request, error) {
+func NewGetUserRequest(server string, orgID Orgid, userID Userid) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "userID", runtime.ParamLocationPath, userID)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "orgID", runtime.ParamLocationPath, orgID)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "userID", runtime.ParamLocationPath, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -1184,7 +1226,7 @@ func NewGetUserRequest(server string, userID Userid) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/users/%s", pathParam0)
+	operationPath := fmt.Sprintf("/organisations/%s/users/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1203,23 +1245,30 @@ func NewGetUserRequest(server string, userID Userid) (*http.Request, error) {
 }
 
 // NewUpdateUserRequest calls the generic UpdateUser builder with application/json body
-func NewUpdateUserRequest(server string, userID Userid, body UpdateUserJSONRequestBody) (*http.Request, error) {
+func NewUpdateUserRequest(server string, orgID Orgid, userID Userid, body UpdateUserJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateUserRequestWithBody(server, userID, "application/json", bodyReader)
+	return NewUpdateUserRequestWithBody(server, orgID, userID, "application/json", bodyReader)
 }
 
 // NewUpdateUserRequestWithBody generates requests for UpdateUser with any type of body
-func NewUpdateUserRequestWithBody(server string, userID Userid, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateUserRequestWithBody(server string, orgID Orgid, userID Userid, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "userID", runtime.ParamLocationPath, userID)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "orgID", runtime.ParamLocationPath, orgID)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "userID", runtime.ParamLocationPath, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -1229,7 +1278,7 @@ func NewUpdateUserRequestWithBody(server string, userID Userid, contentType stri
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/users/%s", pathParam0)
+	operationPath := fmt.Sprintf("/organisations/%s/users/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1250,12 +1299,19 @@ func NewUpdateUserRequestWithBody(server string, userID Userid, contentType stri
 }
 
 // NewGetUserGroupsRequest generates requests for GetUserGroups
-func NewGetUserGroupsRequest(server string, userID Userid) (*http.Request, error) {
+func NewGetUserGroupsRequest(server string, orgID Orgid, userID Userid) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "userID", runtime.ParamLocationPath, userID)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "orgID", runtime.ParamLocationPath, orgID)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "userID", runtime.ParamLocationPath, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -1265,7 +1321,7 @@ func NewGetUserGroupsRequest(server string, userID Userid) (*http.Request, error
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/users/%s/groups", pathParam0)
+	operationPath := fmt.Sprintf("/organisations/%s/users/%s/groups", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1284,23 +1340,30 @@ func NewGetUserGroupsRequest(server string, userID Userid) (*http.Request, error
 }
 
 // NewUpdateUserGroupsRequest calls the generic UpdateUserGroups builder with application/json body
-func NewUpdateUserGroupsRequest(server string, userID Userid, body UpdateUserGroupsJSONRequestBody) (*http.Request, error) {
+func NewUpdateUserGroupsRequest(server string, orgID Orgid, userID Userid, body UpdateUserGroupsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateUserGroupsRequestWithBody(server, userID, "application/json", bodyReader)
+	return NewUpdateUserGroupsRequestWithBody(server, orgID, userID, "application/json", bodyReader)
 }
 
 // NewUpdateUserGroupsRequestWithBody generates requests for UpdateUserGroups with any type of body
-func NewUpdateUserGroupsRequestWithBody(server string, userID Userid, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateUserGroupsRequestWithBody(server string, orgID Orgid, userID Userid, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "userID", runtime.ParamLocationPath, userID)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "orgID", runtime.ParamLocationPath, orgID)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "userID", runtime.ParamLocationPath, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -1310,7 +1373,7 @@ func NewUpdateUserGroupsRequestWithBody(server string, userID Userid, contentTyp
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/users/%s/groups", pathParam0)
+	operationPath := fmt.Sprintf("/organisations/%s/users/%s/groups", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1331,23 +1394,30 @@ func NewUpdateUserGroupsRequestWithBody(server string, userID Userid, contentTyp
 }
 
 // NewChangePasswordRequest calls the generic ChangePassword builder with application/json body
-func NewChangePasswordRequest(server string, userID Userid, body ChangePasswordJSONRequestBody) (*http.Request, error) {
+func NewChangePasswordRequest(server string, orgID Orgid, userID Userid, body ChangePasswordJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewChangePasswordRequestWithBody(server, userID, "application/json", bodyReader)
+	return NewChangePasswordRequestWithBody(server, orgID, userID, "application/json", bodyReader)
 }
 
 // NewChangePasswordRequestWithBody generates requests for ChangePassword with any type of body
-func NewChangePasswordRequestWithBody(server string, userID Userid, contentType string, body io.Reader) (*http.Request, error) {
+func NewChangePasswordRequestWithBody(server string, orgID Orgid, userID Userid, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "userID", runtime.ParamLocationPath, userID)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "orgID", runtime.ParamLocationPath, orgID)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "userID", runtime.ParamLocationPath, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -1357,7 +1427,7 @@ func NewChangePasswordRequestWithBody(server string, userID Userid, contentType 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/users/%s/password", pathParam0)
+	operationPath := fmt.Sprintf("/organisations/%s/users/%s/password", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1420,14 +1490,6 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
-	// LoginWithBodyWithResponse request with any body
-	LoginWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginResponse, error)
-
-	LoginWithResponse(ctx context.Context, body LoginJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginResponse, error)
-
-	// LogoutWithResponse request
-	LogoutWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*LogoutResponse, error)
-
 	// ListOrganisationsWithResponse request
 	ListOrganisationsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListOrganisationsResponse, error)
 
@@ -1466,82 +1528,45 @@ type ClientWithResponsesInterface interface {
 
 	UpdateGroupWithResponse(ctx context.Context, orgID Orgid, groupID Groupid, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error)
 
+	// LoginWithBodyWithResponse request with any body
+	LoginWithBodyWithResponse(ctx context.Context, orgID Orgid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginResponse, error)
+
+	LoginWithResponse(ctx context.Context, orgID Orgid, body LoginJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginResponse, error)
+
+	// LogoutWithResponse request
+	LogoutWithResponse(ctx context.Context, orgID Orgid, reqEditors ...RequestEditorFn) (*LogoutResponse, error)
+
 	// ListUsersWithResponse request
-	ListUsersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListUsersResponse, error)
+	ListUsersWithResponse(ctx context.Context, orgID Orgid, reqEditors ...RequestEditorFn) (*ListUsersResponse, error)
 
 	// CreateUserWithBodyWithResponse request with any body
-	CreateUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUserResponse, error)
+	CreateUserWithBodyWithResponse(ctx context.Context, orgID Orgid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUserResponse, error)
 
-	CreateUserWithResponse(ctx context.Context, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUserResponse, error)
+	CreateUserWithResponse(ctx context.Context, orgID Orgid, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUserResponse, error)
 
 	// DeleteUserWithResponse request
-	DeleteUserWithResponse(ctx context.Context, userID Userid, reqEditors ...RequestEditorFn) (*DeleteUserResponse, error)
+	DeleteUserWithResponse(ctx context.Context, orgID Orgid, userID Userid, reqEditors ...RequestEditorFn) (*DeleteUserResponse, error)
 
 	// GetUserWithResponse request
-	GetUserWithResponse(ctx context.Context, userID Userid, reqEditors ...RequestEditorFn) (*GetUserResponse, error)
+	GetUserWithResponse(ctx context.Context, orgID Orgid, userID Userid, reqEditors ...RequestEditorFn) (*GetUserResponse, error)
 
 	// UpdateUserWithBodyWithResponse request with any body
-	UpdateUserWithBodyWithResponse(ctx context.Context, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error)
+	UpdateUserWithBodyWithResponse(ctx context.Context, orgID Orgid, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error)
 
-	UpdateUserWithResponse(ctx context.Context, userID Userid, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error)
+	UpdateUserWithResponse(ctx context.Context, orgID Orgid, userID Userid, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error)
 
 	// GetUserGroupsWithResponse request
-	GetUserGroupsWithResponse(ctx context.Context, userID Userid, reqEditors ...RequestEditorFn) (*GetUserGroupsResponse, error)
+	GetUserGroupsWithResponse(ctx context.Context, orgID Orgid, userID Userid, reqEditors ...RequestEditorFn) (*GetUserGroupsResponse, error)
 
 	// UpdateUserGroupsWithBodyWithResponse request with any body
-	UpdateUserGroupsWithBodyWithResponse(ctx context.Context, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserGroupsResponse, error)
+	UpdateUserGroupsWithBodyWithResponse(ctx context.Context, orgID Orgid, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserGroupsResponse, error)
 
-	UpdateUserGroupsWithResponse(ctx context.Context, userID Userid, body UpdateUserGroupsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserGroupsResponse, error)
+	UpdateUserGroupsWithResponse(ctx context.Context, orgID Orgid, userID Userid, body UpdateUserGroupsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserGroupsResponse, error)
 
 	// ChangePasswordWithBodyWithResponse request with any body
-	ChangePasswordWithBodyWithResponse(ctx context.Context, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ChangePasswordResponse, error)
+	ChangePasswordWithBodyWithResponse(ctx context.Context, orgID Orgid, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ChangePasswordResponse, error)
 
-	ChangePasswordWithResponse(ctx context.Context, userID Userid, body ChangePasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ChangePasswordResponse, error)
-}
-
-type LoginResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON401      *GenericErrorResponse
-	JSON500      *GenericErrorResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r LoginResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r LoginResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type LogoutResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON500      *GenericErrorResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r LogoutResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r LogoutResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
+	ChangePasswordWithResponse(ctx context.Context, orgID Orgid, userID Userid, body ChangePasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ChangePasswordResponse, error)
 }
 
 type ListOrganisationsResponse struct {
@@ -1779,6 +1804,51 @@ func (r UpdateGroupResponse) StatusCode() int {
 	return 0
 }
 
+type LoginResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *GenericErrorResponse
+	JSON500      *GenericErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r LoginResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r LoginResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type LogoutResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON500      *GenericErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r LogoutResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r LogoutResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type ListUsersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -1962,32 +2032,6 @@ func (r ChangePasswordResponse) StatusCode() int {
 	return 0
 }
 
-// LoginWithBodyWithResponse request with arbitrary body returning *LoginResponse
-func (c *ClientWithResponses) LoginWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginResponse, error) {
-	rsp, err := c.LoginWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseLoginResponse(rsp)
-}
-
-func (c *ClientWithResponses) LoginWithResponse(ctx context.Context, body LoginJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginResponse, error) {
-	rsp, err := c.Login(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseLoginResponse(rsp)
-}
-
-// LogoutWithResponse request returning *LogoutResponse
-func (c *ClientWithResponses) LogoutWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*LogoutResponse, error) {
-	rsp, err := c.Logout(ctx, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseLogoutResponse(rsp)
-}
-
 // ListOrganisationsWithResponse request returning *ListOrganisationsResponse
 func (c *ClientWithResponses) ListOrganisationsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListOrganisationsResponse, error) {
 	rsp, err := c.ListOrganisations(ctx, reqEditors...)
@@ -2110,9 +2154,35 @@ func (c *ClientWithResponses) UpdateGroupWithResponse(ctx context.Context, orgID
 	return ParseUpdateGroupResponse(rsp)
 }
 
+// LoginWithBodyWithResponse request with arbitrary body returning *LoginResponse
+func (c *ClientWithResponses) LoginWithBodyWithResponse(ctx context.Context, orgID Orgid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginResponse, error) {
+	rsp, err := c.LoginWithBody(ctx, orgID, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLoginResponse(rsp)
+}
+
+func (c *ClientWithResponses) LoginWithResponse(ctx context.Context, orgID Orgid, body LoginJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginResponse, error) {
+	rsp, err := c.Login(ctx, orgID, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLoginResponse(rsp)
+}
+
+// LogoutWithResponse request returning *LogoutResponse
+func (c *ClientWithResponses) LogoutWithResponse(ctx context.Context, orgID Orgid, reqEditors ...RequestEditorFn) (*LogoutResponse, error) {
+	rsp, err := c.Logout(ctx, orgID, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLogoutResponse(rsp)
+}
+
 // ListUsersWithResponse request returning *ListUsersResponse
-func (c *ClientWithResponses) ListUsersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListUsersResponse, error) {
-	rsp, err := c.ListUsers(ctx, reqEditors...)
+func (c *ClientWithResponses) ListUsersWithResponse(ctx context.Context, orgID Orgid, reqEditors ...RequestEditorFn) (*ListUsersResponse, error) {
+	rsp, err := c.ListUsers(ctx, orgID, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2120,16 +2190,16 @@ func (c *ClientWithResponses) ListUsersWithResponse(ctx context.Context, reqEdit
 }
 
 // CreateUserWithBodyWithResponse request with arbitrary body returning *CreateUserResponse
-func (c *ClientWithResponses) CreateUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUserResponse, error) {
-	rsp, err := c.CreateUserWithBody(ctx, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateUserWithBodyWithResponse(ctx context.Context, orgID Orgid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUserResponse, error) {
+	rsp, err := c.CreateUserWithBody(ctx, orgID, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCreateUserResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateUserWithResponse(ctx context.Context, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUserResponse, error) {
-	rsp, err := c.CreateUser(ctx, body, reqEditors...)
+func (c *ClientWithResponses) CreateUserWithResponse(ctx context.Context, orgID Orgid, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUserResponse, error) {
+	rsp, err := c.CreateUser(ctx, orgID, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2137,8 +2207,8 @@ func (c *ClientWithResponses) CreateUserWithResponse(ctx context.Context, body C
 }
 
 // DeleteUserWithResponse request returning *DeleteUserResponse
-func (c *ClientWithResponses) DeleteUserWithResponse(ctx context.Context, userID Userid, reqEditors ...RequestEditorFn) (*DeleteUserResponse, error) {
-	rsp, err := c.DeleteUser(ctx, userID, reqEditors...)
+func (c *ClientWithResponses) DeleteUserWithResponse(ctx context.Context, orgID Orgid, userID Userid, reqEditors ...RequestEditorFn) (*DeleteUserResponse, error) {
+	rsp, err := c.DeleteUser(ctx, orgID, userID, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2146,8 +2216,8 @@ func (c *ClientWithResponses) DeleteUserWithResponse(ctx context.Context, userID
 }
 
 // GetUserWithResponse request returning *GetUserResponse
-func (c *ClientWithResponses) GetUserWithResponse(ctx context.Context, userID Userid, reqEditors ...RequestEditorFn) (*GetUserResponse, error) {
-	rsp, err := c.GetUser(ctx, userID, reqEditors...)
+func (c *ClientWithResponses) GetUserWithResponse(ctx context.Context, orgID Orgid, userID Userid, reqEditors ...RequestEditorFn) (*GetUserResponse, error) {
+	rsp, err := c.GetUser(ctx, orgID, userID, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2155,16 +2225,16 @@ func (c *ClientWithResponses) GetUserWithResponse(ctx context.Context, userID Us
 }
 
 // UpdateUserWithBodyWithResponse request with arbitrary body returning *UpdateUserResponse
-func (c *ClientWithResponses) UpdateUserWithBodyWithResponse(ctx context.Context, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error) {
-	rsp, err := c.UpdateUserWithBody(ctx, userID, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateUserWithBodyWithResponse(ctx context.Context, orgID Orgid, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error) {
+	rsp, err := c.UpdateUserWithBody(ctx, orgID, userID, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateUserResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateUserWithResponse(ctx context.Context, userID Userid, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error) {
-	rsp, err := c.UpdateUser(ctx, userID, body, reqEditors...)
+func (c *ClientWithResponses) UpdateUserWithResponse(ctx context.Context, orgID Orgid, userID Userid, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error) {
+	rsp, err := c.UpdateUser(ctx, orgID, userID, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2172,8 +2242,8 @@ func (c *ClientWithResponses) UpdateUserWithResponse(ctx context.Context, userID
 }
 
 // GetUserGroupsWithResponse request returning *GetUserGroupsResponse
-func (c *ClientWithResponses) GetUserGroupsWithResponse(ctx context.Context, userID Userid, reqEditors ...RequestEditorFn) (*GetUserGroupsResponse, error) {
-	rsp, err := c.GetUserGroups(ctx, userID, reqEditors...)
+func (c *ClientWithResponses) GetUserGroupsWithResponse(ctx context.Context, orgID Orgid, userID Userid, reqEditors ...RequestEditorFn) (*GetUserGroupsResponse, error) {
+	rsp, err := c.GetUserGroups(ctx, orgID, userID, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2181,16 +2251,16 @@ func (c *ClientWithResponses) GetUserGroupsWithResponse(ctx context.Context, use
 }
 
 // UpdateUserGroupsWithBodyWithResponse request with arbitrary body returning *UpdateUserGroupsResponse
-func (c *ClientWithResponses) UpdateUserGroupsWithBodyWithResponse(ctx context.Context, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserGroupsResponse, error) {
-	rsp, err := c.UpdateUserGroupsWithBody(ctx, userID, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateUserGroupsWithBodyWithResponse(ctx context.Context, orgID Orgid, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserGroupsResponse, error) {
+	rsp, err := c.UpdateUserGroupsWithBody(ctx, orgID, userID, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseUpdateUserGroupsResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateUserGroupsWithResponse(ctx context.Context, userID Userid, body UpdateUserGroupsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserGroupsResponse, error) {
-	rsp, err := c.UpdateUserGroups(ctx, userID, body, reqEditors...)
+func (c *ClientWithResponses) UpdateUserGroupsWithResponse(ctx context.Context, orgID Orgid, userID Userid, body UpdateUserGroupsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserGroupsResponse, error) {
+	rsp, err := c.UpdateUserGroups(ctx, orgID, userID, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2198,79 +2268,20 @@ func (c *ClientWithResponses) UpdateUserGroupsWithResponse(ctx context.Context, 
 }
 
 // ChangePasswordWithBodyWithResponse request with arbitrary body returning *ChangePasswordResponse
-func (c *ClientWithResponses) ChangePasswordWithBodyWithResponse(ctx context.Context, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ChangePasswordResponse, error) {
-	rsp, err := c.ChangePasswordWithBody(ctx, userID, contentType, body, reqEditors...)
+func (c *ClientWithResponses) ChangePasswordWithBodyWithResponse(ctx context.Context, orgID Orgid, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ChangePasswordResponse, error) {
+	rsp, err := c.ChangePasswordWithBody(ctx, orgID, userID, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseChangePasswordResponse(rsp)
 }
 
-func (c *ClientWithResponses) ChangePasswordWithResponse(ctx context.Context, userID Userid, body ChangePasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ChangePasswordResponse, error) {
-	rsp, err := c.ChangePassword(ctx, userID, body, reqEditors...)
+func (c *ClientWithResponses) ChangePasswordWithResponse(ctx context.Context, orgID Orgid, userID Userid, body ChangePasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ChangePasswordResponse, error) {
+	rsp, err := c.ChangePassword(ctx, orgID, userID, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseChangePasswordResponse(rsp)
-}
-
-// ParseLoginResponse parses an HTTP response from a LoginWithResponse call
-func ParseLoginResponse(rsp *http.Response) (*LoginResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &LoginResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest GenericErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest GenericErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseLogoutResponse parses an HTTP response from a LogoutWithResponse call
-func ParseLogoutResponse(rsp *http.Response) (*LogoutResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &LogoutResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest GenericErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
 }
 
 // ParseListOrganisationsResponse parses an HTTP response from a ListOrganisationsWithResponse call
@@ -2590,6 +2601,65 @@ func ParseUpdateGroupResponse(rsp *http.Response) (*UpdateGroupResponse, error) 
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest GenericErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseLoginResponse parses an HTTP response from a LoginWithResponse call
+func ParseLoginResponse(rsp *http.Response) (*LoginResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &LoginResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest GenericErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest GenericErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseLogoutResponse parses an HTTP response from a LogoutWithResponse call
+func ParseLogoutResponse(rsp *http.Response) (*LogoutResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &LogoutResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest GenericErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
