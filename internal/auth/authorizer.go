@@ -64,12 +64,15 @@ func New(opts *Opts) composertypes.FlowComponent {
 		})
 	}
 
-	admin.Init(&admin.Opts{
-		Mux:          opts.Mux,
-		DB:           opts.DB,
-		ClientID:     cfg.Administration.SuperUser.ClientID,
-		ClientSecret: cfg.Administration.SuperUser.ClientSecret,
-	})
+	if cfg.AdministrationEnabled() {
+		zerologr.Info("Administration enabled")
+		admin.Init(&admin.Opts{
+			Mux:          opts.Mux,
+			DB:           opts.DB,
+			ClientID:     cfg.Administration.SuperUser.ClientID,
+			ClientSecret: cfg.Administration.SuperUser.ClientSecret,
+		})
+	}
 
 	return authorizer
 }

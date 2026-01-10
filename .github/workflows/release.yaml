@@ -41,4 +41,4 @@ jobs:
     secrets: inherit
     with:
       version: ${{ needs.version.outputs.version }}
-      functional: true
+      integration: true

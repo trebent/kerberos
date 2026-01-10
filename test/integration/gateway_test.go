@@ -1,4 +1,4 @@
-package ft
+package integration
 
 import (
 	"bytes"

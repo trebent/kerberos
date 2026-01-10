@@ -47,6 +47,10 @@ func (a *authConfig) BasicEnabled() bool {
 	return a.Methods.Basic != nil
 }
 
+func (a *authConfig) AdministrationEnabled() bool {
+	return a.Administration != nil
+}
+
 func RegisterWith(cfg config.Map) (string, error) {
 	cfg.Register(configName, &authConfig{})
 	return configName, nil

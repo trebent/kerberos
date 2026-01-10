@@ -29,7 +29,6 @@ components:
       type: apiKey
       in: header
       name: x-krb-session
-  # parameters:
 
 security:
   - sessionid: []

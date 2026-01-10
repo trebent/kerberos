@@ -8,9 +8,9 @@ on:
         description: "Version to test."
         required: false
         default: "none"
-      functional:
+      integration:
         type: boolean
-        description: "Whether to run functional tests."
+        description: "Whether to run integration tests."
         required: false
         default: false
 
@@ -34,8 +34,10 @@ jobs:
           name: go-coverage-report-${{ github.sha }}
           path: coverage.html
   
-  functional-test:
-    if: ${{ inputs.functional == true }}
+  integration-test:
+    if: ${{ inputs.integration == true }}
+    env:
+      VERSION: ${{ inputs.VERSION }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -43,13 +45,17 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-      - name: Run Kerberos test environment
-        run: make compose-ft
-      - name: Run functional tests
-        run: make functest
+      - name: Run integration tests
+        run: make integrationtest
       - name: Output logs if tests fail
         if: failure()
-        run: make compose-logs
+        run: make compose-logs > build/integration-test.log
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: integration-test-logs
+          path: build/integration-test.log
       - name: Tear down Kerberos test environment
         if: always()
         run: make compose-ft-down

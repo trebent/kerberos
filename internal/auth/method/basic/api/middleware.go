@@ -16,7 +16,6 @@ import (
 type contextKey string
 
 var (
-	orgContextKey  contextKey = "org"
 	userContextKey contextKey = "user"
 
 	errMalformedOrgID  = errors.New("malformed organisation ID")
@@ -160,21 +159,10 @@ func AuthMiddleware(ssi StrictServerInterface) StrictMiddlewareFunc {
 				return nil, err
 			}
 
-			ctx = withOrg(ctx, sessionOrgID)
 			ctx = withUser(ctx, sessionUserID)
 			return f(ctx, w, r, request)
 		}
 	}
-}
-
-func withOrg(ctx context.Context, orgID int64) context.Context {
-	return context.WithValue(ctx, orgContextKey, orgID)
-}
-
-//nolint:unused // evaluate if this is needed
-func orgFromContext(ctx context.Context) int64 {
-	//nolint:errcheck // welp
-	return ctx.Value(orgContextKey).(int64)
 }
 
 func withUser(ctx context.Context, userID int64) context.Context {
