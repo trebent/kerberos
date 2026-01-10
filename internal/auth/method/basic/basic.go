@@ -1,42 +1,35 @@
 package basic
 
 import (
-	"context"
-	_ "embed"
 	"net/http"
-	"path/filepath"
-	"time"
 
+	"github.com/trebent/kerberos/internal/apierror"
 	"github.com/trebent/kerberos/internal/auth/method"
 	"github.com/trebent/kerberos/internal/auth/method/basic/api"
 	"github.com/trebent/kerberos/internal/db"
-	"github.com/trebent/kerberos/internal/db/sqlite"
-	internalenv "github.com/trebent/kerberos/internal/env"
 )
 
-type basic struct {
-	db db.SQLClient
-}
-
-var (
-	_ method.Method = (*basic)(nil)
-
-	//go:embed dbschema/schema.sql
-	schemaBytes []byte
+type (
+	basic struct {
+		db db.SQLClient
+	}
+	Opts struct {
+		Mux *http.ServeMux
+		DB  db.SQLClient
+	}
 )
 
-const schemaApplyTimeout = 10 * time.Second
+const basicBasePath = "/api/auth/basic"
+
+var _ method.Method = (*basic)(nil)
 
 // New will return an authentication method and register API endpoints with the input serve mux.
-func New(mux *http.ServeMux) method.Method {
+func New(opts *Opts) method.Method {
 	b := &basic{
-		db: sqlite.New(
-			&sqlite.Opts{DSN: filepath.Join(internalenv.DBDirectory.Value(), "auth.db")},
-		),
+		db: opts.DB,
 	}
 
-	b.applySchemas()
-	b.registerAPI(mux)
+	b.registerAPI(opts.Mux)
 	return b
 }
 
@@ -56,19 +49,11 @@ func (a *basic) registerAPI(mux *http.ServeMux) {
 			ssi,
 			[]api.StrictMiddlewareFunc{api.AuthMiddleware(ssi)},
 			api.StrictHTTPServerOptions{
-				RequestErrorHandlerFunc:  api.RequestErrorHandler,
-				ResponseErrorHandlerFunc: api.ResponseErrorHandler,
+				RequestErrorHandlerFunc:  apierror.RequestErrorHandler,
+				ResponseErrorHandlerFunc: apierror.ResponseErrorHandler,
 			},
 		),
 		mux,
-		"/api/auth/basic",
+		basicBasePath,
 	)
-}
-
-func (a *basic) applySchemas() {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), schemaApplyTimeout)
-	defer cancel()
-	if _, err := a.db.Exec(timeoutCtx, string(schemaBytes)); err != nil {
-		panic(err)
-	}
 }

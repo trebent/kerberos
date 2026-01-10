@@ -29,6 +29,8 @@ var (
 )
 
 const (
+	DBName = "krb.db"
+
 	driver = "sqlite"
 
 	queryEnableForeignKeys = "PRAGMA foreign_keys=ON;"

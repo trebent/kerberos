@@ -62,7 +62,7 @@ staticcheck: lint unittest vulncheck
 go-build:
 	$(call cecho,Building Kerberos binary...,$(BOLD_YELLOW))
 	@mkdir -p build
-	CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/kerberos ./cmd/kerberos
+	CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/kerberos .
 	$(call cecho,Build complete.,$(BOLD_GREEN))
 
 run:
@@ -71,12 +71,12 @@ run:
 		OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
 		LOG_TO_CONSOLE=true \
 		LOG_VERBOSITY=20 \
-		ROUTE_JSON_FILE=./test/config/route.json \
-		OBS_JSON_FILE=./test/config/obs.json \
-		AUTH_JSON_FILE=./test/config/auth.json \
+		ROUTE_JSON_FILE=./test/config/route-echo.json \
+		OBS_JSON_FILE=./test/config/obs-disabled.json \
+		AUTH_JSON_FILE=./test/config/auth-basic.json \
 		DB_DIRECTORY=$(PWD)/build \
 		VERSION=$(VERSION) \
-		go run ./cmd/kerberos
+		go run .
 
 d-build:
 	$(call cecho,Building Kerberos Docker image...,$(BOLD_YELLOW))
@@ -171,7 +171,9 @@ echo-build:
 
 echo-run:
 	$(call cecho,Running echo...,$(BOLD_YELLOW))
-	OTEL_METRICS_EXPORTER=prometheus OTEL_EXPORTER_PROMETHEUS_PORT=$(ECHO_METRICS_PORT) go run ./cmd/echo
+	OTEL_METRICS_EXPORTER=prometheus \
+		OTEL_EXPORTER_PROMETHEUS_PORT=$(ECHO_METRICS_PORT) \
+		go run ./cmd/echo
 
 echo-d-build:
 	$(call cecho,Building Echo Docker image...,$(BOLD_YELLOW))
@@ -192,6 +194,10 @@ echo-d-run:
 #
 # TEST
 #
+
+test-echo:
+	$(call cecho,Sending a test request to echo...,$(BOLD_YELLOW))
+	curl -X GET -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
 
 test-echo-methods:
 	$(call cecho,Generating test HTTP requests for the echo backend...,$(BOLD_YELLOW))

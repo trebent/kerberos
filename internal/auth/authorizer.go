@@ -1,13 +1,19 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"net/http"
+	"time"
 
+	_ "embed"
+
+	"github.com/trebent/kerberos/internal/auth/admin"
 	"github.com/trebent/kerberos/internal/auth/method"
 	"github.com/trebent/kerberos/internal/auth/method/basic"
 	composertypes "github.com/trebent/kerberos/internal/composer/types"
 	"github.com/trebent/kerberos/internal/config"
+	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/kerberos/internal/response"
 	"github.com/trebent/zerologr"
 )
@@ -18,30 +24,52 @@ type (
 
 		// The Mux to register the basic authentication API with, if enabled.
 		Mux *http.ServeMux
+
+		DB db.SQLClient
 	}
 	authorizer struct {
 		next composertypes.FlowComponent
 
 		cfg   *authConfig
 		basic method.Method
+		db    db.SQLClient
 	}
 )
 
 var (
 	_ composertypes.FlowComponent = (*authorizer)(nil)
 
+	//go:embed dbschema/schema.sql
+	dbschemaBytes []byte
+
 	errAuth = errors.New("you do not have permission to do that")
 )
 
+const schemaApplyTimeout = 10 * time.Second
+
 func New(opts *Opts) composertypes.FlowComponent {
 	cfg := config.AccessAs[*authConfig](opts.Cfg, configName)
-	authorizer := &authorizer{cfg: cfg}
+	authorizer := &authorizer{
+		cfg: cfg,
+		db:  opts.DB,
+	}
+	authorizer.applySchemas()
 
 	if cfg.BasicEnabled() {
 		zerologr.Info("Basic authentication enabled")
 		// If basic auth, create the method.
-		authorizer.basic = basic.New(opts.Mux)
+		authorizer.basic = basic.New(&basic.Opts{
+			Mux: opts.Mux,
+			DB:  opts.DB,
+		})
 	}
+
+	admin.Init(&admin.Opts{
+		Mux:          opts.Mux,
+		DB:           opts.DB,
+		ClientID:     cfg.Administration.SuperUser.ClientID,
+		ClientSecret: cfg.Administration.SuperUser.ClientSecret,
+	})
 
 	return authorizer
 }
@@ -75,4 +103,12 @@ func (a *authorizer) authenticated(_ *http.Request) error {
 func (a *authorizer) authorized(_ *http.Request) error {
 	// TODO: check if the route is protected, check which method is used to protect the route, call the configured auth method.
 	return nil
+}
+
+func (a *authorizer) applySchemas() {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), schemaApplyTimeout)
+	defer cancel()
+	if _, err := a.db.Exec(timeoutCtx, string(dbschemaBytes)); err != nil {
+		panic(err)
+	}
 }

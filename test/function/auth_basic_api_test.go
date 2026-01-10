@@ -7,10 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/trebent/kerberos/ft/admin"
 	"github.com/trebent/kerberos/ft/basicauth"
 )
 
-//go:generate go tool oapi-codegen -config basicauth/config.yaml -o ./basicauth/clientgen.go ../../api/basic_auth.yaml
+//go:generate go tool oapi-codegen -config basicauth/config.yaml -o ./basicauth/clientgen.go ../../openapi/basic_auth.yaml
+//go:generate go tool oapi-codegen -config admin/config.yaml -o ./admin/clientgen.go ../../openapi/administration.yaml
 
 const (
 	orgName        = "Org"
@@ -21,14 +23,29 @@ const (
 	staticPassword = "abc123"
 )
 
-var basicAuthClient, _ = basicauth.NewClientWithResponses(
-	fmt.Sprintf("http://%s:%d/api/auth/basic", getHost(), getPort()),
+var (
+	basicAuthClient, _ = basicauth.NewClientWithResponses(
+		fmt.Sprintf("http://%s:%d/api/auth/basic", getHost(), getPort()),
+	)
+	adminClient, _ = admin.NewClientWithResponses(
+		fmt.Sprintf("http://%s:%d/api/auth/admin", getHost(), getPort()),
+	)
 )
 
 // Validate org., group, user, binding creation.
 func TestAuthBasicAPIBasic(t *testing.T) {
+	adminLoginResp, err := adminClient.LoginSuperuserWithResponse(
+		t.Context(),
+		admin.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "client-secret"},
+	)
+	checkErr(err, t)
+	verifyStatusCode(adminLoginResp.StatusCode(), http.StatusNoContent, t)
+	adminSession := adminLoginResp.HTTPResponse.Header.Get("x-krb-session")
+
 	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
-		t.Context(), basicauth.Organisation{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
+		t.Context(),
+		basicauth.Organisation{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
+		requestEditorSessionID(adminSession),
 	)
 	checkErr(err, t)
 	verifyStatusCode(orgResp.StatusCode(), http.StatusCreated, t)
@@ -118,9 +135,18 @@ func TestAuthBasicAPIBasic(t *testing.T) {
 }
 
 func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
+	adminLoginResp, err := adminClient.LoginSuperuserWithResponse(
+		t.Context(),
+		admin.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "client-secret"},
+	)
+	checkErr(err, t)
+	verifyStatusCode(adminLoginResp.StatusCode(), http.StatusNoContent, t)
+	adminSession := adminLoginResp.HTTPResponse.Header.Get("x-krb-session")
+
 	createOrg1, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		basicauth.CreateOrganisationJSONRequestBody{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
+		requestEditorSessionID(adminSession),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createOrg1.StatusCode(), http.StatusCreated, t)
@@ -143,6 +169,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	createOrg2, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		basicauth.CreateOrganisationJSONRequestBody{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
+		requestEditorSessionID(adminSession),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createOrg2.StatusCode(), http.StatusCreated, t)
@@ -205,6 +232,10 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(getGroupResp.StatusCode(), http.StatusForbidden, t)
+}
+
+func TestAuthBasicAPISuperuser(t *testing.T) {
+
 }
 
 func requestEditorSessionID(sessionID string) basicauth.RequestEditorFn {

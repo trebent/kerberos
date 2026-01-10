@@ -9,10 +9,18 @@ import (
 
 type (
 	authConfig struct {
-		Methods *methods `json:"methods"`
+		Methods        *methods        `json:"methods"`
+		Administration *administration `json:"administration"`
 	}
 	methods struct {
 		Basic *basicAuthentication `json:"basic"`
+	}
+	administration struct {
+		SuperUser *superuser `json:"superUser"`
+	}
+	superuser struct {
+		ClientID     string `json:"clientId"`
+		ClientSecret string `json:"clientSecret"`
 	}
 	basicAuthentication struct{}
 )

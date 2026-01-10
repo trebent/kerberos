@@ -23,9 +23,12 @@
             "clientSecret": {
               "type": "string"
             }
-          }
+          },
+          "required": ["clientId", "clientSecret"],
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   "required": ["methods"],

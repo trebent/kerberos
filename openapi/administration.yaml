@@ -1,0 +1,87 @@
+# yaml-language-server: $schema=https://spec.openapis.org/oas/3.0/schema/2024-10-18
+openapi: "3.0.4"
+info:
+  version: 0.1.0
+  title: Kerberos administration API.
+  description: |
+    The Kerberos administration API allows administrators manage sessions, users, and permissions
+    of the Kerberos deployment.
+components:
+  schemas:
+    APIErrorResponse:
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            type: string
+          minItems: 1
+      required:
+        - errors
+  headers:
+    sessionid:
+      required: true
+      description: A session ID.
+      schema:
+        type: string
+  securitySchemes:
+    sessionid:
+      type: apiKey
+      in: header
+      name: x-krb-session
+  # parameters:
+
+security:
+  - sessionid: []
+
+paths:
+  # Log the superuser in.
+  /superuser/login:
+    post:
+      security: []
+      operationId: LoginSuperuser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clientId:
+                  type: string
+                clientSecret:
+                  type: string
+              required:
+                - clientId
+                - clientSecret
+      responses:
+        '204':
+          headers:
+            x-krb-session:
+              $ref: "#/components/headers/sessionid"
+          description: Logged the superuser in.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to log the superuser in.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+
+  # Log the superuser out.
+  /superuser/logout:
+    post:
+      operationId: LogoutSuperuser
+      responses:
+        '204':
+          description: Logged the superuser out.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.

@@ -58,10 +58,31 @@ var (
 
 func NewComponent(opts *Opts) composertypes.FlowComponent {
 	cfg := config.AccessAs[*obsConfig](opts.Cfg, configName)
+	logger := zerologr.WithName("request")
 
 	if !cfg.Enabled {
-		zerologr.Info("Observability has been disabled")
-		return &composertypes.Dummy{}
+		zerologr.Info("Observability has been disabled, setting dummy component for logging")
+		// Observability disabled still logs incoming requests.
+		return &composertypes.Dummy{CustomHandler: func(
+			next composertypes.FlowComponent,
+			w http.ResponseWriter,
+			req *http.Request,
+		) {
+			rLogger := logger.WithValues("path", req.URL.Path, "method", req.Method)
+			rLogger.Info(req.Method + " " + req.URL.Path)
+			ctx := logr.NewContext(req.Context(), rLogger)
+
+			// Must set up response wrapper since components down the line depends on it, and to
+			// capture status code.
+			wrapped := response.NewResponseWrapper(w)
+			//nolint:errcheck // no point
+			wrapper := wrapped.(*response.Wrapper)
+			next.ServeHTTP(wrapper, req.WithContext(ctx))
+			rLogger.Info(
+				req.Method+" "+req.URL.Path+" "+strconv.Itoa(wrapper.StatusCode()),
+				string(semconv.HTTPStatusCodeKey), wrapper.StatusCode(),
+			)
+		}}
 	}
 
 	o := &obs{
@@ -71,7 +92,7 @@ func NewComponent(opts *Opts) composertypes.FlowComponent {
 		cfg: cfg,
 	}
 
-	o.logger = zerologr.WithName("request")
+	o.logger = logger
 
 	meter := otel.GetMeterProvider().Meter(
 		"github.com/trebent/kerberos",

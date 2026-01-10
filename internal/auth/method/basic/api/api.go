@@ -2,21 +2,19 @@ package api
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
 	"fmt"
-	"io"
 	"slices"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/trebent/kerberos/internal/apierror"
+	"github.com/trebent/kerberos/internal/auth/util"
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/zerologr"
 )
 
-//go:generate go tool oapi-codegen -config config.yaml -o ./gen.go ../../../../../api/basic_auth.yaml
+//go:generate go tool oapi-codegen -config config.yaml -o ./gen.go ../../../../../openapi/basic_auth.yaml
 
 type impl struct {
 	db db.SQLClient
@@ -52,16 +50,16 @@ var (
 
 	// Group bindings.
 	queryListUserGroups     = "SELECT name FROM groups WHERE id IN (SELECT group_id FROM group_bindings WHERE user_id = @userID) AND organisation_id = @orgID;"
-	queryListGroupBindings  = "SELECT g.id, g.name FROM group_bindings gb INNER JOIN groups g on gb.group_id = g.id WHERE user_id = @userID AND organisation_id = @orgID;"
+	queryListGroupBindings  = "SELECT g.id, g.name FROM group_bindings gb INNER JOIN groups g ON gb.group_id = g.id WHERE user_id = @userID AND organisation_id = @orgID;"
 	queryDeleteGroupBinding = "DELETE FROM group_bindings WHERE user_id = @userID AND group_id = @groupID;"
 	queryCreateGroupBinding = "INSERT INTO group_bindings (user_id, group_id) VALUES (@userID, (SELECT id FROM groups WHERE organisation_id = @orgID AND name = @groupName));"
 
 	// Sessions.
 	queryCreateSession      = "INSERT INTO sessions (user_id, organisation_id, session_id, expires) VALUES(@userID, @orgID, @session, @expires);"
-	queryGetSession         = "SELECT user_id, organisation_id, expires FROM sessions WHERE session_id = @sessionID;"
+	queryGetSession         = "SELECT s.user_id, s.organisation_id, u.administrator, u.super_user, s.expires FROM sessions s INNER JOIN users u ON s.user_id = u.id WHERE session_id = @sessionID;"
 	queryDeleteUserSessions = "DELETE FROM sessions WHERE organisation_id = @orgID AND user_id = @userID;"
 
-	GenErrInternal = APIErrorResponse{Errors: []string{ErrInternal.Error()}}
+	GenErrInternal = APIErrorResponse{Errors: []string{apierror.ErrInternal.Error()}}
 )
 
 const sessionExpiry = 15 * time.Minute
@@ -107,7 +105,7 @@ func (i *impl) Login(ctx context.Context, req LoginRequestObject) (LoginResponse
 		return Login500JSONResponse(GenErrInternal), nil
 	}
 
-	if !passwordMatch(salt, storedHashed, req.Body.Password) {
+	if !util.PasswordMatch(salt, storedHashed, req.Body.Password) {
 		zerologr.Info("User login failed due to password mismatch")
 		return Login401JSONResponse(makeGenAPIError("Login failed.")), nil
 	}
@@ -190,14 +188,14 @@ func (i *impl) ChangePassword(
 		return ChangePassword500JSONResponse(GenErrInternal), nil
 	}
 
-	if !passwordMatch(salt, hashedPassword, req.Body.OldPassword) {
+	if !util.PasswordMatch(salt, hashedPassword, req.Body.OldPassword) {
 		zerologr.Error(err, "Mismatched old password")
 		return ChangePassword401JSONResponse(
 			makeGenAPIError("Failed to change user password."),
 		), nil
 	}
 
-	_, newSalt, newHashedPassword := makePassword(req.Body.Password)
+	_, newSalt, newHashedPassword := util.MakePassword(req.Body.Password)
 	_, err = i.db.Exec(
 		ctx,
 		queryUpdateUserPassword,
@@ -261,7 +259,7 @@ func (i *impl) CreateOrganisation(
 	// Create an admin user for the organisation.
 	adminUsername := fmt.Sprintf("%s-%s", "admin", req.Body.Name)
 
-	adminPassword, salt, hashedAdminPassword := makePassword("")
+	adminPassword, salt, hashedAdminPassword := util.MakePassword("")
 	res, err = tx.Exec(
 		ctx,
 		queryCreateUser,
@@ -297,7 +295,7 @@ func (i *impl) CreateUser(
 	ctx context.Context,
 	req CreateUserRequestObject,
 ) (CreateUserResponseObject, error) {
-	_, salt, hashedPassword := makePassword(req.Body.Password)
+	_, salt, hashedPassword := util.MakePassword(req.Body.Password)
 	res, err := i.db.Exec(
 		ctx,
 		queryCreateUser,
@@ -843,34 +841,4 @@ func (i *impl) UpdateUserGroups(
 	}
 
 	return UpdateUserGroups200JSONResponse(*req.Body), nil
-}
-
-// makePassword creates a random password if the input password is "". It will return the input/generated
-// password, the salt, and the hashed version of the password.
-func makePassword(password string) (string, string, string) {
-	if password == "" {
-		password = uuid.NewString()
-	}
-	hash := sha256.New()
-
-	const saltBytes = 32
-	salt := make([]byte, saltBytes)
-	_, err := io.ReadFull(rand.Reader, salt)
-	if err != nil {
-		panic(err)
-	}
-
-	_, _ = hash.Write(salt)
-	_, _ = hash.Write([]byte(password))
-	return password, hex.EncodeToString(salt), hex.EncodeToString(hash.Sum(nil))
-}
-
-func passwordMatch(salt, hashedPassword, clearTextPassword string) bool {
-	decodedSalt, _ := hex.DecodeString(salt)
-	hash := sha256.New()
-	_, _ = hash.Write(decodedSalt)
-	_, _ = hash.Write([]byte(clearTextPassword))
-	inputHashed := hex.EncodeToString(hash.Sum(nil))
-
-	return inputHashed == hashedPassword
 }

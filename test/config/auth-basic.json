@@ -1,5 +1,11 @@
 {
   "methods": {
     "basic": {}
+  },
+  "administration": {
+    "superUser": {
+      "clientId": "client-id",
+      "clientSecret": "client-secret"
+    }
   }
 }
