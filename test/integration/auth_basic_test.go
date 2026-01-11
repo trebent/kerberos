@@ -3,6 +3,7 @@ package integration
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 	"github.com/trebent/kerberos/ft/basicauth"
 )
 
-func TestAuthBasic(t *testing.T) {
+func TestAuthBasicCall(t *testing.T) {
 	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
 		admin.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "client-secret"},
@@ -27,6 +28,7 @@ func TestAuthBasic(t *testing.T) {
 	checkErr(err, t)
 	verifyStatusCode(orgResp.StatusCode(), http.StatusCreated, t)
 	orgID := orgResp.JSON201.Id
+	t.Logf("Created org with ID %d", orgID)
 
 	userResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
@@ -37,6 +39,7 @@ func TestAuthBasic(t *testing.T) {
 	checkErr(err, t)
 	verifyStatusCode(userResp.StatusCode(), http.StatusCreated, t)
 	userID := userResp.JSON201.Id
+	t.Logf("Created user with ID %d", userID)
 
 	loginResp, err := basicAuthClient.LoginWithResponse(
 		t.Context(),
@@ -58,18 +61,13 @@ func TestAuthBasic(t *testing.T) {
 	)
 
 	echoResponse := verifyGWResponse(response, http.StatusOK, t)
-	for key, values := range echoResponse.Headers {
-		if key == "x-krb-org" {
-			if values[0] != fmt.Sprintf("%d", orgID) {
-				t.Fatalf("Expected org ID to be %d, was %s", orgID, values[0])
-			}
-		}
-
-		if key == "x-krb-user" {
-			if values[0] != fmt.Sprintf("%d", userID) {
-				t.Fatalf("Expected user id to be %d, was %s", userID, values[0])
-			}
-		}
+	t.Log(echoResponse)
+	requestHeaders := http.Header(echoResponse.Headers)
+	if requestHeaders.Get("x-krb-org") != strconv.Itoa(int(orgID)) {
+		t.Fatalf("OrgID %s did not match expected %d", requestHeaders.Get("x-krb-org"), orgID)
+	}
+	if requestHeaders.Get("x-krb-user") != strconv.Itoa(int(userID)) {
+		t.Fatalf("UserID %s did not match expected %d", requestHeaders.Get("x-krb-user"), userID)
 	}
 }
 
@@ -79,7 +77,27 @@ func TestAuthBasicUnauthenticated(t *testing.T) {
 		t,
 	)
 
-	if response.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("Expected unauthorized, got status %d", response.StatusCode)
+	echoResponse := verifyGWResponse(response, http.StatusUnauthorized, t)
+	requestHeaders := http.Header(echoResponse.Headers)
+	if vals := requestHeaders.Values("x-krb-user"); len(vals) != 0 {
+		t.Fatal("User ID should not have been set")
+	}
+
+	if vals := requestHeaders.Values("x-krb-org"); len(vals) != 0 {
+		t.Fatal("Org ID should not have been set")
+	}
+
+	response = get(
+		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/hello", getHost(), getPort()),
+		t,
+		http.Header{"x-krb-session": {"fake"}},
+	)
+
+	echoResponse = verifyGWResponse(response, http.StatusUnauthorized, t)
+	if _, ok := echoResponse.Headers["x-krb-user"]; ok {
+		t.Fatal("User ID should not have been set")
+	}
+	if _, ok := echoResponse.Headers["x-krb-org"]; ok {
+		t.Fatal("Org ID should not have been set")
 	}
 }

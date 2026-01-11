@@ -1,7 +1,11 @@
 //nolint:revive // welp
 package types
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/trebent/zerologr"
+)
 
 type (
 	FlowComponent interface {
@@ -16,6 +20,8 @@ type (
 		next FlowComponent
 
 		CustomHandler CustomHandlerFunc
+		// Returned by Order() int
+		O int
 	}
 	CustomHandlerFunc func(FlowComponent, http.ResponseWriter, *http.Request)
 )
@@ -23,6 +29,8 @@ type (
 var _ FlowComponent = (*Dummy)(nil)
 
 func (d *Dummy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	zerologr.V(20).Info("Dummy component handling call to " + req.Method + " " + req.URL.Path)
+
 	if d.CustomHandler != nil {
 		d.CustomHandler(d.next, w, req)
 	} else {
@@ -32,6 +40,10 @@ func (d *Dummy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 func (d *Dummy) Next(next FlowComponent) {
 	d.next = next
+}
+
+func (d *Dummy) Order() int {
+	return d.O
 }
 
 func (d *Dummy) defaultHandler(w http.ResponseWriter, req *http.Request) {

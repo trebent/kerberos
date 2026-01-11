@@ -42,7 +42,7 @@ codegen:
 unittest:
 	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
-	@go test -v ./... -coverprofile=build/coverage.out
+	@go test -v ./... -coverprofile=build/coverage.out -timeout 20s -failfast
 	@go tool cover -html=build/coverage.out -o build/coverage.html
 	@go tool cover -func=build/coverage.out
 	$(call cecho,Unit tests complete.,$(BOLD_GREEN))
@@ -142,7 +142,7 @@ compose-logs-f:
 		GRAFANA_PORT=$(GRAFANA_PORT) \
 		ECHO_PORT=$(ECHO_PORT) \
 		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
-		docker compose -f test/compose/compose.yaml logs -f kerberos echo
+		docker compose -f test/compose/compose.yaml logs -f kerberos echo protected-echo
 
 compose-ps:
 	@VERSION=$(VERSION) \

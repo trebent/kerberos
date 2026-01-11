@@ -9,6 +9,7 @@ import (
 
 	_ "embed"
 
+	"github.com/go-logr/logr"
 	"github.com/trebent/kerberos/internal/apierror"
 	"github.com/trebent/kerberos/internal/auth/admin"
 	"github.com/trebent/kerberos/internal/auth/method"
@@ -87,6 +88,9 @@ func (a *authorizer) Next(next composertypes.FlowComponent) {
 
 func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
+	logger, _ := logr.FromContext(ctx)
+	logger = logger.WithName("authorizer")
+	logger.Info("Authorizing request")
 	//nolint:errcheck // if this isn't populated the flow chain has been broken.
 	backend := ctx.Value(composertypes.BackendContextKey).(string)
 

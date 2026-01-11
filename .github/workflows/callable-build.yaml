@@ -2,12 +2,6 @@ name: Build
 
 on:
   workflow_call:
-    inputs:
-      version:
-        type: string
-        description: "Version to build."
-        required: false
-        default: "none"
 
 permissions:
   contents: read

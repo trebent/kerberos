@@ -501,7 +501,7 @@ func TestParseNoSchema(t *testing.T) {
 }
 
 func enableLogging() func() {
-	newLogger := zerologr.New(&zerologr.Opts{Console: true, V: 100})
+	newLogger := zerologr.New(&zerologr.Opts{Console: true, V: 0})
 	zerologr.Set(newLogger)
 	return func() {
 		zerologr.Set(logr.Logger{})

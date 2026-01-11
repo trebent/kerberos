@@ -98,7 +98,9 @@ func AuthMiddleware(ssi StrictServerInterface) StrictMiddlewareFunc {
 			}
 
 			if superUser {
-				zerologr.Info(fmt.Sprintf("Permitting super user access to operation %s", operationID))
+				zerologr.Info(
+					fmt.Sprintf("Permitting super user access to operation %s", operationID),
+				)
 				return f(ctx, w, r, request)
 			}
 
