@@ -58,4 +58,4 @@ jobs:
           path: build/integration-test.log
       - name: Tear down Kerberos test environment
         if: always()
-        run: make compose-ft-down
+        run: make compose-down
