@@ -2,7 +2,7 @@ package util
 
 import (
 	"crypto/rand"
-	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/hex"
 	"io"
 
@@ -15,7 +15,7 @@ func MakePassword(password string) (string, string, string) {
 	if password == "" {
 		password = uuid.NewString()
 	}
-	hash := sha256.New()
+	hash := sha512.New()
 
 	const saltBytes = 32
 	salt := make([]byte, saltBytes)
@@ -32,7 +32,7 @@ func MakePassword(password string) (string, string, string) {
 // PasswordMatch verifies if the input cleartext password matches the salt and hashed password.
 func PasswordMatch(salt, hashedPassword, clearTextPassword string) bool {
 	decodedSalt, _ := hex.DecodeString(salt)
-	hash := sha256.New()
+	hash := sha512.New()
 	_, _ = hash.Write(decodedSalt)
 	_, _ = hash.Write([]byte(clearTextPassword))
 	inputHashed := hex.EncodeToString(hash.Sum(nil))
