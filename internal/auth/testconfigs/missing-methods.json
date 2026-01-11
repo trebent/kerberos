@@ -1,0 +1,10 @@
+{
+  "scheme": {
+    "mappings": [
+      {
+        "backend": "echo",
+        "method": "basic"
+      }
+    ]
+  }
+}

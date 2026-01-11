@@ -20,6 +20,7 @@
             "description": "The port number of the backend."
           }
         },
+        "required": ["name", "host", "port"],
         "additionalProperties": false
       },
       "minItems": 1
