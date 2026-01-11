@@ -3,11 +3,13 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
 	_ "embed"
 
+	"github.com/trebent/kerberos/internal/apierror"
 	"github.com/trebent/kerberos/internal/auth/admin"
 	"github.com/trebent/kerberos/internal/auth/method"
 	"github.com/trebent/kerberos/internal/auth/method/basic"
@@ -42,7 +44,9 @@ var (
 	//go:embed dbschema/schema.sql
 	dbschemaBytes []byte
 
-	errAuth = errors.New("you do not have permission to do that")
+	errNoMethod           = errors.New("no authentication method defined")
+	errUnrecognizedMethod = errors.New("unrecognized authentication method")
+	errAuth               = errors.New("you do not have permission to do that")
 )
 
 const schemaApplyTimeout = 10 * time.Second
@@ -82,13 +86,29 @@ func (a *authorizer) Next(next composertypes.FlowComponent) {
 }
 
 func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if err := a.authenticated(req); err != nil {
+	ctx := req.Context()
+	//nolint:errcheck // if this isn't populated the flow chain has been broken.
+	backend := ctx.Value(composertypes.BackendContextKey).(string)
+
+	m, err := a.findMethod(backend)
+	if err != nil && errors.Is(err, errNoMethod) {
+		zerologr.V(20).
+			Info(fmt.Sprintf("Backend %s does not have a defined auth method, calling next", backend))
+		a.next.ServeHTTP(w, req)
+		return
+	} else if err != nil {
+		zerologr.Error(err, "Error during authentication")
+		response.JSONError(w, apierror.ErrInternal, http.StatusInternalServerError)
+		return
+	}
+
+	if err := m.Authenticated(req); err != nil {
 		zerologr.Error(err, "User tried to perform an authenticated action while unauthenticated")
 		response.JSONError(w, errAuth, http.StatusUnauthorized)
 		return
 	}
 
-	if err := a.authorized(req); err != nil {
+	if err := m.Authorized(req); err != nil {
 		zerologr.Error(err, "User tried to perform an action they were not authorized to do")
 		response.JSONError(w, errAuth, http.StatusForbidden)
 		return
@@ -98,14 +118,21 @@ func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	a.next.ServeHTTP(w, req)
 }
 
-func (a *authorizer) authenticated(_ *http.Request) error {
-	// TODO: check if the route is protected, check which method is used to protect the route, call the configured auth method.
-	return nil
-}
+// findMethod attempts to find the method which protects the input backend, if any.
+func (a *authorizer) findMethod(backend string) (method.Method, error) {
+	for _, mapping := range a.cfg.Scheme.Mappings {
+		if mapping.Backend == backend {
+			switch mapping.Method {
+			case "basic":
+				zerologr.V(50).Info("Using basic authentication for backend: " + backend)
+				return a.basic, nil
+			default:
+				return nil, errUnrecognizedMethod
+			}
+		}
+	}
 
-func (a *authorizer) authorized(_ *http.Request) error {
-	// TODO: check if the route is protected, check which method is used to protect the route, call the configured auth method.
-	return nil
+	return nil, errNoMethod
 }
 
 func (a *authorizer) applySchemas() {

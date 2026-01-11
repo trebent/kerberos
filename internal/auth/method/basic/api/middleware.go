@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/trebent/kerberos/internal/apierror"
 	"github.com/trebent/zerologr"
@@ -47,10 +48,12 @@ func AuthMiddleware(ssi StrictServerInterface) StrictMiddlewareFunc {
 			sessionID := r.Header.Get("X-Krb-Session")
 			if sessionID == "" {
 				zerologr.V(20).Info("Failed to find a session header")
-				for key, values := range r.Header {
-					zerologr.V(30).Info("Header "+key, "values", values)
-				}
 
+				if zerologr.V(30).Enabled() {
+					for key, values := range r.Header {
+						zerologr.V(30).Info("Header "+key, "values", values)
+					}
+				}
 				return nil, apierror.APIErrNoSession
 			}
 
@@ -87,6 +90,11 @@ func AuthMiddleware(ssi StrictServerInterface) StrictMiddlewareFunc {
 			if err != nil {
 				zerologr.Error(err, "Failed to scan row")
 				return nil, apierror.APIErrInternal
+			}
+
+			if time.Now().UnixMilli() > expires {
+				zerologr.Error(apierror.ErrNoSession, "Session expired")
+				return nil, apierror.APIErrNoSession
 			}
 
 			var validation []error

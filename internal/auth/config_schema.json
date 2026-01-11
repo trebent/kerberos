@@ -43,19 +43,29 @@
           "type": "object",
           "properties": {
             "clientId": {
-              "type": "string"
+              "type": "string",
+              "default": "admin"
             },
             "clientSecret": {
-              "type": "string"
+              "type": "string",
+              "default": "password"
             }
           },
-          "required": ["clientId", "clientSecret"],
           "additionalProperties": false
         }
       },
       "additionalProperties": false
     }
   },
-  "required": ["methods", "scheme"],
+  "allOf": [
+    {
+      "if": { "required": ["methods"] },
+      "then": { "required": ["scheme"] }
+    },
+    {
+      "if": { "required": ["scheme"] },
+      "then": { "required": ["methods"] }
+    }
+  ],
   "additionalProperties": false
 }

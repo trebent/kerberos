@@ -33,7 +33,12 @@ type (
 	basicAuthentication struct{}
 )
 
-const configName = "auth"
+const (
+	configName = "auth"
+
+	defaultSuperUserClientID     = "admin"
+	defaultSuperUserClientSecret = "password"
+)
 
 var (
 	_ config.Config = &authConfig{}
@@ -60,6 +65,13 @@ func (a *authConfig) AdministrationEnabled() bool {
 }
 
 func RegisterWith(cfg config.Map) (string, error) {
-	cfg.Register(configName, &authConfig{})
+	cfg.Register(configName, &authConfig{
+		Administration: &administration{
+			SuperUser: &superuser{
+				ClientID:     defaultSuperUserClientID,
+				ClientSecret: defaultSuperUserClientSecret,
+			},
+		},
+	})
 	return configName, nil
 }

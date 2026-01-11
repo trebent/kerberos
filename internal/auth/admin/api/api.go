@@ -43,10 +43,6 @@ var (
 const (
 	adminOrgName = "administration"
 
-	defaultClientID = "admin"
-	//nolint:gosec // yeap
-	defaultClientSecret = "secret"
-
 	sessionExpiry = 15 * time.Minute
 )
 
@@ -54,21 +50,8 @@ func makeGenAPIError(msg string) APIErrorResponse {
 	return APIErrorResponse{Errors: []string{msg}}
 }
 
-func NewSSI(db db.SQLClient, id, secret string) StrictServerInterface {
-	i := &impl{db: db}
-	if id == "" {
-		i.clientID = defaultClientID
-	} else {
-		i.clientID = id
-	}
-
-	if secret == "" {
-		i.clientSecret = defaultClientSecret
-	} else {
-		i.clientSecret = secret
-	}
-
-	return i
+func NewSSI(db db.SQLClient, clientID, clientSecret string) StrictServerInterface {
+	return &impl{db: db, clientID: clientID, clientSecret: clientSecret}
 }
 
 // LoginSuperuser implements [StrictServerInterface].
