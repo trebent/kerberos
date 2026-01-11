@@ -50,10 +50,7 @@ unittest:
 coverage:
 	@go tool cover -func=build/coverage.out | awk 'END {print $$3}'
 
-fun:
-	$(MAKE) compose-ft-down
-
-integrationtest: image compose-ft
+integrationtest: image compose
 	$(call cecho,Running integration tests for Kerberos...,$(BOLD_YELLOW))
 	@cd test/integration && go test -v ./... -count=1
 	$(call cecho,Integration tests complete.,$(BOLD_GREEN))
@@ -90,7 +87,7 @@ image:
 	docker build --build-arg VERSION=$(VERSION) -t ghcr.io/trebent/kerberos:$(VERSION) .
 	$(call cecho,Docker image build complete.,$(BOLD_GREEN))
 
-d-run: image d-stop d-rm
+docker-run: image docker-stop docker-rm
 	$(call cecho,Running Kerberos Docker container...,$(BOLD_YELLOW))
 	docker run -d \
 		-p $(KERBEROS_PORT):$(KERBEROS_PORT) \
@@ -103,16 +100,16 @@ d-run: image d-stop d-rm
 		--name kerberos \
 		ghcr.io/trebent/kerberos:$(VERSION)
 
-d-stop:
+docker-stop:
 	@docker stop kerberos || true
 
-d-rm:
+docker-rm:
 	@docker rm kerberos || true
 
-d-logs:
+docker-logs:
 	@docker logs kerberos
 
-compose-ft:
+compose:
 	$(call cecho,Composing Kerberos test environment...,$(BOLD_YELLOW))
 	@VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
@@ -122,7 +119,6 @@ compose-ft:
 		ECHO_PORT=$(ECHO_PORT) \
 		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
 		docker compose -f test/compose/compose.yaml up -d --force-recreate
-	$(call cecho,Kerberos test environment is running.,$(BOLD_GREEN))
 
 compose-logs:
 	@VERSION=$(VERSION) \
@@ -154,7 +150,7 @@ compose-ps:
 		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
 		docker compose -f test/compose/compose.yaml ps
 
-compose-ft-down:
+compose-down:
 	$(call cecho,Tearing down Kerberos test environment...,$(BOLD_YELLOW))
 	@VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
@@ -164,7 +160,6 @@ compose-ft-down:
 		ECHO_PORT=$(ECHO_PORT) \
 		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
 		docker compose -f test/compose/compose.yaml down
-	$(call cecho,Kerberos test environment has been torn down.,$(BOLD_GREEN))
 
 echo-build:
 	$(call cecho,Building Echo binary...,$(BOLD_YELLOW))
@@ -185,7 +180,7 @@ echo-image:
 		.
 	$(call cecho,Echo Docker image build complete.,$(BOLD_GREEN))
 
-echo-d-run: echo-image echo-d-stop echo-d-rm
+echo-docker-run: echo-image echo-d-stop echo-d-rm
 	$(call cecho,Running Echo Docker container...,$(BOLD_YELLOW))
 	@docker run -d \
 		-p $(ECHO_PORT):$(ECHO_PORT) \
@@ -195,13 +190,13 @@ echo-d-run: echo-image echo-d-stop echo-d-rm
 		--name echo \
 		ghcr.io/trebent/kerberos/echo:$(VERSION)
 
-echo-d-stop:
+echo-docker-stop:
 	@docker stop echo || true
 
-echo-d-rm:
+echo-docker-rm:
 	@docker rm echo || true
 
-echo-d-logs:
+echo-docker-logs:
 	@docker logs echo
 
 #
