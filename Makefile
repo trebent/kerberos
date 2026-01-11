@@ -16,6 +16,7 @@ YELLOW=\033[33m
 BLUE=\033[34m
 RESET=\033[0m
 
+LOG_VERBOSITY ?= 20
 VERSION ?= $(shell git describe --tags --always)
 
 define cecho
@@ -76,7 +77,7 @@ run:
 	OTEL_METRICS_EXPORTER=prometheus \
 		OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
 		LOG_TO_CONSOLE=true \
-		LOG_VERBOSITY=20 \
+		LOG_VERBOSITY=$(LOG_VERBOSITY) \
 		ROUTE_JSON_FILE=./test/config/route-echo.json \
 		OBS_JSON_FILE=./test/config/obs-disabled.json \
 		AUTH_JSON_FILE=./test/config/auth-basic.json \
@@ -98,7 +99,7 @@ d-run: image d-stop d-rm
 		-e OTEL_METRICS_EXPORTER=prometheus \
 		-e OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
 		-e LOG_TO_CONSOLE=true \
-		-e LOG_VERBOSITY=100 \
+		-e LOG_VERBOSITY=$(LOG_VERBOSITY) \
 		--name kerberos \
 		ghcr.io/trebent/kerberos:$(VERSION)
 

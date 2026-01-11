@@ -11,6 +11,31 @@
       },
       "additionalProperties": false
     },
+    "scheme": {
+      "type": "object",
+      "properties": {
+        "mappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "backend": {
+                "type": "string"
+              },
+              "method": {
+                "type": "string",
+                "enum": ["basic"]
+              }
+            },
+            "required": ["backend", "method"],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        }
+      },
+      "required": ["mappings"],
+      "additionalProperties": false
+    },
     "administration": {
       "type": "object",
       "properties": {
@@ -31,6 +56,6 @@
       "additionalProperties": false
     }
   },
-  "required": ["methods"],
+  "required": ["methods", "scheme"],
   "additionalProperties": false
 }
