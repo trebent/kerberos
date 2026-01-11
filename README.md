@@ -1,7 +1,6 @@
 # Kerberos
 
 [![Main branch protection](https://github.com/trebent/kerberos/actions/workflows/main.yaml/badge.svg)](https://github.com/trebent/kerberos/actions/workflows/main.yaml)
-[![Release](https://github.com/trebent/kerberos/actions/workflows/release.yaml/badge.svg)](https://github.com/trebent/kerberos/actions/workflows/release.yaml)
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Go Report Card](https://goreportcard.com/badge/github.com/trebent/kerberos)](https://goreportcard.com/report/github.com/trebent/kerberos)
 
