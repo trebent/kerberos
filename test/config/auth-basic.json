@@ -1,0 +1,19 @@
+{
+  "methods": {
+    "basic": {}
+  },
+  "scheme": {
+    "mappings": [
+      {
+        "backend": "${ref:router.backends[1].name}",
+        "method": "basic"
+      }
+    ]
+  },
+  "administration": {
+    "superUser": {
+      "clientId": "client-id",
+      "clientSecret": "client-secret"
+    }
+  }
+}

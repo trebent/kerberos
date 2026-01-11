@@ -1,4 +1,4 @@
-package ft
+package integration
 
 import (
 	"fmt"
@@ -11,10 +11,10 @@ import (
 )
 
 // Verifies that basic metrics are present and incremented as expected.
-func TestQuery(t *testing.T) {
+func TestMetricsBasic(t *testing.T) {
 	startMetrics := fetchMetrics(t)
 
-	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo/metrics-test", port)
+	url := fmt.Sprintf("http://%s:%d/gw/backend/echo/metrics-test", getHost(), getPort())
 	_ = get(url, t)
 	_ = put(url, []byte("metrics test"), t)
 	_ = post(url, []byte("metrics test"), t)
@@ -54,8 +54,8 @@ func TestQuery(t *testing.T) {
 
 func fetchMetrics(t *testing.T) map[string]*io_prometheus_client.MetricFamily {
 	// Verify metrics standings
-	t.Logf("Metrics host and port %s:%d", host, metricsPort)
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s:%d/metrics", host, metricsPort), nil)
+	t.Logf("Metrics host and port %s:%d", getHost(), getMetricsPort())
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s:%d/metrics", getHost(), getMetricsPort()), nil)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
 	}

@@ -93,6 +93,8 @@ func (r *Wrapper) WriteHeader(statusCode int) {
 	if !r.wroteHeader {
 		r.wroteHeader = true
 		r.statusCode = statusCode
+	} else {
+		return
 	}
 
 	r.responseWriter.WriteHeader(statusCode)

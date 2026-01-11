@@ -10,17 +10,10 @@ import (
 	composertypes "github.com/trebent/kerberos/internal/composer/types"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/response"
+	"github.com/trebent/zerologr"
 )
 
 type (
-	// Router is used to route incoming requests to matching backends. Failure to route is terminal
-	// and will yield a 404.
-	Router interface {
-		// GetBackend returns the backend for the given request. The backend is determined by
-		// matching the request to the registered backends. If no backend is found, an error is
-		// returned.
-		GetBackend(http.Request) (Backend, error)
-	}
 	// Opts are the options used to configure the router.
 	Opts struct {
 		Cfg config.Map
@@ -42,7 +35,16 @@ var (
 const expectedPatternMatches = 2
 
 func NewComponent(opts *Opts) composertypes.FlowComponent {
-	return &router{cfg: config.AccessAs[*routerConfig](opts.Cfg, configName)}
+	cfg := config.AccessAs[*routerConfig](opts.Cfg, configName)
+	for _, backend := range cfg.Backends {
+		zerologr.Info(
+			"Configured backend",
+			"backend", backend.Name(),
+			"host", backend.Host(),
+			"port", backend.Port(),
+		)
+	}
+	return &router{cfg: cfg}
 }
 
 // Next implements [types.FlowComponent].
@@ -57,9 +59,17 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	rLogger.Info("Routing request")
 
 	backend, err := r.GetBackend(*req)
-	if err != nil {
+	if errors.Is(err, ErrNoBackendFound) {
 		rLogger.Error(err, "Failed to route request")
 		response.JSONError(wrapped, ErrNoBackendFound, http.StatusNotFound)
+		return
+	} else if errors.Is(err, ErrFailedPatternMatch) {
+		rLogger.Error(err, "Failed to route request")
+		response.JSONError(
+			wrapped,
+			fmt.Errorf("%w: backend path must begin with /gw/backend/backend-name", ErrFailedPatternMatch),
+			http.StatusBadRequest,
+		)
 		return
 	}
 

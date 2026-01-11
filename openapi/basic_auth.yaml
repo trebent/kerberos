@@ -1,0 +1,776 @@
+# yaml-language-server: $schema=https://spec.openapis.org/oas/3.0/schema/2024-10-18
+openapi: "3.0.4"
+info:
+  version: 0.1.0
+  title: Kerberos basic authentication API.
+  description: |
+    The Kerberos basic authentication API provides support for managing user accounts, groups,
+    and organisations.
+    
+    Organisations provide support for user isolation. A user in org. A cannot access information
+    protected by org. B. Organisations provide isolation by associating sets of users with an
+    organisation entity, the target backend will receive an information element pointing out 
+    which organisation a request was made for. This method of isolation only works if Kerberos
+    is the only possible path to reach the target backend service, or the information element 
+    will be possible to spoof.
+
+    The basic authentication API provides user group support, allowing for role-based authorization.
+components:
+  schemas:
+    APIErrorResponse:
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            type: string
+          minItems: 1
+      required:
+        - errors
+    CreateUserRequest:
+      type: object
+      properties:
+        name: 
+          type: string
+        password:
+          type: string
+      required:
+        - name
+        - password
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+      required:
+        - id
+        - name
+    CreateGroupRequest:
+      type: object
+      properties:
+        name:
+          type: string
+      required:
+        - name
+    Group:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+      required:
+        - id
+        - name
+    UserGroups:
+      type: array
+      items:
+        type: string
+    CreateOrganisationRequest:
+      type: object
+      properties:
+        name:
+          type: string
+      required:
+        - name
+    Organisation:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+      required:
+        - id
+        - name
+  headers:
+    sessionid:
+      required: true
+      description: A session ID.
+      schema:
+        type: string
+  securitySchemes:
+    sessionid:
+      type: apiKey
+      in: header
+      name: x-krb-session
+  parameters:
+    userid:
+      name: userID
+      in: path
+      required: true
+      description: A user ID.
+      schema:
+        type: integer
+        format: int64
+    orgid:
+      name: orgID
+      in: path
+      required: true
+      description: An organisation ID.
+      schema:
+        type: integer
+        format: int64
+    groupid:
+      name: groupID
+      in: path
+      required: true
+      description: A group ID.
+      schema:
+        type: integer
+        format: int64
+
+security:
+  - sessionid: []
+
+paths:
+  # Creating a new organisation will automatically create an admin user.
+  /organisations:
+    post:
+      operationId: CreateOrganisation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrganisationRequest"
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Organisation"
+                  - type: object
+                    properties:
+                      adminUserId:
+                        type: integer
+                        format: int64
+                      adminUsername:
+                        type: string
+                      adminPassword:
+                        type: string
+                    required:
+                      - adminUserId
+                      - adminUsername
+                      - adminPassword
+          description: Created a new organisation.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to create the organisation.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+    get:
+      operationId: ListOrganisations
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Organisation"
+          description: Listed all organisations.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to get the organisation.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+
+  /organisations/{orgID}:
+    parameters:
+      - "$ref": "#/components/parameters/orgid"
+    put:
+      operationId: UpdateOrganisation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Organisation"
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organisation"
+          description: Updated an organisation.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to update the organisation.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to update the organisation.
+        '404':
+          description: Organisation does not exist.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+    get:
+      operationId: GetOrganisation
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organisation"
+          description: Got an organisation.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to get the organisation.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to get the organisation.
+        '404':
+          description: Organisation does not exist.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+    delete:
+      operationId: DeleteOrganisation
+      responses:
+        '204':
+          description: Deleted an organisation.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to delete the organisation.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to delete the organisation.
+        '404':
+          description: Organisation does not exist.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+
+  /organisations/{orgID}/login:
+    parameters:
+      - $ref: "#/components/parameters/orgid"
+    post:
+      operationId: Login
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+              required:
+                - username
+                - password
+      responses:
+        '204':
+          headers:
+            x-krb-session:
+              $ref: "#/components/headers/sessionid"
+          description: Logged a user in.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to log a user in.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+
+  /organisations/{orgID}/logout:
+    parameters:
+      - $ref: "#/components/parameters/orgid"
+    post:
+      operationId: Logout
+      responses:
+        '204':
+          description: Logged a user out.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to log the user out.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+  
+
+  # When invoking the /user path, the requests are automatically executed on the
+  # organisation the executing user belongs to. This is ALWAYS the case, except when creating the
+  # first user, which is done behind the scenes when creating a new organisation.
+  /organisations/{orgID}/users:
+    parameters:
+      - $ref: "#/components/parameters/orgid"
+    post:
+      operationId: CreateUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+          description: Created a new user.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to create the user.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to create the user.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+    get:
+      operationId: ListUsers
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+          description: Listed all users.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to list users.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to list users.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+
+  /organisations/{orgID}/users/{userID}:
+    parameters:
+      - $ref: "#/components/parameters/orgid"
+      - $ref: "#/components/parameters/userid"
+    get:
+      operationId: GetUser
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+          description: Got a user.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to get the user.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to get the user.
+        '404':
+          description: User does not exist.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+    put:
+      operationId: UpdateUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/User"
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+          description: Updated a user.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to update the user.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to update the user.
+        '404':
+          description: User does not exist.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+    delete:
+      operationId: DeleteUser
+      responses:
+        '204':
+          description: Deleted a user.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to delete the user.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to delete the user.
+        '404':
+          description: User does not exist.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+
+  /organisations/{orgID}/users/{userID}/groups:
+    parameters:
+      - $ref: "#/components/parameters/orgid"
+      - $ref: "#/components/parameters/userid"
+    put:
+      operationId: UpdateUserGroups
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserGroups"
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserGroups"
+          description: Updated the user's group bindings.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to update the user's groups.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to update the user's groups.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+    get:
+      operationId: GetUserGroups
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserGroups"
+          description: Got a user's group bindings.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to list the user's groups.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to list the user's groups.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+
+  /organisations/{orgID}/users/{userID}/password:
+    parameters:
+      - $ref: "#/components/parameters/orgid"
+      - $ref: "#/components/parameters/userid"
+    put:
+      operationId: ChangePassword
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                oldPassword:
+                  type: string
+                password:
+                  type: string
+              required:
+                - oldPassword
+                - password
+      responses:
+        '204':
+          description: Changed a user's password.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to change password.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to change password.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+
+  /organisations/{orgID}/groups:
+    parameters:
+      - "$ref": "#/components/parameters/orgid"
+    post:
+      operationId: CreateGroup
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGroupRequest"
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Group"
+          description: Created a group in the organisation.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to create group.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to create group.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+    get:
+      operationId: ListGroups
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Group"
+              example:
+                - name: Group 1
+                - name: Group 2
+          description: Listed all groups in the organisation.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to list groups.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to list groups.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+
+  /organisations/{orgID}/groups/{groupID}:
+    parameters:
+      - "$ref": "#/components/parameters/orgid"
+      - "$ref": "#/components/parameters/groupid"
+    put:
+      operationId: UpdateGroup
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Group"
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Group"
+          description: Updated a group.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to update the group.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to update the group.
+        '404':
+          description: Groups does not exist.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+    get:
+      operationId: GetGroup
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Group"
+          description: Got a group.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to get the group.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to get the group.
+        '404':
+          description: Group does not exist.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+    delete:
+      operationId: DeleteGroup
+      responses:
+        '204':
+          description: Deleted a group.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to delete the group.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to delete the group.
+        '404':
+          description: Groups does not exist.
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.

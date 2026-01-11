@@ -1,4 +1,4 @@
-package ft
+package integration
 
 import (
 	"errors"
@@ -16,11 +16,11 @@ import (
 )
 
 // Verifies that basic tracing works as expected.
-func TestTracing(t *testing.T) {
+func TestTracingBasic(t *testing.T) {
 	start := time.Now()
-	response := get(fmt.Sprintf("http://localhost:%d/gw/backend/echo/tracing-test", port), t)
+	response := get(fmt.Sprintf("http://%s:%d/gw/backend/echo/tracing-test", getHost(), getPort()), t)
 
-	decodedResponse := verifyResponse(response, http.StatusOK, t)
+	decodedResponse := verifyGWResponse(response, http.StatusOK, t)
 
 	traceParent, exists := decodedResponse.Headers["Traceparent"]
 	if !exists || len(traceParent) == 0 {
@@ -29,7 +29,7 @@ func TestTracing(t *testing.T) {
 		t.Logf("Traceparent header: %s", traceParent[0])
 	}
 
-	conn, err := grpc.NewClient(fmt.Sprintf("localhost:%d", jaegerReadAPIPort), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(fmt.Sprintf("localhost:%d", getJaegerAPIPort()), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to connect to jaeger: %v", err)
 	}

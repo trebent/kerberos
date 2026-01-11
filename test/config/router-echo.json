@@ -2,7 +2,7 @@
   "backends": [
     {
       "name": "echo",
-      "host": "echo",
+      "host": "localhost",
       "port": 15000
     }
   ]

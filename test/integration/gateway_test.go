@@ -1,31 +1,21 @@
-package ft
+package integration
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
 )
 
-type (
-	EchoResponse struct {
-		Method  string              `json:"method"`
-		URL     string              `json:"url"`
-		Headers map[string][]string `json:"headers"`
-		Body    []byte              `json:"body"`
-	}
-)
-
 // Validate happy path forwarding to a backend service.
-func TestHappy(t *testing.T) {
+func TestGWHappy(t *testing.T) {
 	t.Parallel()
 
 	urlSegment := "/hi"
-	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", port, urlSegment)
+	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", getPort(), urlSegment)
 
 	response := get(url, t)
-	decodedResponse := verifyResponse(response, http.StatusOK, t)
+	decodedResponse := verifyGWResponse(response, http.StatusOK, t)
 
 	if decodedResponse.URL != urlSegment {
 		t.Errorf("unexpected URL in response: got %s, want %s", decodedResponse.URL, urlSegment)
@@ -41,16 +31,16 @@ func TestHappy(t *testing.T) {
 }
 
 // Validate calls to a backend's root path works.
-func TestRoot(t *testing.T) {
+func TestGWRoot(t *testing.T) {
 	t.Parallel()
 
 	testData := "{\"test\": \"value\"}"
 	buf := bytes.NewBuffer([]byte(testData))
 	urlSegment := "/"
-	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", port, urlSegment)
+	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", getPort(), urlSegment)
 
 	response := post(url, buf.Bytes(), t)
-	decodedResponse := verifyResponse(response, http.StatusOK, t)
+	decodedResponse := verifyGWResponse(response, http.StatusOK, t)
 
 	if decodedResponse.URL != urlSegment {
 		t.Errorf("unexpected URL in response: got %s, want %s", decodedResponse.URL, urlSegment)
@@ -76,16 +66,16 @@ func TestRoot(t *testing.T) {
 }
 
 // Validate calls to a backend's nested path works.
-func TestNested(t *testing.T) {
+func TestGWNested(t *testing.T) {
 	t.Parallel()
 
 	testData := "{\"test\": \"value\"}"
 	buf := bytes.NewBuffer([]byte(testData))
 	urlSegment := "/soi/mae"
-	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", port, urlSegment)
+	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", getPort(), urlSegment)
 
 	response := put(url, buf.Bytes(), t)
-	decodedResponse := verifyResponse(response, http.StatusOK, t)
+	decodedResponse := verifyGWResponse(response, http.StatusOK, t)
 
 	if decodedResponse.URL != urlSegment {
 		t.Errorf("unexpected URL in response: got %s, want %s", decodedResponse.URL, urlSegment)
@@ -111,28 +101,25 @@ func TestNested(t *testing.T) {
 }
 
 // Validate calls to a non-existent backend yields a not-found status code.
-func TestNoBackend(t *testing.T) {
+func TestGWNoBackend(t *testing.T) {
 	t.Parallel()
 
 	testData := "{\"test\": \"value\"}"
-	urlSegment := "/idontexist"
-	url := fmt.Sprintf("http://localhost:%d/gw/backend%s", port, urlSegment)
+	urlSegment := "/idontexist/"
+	url := fmt.Sprintf("http://localhost:%d/gw/backend%s", getPort(), urlSegment)
+	t.Logf("Sending to non-existent backend url %s", url)
 	response := post(url, []byte(testData), t)
 
-	_ = verifyResponse(response, http.StatusNotFound, t)
+	_ = verifyGWResponse(response, http.StatusNotFound, t)
 }
 
-func verifyResponse(resp *http.Response, expectedCode int, t *testing.T) *EchoResponse {
-	defer resp.Body.Close()
+func TestGWBackendFormat(t *testing.T) {
+	t.Parallel()
 
-	if resp.StatusCode != expectedCode {
-		t.Fatalf("unexpected status code: got %d, want %d", resp.StatusCode, expectedCode)
-	}
+	testData := "{\"test\": \"value\"}"
+	url := fmt.Sprintf("http://localhost:%d/gw/back", getPort())
+	t.Logf("Sending to funky url %s", url)
+	response := post(url, []byte(testData), t)
 
-	response := &EchoResponse{}
-	if err := json.NewDecoder(resp.Body).Decode(response); err != nil {
-		t.Fatalf("failed to decode response body: %v", err)
-	}
-
-	return response
+	_ = verifyGWResponse(response, http.StatusBadRequest, t)
 }

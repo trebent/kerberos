@@ -2,17 +2,29 @@ name: Build
 
 on:
   workflow_call:
-    inputs:
-      version:
-        type: string
-        description: "Version to build."
-        required: false
-        default: "none"
 
 permissions:
   contents: read
 
 jobs:
+  validate-codegen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Golang
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Codegen
+        run: make codegen
+      - name: Verify there are no unstaged changes
+        run: |
+          if ! git diff --quiet; then
+            git status --porcelain
+            git diff
+            exit 1
+          fi
+
   go-build:
     runs-on: ubuntu-latest
     steps:
@@ -22,4 +34,4 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Build
-        run: make go-build
+        run: make build

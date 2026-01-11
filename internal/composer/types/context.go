@@ -7,6 +7,6 @@ const (
 	// TargetContextKey used by the forwarder to get the target backend.
 	TargetContextKey ContextKey = "target"
 
-	// BackendContextKey used to store the backend name for OTEL purposes.
+	// BackendContextKey used to store the backend name.
 	BackendContextKey ContextKey = "krb.backend"
 )

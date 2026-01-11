@@ -8,10 +8,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
 	"github.com/trebent/envparser"
+	"github.com/trebent/kerberos/internal/auth"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/composer/custom"
 	"github.com/trebent/kerberos/internal/composer/forwarder"
@@ -19,7 +21,8 @@ import (
 	"github.com/trebent/kerberos/internal/composer/router"
 	composertypes "github.com/trebent/kerberos/internal/composer/types"
 	"github.com/trebent/kerberos/internal/config"
-	"github.com/trebent/kerberos/internal/env"
+	"github.com/trebent/kerberos/internal/db/sqlite"
+	internalenv "github.com/trebent/kerberos/internal/env"
 	"github.com/trebent/zerologr"
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 )
@@ -50,24 +53,24 @@ func main() {
 
 	flag.Parse()
 	// ExitOnError = true
-	_ = env.Parse()
+	_ = internalenv.Parse()
 
-	readTimeout = time.Duration(env.ReadTimeoutSeconds.Value()) * time.Second
-	writeTimeout = time.Duration(env.WriteTimeoutSeconds.Value()) * time.Second
+	readTimeout = time.Duration(internalenv.ReadTimeoutSeconds.Value()) * time.Second
+	writeTimeout = time.Duration(internalenv.WriteTimeoutSeconds.Value()) * time.Second
 
 	// Set up monitoring
 	zerologr.Set(zerologr.New(&zerologr.Opts{
-		Console: env.LogToConsole.Value(),
+		Console: internalenv.LogToConsole.Value(),
 		Caller:  true,
-		V:       env.LogVerbosity.Value(),
+		V:       internalenv.LogVerbosity.Value(),
 	}).
-		WithValues(string(semconv.ServiceNameKey), serviceName, string(semconv.ServiceVersionKey), env.Version.Value()).
+		WithValues(string(semconv.ServiceNameKey), serviceName, string(semconv.ServiceVersionKey), internalenv.Version.Value()).
 		WithName("krb"),
 	)
 	cfg := setupConfig()
 
 	startLogger := zerologr.WithName("start")
-	startLogger.Info("Starting Kerberos API GW server", "port", env.Port.Value())
+	startLogger.Info("Starting Kerberos API GW server", "port", internalenv.Port.Value())
 
 	signalCtx, signalCancel := signal.NotifyContext(
 		context.Background(),
@@ -76,7 +79,7 @@ func main() {
 	)
 	defer signalCancel()
 
-	cleanup, err := obs.Instrument(signalCtx, cfg, serviceName, env.Version.Value())
+	cleanup, err := obs.Instrument(signalCtx, cfg, serviceName, internalenv.Version.Value())
 	if err != nil {
 		startLogger.Error(err, "Failed to instrument OpenTelemetry")
 		os.Exit(1) // nolint: gocritic
@@ -103,6 +106,7 @@ func setupConfig() config.Map {
 		err              error
 		obsConfigName    string
 		routerConfigName string
+		authConfigName   string
 	)
 
 	// Register all configurations.
@@ -110,15 +114,27 @@ func setupConfig() config.Map {
 	must(err)
 	routerConfigName, err = router.RegisterWith(cfg)
 	must(err)
+	authConfigName, err = auth.RegisterWith(cfg)
+	must(err)
 
 	// Load all input configuration data.
-	if env.ObsJSONFile.Value() != "" {
+	if internalenv.ObsJSONFile.Value() != "" {
 		zerologr.Info("Observability configuration detected, loading")
-		obsData, _ := os.ReadFile(env.ObsJSONFile.Value())
+		obsData, _ := os.ReadFile(internalenv.ObsJSONFile.Value())
 		cfg.MustLoad(obsConfigName, obsData)
 	}
 
-	routerData, _ := os.ReadFile(env.RouteJSONFile.Value())
+	if internalenv.AuthJSONFile.Value() != "" {
+		zerologr.Info("Auth configuration detected, loading")
+		authData, _ := os.ReadFile(internalenv.AuthJSONFile.Value())
+		cfg.MustLoad(authConfigName, authData)
+	}
+
+	routerData, _ := os.ReadFile(internalenv.RouteJSONFile.Value())
+	if len(routerData) == 0 {
+		zerologr.Error(errors.New("missing router data"), "Router data empty")
+		os.Exit(1)
+	}
 	cfg.MustLoad(routerConfigName, routerData)
 
 	// Parse configurations.
@@ -138,17 +154,30 @@ func setupConfig() config.Map {
 // the server is stopped, it returns http.ErrServerClosed.
 func startServer(ctx context.Context, cfg config.Map) error {
 	mux := http.NewServeMux()
+	db := sqlite.New(
+		&sqlite.Opts{DSN: filepath.Join(internalenv.DBDirectory.Value(), sqlite.DBName)},
+	)
 
-	// OTEL middleware must be called first, then forwarding can happen.
-	//
-	// start tracing/metrics/logs
-	// resp = forward(request)
-	// stop tracing/metrics/logs
-	zerologr.Info("Loading router")
-
+	zerologr.Info("Loading observability")
 	observability := obs.NewComponent(&obs.Opts{Cfg: cfg})
+	zerologr.Info("Loading router")
 	router := router.NewComponent(&router.Opts{Cfg: cfg})
-	custom := custom.NewComponent()
+
+	zerologr.Info("Loading custom")
+	customFlowComponents := make([]composertypes.FlowComponent, 0)
+
+	if internalenv.AuthJSONFile.Value() != "" {
+		zerologr.Info("Loading auth")
+		authorizer := auth.New(&auth.Opts{
+			Cfg: cfg,
+			Mux: mux,
+			DB:  db,
+		})
+		customFlowComponents = append(customFlowComponents, authorizer)
+	}
+	custom := custom.NewComponent(customFlowComponents...)
+
+	zerologr.Info("Loading forwarder")
 	forwarder := forwarder.NewComponent(
 		&forwarder.Opts{
 			TargetContextKey: composertypes.TargetContextKey,
@@ -164,7 +193,7 @@ func startServer(ctx context.Context, cfg config.Map) error {
 
 	mux.Handle("/gw/", composer)
 	server := http.Server{
-		Addr:         fmt.Sprintf(":%d", env.Port.Value()),
+		Addr:         fmt.Sprintf(":%d", internalenv.Port.Value()),
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
 		Handler:      mux,

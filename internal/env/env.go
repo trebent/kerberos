@@ -2,9 +2,6 @@
 package env
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/trebent/envparser"
 )
 
@@ -20,14 +17,9 @@ var (
 		Desc: "Set to log to console.",
 	})
 	LogVerbosity = envparser.Register(&envparser.Opts[int]{
-		Name: "LOG_VERBOSITY",
-		Desc: "Set the log verbosity.",
-		Validate: func(v int) error {
-			if v < 0 {
-				return fmt.Errorf("must be greater than or equal to 0: %d", v)
-			}
-			return nil
-		},
+		Name:     "LOG_VERBOSITY",
+		Desc:     "Set the log verbosity.",
+		Validate: validateGreaterThanOrEqualToZero,
 	})
 
 	OtelMetricsExporter = envparser.Register(&envparser.Opts[string]{
@@ -65,86 +57,56 @@ var (
 		Create: true,
 	})
 	OtelExporterPrometheusPort = envparser.Register(&envparser.Opts[int]{
-		Name:   "OTEL_EXPORTER_PROMETHEUS_PORT",
-		Desc:   "OpenTelemetry Prometheus port.",
-		Value:  9464, //nolint:mnd
-		Create: true,
-		Validate: func(v int) error {
-			if v < 1000 || v > 65535 {
-				return fmt.Errorf("must be between 1000 and 65535: %d", v)
-			}
-			return nil
-		},
+		Name:     "OTEL_EXPORTER_PROMETHEUS_PORT",
+		Desc:     "OpenTelemetry Prometheus port.",
+		Value:    9464, //nolint:mnd
+		Create:   true,
+		Validate: validatePort,
 	})
 
 	Port = envparser.Register(&envparser.Opts[int]{
-		Name:  "PORT",
-		Desc:  "Port for the Kerberos API GW server.",
-		Value: 30000, // nolint: mnd
-		Validate: func(v int) error {
-			if v < 1000 || v > 65535 {
-				return fmt.Errorf("must be between 1000 and 65535: %d", v)
-			}
-			return nil
-		},
+		Name:     "PORT",
+		Desc:     "Port for the Kerberos API GW server.",
+		Value:    30000, // nolint: mnd
+		Validate: validatePort,
 	})
 	ReadTimeoutSeconds = envparser.Register(&envparser.Opts[int]{
-		Name:  "READ_TIMEOUT_SECONDS",
-		Desc:  "Read timeout in seconds.",
-		Value: 5, // nolint: mnd
-		Validate: func(v int) error {
-			if v < 1 {
-				return fmt.Errorf("must be greater than 0: %d", v)
-			}
-			return nil
-		},
+		Name:     "READ_TIMEOUT_SECONDS",
+		Desc:     "Read timeout in seconds.",
+		Value:    5, // nolint: mnd
+		Validate: validateGreaterThanZero,
 	})
 	WriteTimeoutSeconds = envparser.Register(&envparser.Opts[int]{
-		Name:  "WRITE_TIMEOUT_SECONDS",
-		Desc:  "Write timeout in seconds.",
-		Value: 5, // nolint: mnd
-		Validate: func(v int) error {
-			if v < 1 {
-				return fmt.Errorf("must be greater than 0: %d", v)
-			}
-			return nil
-		},
-	})
-	TestEndpoint = envparser.Register(&envparser.Opts[bool]{
-		Name:  "TEST_ENDPOINT",
-		Desc:  "Set to enable a testing endpoint that can be used to test how Kerberos generates metrics for various requests.",
-		Value: false,
+		Name:     "WRITE_TIMEOUT_SECONDS",
+		Desc:     "Write timeout in seconds.",
+		Value:    5, // nolint: mnd
+		Validate: validateGreaterThanZero,
 	})
 
 	RouteJSONFile = envparser.Register(&envparser.Opts[string]{
-		Name:  "ROUTE_JSON_FILE",
-		Desc:  "JSON file to load routes from.",
-		Value: "./routes.json",
-		Validate: func(path string) error {
-			f, err := os.Open(path)
-			if err != nil {
-				return err
-			}
-			defer f.Close()
-			return nil
-		},
+		Name:     "ROUTE_JSON_FILE",
+		Desc:     "JSON file to load routes from.",
+		Value:    "./routes.json",
+		Validate: validateFilePath,
 	})
 	ObsJSONFile = envparser.Register(&envparser.Opts[string]{
-		Name:  "OBS_JSON_FILE",
-		Desc:  "JSON file to load observability settings from.",
-		Value: "",
-		Validate: func(path string) error {
-			if len(path) == 0 {
-				return nil
-			}
+		Name:     "OBS_JSON_FILE",
+		Desc:     "JSON file to load observability settings from.",
+		Value:    "",
+		Validate: validateFilePath,
+	})
+	AuthJSONFile = envparser.Register(&envparser.Opts[string]{
+		Name:     "AUTH_JSON_FILE",
+		Desc:     "JSON file to load authentication settings from.",
+		Value:    "",
+		Validate: validateFilePath,
+	})
 
-			f, err := os.Open(path)
-			if err != nil {
-				return err
-			}
-			defer f.Close()
-			return nil
-		},
+	DBDirectory = envparser.Register(&envparser.Opts[string]{
+		Name:     "DB_DIRECTORY",
+		Desc:     "Path to the directory where DB files will be stored.",
+		Value:    "",
+		Validate: validateDirPath,
 	})
 )
 
