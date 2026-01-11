@@ -18,7 +18,7 @@ ENV CGO_ENABLED=0
 
 RUN --mount=type=cache,target=/go/pkg/mod \
   --mount=type=cache,target=/root/.cache/go-build \
-  go build -trimpath -ldflags="-s -w" -o kerberos ./cmd/kerberos
+  go build -trimpath -ldflags="-s -w" -o kerberos .
 
 FROM gcr.io/distroless/static-debian12:nonroot AS runtime
 

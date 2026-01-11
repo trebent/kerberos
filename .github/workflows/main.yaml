@@ -32,5 +32,8 @@ jobs:
     secrets: inherit
   
   test:
+    needs: image
     uses: ./.github/workflows/callable-test.yaml
     secrets: inherit
+    with:
+      integration: true

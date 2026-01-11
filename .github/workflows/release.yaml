@@ -27,18 +27,18 @@ jobs:
           VERSION=$(git describe --tags --always)  
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-  image:
+  test:
     needs: version
+    uses: ./.github/workflows/callable-test.yaml
+    secrets: inherit
+    with:
+      version: ${{ needs.version.outputs.version }}
+      integration: true
+
+  image:
+    needs: [version, test]
     uses: ./.github/workflows/callable-image.yaml
     secrets: inherit
     with:
       version: ${{ needs.version.outputs.version }}
       push: true
-
-  test:
-    needs: [version, image]
-    uses: ./.github/workflows/callable-test.yaml
-    secrets: inherit
-    with:
-      version: ${{ needs.version.outputs.version }}
-      functional: true

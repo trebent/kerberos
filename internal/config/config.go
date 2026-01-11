@@ -451,7 +451,12 @@ func (c *impl) validateSchemas() error {
 				)
 			}
 
-			return fmt.Errorf("%w: %s", ErrSchema, strings.TrimPrefix(fullError.Error(), "<nil>, "))
+			return fmt.Errorf(
+				"%s: %w: %s",
+				name,
+				ErrSchema,
+				strings.TrimPrefix(fullError.Error(), "<nil>, "),
+			)
 		}
 
 		zerologr.V(100).Info("Schema for config entry " + name + " is valid")

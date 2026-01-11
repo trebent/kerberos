@@ -5,6 +5,10 @@
     "enabled": {
       "type": "boolean",
       "default": true
+    },
+    "runtimeMetrics": {
+      "type": "boolean",
+      "default": true
     }
   },
   "additionalProperties": false

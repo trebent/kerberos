@@ -16,6 +16,7 @@ YELLOW=\033[33m
 BLUE=\033[34m
 RESET=\033[0m
 
+LOG_VERBOSITY ?= 20
 VERSION ?= $(shell git describe --tags --always)
 
 define cecho
@@ -24,21 +25,38 @@ endef
 
 default: lint vulncheck go-build
 
+clean:
+	@rm -rf build/
+
 lint:
 	$(call cecho,Running linter for Kerberos...,$(BOLD_YELLOW))
 	@golangci-lint run --fix
 	$(call cecho,Linter complete.,$(BOLD_GREEN))
 
+codegen:
+	$(call cecho,Running codegen for Kerberos...,$(BOLD_YELLOW))
+	@go generate ./...
+	@cd test/function && go generate ./...
+	$(call cecho,Codegen complete.,$(BOLD_GREEN))
+
 unittest:
 	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
-	@go test -v ./... -coverprofile=coverage.out
-	@go tool cover -html=coverage.out -o coverage.html
+	@mkdir -p build
+	@go test -v ./... -coverprofile=build/coverage.out
+	@go tool cover -html=build/coverage.out -o build/coverage.html
+	@go tool cover -func=build/coverage.out
 	$(call cecho,Unit tests complete.,$(BOLD_GREEN))
 
-functiontest:
-	$(call cecho,Running function tests for Kerberos...,$(BOLD_YELLOW))
-	@cd test/function && go test -v ./... -count=1
-	$(call cecho,Function tests complete.,$(BOLD_GREEN))
+coverage:
+	@go tool cover -func=build/coverage.out | awk 'END {print $$3}'
+
+fun:
+	$(MAKE) compose-ft-down
+
+integrationtest: compose-ft
+	$(call cecho,Running integration tests for Kerberos...,$(BOLD_YELLOW))
+	@cd test/integration && go test -v ./... -count=1
+	$(call cecho,Integration tests complete.,$(BOLD_GREEN))
 
 vulncheck:
 	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
@@ -48,25 +66,31 @@ vulncheck:
 staticcheck: lint unittest vulncheck
 	$(call cecho,Static analysis complete.,$(BOLD_GREEN))
 
-go-build:
+build:
 	$(call cecho,Building Kerberos binary...,$(BOLD_YELLOW))
-	CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/kerberos ./cmd/kerberos
+	@mkdir -p build
+	CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/kerberos .
 	$(call cecho,Build complete.,$(BOLD_GREEN))
 
 run:
 	$(call cecho,Running Kerberos...,$(BOLD_YELLOW))
-	@OTEL_METRICS_EXPORTER=prometheus \
+	OTEL_METRICS_EXPORTER=prometheus \
 		OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
 		LOG_TO_CONSOLE=true \
-		LOG_VERBOSITY=100 \
-		go run ./cmd/kerberos
+		LOG_VERBOSITY=$(LOG_VERBOSITY) \
+		ROUTE_JSON_FILE=./test/config/route-echo.json \
+		OBS_JSON_FILE=./test/config/obs-disabled.json \
+		AUTH_JSON_FILE=./test/config/auth-basic.json \
+		DB_DIRECTORY=$(PWD)/build \
+		VERSION=$(VERSION) \
+		go run .
 
-docker-build:
+image:
 	$(call cecho,Building Kerberos Docker image...,$(BOLD_YELLOW))
 	docker build --build-arg VERSION=$(VERSION) -t ghcr.io/trebent/kerberos:$(VERSION) .
 	$(call cecho,Docker image build complete.,$(BOLD_GREEN))
 
-docker-run:
+d-run: image d-stop d-rm
 	$(call cecho,Running Kerberos Docker container...,$(BOLD_YELLOW))
 	docker run -d \
 		-p $(KERBEROS_PORT):$(KERBEROS_PORT) \
@@ -75,27 +99,22 @@ docker-run:
 		-e OTEL_METRICS_EXPORTER=prometheus \
 		-e OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
 		-e LOG_TO_CONSOLE=true \
-		-e LOG_VERBOSITY=100 \
+		-e LOG_VERBOSITY=$(LOG_VERBOSITY) \
 		--name kerberos \
 		ghcr.io/trebent/kerberos:$(VERSION)
-	$(call cecho,Kerberos Docker container is running.,$(BOLD_GREEN))
 
-docker-stop:
-	$(call cecho,Stopping Kerberos Docker container...,$(BOLD_YELLOW))
-	@docker stop kerberos
-	$(call cecho,Kerberos Docker container has been stopped.,$(BOLD_GREEN))
+d-stop:
+	@docker stop kerberos || true
 
-docker-rm:
-	$(call cecho,Removing Kerberos Docker container...,$(BOLD_YELLOW))
-	@docker rm kerberos
-	$(call cecho,Kerberos Docker container has been removed.,$(BOLD_GREEN))
+d-rm:
+	@docker rm kerberos || true
 
-docker-logs:
-	@docker logs -f kerberos
+d-logs:
+	@docker logs kerberos
 
-docker-compose-up:
+compose-ft:
 	$(call cecho,Composing Kerberos test environment...,$(BOLD_YELLOW))
-	VERSION=$(VERSION) \
+	@VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
 		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
 		PROM_PORT=$(PROM_PORT) \
@@ -105,8 +124,8 @@ docker-compose-up:
 		docker compose -f test/compose/compose.yaml up -d --force-recreate
 	$(call cecho,Kerberos test environment is running.,$(BOLD_GREEN))
 
-docker-compose-logs:
-	VERSION=$(VERSION) \
+compose-logs:
+	@VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
 		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
 		PROM_PORT=$(PROM_PORT) \
@@ -115,8 +134,8 @@ docker-compose-logs:
 		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
 		docker compose -f test/compose/compose.yaml logs kerberos echo
 
-docker-compose-logs-f:
-	VERSION=$(VERSION) \
+compose-logs-f:
+	@VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
 		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
 		PROM_PORT=$(PROM_PORT) \
@@ -125,8 +144,8 @@ docker-compose-logs-f:
 		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
 		docker compose -f test/compose/compose.yaml logs -f kerberos echo
 
-docker-compose-ps:
-	VERSION=$(VERSION) \
+compose-ps:
+	@VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
 		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
 		PROM_PORT=$(PROM_PORT) \
@@ -135,9 +154,9 @@ docker-compose-ps:
 		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
 		docker compose -f test/compose/compose.yaml ps
 
-docker-compose-down:
+compose-ft-down:
 	$(call cecho,Tearing down Kerberos test environment...,$(BOLD_YELLOW))
-	VERSION=$(VERSION) \
+	@VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
 		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
 		PROM_PORT=$(PROM_PORT) \
@@ -152,27 +171,48 @@ echo-build:
 	@CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/echo ./cmd/echo
 	$(call cecho,Echo build complete.,$(BOLD_GREEN))
 
-echo-docker-build:
+echo-run:
+	$(call cecho,Running echo...,$(BOLD_YELLOW))
+	@OTEL_METRICS_EXPORTER=prometheus \
+		OTEL_EXPORTER_PROMETHEUS_PORT=$(ECHO_METRICS_PORT) \
+		go run ./cmd/echo
+
+echo-image:
 	$(call cecho,Building Echo Docker image...,$(BOLD_YELLOW))
-	@docker build --build-arg VERSION=$(VERSION) -f cmd/echo/Dockerfile -t ghcr.io/trebent/kerberos/echo:$(VERSION) .
+	@docker build --build-arg VERSION=$(VERSION) \
+		-f cmd/echo/Dockerfile \
+		-t ghcr.io/trebent/kerberos/echo:$(VERSION) \
+		.
 	$(call cecho,Echo Docker image build complete.,$(BOLD_GREEN))
 
-echo-docker-run:
+echo-d-run: echo-image echo-d-stop echo-d-rm
 	$(call cecho,Running Echo Docker container...,$(BOLD_YELLOW))
-	docker run -d \ 
+	@docker run -d \
 		-p $(ECHO_PORT):$(ECHO_PORT) \
 		-p $(ECHO_METRICS_PORT):$(ECHO_METRICS_PORT) \
 		-e OTEL_METRICS_EXPORTER=prometheus \
 		-e OTEL_EXPORTER_PROMETHEUS_PORT=$(ECHO_METRICS_PORT) \
 		--name echo \
 		ghcr.io/trebent/kerberos/echo:$(VERSION)
-	$(call cecho,Echo Docker container is running.,$(BOLD_GREEN))
+
+echo-d-stop:
+	@docker stop echo || true
+
+echo-d-rm:
+	@docker rm echo || true
+
+echo-d-logs:
+	@docker logs echo
 
 #
 # TEST
 #
 
-generate-echo-test-requests:
+test-echo:
+	$(call cecho,Sending a test request to echo...,$(BOLD_YELLOW))
+	curl -X GET -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
+
+test-echo-methods:
 	$(call cecho,Generating test HTTP requests for the echo backend...,$(BOLD_YELLOW))
 	curl -X GET -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
 	curl -X PUT -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
@@ -180,16 +220,3 @@ generate-echo-test-requests:
 	curl -X PATCH -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
 	curl -X DELETE -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
 	curl -X OPTIONS -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
-
-generate-test-requests:
-	$(call cecho,Generating test HTTP requests to Kerberos...,$(BOLD_YELLOW))
-	curl -X GET -I localhost:$(KERBEROS_PORT)/test
-	curl -X GET -I localhost:$(KERBEROS_PORT)/test?status_code=400
-	curl -X PUT -I localhost:$(KERBEROS_PORT)/test
-	curl -X PUT -I localhost:$(KERBEROS_PORT)/test?status_code=500
-	curl -X POST -I localhost:$(KERBEROS_PORT)/test
-	curl -X POST -I localhost:$(KERBEROS_PORT)/test?status_code=204
-	curl -X PATCH -I localhost:$(KERBEROS_PORT)/test
-	curl -X PATCH -I localhost:$(KERBEROS_PORT)/test?status_code=404
-	curl -X DELETE -I localhost:$(KERBEROS_PORT)/test
-	curl -X OPTIONS -I localhost:$(KERBEROS_PORT)/test

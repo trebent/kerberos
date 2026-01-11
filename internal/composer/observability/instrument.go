@@ -17,8 +17,8 @@ func Instrument(
 	serviceVersion string,
 ) (func(context.Context) error, error) {
 	obsCfg := config.AccessAs[*obsConfig](cfg, configName)
-	if !obsCfg.Enabled {
-		zerologr.Info("Observability is disabled")
+	if !obsCfg.Enabled || !obsCfg.RuntimeMetrics {
+		zerologr.Info("Observability runtime metrics are disabled")
 		return func(context.Context) error { return nil }, nil
 	}
 
