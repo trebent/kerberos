@@ -3,6 +3,7 @@ package basic
 import (
 	"database/sql"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/trebent/kerberos/internal/apierror"
@@ -25,7 +26,7 @@ type (
 const (
 	basicBasePath = "/api/auth/basic"
 
-	queryGetSession = "SELECT s.user_id, s.organisation_id, s.expires FROM sessions s INNER JOIN users u ON s.user_id = u.id WHERE session_id = @sessionID;"
+	queryGetSession = "SELECT user_id, organisation_id, expires FROM sessions WHERE session_id = @sessionID;"
 )
 
 var _ method.Method = (*basic)(nil)
@@ -93,6 +94,9 @@ func (a *basic) Authenticated(req *http.Request) error {
 		zerologr.Error(apierror.ErrNoSession, "Session expired")
 		return apierror.APIErrNoSession
 	}
+
+	req.Header.Set("X-Krb-Org", strconv.Itoa(int(sessionOrgID)))
+	req.Header.Set("X-Krb-User", strconv.Itoa(int(sessionUserID)))
 
 	return nil
 }

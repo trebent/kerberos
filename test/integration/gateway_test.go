@@ -2,19 +2,9 @@ package integration
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
-)
-
-type (
-	EchoResponse struct {
-		Method  string              `json:"method"`
-		URL     string              `json:"url"`
-		Headers map[string][]string `json:"headers"`
-		Body    []byte              `json:"body"`
-	}
 )
 
 // Validate happy path forwarding to a backend service.
@@ -132,19 +122,4 @@ func TestGWBackendFormat(t *testing.T) {
 	response := post(url, []byte(testData), t)
 
 	_ = verifyGWResponse(response, http.StatusBadRequest, t)
-}
-
-func verifyGWResponse(resp *http.Response, expectedCode int, t *testing.T) *EchoResponse {
-	defer resp.Body.Close()
-
-	if resp.StatusCode != expectedCode {
-		t.Fatalf("unexpected status code: got %d, want %d", resp.StatusCode, expectedCode)
-	}
-
-	response := &EchoResponse{}
-	if err := json.NewDecoder(resp.Body).Decode(response); err != nil {
-		t.Fatalf("failed to decode response body: %v", err)
-	}
-
-	return response
 }

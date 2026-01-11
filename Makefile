@@ -36,7 +36,7 @@ lint:
 codegen:
 	$(call cecho,Running codegen for Kerberos...,$(BOLD_YELLOW))
 	@go generate ./...
-	@cd test/function && go generate ./...
+	@cd test/integration && go generate ./...
 	$(call cecho,Codegen complete.,$(BOLD_GREEN))
 
 unittest:
@@ -53,7 +53,7 @@ coverage:
 fun:
 	$(MAKE) compose-ft-down
 
-integrationtest: compose-ft
+integrationtest: image compose-ft
 	$(call cecho,Running integration tests for Kerberos...,$(BOLD_YELLOW))
 	@cd test/integration && go test -v ./... -count=1
 	$(call cecho,Integration tests complete.,$(BOLD_GREEN))
@@ -78,7 +78,7 @@ run:
 		OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
 		LOG_TO_CONSOLE=true \
 		LOG_VERBOSITY=$(LOG_VERBOSITY) \
-		ROUTE_JSON_FILE=./test/config/route-echo.json \
+		ROUTE_JSON_FILE=./test/config/router-echo.json \
 		OBS_JSON_FILE=./test/config/obs-disabled.json \
 		AUTH_JSON_FILE=./test/config/auth-basic.json \
 		DB_DIRECTORY=$(PWD)/build \
@@ -132,7 +132,7 @@ compose-logs:
 		GRAFANA_PORT=$(GRAFANA_PORT) \
 		ECHO_PORT=$(ECHO_PORT) \
 		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
-		docker compose -f test/compose/compose.yaml logs kerberos echo
+		docker compose -f test/compose/compose.yaml logs kerberos echo protected-echo
 
 compose-logs-f:
 	@VERSION=$(VERSION) \

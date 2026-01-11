@@ -25,28 +25,37 @@ type APIErrorResponse struct {
 	Errors []string `json:"errors"`
 }
 
+// CreateGroupRequest defines model for CreateGroupRequest.
+type CreateGroupRequest struct {
+	Name string `json:"name"`
+}
+
+// CreateOrganisationRequest defines model for CreateOrganisationRequest.
+type CreateOrganisationRequest struct {
+	Name string `json:"name"`
+}
+
 // CreateUserRequest defines model for CreateUserRequest.
 type CreateUserRequest struct {
-	Id       *int64 `json:"id,omitempty"`
 	Name     string `json:"name"`
 	Password string `json:"password"`
 }
 
 // Group defines model for Group.
 type Group struct {
-	Id   *int64 `json:"id,omitempty"`
+	Id   int64  `json:"id"`
 	Name string `json:"name"`
 }
 
 // Organisation defines model for Organisation.
 type Organisation struct {
-	Id   *int64 `json:"id,omitempty"`
+	Id   int64  `json:"id"`
 	Name string `json:"name"`
 }
 
 // User defines model for User.
 type User struct {
-	Id   *int64 `json:"id,omitempty"`
+	Id   int64  `json:"id"`
 	Name string `json:"name"`
 }
 
@@ -75,13 +84,13 @@ type ChangePasswordJSONBody struct {
 }
 
 // CreateOrganisationJSONRequestBody defines body for CreateOrganisation for application/json ContentType.
-type CreateOrganisationJSONRequestBody = Organisation
+type CreateOrganisationJSONRequestBody = CreateOrganisationRequest
 
 // UpdateOrganisationJSONRequestBody defines body for UpdateOrganisation for application/json ContentType.
 type UpdateOrganisationJSONRequestBody = Organisation
 
 // CreateGroupJSONRequestBody defines body for CreateGroup for application/json ContentType.
-type CreateGroupJSONRequestBody = Group
+type CreateGroupJSONRequestBody = CreateGroupRequest
 
 // UpdateGroupJSONRequestBody defines body for UpdateGroup for application/json ContentType.
 type UpdateGroupJSONRequestBody = Group
@@ -1598,9 +1607,9 @@ type CreateOrganisationResponse struct {
 	HTTPResponse *http.Response
 	JSON201      *struct {
 		AdminPassword string `json:"adminPassword"`
-		AdminUserId   *int64 `json:"adminUserId,omitempty"`
+		AdminUserId   int64  `json:"adminUserId"`
 		AdminUsername string `json:"adminUsername"`
-		Id            *int64 `json:"id,omitempty"`
+		Id            int64  `json:"id"`
 		Name          string `json:"name"`
 	}
 	JSON401 *APIErrorResponse
@@ -2374,9 +2383,9 @@ func ParseCreateOrganisationResponse(rsp *http.Response) (*CreateOrganisationRes
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest struct {
 			AdminPassword string `json:"adminPassword"`
-			AdminUserId   *int64 `json:"adminUserId,omitempty"`
+			AdminUserId   int64  `json:"adminUserId"`
 			AdminUsername string `json:"adminUsername"`
-			Id            *int64 `json:"id,omitempty"`
+			Id            int64  `json:"id"`
 			Name          string `json:"name"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

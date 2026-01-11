@@ -28,20 +28,29 @@ components:
       required:
         - errors
     CreateUserRequest:
-      allOf:
-      - $ref: "#/components/schemas/User"
-      - type: object
-        properties:
-          password:
-            type: string
-        required:
-          - password
+      type: object
+      properties:
+        name: 
+          type: string
+        password:
+          type: string
+      required:
+        - name
+        - password
     User:
       type: object
       properties:
         id:
           type: integer
           format: int64
+        name:
+          type: string
+      required:
+        - id
+        - name
+    CreateGroupRequest:
+      type: object
+      properties:
         name:
           type: string
       required:
@@ -55,11 +64,19 @@ components:
         name:
           type: string
       required:
+        - id
         - name
     UserGroups:
       type: array
       items:
         type: string
+    CreateOrganisationRequest:
+      type: object
+      properties:
+        name:
+          type: string
+      required:
+        - name
     Organisation:
       type: object
       properties:
@@ -69,6 +86,7 @@ components:
         name:
           type: string
       required:
+        - id
         - name
   headers:
     sessionid:
@@ -119,7 +137,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Organisation"
+              $ref: "#/components/schemas/CreateOrganisationRequest"
       responses:
         '201':
           content:
@@ -137,6 +155,7 @@ paths:
                       adminPassword:
                         type: string
                     required:
+                      - adminUserId
                       - adminUsername
                       - adminPassword
           description: Created a new organisation.
@@ -604,7 +623,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Group"
+              $ref: "#/components/schemas/CreateGroupRequest"
       responses:
         '201':
           content:

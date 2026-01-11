@@ -97,12 +97,17 @@ func AuthMiddleware(ssi StrictServerInterface) StrictMiddlewareFunc {
 				return nil, apierror.APIErrNoSession
 			}
 
+			if superUser {
+				zerologr.Info(fmt.Sprintf("Permitting super user access to operation %s", operationID))
+				return f(ctx, w, r, request)
+			}
+
 			var validation []error
 			switch operationID {
 			case "CreateOrganisation", "ListOrganisations":
 				zerologr.Info("Validating creating/listing organisations")
 				validation = make([]error, 1)
-				validation[0] = superUserValidator(superUser)
+				validation[0] = apierror.APIErrForbidden
 			case "Logout":
 				zerologr.V(20).Info("Validating auth for logout path")
 				validation = make([]error, 1)
@@ -200,13 +205,6 @@ func administratorValidator(isAdministrator bool) error {
 		return nil
 	}
 
-	return apierror.APIErrForbidden
-}
-
-func superUserValidator(isSuperUser bool) error {
-	if isSuperUser {
-		return nil
-	}
 	return apierror.APIErrForbidden
 }
 

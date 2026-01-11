@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -17,23 +16,11 @@ import (
 const (
 	orgName        = "Org"
 	groupNameStaff = "Staff"
-	groupNameAdmin = "Admin"
-	groupNameUser  = "User"
 	userName       = "Smith"
-	staticPassword = "abc123"
-)
-
-var (
-	basicAuthClient, _ = basicauth.NewClientWithResponses(
-		fmt.Sprintf("http://%s:%d/api/auth/basic", getHost(), getPort()),
-	)
-	adminClient, _ = admin.NewClientWithResponses(
-		fmt.Sprintf("http://%s:%d/api/auth/admin", getHost(), getPort()),
-	)
 )
 
 // Validate org., group, user, binding creation.
-func TestAuthBasicAPIBasic(t *testing.T) {
+func TestAuthBasicAPI(t *testing.T) {
 	adminLoginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
 		admin.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "client-secret"},
@@ -44,7 +31,7 @@ func TestAuthBasicAPIBasic(t *testing.T) {
 
 	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		basicauth.Organisation{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
+		basicauth.CreateOrganisationRequest{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
 		requestEditorSessionID(adminSession),
 	)
 	checkErr(err, t)
@@ -53,7 +40,7 @@ func TestAuthBasicAPIBasic(t *testing.T) {
 
 	loginResp, err := basicAuthClient.LoginWithResponse(
 		t.Context(),
-		*orgID,
+		orgID,
 		basicauth.LoginJSONRequestBody{
 			Username: orgResp.JSON201.AdminUsername,
 			Password: orgResp.JSON201.AdminPassword,
@@ -68,7 +55,7 @@ func TestAuthBasicAPIBasic(t *testing.T) {
 
 	userResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
-		*orgID,
+		orgID,
 		basicauth.CreateUserRequest{Name: userName},
 		requestEditorSessionID(session),
 	)
@@ -77,7 +64,7 @@ func TestAuthBasicAPIBasic(t *testing.T) {
 
 	groupResp, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
-		*orgID,
+		orgID,
 		basicauth.CreateGroupJSONRequestBody{Name: groupNameStaff},
 		requestEditorSessionID(session),
 	)
@@ -86,8 +73,8 @@ func TestAuthBasicAPIBasic(t *testing.T) {
 
 	bindResp, err := basicAuthClient.UpdateUserGroupsWithResponse(
 		t.Context(),
-		*orgID,
-		*userResp.JSON201.Id,
+		orgID,
+		userResp.JSON201.Id,
 		basicauth.UpdateUserGroupsJSONRequestBody{groupNameStaff},
 		requestEditorSessionID(session),
 	)
@@ -96,37 +83,37 @@ func TestAuthBasicAPIBasic(t *testing.T) {
 
 	getOrgResp, err := basicAuthClient.GetOrganisationWithResponse(
 		t.Context(),
-		*orgID,
+		orgID,
 		requestEditorSessionID(session),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getOrgResp.StatusCode(), http.StatusOK, t)
-	matches(*getOrgResp.JSON200.Id, *orgID, t)
+	matches(getOrgResp.JSON200.Id, orgID, t)
 
 	getUserResp, err := basicAuthClient.GetUserWithResponse(
 		t.Context(),
-		*orgID,
-		*userResp.JSON201.Id,
+		orgID,
+		userResp.JSON201.Id,
 		requestEditorSessionID(session),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getUserResp.StatusCode(), http.StatusOK, t)
-	matches(*getUserResp.JSON200.Id, *userResp.JSON201.Id, t)
+	matches(getUserResp.JSON200.Id, userResp.JSON201.Id, t)
 
 	getGroupResp, err := basicAuthClient.GetGroupWithResponse(
 		t.Context(),
-		*orgID,
-		*groupResp.JSON201.Id,
+		orgID,
+		groupResp.JSON201.Id,
 		requestEditorSessionID(session),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getGroupResp.StatusCode(), http.StatusOK, t)
-	matches(*getGroupResp.JSON200.Id, *groupResp.JSON201.Id, t)
+	matches(getGroupResp.JSON200.Id, groupResp.JSON201.Id, t)
 
 	getUserGroupsResp, err := basicAuthClient.GetUserGroupsWithResponse(
 		t.Context(),
-		*orgID,
-		*userResp.JSON201.Id,
+		orgID,
+		userResp.JSON201.Id,
 		requestEditorSessionID(session),
 	)
 	checkErr(err, t)
@@ -153,7 +140,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 
 	loginResp1, err := basicAuthClient.LoginWithResponse(
 		t.Context(),
-		*createOrg1.JSON201.Id,
+		createOrg1.JSON201.Id,
 		basicauth.LoginJSONRequestBody{
 			Username: createOrg1.JSON201.AdminUsername,
 			Password: createOrg1.JSON201.AdminPassword,
@@ -176,7 +163,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 
 	loginResp2, err := basicAuthClient.LoginWithResponse(
 		t.Context(),
-		*createOrg2.JSON201.Id,
+		createOrg2.JSON201.Id,
 		basicauth.LoginJSONRequestBody{
 			Username: createOrg2.JSON201.AdminUsername,
 			Password: createOrg2.JSON201.AdminPassword,
@@ -192,7 +179,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	// Test accessing endpoints across organisations, all operations below shall fail.
 	listGroupsResp, err := basicAuthClient.ListGroupsWithResponse(
 		t.Context(),
-		*createOrg1.JSON201.Id,
+		createOrg1.JSON201.Id,
 		requestEditorSessionID(session2),
 	)
 	checkErr(err, t)
@@ -200,7 +187,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 
 	listUsersResp, err := basicAuthClient.ListUsersWithResponse(
 		t.Context(),
-		*createOrg1.JSON201.Id,
+		createOrg1.JSON201.Id,
 		requestEditorSessionID(session2),
 	)
 	checkErr(err, t)
@@ -208,8 +195,8 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 
 	getUserResp, err := basicAuthClient.GetUserWithResponse(
 		t.Context(),
-		*createOrg1.JSON201.Id,
-		*createOrg1.JSON201.AdminUserId,
+		createOrg1.JSON201.Id,
+		createOrg1.JSON201.AdminUserId,
 		requestEditorSessionID(session2),
 	)
 	checkErr(err, t)
@@ -217,7 +204,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 
 	createGroup1Resp, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
-		*createOrg1.JSON201.Id,
+		createOrg1.JSON201.Id,
 		basicauth.CreateGroupJSONRequestBody{Name: groupNameStaff},
 		requestEditorSessionID(session1),
 	)
@@ -226,21 +213,104 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 
 	getGroupResp, err := basicAuthClient.GetGroupWithResponse(
 		t.Context(),
-		*createOrg1.JSON201.Id,
-		*createGroup1Resp.JSON201.Id,
+		createOrg1.JSON201.Id,
+		createGroup1Resp.JSON201.Id,
 		requestEditorSessionID(session2),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getGroupResp.StatusCode(), http.StatusForbidden, t)
 }
 
-func TestAuthBasicAPISuperuser(t *testing.T) {
+func TestAuthBasicAPIOrganisationCreateDenied(t *testing.T) {
+	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
+		t.Context(),
+		admin.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "client-secret"},
+	)
+	checkErr(err, t)
+	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
+	superSession := superLoginResp.HTTPResponse.Header.Get("x-krb-session")
 
+	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
+		t.Context(),
+		basicauth.CreateOrganisationRequest{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
+		requestEditorSessionID(superSession),
+	)
+	checkErr(err, t)
+	verifyStatusCode(orgResp.StatusCode(), http.StatusCreated, t)
+	orgID := orgResp.JSON201.Id
+
+	loginResp, err := basicAuthClient.LoginWithResponse(
+		t.Context(),
+		orgID,
+		basicauth.LoginJSONRequestBody{
+			Username: orgResp.JSON201.AdminUsername,
+			Password: orgResp.JSON201.AdminPassword,
+		},
+	)
+	checkErr(err, t)
+	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
+	session := loginResp.HTTPResponse.Header.Get("x-krb-session")
+	if session == "" {
+		t.Fatal("Did not get a session header")
+	}
+
+	failedOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
+		t.Context(),
+		basicauth.CreateOrganisationRequest{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
+		requestEditorSessionID(session),
+	)
+	checkErr(err, t)
+	verifyStatusCode(failedOrgResp.StatusCode(), http.StatusForbidden, t)
 }
 
-func requestEditorSessionID(sessionID string) basicauth.RequestEditorFn {
-	return func(ctx context.Context, req *http.Request) error {
-		req.Header.Set("x-krb-session", sessionID)
-		return nil
-	}
+func TestAuthBasicAPISuperuser(t *testing.T) {
+	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
+		t.Context(),
+		admin.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "client-secret"},
+	)
+	checkErr(err, t)
+	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
+	superSession := superLoginResp.HTTPResponse.Header.Get("x-krb-session")
+
+	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
+		t.Context(),
+		basicauth.CreateOrganisationRequest{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
+		requestEditorSessionID(superSession),
+	)
+	checkErr(err, t)
+	verifyStatusCode(orgResp.StatusCode(), http.StatusCreated, t)
+	orgID := orgResp.JSON201.Id
+
+	userResp, err := basicAuthClient.CreateUserWithResponse(
+		t.Context(),
+		orgID,
+		basicauth.CreateUserRequest{
+			Name: "testing",
+		},
+		requestEditorSessionID(superSession),
+	)
+	checkErr(err, t)
+	verifyStatusCode(userResp.StatusCode(), http.StatusCreated, t)
+	userID := userResp.JSON201.Id
+
+	groupResp, err := basicAuthClient.CreateGroupWithResponse(
+		t.Context(),
+		orgID,
+		basicauth.CreateGroupRequest{
+			Name: "testing",
+		},
+		requestEditorSessionID(superSession),
+	)
+	checkErr(err, t)
+	verifyStatusCode(groupResp.StatusCode(), http.StatusCreated, t)
+
+	groupBindResp, err := basicAuthClient.UpdateUserGroupsWithResponse(
+		t.Context(),
+		orgID,
+		userID,
+		basicauth.UserGroups{"testing"},
+		requestEditorSessionID(superSession),
+	)
+	checkErr(err, t)
+	verifyStatusCode(groupBindResp.StatusCode(), http.StatusOK, t)
 }

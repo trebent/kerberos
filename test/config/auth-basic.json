@@ -5,7 +5,7 @@
   "scheme": {
     "mappings": [
       {
-        "backend": "${ref:router.backends[0].name}",
+        "backend": "${ref:router.backends[1].name}",
         "method": "basic"
       }
     ]

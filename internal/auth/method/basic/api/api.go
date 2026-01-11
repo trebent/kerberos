@@ -229,7 +229,7 @@ func (i *impl) CreateGroup(
 
 	id, _ := res.LastInsertId()
 	return CreateGroup201JSONResponse{
-		Id:   &id,
+		Id:   id,
 		Name: req.Body.Name,
 	}, nil
 }
@@ -282,9 +282,9 @@ func (i *impl) CreateOrganisation(
 
 	userID, _ := res.LastInsertId()
 	return CreateOrganisation201JSONResponse{
-		Id:            &id,
+		Id:            id,
 		Name:          req.Body.Name,
-		AdminUserId:   &userID,
+		AdminUserId:   userID,
 		AdminPassword: adminPassword,
 		AdminUsername: adminUsername,
 	}, nil
@@ -312,7 +312,7 @@ func (i *impl) CreateUser(
 
 	id, _ := res.LastInsertId()
 	return CreateUser201JSONResponse{
-		Id:   &id,
+		Id:   id,
 		Name: req.Body.Name,
 	}, nil
 }
@@ -413,7 +413,7 @@ func (i *impl) GetGroup(
 	}
 
 	return GetGroup200JSONResponse{
-		Id:   &id,
+		Id:   id,
 		Name: name,
 	}, nil
 }
@@ -457,7 +457,7 @@ func (i *impl) GetOrganisation(
 	}
 
 	return GetOrganisation200JSONResponse{
-		Id:   &id,
+		Id:   id,
 		Name: name,
 	}, nil
 }
@@ -502,7 +502,7 @@ func (i *impl) GetUser(
 	}
 
 	return GetUser200JSONResponse{
-		Id:   &id,
+		Id:   id,
 		Name: name,
 	}, nil
 }
@@ -585,7 +585,7 @@ func (i *impl) ListGroups(
 			return ListGroups500JSONResponse(GenErrInternal), nil
 		}
 
-		groups = append(groups, Group{Id: &id, Name: name})
+		groups = append(groups, Group{Id: id, Name: name})
 	}
 }
 
@@ -625,7 +625,7 @@ func (i *impl) ListOrganisations(
 			return ListOrganisations500JSONResponse(GenErrInternal), nil
 		}
 
-		orgs = append(orgs, Organisation{Id: &id, Name: name})
+		orgs = append(orgs, Organisation{Id: id, Name: name})
 	}
 }
 
@@ -668,7 +668,7 @@ func (i *impl) ListUsers(
 			return ListUsers500JSONResponse(GenErrInternal), nil
 		}
 
-		users = append(users, User{Id: &id, Name: name})
+		users = append(users, User{Id: id, Name: name})
 	}
 }
 
@@ -690,7 +690,7 @@ func (i *impl) UpdateGroup(
 	}
 
 	return UpdateGroup200JSONResponse{
-		Id:   &req.GroupID,
+		Id:   req.GroupID,
 		Name: req.Body.Name,
 	}, nil
 }
@@ -712,7 +712,7 @@ func (i *impl) UpdateOrganisation(
 	}
 
 	return UpdateOrganisation200JSONResponse{
-		Id:   &req.OrgID,
+		Id:   req.OrgID,
 		Name: req.Body.Name,
 	}, nil
 }
@@ -735,7 +735,7 @@ func (i *impl) UpdateUser(
 	}
 
 	return UpdateUser200JSONResponse{
-		Id:   &req.UserID,
+		Id:   req.UserID,
 		Name: req.Body.Name,
 	}, nil
 }

@@ -4,6 +4,11 @@
       "name": "echo",
       "host": "echo",
       "port": 15000
+    },
+    {
+      "name": "protected-echo",
+      "host": "protected-echo",
+      "port": 15000
     }
   ]
 }

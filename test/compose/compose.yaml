@@ -21,7 +21,7 @@ services:
       - ROUTE_JSON_FILE=/echo.json
       - AUTH_JSON_FILE=/auth.json
     volumes:
-      - ../config/compose-route-echo.json:/echo.json
+      - ../config/router-integration.json:/echo.json
       - ../config/auth-basic.json:/auth.json
   
   echo:
@@ -40,6 +40,21 @@ services:
       - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
       - OTEL_EXPORTER_PROMETHEUS_HOST=echo
+      - OTEL_EXPORTER_PROMETHEUS_PORT=${ECHO_METRICS_PORT}
+
+  protected-echo:
+    image: "ghcr.io/trebent/kerberos/echo:${VERSION}"
+    pull_policy: if_not_present
+    build:
+      context: ../..
+      dockerfile: ./cmd/echo/Dockerfile
+    environment:
+      - PORT=${ECHO_PORT}
+      - OTEL_METRICS_EXPORTER=prometheus
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_EXPORTER_PROMETHEUS_HOST=protected-echo
       - OTEL_EXPORTER_PROMETHEUS_PORT=${ECHO_METRICS_PORT}
 
   prometheus:
