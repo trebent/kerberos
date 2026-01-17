@@ -1,34 +1,38 @@
 version: 2
 updates:
   - package-ecosystem: "gomod"
-    directory: "/"
+    directories:
+      - "/"
+      - "/test/integration"
     schedule:
       interval: "daily"
-    go-version-updates:
-      applies-to: version-updates
-      update-types:
-        - "minor"
-        - "patch"
-    go-security-updates:
-      applies-to: security-updates
-      update-types:
-        - "minor"
-        - "patch"
+    groups:
+      go-version-updates:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+      go-security-updates:
+        applies-to: security-updates
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "daily"
-    docker-version-updates:
-      applies-to: version-updates
-      update-types:
-        - "minor"
-        - "patch"
-    docker-security-updates:
-      applies-to: security-updates
-      update-types:
-        - "minor"
-        - "patch"
+    groups:
+      docker-version-updates:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+      docker-security-updates:
+        applies-to: security-updates
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "github-actions"
     directory: "/"
