@@ -3,25 +3,31 @@ name: Dependabot auto-approve
 on: pull_request
 
 permissions:
-  contents: write
   pull-requests: write
 
 jobs:
-  dependabot:
+  approve:
     runs-on: ubuntu-latest
     if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'trebent/kerberos'
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.JEEVES_APP_ID }}
+          private-key: ${{ secrets.JEEVES_APP_PRIVATE_KEY }}
+
       - name: Dependabot metadata
         id: metadata
         uses: dependabot/fetch-metadata@08eff52bf64351f401fb50d4972fa95b9f2c2d1b
         with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          github-token: "${{ steps.app-token.outputs.token }}"
 
-      - name: Enable auto-merge and approve patch updates
+      - name: Enable auto-merge and approve minor/patch updates
         if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           gh pr review --approve "$PR_URL"
           gh pr merge --auto --merge "$PR_URL"
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
