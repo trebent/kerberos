@@ -1,0 +1,23 @@
+openapi:
+  hideReplay: true
+apis:
+  basic-authentication:
+    root: "openapi/basic_auth.yaml"
+    openapi:
+      downloadUrls:
+        - title: Download specification
+          url: "https://raw.githubusercontent.com/trebent/kerberos/main/openapi/basic_auth.yaml"
+      codeSamples:
+        languages:
+          - lang: "curl"
+            label: "curl"
+  administration:
+    root: "openapi/administration.yaml"
+    openapi:
+      downloadUrls:
+        - title: Download specification
+          url: "https://raw.githubusercontent.com/trebent/kerberos/main/openapi/administration.yaml"
+      codeSamples:
+        languages:
+          - lang: "curl"
+            label: "curl"
