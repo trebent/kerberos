@@ -18,6 +18,13 @@ jobs:
         uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.0.2
         with:
           version: v2.8.0
+          args: |
+            --output.sarif.path golangci-lint-report.sarif
+
+      - name: Upload linting SARIF
+        uses: github/codeql-action/upload-sarif@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # v4.31.10
+        with:
+          sarif_file: golangci-lint-report.sarif
 
   vulncheck:
     runs-on: ubuntu-latest
@@ -29,13 +36,6 @@ jobs:
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version-file: go.mod
-          args: |
-            --output.sarif.path golangci-lint-report.sarif
-
-      - name: Upload linting SARIF
-        uses: github/codeql-action/upload-sarif@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # v4.31.10
-        with:
-          sarif_file: golangci-lint-report.sarif
 
       - name: Run vulnerability scan
         run: make vulncheck
