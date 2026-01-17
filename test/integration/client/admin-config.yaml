@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/oapi-codegen/oapi-codegen/HEAD/configuration-schema.json
-package: basicauth
+package: admin
 generate:
   client: true
   models: true
-output: "basicauth/clientgen.go"
+output: "admin/client.go"

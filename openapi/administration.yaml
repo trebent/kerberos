@@ -8,6 +8,11 @@ info:
     of the Kerberos deployment.
 components:
   schemas:
+    Something:
+      type: object
+      properties:
+        bla:
+          type: string
     APIErrorResponse:
       type: object
       properties:
@@ -53,18 +58,18 @@ paths:
                 - clientId
                 - clientSecret
       responses:
-        '204':
+        "204":
           headers:
             x-krb-session:
               $ref: "#/components/headers/sessionid"
           description: Logged the superuser in.
-        '401':
+        "401":
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Failed to log the superuser in.
-        '500':
+        "500":
           content:
             application/json:
               schema:
@@ -76,9 +81,9 @@ paths:
     post:
       operationId: LogoutSuperuser
       responses:
-        '204':
+        "204":
           description: Logged the superuser out.
-        '500':
+        "500":
           content:
             application/json:
               schema:

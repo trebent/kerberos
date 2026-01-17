@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/trebent/kerberos/ft/admin"
-	"github.com/trebent/kerberos/ft/basicauth"
+	"github.com/trebent/kerberos/ft/client/admin"
+	"github.com/trebent/kerberos/ft/client/basic"
 )
 
 const (
@@ -28,7 +28,7 @@ func TestAuthBasicAPI(t *testing.T) {
 
 	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		basicauth.CreateOrganisationRequest{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
+		basic.CreateOrganisationRequest{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
 		requestEditorSessionID(adminSession),
 	)
 	checkErr(err, t)
@@ -38,7 +38,7 @@ func TestAuthBasicAPI(t *testing.T) {
 	loginResp, err := basicAuthClient.LoginWithResponse(
 		t.Context(),
 		orgID,
-		basicauth.LoginJSONRequestBody{
+		basic.LoginJSONRequestBody{
 			Username: orgResp.JSON201.AdminUsername,
 			Password: orgResp.JSON201.AdminPassword,
 		},
@@ -53,7 +53,7 @@ func TestAuthBasicAPI(t *testing.T) {
 	userResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		basicauth.CreateUserRequest{Name: userName},
+		basic.CreateUserRequest{Name: userName},
 		requestEditorSessionID(session),
 	)
 	checkErr(err, t)
@@ -62,7 +62,7 @@ func TestAuthBasicAPI(t *testing.T) {
 	groupResp, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
 		orgID,
-		basicauth.CreateGroupJSONRequestBody{Name: groupNameStaff},
+		basic.CreateGroupJSONRequestBody{Name: groupNameStaff},
 		requestEditorSessionID(session),
 	)
 	checkErr(err, t)
@@ -72,7 +72,7 @@ func TestAuthBasicAPI(t *testing.T) {
 		t.Context(),
 		orgID,
 		userResp.JSON201.Id,
-		basicauth.UpdateUserGroupsJSONRequestBody{groupNameStaff},
+		basic.UpdateUserGroupsJSONRequestBody{groupNameStaff},
 		requestEditorSessionID(session),
 	)
 	checkErr(err, t)
@@ -129,7 +129,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 
 	createOrg1, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		basicauth.CreateOrganisationJSONRequestBody{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
+		basic.CreateOrganisationJSONRequestBody{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
 		requestEditorSessionID(adminSession),
 	)
 	checkErr(err, t)
@@ -138,7 +138,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	loginResp1, err := basicAuthClient.LoginWithResponse(
 		t.Context(),
 		createOrg1.JSON201.Id,
-		basicauth.LoginJSONRequestBody{
+		basic.LoginJSONRequestBody{
 			Username: createOrg1.JSON201.AdminUsername,
 			Password: createOrg1.JSON201.AdminPassword,
 		},
@@ -152,7 +152,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 
 	createOrg2, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		basicauth.CreateOrganisationJSONRequestBody{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
+		basic.CreateOrganisationJSONRequestBody{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
 		requestEditorSessionID(adminSession),
 	)
 	checkErr(err, t)
@@ -161,7 +161,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	loginResp2, err := basicAuthClient.LoginWithResponse(
 		t.Context(),
 		createOrg2.JSON201.Id,
-		basicauth.LoginJSONRequestBody{
+		basic.LoginJSONRequestBody{
 			Username: createOrg2.JSON201.AdminUsername,
 			Password: createOrg2.JSON201.AdminPassword,
 		},
@@ -202,7 +202,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	createGroup1Resp, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
 		createOrg1.JSON201.Id,
-		basicauth.CreateGroupJSONRequestBody{Name: groupNameStaff},
+		basic.CreateGroupJSONRequestBody{Name: groupNameStaff},
 		requestEditorSessionID(session1),
 	)
 	checkErr(err, t)
@@ -229,7 +229,7 @@ func TestAuthBasicAPIOrganisationCreateDenied(t *testing.T) {
 
 	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		basicauth.CreateOrganisationRequest{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
+		basic.CreateOrganisationRequest{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
 		requestEditorSessionID(superSession),
 	)
 	checkErr(err, t)
@@ -239,7 +239,7 @@ func TestAuthBasicAPIOrganisationCreateDenied(t *testing.T) {
 	loginResp, err := basicAuthClient.LoginWithResponse(
 		t.Context(),
 		orgID,
-		basicauth.LoginJSONRequestBody{
+		basic.LoginJSONRequestBody{
 			Username: orgResp.JSON201.AdminUsername,
 			Password: orgResp.JSON201.AdminPassword,
 		},
@@ -253,7 +253,7 @@ func TestAuthBasicAPIOrganisationCreateDenied(t *testing.T) {
 
 	failedOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		basicauth.CreateOrganisationRequest{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
+		basic.CreateOrganisationRequest{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
 		requestEditorSessionID(session),
 	)
 	checkErr(err, t)
@@ -271,7 +271,7 @@ func TestAuthBasicAPISuperuser(t *testing.T) {
 
 	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		basicauth.CreateOrganisationRequest{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
+		basic.CreateOrganisationRequest{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
 		requestEditorSessionID(superSession),
 	)
 	checkErr(err, t)
@@ -281,7 +281,7 @@ func TestAuthBasicAPISuperuser(t *testing.T) {
 	userResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		basicauth.CreateUserRequest{
+		basic.CreateUserRequest{
 			Name: "testing",
 		},
 		requestEditorSessionID(superSession),
@@ -293,7 +293,7 @@ func TestAuthBasicAPISuperuser(t *testing.T) {
 	groupResp, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
 		orgID,
-		basicauth.CreateGroupRequest{
+		basic.CreateGroupRequest{
 			Name: "testing",
 		},
 		requestEditorSessionID(superSession),
@@ -305,7 +305,7 @@ func TestAuthBasicAPISuperuser(t *testing.T) {
 		t.Context(),
 		orgID,
 		userID,
-		basicauth.UserGroups{"testing"},
+		basic.UserGroups{"testing"},
 		requestEditorSessionID(superSession),
 	)
 	checkErr(err, t)

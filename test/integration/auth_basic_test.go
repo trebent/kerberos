@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/trebent/kerberos/ft/admin"
-	"github.com/trebent/kerberos/ft/basicauth"
+	"github.com/trebent/kerberos/ft/client/admin"
+	"github.com/trebent/kerberos/ft/client/basic"
 )
 
 func TestAuthBasicCall(t *testing.T) {
@@ -22,7 +22,7 @@ func TestAuthBasicCall(t *testing.T) {
 
 	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		basicauth.CreateOrganisationRequest{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
+		basic.CreateOrganisationRequest{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
 		requestEditorSessionID(superSession),
 	)
 	checkErr(err, t)
@@ -33,7 +33,7 @@ func TestAuthBasicCall(t *testing.T) {
 	userResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		basicauth.CreateUserRequest{Name: "username", Password: "password"},
+		basic.CreateUserRequest{Name: "username", Password: "password"},
 		requestEditorSessionID(superSession),
 	)
 	checkErr(err, t)
@@ -44,7 +44,7 @@ func TestAuthBasicCall(t *testing.T) {
 	loginResp, err := basicAuthClient.LoginWithResponse(
 		t.Context(),
 		orgID,
-		basicauth.LoginJSONRequestBody{
+		basic.LoginJSONRequestBody{
 			Username: "username",
 			Password: "password",
 		},

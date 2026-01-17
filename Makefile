@@ -34,10 +34,10 @@ lint:
 
 codegen:
 	$(call cecho,Running codegen for Kerberos...,$(BOLD_YELLOW))
-	@go generate -modfile=./tools/go.mod ./...
+	@go generate ./...
 	
 	$(call cecho,Running codegen for integration tests...,$(BOLD_YELLOW))
-	@cd test/integration && go generate -modfile=../../tools/go.mod ./...
+	@cd test/integration && go generate ./...
 
 unittest:
 	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
@@ -55,7 +55,7 @@ integrationtest: image compose
 
 vulncheck:
 	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
-	@go tool -modfile=./tools/go.mod govulncheck ./...
+	@go tool govulncheck ./...
 
 staticcheck: lint unittest vulncheck
 	$(call cecho,Static analysis complete.,$(BOLD_GREEN))

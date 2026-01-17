@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/trebent/kerberos/ft/admin"
-	"github.com/trebent/kerberos/ft/basicauth"
+	"github.com/trebent/kerberos/ft/client/admin"
+	"github.com/trebent/kerberos/ft/client/basic"
 )
 
 type (
@@ -28,7 +28,7 @@ type (
 var (
 	client = &http.Client{Timeout: 4 * time.Second}
 
-	basicAuthClient, _ = basicauth.NewClientWithResponses(
+	basicAuthClient, _ = basic.NewClientWithResponses(
 		fmt.Sprintf("http://%s:%d/api/auth/basic", getHost(), getPort()),
 	)
 	adminClient, _ = admin.NewClientWithResponses(
@@ -144,7 +144,7 @@ func containsAll[T comparable](source, reference []T, t *testing.T) {
 	}
 }
 
-func requestEditorSessionID(sessionID string) basicauth.RequestEditorFn {
+func requestEditorSessionID(sessionID string) basic.RequestEditorFn {
 	return func(ctx context.Context, req *http.Request) error {
 		req.Header.Set("x-krb-session", sessionID)
 		return nil
