@@ -1,5 +1,7 @@
 name: Release
 
+run-name: Releasing ${{ github.ref_name }}
+
 on:
   push:
     tags:
@@ -15,8 +17,8 @@ jobs:
     outputs:
       version: ${{ steps.set-version.outputs.version }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           fetch-depth: 0  # Fetch all history for tags
           fetch-tags: true

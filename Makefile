@@ -31,13 +31,13 @@ clean:
 lint:
 	$(call cecho,Running linter for Kerberos...,$(BOLD_YELLOW))
 	@golangci-lint run --fix
-	$(call cecho,Linter complete.,$(BOLD_GREEN))
 
 codegen:
 	$(call cecho,Running codegen for Kerberos...,$(BOLD_YELLOW))
-	@go generate ./...
-	@cd test/integration && go generate ./...
-	$(call cecho,Codegen complete.,$(BOLD_GREEN))
+	@go generate -modfile=./tools/go.mod ./...
+	
+	$(call cecho,Running codegen for integration tests...,$(BOLD_YELLOW))
+	@cd test/integration && go generate -modfile=../../tools/go.mod ./...
 
 unittest:
 	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
@@ -45,7 +45,6 @@ unittest:
 	@go test -v ./... -coverprofile=build/coverage.out -timeout 20s -failfast
 	@go tool cover -html=build/coverage.out -o build/coverage.html
 	@go tool cover -func=build/coverage.out
-	$(call cecho,Unit tests complete.,$(BOLD_GREEN))
 
 coverage:
 	@go tool cover -func=build/coverage.out | awk 'END {print $$3}'
@@ -53,12 +52,10 @@ coverage:
 integrationtest: image compose
 	$(call cecho,Running integration tests for Kerberos...,$(BOLD_YELLOW))
 	@cd test/integration && go test -v ./... -count=1
-	$(call cecho,Integration tests complete.,$(BOLD_GREEN))
 
 vulncheck:
 	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
-	@go tool govulncheck ./...
-	$(call cecho,Vulnerability check complete.,$(BOLD_GREEN))
+	@go tool -modfile=./tools/go.mod govulncheck ./...
 
 staticcheck: lint unittest vulncheck
 	$(call cecho,Static analysis complete.,$(BOLD_GREEN))
@@ -67,7 +64,6 @@ build:
 	$(call cecho,Building Kerberos binary...,$(BOLD_YELLOW))
 	@mkdir -p build
 	CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/kerberos .
-	$(call cecho,Build complete.,$(BOLD_GREEN))
 
 run:
 	$(call cecho,Running Kerberos...,$(BOLD_YELLOW))
@@ -85,7 +81,6 @@ run:
 image:
 	$(call cecho,Building Kerberos Docker image...,$(BOLD_YELLOW))
 	docker build --build-arg VERSION=$(VERSION) -t ghcr.io/trebent/kerberos:$(VERSION) .
-	$(call cecho,Docker image build complete.,$(BOLD_GREEN))
 
 docker-run: image docker-stop docker-rm
 	$(call cecho,Running Kerberos Docker container...,$(BOLD_YELLOW))
@@ -164,7 +159,6 @@ compose-down:
 echo-build:
 	$(call cecho,Building Echo binary...,$(BOLD_YELLOW))
 	@CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/echo ./cmd/echo
-	$(call cecho,Echo build complete.,$(BOLD_GREEN))
 
 echo-run:
 	$(call cecho,Running echo...,$(BOLD_YELLOW))
@@ -178,7 +172,6 @@ echo-image:
 		-f cmd/echo/Dockerfile \
 		-t ghcr.io/trebent/kerberos/echo:$(VERSION) \
 		.
-	$(call cecho,Echo Docker image build complete.,$(BOLD_GREEN))
 
 echo-docker-run: echo-image echo-d-stop echo-d-rm
 	$(call cecho,Running Echo Docker container...,$(BOLD_YELLOW))
