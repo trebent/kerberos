@@ -1,5 +1,7 @@
 name: "CodeQL Advanced"
 
+run-name: CodeQL - ${{ github.event.pull_request.title | github.event.head_commit.message }}
+
 on:
   push:
     branches: ["main"]

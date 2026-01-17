@@ -67,7 +67,10 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 		rLogger.Error(err, "Failed to route request")
 		response.JSONError(
 			wrapped,
-			fmt.Errorf("%w: backend path must begin with /gw/backend/backend-name", ErrFailedPatternMatch),
+			fmt.Errorf(
+				"%w: backend path must begin with /gw/backend/backend-name",
+				ErrFailedPatternMatch,
+			),
 			http.StatusBadRequest,
 		)
 		return

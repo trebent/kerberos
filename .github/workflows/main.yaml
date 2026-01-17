@@ -1,6 +1,6 @@
 name: Main branch protection
 
-run-name: Main branch protection - ${{ github.event.head_commit.message }}
+run-name: Main branch protection - ${{ github.event.pull_request.title | github.event.head_commit.message }}
 
 on:
   workflow_dispatch:
@@ -19,6 +19,7 @@ permissions:
   contents: read
   packages: write
   pull-requests: read
+  security-events: read
 
 jobs:
   static-analysis:
@@ -32,7 +33,7 @@ jobs:
   image:
     uses: ./.github/workflows/callable-image.yaml
     secrets: inherit
-  
+
   test:
     needs: image
     uses: ./.github/workflows/callable-test.yaml
