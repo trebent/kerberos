@@ -19,6 +19,7 @@ import (
 	"github.com/trebent/zerologr"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
+	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -57,7 +58,11 @@ func main() {
 	signalCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	logger := zerologr.New(&zerologr.Opts{Console: true}).WithName("echo")
+	logger := zerologr.New(&zerologr.Opts{Console: true}).
+		WithValues(
+			string(semconv.ServiceVersionKey), os.Getenv("VERSION"),
+			string(semconv.ServiceNameKey), "echo",
+		)
 	zerologr.Set(logger)
 
 	shutdown, err := intotel.Instrument(signalCtx, "echo", "0.1.0")
