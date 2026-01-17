@@ -8,11 +8,6 @@ info:
     of the Kerberos deployment.
 components:
   schemas:
-    Something:
-      type: object
-      properties:
-        bla:
-          type: string
     APIErrorResponse:
       type: object
       properties:
