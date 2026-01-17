@@ -10,9 +10,6 @@ import (
 	"github.com/trebent/kerberos/ft/basicauth"
 )
 
-//go:generate go tool oapi-codegen -config basicauth/config.yaml -o ./basicauth/clientgen.go ../../openapi/basic_auth.yaml
-//go:generate go tool oapi-codegen -config admin/config.yaml -o ./admin/clientgen.go ../../openapi/administration.yaml
-
 const (
 	orgName        = "Org"
 	groupNameStaff = "Staff"

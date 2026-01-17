@@ -13,7 +13,7 @@ import (
 	"github.com/trebent/zerologr"
 )
 
-//go:generate go tool oapi-codegen -config config.yaml -o ./gen.go ../../../../openapi/administration.yaml
+//go:generate -command go tool -modfile=../../../../tools/go.mod oapi-codegen -config ./config.yaml -o ./gen.go ../../../../openapi/administration.yaml
 
 type (
 	impl struct {
