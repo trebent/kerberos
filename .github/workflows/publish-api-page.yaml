@@ -1,5 +1,7 @@
 name: Deploy static content to Pages
 
+run-name: Deploy pages - ${{ github.event.head_commit.message }}
+
 on:
   push:
     branches: ["main"]
@@ -15,7 +17,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  deploy-api-pages:
     environment:
       name: api-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -24,15 +26,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Set up NodeJS
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version-file: .nvmrc
+      # - name: Set up NodeJS
+      #   uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+      #   with:
+      #     node-version-file: .nvmrc
 
-      - name: Build static page
-        run: |
-          npx @redocly/cli build-docs basic-authentication -o build/pages/basic-authentication.html
-          npx @redocly/cli build-docs administration -o build/pages/administration.html
+      # - name: Build static page
+      #   run: |
+      #     npx @redocly/cli build-docs basic-authentication -o build/pages/basic-authentication.html
+      #     npx @redocly/cli build-docs administration -o build/pages/administration.html
 
       - name: Setup Pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
@@ -40,7 +42,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
         with:
-          path: "build/pages"
+          path: "pages/"
 
       - name: Deploy to GitHub Pages
         id: deployment
