@@ -9,4 +9,4 @@
 Kerberos is an API gateway that:
 * produces helpful observability data across an entire application ecosystem
 * routes API calls to any number of configured backends
-* (in progress) handles authentication and authorization needs
+* handles authentication and authorization (in progress) needs
