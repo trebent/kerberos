@@ -19,7 +19,7 @@ permissions:
   contents: read
   packages: write
   pull-requests: read
-  security-events: read
+  security-events: write
 
 jobs:
   static-analysis:
