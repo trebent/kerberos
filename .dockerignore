@@ -3,6 +3,8 @@
 .github
 .editorconfig
 .golangci-lint.yaml
+.nvmrc
+redocly.aml
 coverage*
 docs/
 README*

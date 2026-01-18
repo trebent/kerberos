@@ -24,6 +24,10 @@ FROM gcr.io/distroless/static-debian12:nonroot AS runtime
 
 COPY --from=build /echo /echo
 
+ARG VERSION="unset"
+
+ENV VERSION=${VERSION}
+
 EXPOSE 15000
 
 ENTRYPOINT [ "/echo" ]

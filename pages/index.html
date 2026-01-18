@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Kerberos API documentation</title>
+  <!-- needed for adaptive design -->
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!--
+      Redoc CE doesn't change outer page styles
+      -->
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+  <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+</head>
+
+<body>
+
+  <select id="apiSelector">
+    <option value="https://raw.githubusercontent.com/trebent/kerberos/main/openapi/basic_auth.yaml">Basic Authentication
+    </option>
+    <option value="https://raw.githubusercontent.com/trebent/kerberos/main/openapi/administration.yaml">Administration
+    </option>
+  </select>
+
+  <div id="redoc-container"></div>
+
+  <script>
+    const selector = document.getElementById('apiSelector');
+
+    function loadSpec(spec) {
+      document.getElementById('redoc-container').innerHTML = '';
+      Redoc.init(
+        spec,
+        {
+          hideReplay: true
+        },
+        document.getElementById('redoc-container')
+      );
+    }
+
+    selector.addEventListener('change', e => loadSpec(e.target.value));
+
+    // load first API
+    loadSpec(selector.value);
+  </script>
+</body>
+
+</html>
