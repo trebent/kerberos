@@ -16,7 +16,12 @@ func TestConfigMissingMethod(t *testing.T) {
 		t.Fatalf("Failed to read config file: %v", err)
 	}
 
-	schema := ac.Schema()
+	sl := gojsonschema.NewSchemaLoader()
+	schema, err := sl.Compile(ac.SchemaJSONLoader())
+	if err != nil {
+		t.Fatalf("Failed to compile schema: %v", err)
+	}
+
 	result, err := schema.Validate(gojsonschema.NewBytesLoader(configData))
 	if err != nil {
 		t.Fatalf("Got error: %v", err)
@@ -39,7 +44,12 @@ func TestConfigMissingScheme(t *testing.T) {
 		t.Fatalf("Failed to read config file: %v", err)
 	}
 
-	schema := ac.Schema()
+	sl := gojsonschema.NewSchemaLoader()
+	schema, err := sl.Compile(ac.SchemaJSONLoader())
+	if err != nil {
+		t.Fatalf("Failed to compile schema: %v", err)
+	}
+
 	result, err := schema.Validate(gojsonschema.NewBytesLoader(configData))
 	if err != nil {
 		t.Fatalf("Got error: %v", err)
@@ -62,7 +72,12 @@ func TestConfigMissingSchemeMappings(t *testing.T) {
 		t.Fatalf("Failed to read config file: %v", err)
 	}
 
-	schema := ac.Schema()
+	sl := gojsonschema.NewSchemaLoader()
+	schema, err := sl.Compile(ac.SchemaJSONLoader())
+	if err != nil {
+		t.Fatalf("Failed to compile schema: %v", err)
+	}
+
 	result, err := schema.Validate(gojsonschema.NewBytesLoader(configData))
 	if err != nil {
 		t.Fatalf("Got error: %v", err)
@@ -85,7 +100,12 @@ func TestConfigOnlyAdmin(t *testing.T) {
 		t.Fatalf("Failed to read config file: %v", err)
 	}
 
-	schema := ac.Schema()
+	sl := gojsonschema.NewSchemaLoader()
+	schema, err := sl.Compile(ac.SchemaJSONLoader())
+	if err != nil {
+		t.Fatalf("Failed to compile schema: %v", err)
+	}
+
 	result, err := schema.Validate(gojsonschema.NewBytesLoader(configData))
 	if err != nil {
 		t.Fatalf("Got error: %v", err)
@@ -101,7 +121,7 @@ func TestConfigOnlyAdmin(t *testing.T) {
 }
 
 func TestConfigAdminSuperUserDefault(t *testing.T) {
-	cm := config.New()
+	cm := config.New(&config.Opts{})
 	_, err := RegisterWith(cm)
 	if err != nil {
 		t.Fatalf("Failed to register auth config: %v", err)

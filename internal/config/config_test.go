@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"os"
+	"strconv"
 	"testing"
 
 	_ "embed"
@@ -63,41 +64,47 @@ func (t *testCfg) SchemaJSONLoader() gojsonschema.JSONLoader {
 	return gojsonschema.NewBytesLoader(testCfgSchema)
 }
 
-func (n *derivedCfg) Schema() *gojsonschema.Schema {
-	s, err := gojsonschema.NewSchema(n.SchemaJSONLoader())
-	if err != nil {
-		panic("Failed to create schema for derivedCfg: " + err.Error())
-	}
-
-	return s
-}
-
 func (n *derivedCfg) SchemaJSONLoader() gojsonschema.JSONLoader {
 	return gojsonschema.NewBytesLoader(derivedCfgSchema)
-}
-
-func (n *globalCfg) Schema() *gojsonschema.Schema {
-	s, err := gojsonschema.NewSchema(n.SchemaJSONLoader())
-	if err != nil {
-		panic("Failed to create schema for globalCfg: " + err.Error())
-	}
-
-	return s
 }
 
 func (n *globalCfg) SchemaJSONLoader() gojsonschema.JSONLoader {
 	return gojsonschema.NewBytesLoader(globalCfgSchema)
 }
 
-func (n *noSchema) Schema() *gojsonschema.Schema {
-	return NoSchema
-}
-
 func (n *noSchema) SchemaJSONLoader() gojsonschema.JSONLoader {
 	return nil
 }
 
+func TestDerivedMissingRef(t *testing.T) {
+	disable := enableLogging()
+	defer disable()
+
+	dc := &derivedCfg{}
+	// tc := &testCfg{}
+	gc := &globalCfg{}
+	m := New(&Opts{GlobalSchemas: []gojsonschema.JSONLoader{
+		gc.SchemaJSONLoader(),
+		// Makes validation fail due to missing test reference.
+		// tc.SchemaJSONLoader(),
+	}})
+
+	m.Register("bad_derived", dc)
+	if err := m.Load("bad_derived", []byte(`{}`)); err != nil {
+		t.Fatalf("Unexpected error when loading registered config name: %v", err)
+	}
+
+	if err := m.Parse(); err == nil {
+		t.Fatal("Expected error when parsing loaded config")
+	} else {
+		t.Logf("Received expected error when parsing loaded config: %v", err)
+	}
+}
+
 func TestDerivedConfig(t *testing.T) {
+	disable := enableLogging()
+	defer disable()
+
 	dc := &derivedCfg{}
 	tc := &testCfg{}
 	gc := &globalCfg{}
@@ -105,9 +112,18 @@ func TestDerivedConfig(t *testing.T) {
 		gc.SchemaJSONLoader(),
 		tc.SchemaJSONLoader(),
 	}})
-	m.Register("derived", dc)
 
-	if err := m.Load("derived", []byte(`{}`)); err != nil {
+	m.Register("derived", dc)
+	if err := m.Load("derived", []byte(`{
+	"global": {
+		"enabled": true,
+		"identifier": "set_in_global"
+	}, 
+	"test": {
+		"enabled": true
+	}
+}`,
+	)); err != nil {
 		t.Fatalf("Unexpected error when loading registered config name: %v", err)
 	}
 
@@ -118,12 +134,14 @@ func TestDerivedConfig(t *testing.T) {
 	accessCfg, _ := m.Access("derived")
 	decodedAccessCfg := accessCfg.(*derivedCfg)
 
-	if decodedAccessCfg.globalCfg.Identifier != "" {
-		t.Fatalf("Expected globalCfg.Identifier to be empty, got: %s", decodedAccessCfg.globalCfg.Identifier)
+	if !decodedAccessCfg.globalCfg.Enabled {
+		t.Fatalf("Expected globalCfg.Enabled to be true, got: %v", decodedAccessCfg.globalCfg.Enabled)
 	}
-
-	if decodedAccessCfg.testCfg.Enabled != false {
-		t.Fatalf("Expected testCfg.Enabled to be false, got: %v", decodedAccessCfg.testCfg.Enabled)
+	if decodedAccessCfg.globalCfg.Identifier != "set_in_global" {
+		t.Fatalf("Expected globalCfg.Identifier to be \"set_in_global\", got: %s", decodedAccessCfg.globalCfg.Identifier)
+	}
+	if !decodedAccessCfg.testCfg.Enabled {
+		t.Fatalf("Expected testCfg.Enabled to be true, got: %v", decodedAccessCfg.testCfg.Enabled)
 	}
 }
 
@@ -578,7 +596,17 @@ func TestParseNoSchema(t *testing.T) {
 }
 
 func enableLogging() func() {
-	newLogger := zerologr.New(&zerologr.Opts{Console: true, V: 0})
+	v := 0
+	val, ok := os.LookupEnv("LOG_VERBOSITY")
+	if ok {
+		var err error
+		v, err = strconv.Atoi(val)
+		if err != nil {
+			v = 0
+		}
+	}
+
+	newLogger := zerologr.New(&zerologr.Opts{Console: true, V: v})
 	zerologr.Set(newLogger)
 	return func() {
 		zerologr.Set(logr.Logger{})

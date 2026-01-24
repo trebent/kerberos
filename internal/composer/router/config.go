@@ -20,15 +20,6 @@ var (
 	schemaBytes []byte
 )
 
-func (o *routerConfig) Schema() *gojsonschema.Schema {
-	s, err := gojsonschema.NewSchema(o.SchemaJSONLoader())
-	if err != nil {
-		panic("Failed to create schema for routerConfig: " + err.Error())
-	}
-
-	return s
-}
-
 func (o *routerConfig) SchemaJSONLoader() gojsonschema.JSONLoader {
 	return gojsonschema.NewBytesLoader(schemaBytes)
 }

@@ -102,28 +102,6 @@ type (
 		Access(name string) (Config, error)
 	}
 	Config interface {
-		// Schema returns the JSON schema for the config struct.
-		//
-		// Example:
-		//   func (c *MyConfigStruct) Schema() *gojsonschema.Schema {
-		//       schemaLoader := gojsonschema.NewBytesLoader([]byte(`{
-		//           "type": "object",
-		//           "properties": {
-		//               "key": { "type": "string" }
-		//           },
-		//           "required": ["key"]
-		//       }`))
-		//       schema, err := gojsonschema.NewSchema(schemaLoader)
-		//       if err != nil {
-		//           panic("Failed to create schema: " + err.Error())
-		//       }
-		//       return schema
-		//   }
-		//
-		// This defines a JSON schema for the config struct.
-		//
-		// Returns NoSchema if no schema validation is needed.
-		Schema() *gojsonschema.Schema
 		// SchemaJSONLoader returns the JSON loader for the config struct schema.
 		//
 		// Example:
@@ -576,7 +554,7 @@ func (c *impl) validateSchemas() error {
 		}
 
 		zerologr.V(100).Info("Validating schema for config entry " + name)
-		if entry.cfg.Schema() == NoSchema {
+		if entry.cfg.SchemaJSONLoader() == nil {
 			zerologr.V(100).Info("No schema defined, skipping validation")
 			continue
 		}

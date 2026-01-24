@@ -47,13 +47,8 @@ var (
 	schemaBytes []byte
 )
 
-func (a *authConfig) Schema() *gojsonschema.Schema {
-	s, err := gojsonschema.NewSchema(gojsonschema.NewBytesLoader(schemaBytes))
-	if err != nil {
-		panic("Failed to create schema for authConfig: " + err.Error())
-	}
-
-	return s
+func (a *authConfig) SchemaJSONLoader() gojsonschema.JSONLoader {
+	return gojsonschema.NewBytesLoader(schemaBytes)
 }
 
 func (a *authConfig) BasicEnabled() bool {
