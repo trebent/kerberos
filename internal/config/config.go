@@ -15,23 +15,161 @@ import (
 )
 
 type (
+	// Map is a configuration map that holds multiple configuration entries.
+	//
+	// Each configuration entry is registered with a name and a config struct that implements the Config interface.
+	//
+	// Configuration data can be loaded for each entry, and all entries can be parsed to resolve references,
+	// validate against schemas, and unmarshal into the config structs.
+	//
+	// Example usage:
+	//   cfgMap := config.New(&config.Opts{})
+	//   cfgMap.Register("myConfig", &MyConfigStruct{})
+	//   err := cfgMap.Load("myConfig", []byte(`{"key": "value"}`))
+	//   if err != nil {
+	//       panic(err)
+	//   }
+	//   err = cfgMap.Parse()
+	//   if err != nil {
+	//       panic(err)
+	//   }
+	//   myCfg, err := cfgMap.Access("myConfig")
+	//   if err != nil {
+	//       panic(err)
+	//   }
+	//
+	// This creates a configuration map, registers a config entry, loads JSON data into it,
+	// parses all entries, and accesses the populated config struct.
+	//
+	// Returns errors if any step fails, such as loading data for an unregistered name,
+	// schema validation failures, or unmarshalling errors.
 	Map interface {
+		// Register a configuration producer entry with a name and a config struct.
+		// The config struct must implement the Config interface.
+		//
+		// Example:
+		//   cfgMap.Register("myConfig", &MyConfigStruct{})
+		//
+		// This registers a configuration entry named "myConfig" with the provided config struct.
+		//
+		// The config struct will be populated when Load and Parse are called.
+		//
+		// Panics if the name is already registered.
 		Register(name string, cfg Config)
+		// Load configuration data for a registered config entry by name.
+		//
+		// Example:
+		//   err := cfgMap.Load("myConfig", []byte(`{"key": "value"}`))
+		//
+		// This loads the provided JSON data into the config entry named "myConfig".
+		// Returns an error if the name is not registered.
+		//
+		// MustLoad is similar to Load but panics on error.
+		//
+		// The actual unmarshalling into the config struct happens when Parse is called.
+		//
+		// Returns an error if the name is not registered.
 		Load(name string, data []byte) error
+		// MustLoad is similar to Load but panics on error.
+		//
+		// Example:
+		//   cfgMap.MustLoad("myConfig", []byte(`{"key": "value"}`))
+		//
+		// This loads the provided JSON data into the config entry named "myConfig".
+		// Panics if the name is not registered.
+		//
+		// The actual unmarshalling into the config struct happens when Parse is called.
+		//
+		// Panics if the name is not registered.
 		MustLoad(name string, data []byte)
+		// Parse all loaded configuration entries.
+		//
+		// This performs the following steps:
+		// 1. Resolves all environment variable and path references in the loaded JSON data.
+		// 2. Validates the JSON data against the schema provided by the config struct.
+		// 3. Unmarshals the JSON data into the config struct.
+		//
+		// Returns an error if any step fails.
 		Parse() error
+		// Access a configuration entry by name.
+		//
+		// Example:
+		//   cfg, err := cfgMap.Access("myConfig")
+		//
+		// This accesses the config entry named "myConfig" and returns the config struct.
+		//
+		// Returns an error if the name is not registered.
 		Access(name string) (Config, error)
 	}
 	Config interface {
+		// Schema returns the JSON schema for the config struct.
+		//
+		// Example:
+		//   func (c *MyConfigStruct) Schema() *gojsonschema.Schema {
+		//       schemaLoader := gojsonschema.NewBytesLoader([]byte(`{
+		//           "type": "object",
+		//           "properties": {
+		//               "key": { "type": "string" }
+		//           },
+		//           "required": ["key"]
+		//       }`))
+		//       schema, err := gojsonschema.NewSchema(schemaLoader)
+		//       if err != nil {
+		//           panic("Failed to create schema: " + err.Error())
+		//       }
+		//       return schema
+		//   }
+		//
+		// This defines a JSON schema for the config struct.
+		//
+		// Returns NoSchema if no schema validation is needed.
 		Schema() *gojsonschema.Schema
+		// SchemaJSONLoader returns the JSON loader for the config struct schema.
+		//
+		// Example:
+		//   func (c *MyConfigStruct) SchemaJSONLoader() gojsonschema.JSONLoader {
+		//       return gojsonschema.NewBytesLoader([]byte(`{
+		//           "type": "object",
+		//           "properties": {
+		//               "key": { "type": "string" }
+		//           },
+		//           "required": ["key"]
+		//       }`))
+		//   }
+		//
+		// This provides the JSON loader for the schema used in validation.
+		//
+		// Returns nil if no schema validation is needed.
+		SchemaJSONLoader() gojsonschema.JSONLoader
+	}
+	Opts struct {
+		// GlobalSchemas are JSON schemas that are applied to all config entries.
+		//
+		// These schemas can define common structures or constraints that apply to all config entries.
+		//
+		// Example:
+		//   globalSchemaLoader := gojsonschema.NewBytesLoader([]byte(`{
+		//       "type": "object",
+		//       "properties": {
+		//           "globalKey": { "type": "string" }
+		//       }
+		//   }`))
+		//   opts := &Opts{
+		//       GlobalSchemas: []gojsonschema.JSONLoader{globalSchemaLoader},
+		//   }
+		//
+		// This sets a global schema that requires a "globalKey" property in all config entries.
+		//
+		// If no global schemas are needed, this can be left nil or empty.
+		GlobalSchemas []gojsonschema.JSONLoader
 	}
 	configEntry struct {
-		schema      *gojsonschema.Schema
 		cfg         Config
 		data        []byte
 		escapedData []byte
 	}
 	impl struct {
+		globalSchemas []gojsonschema.JSONLoader
 		configEntries map[string]*configEntry
 		// values config values
 		values map[string]any
@@ -57,8 +195,9 @@ var (
 	pathRe = regexp.MustCompile(`\$\{ref:([a-zA-Z0-9_\.\[\]:]+)\}`)
 )
 
-func New() Map {
+func New(opts *Opts) Map {
 	return &impl{
+		globalSchemas: opts.GlobalSchemas,
 		configEntries: make(map[string]*configEntry),
 		values:        make(map[string]any),
 		refs:          make(map[string]string),
@@ -82,7 +221,7 @@ func AccessAs[T any](cfg Map, name string) T {
 }
 
 func (c *impl) Register(name string, cfg Config) {
-	c.configEntries[name] = &configEntry{cfg.Schema(), cfg, nil, nil}
+	c.configEntries[name] = &configEntry{cfg, nil, nil}
 }
 
 func (c *impl) Load(name string, data []byte) error {
@@ -421,6 +560,13 @@ func (c *impl) replaceReferencesInData() error {
 
 func (c *impl) validateSchemas() error {
 	zerologr.V(100).Info("Validating schemas for all config entries")
+
+	sl := gojsonschema.NewSchemaLoader()
+	sl.AutoDetect = false
+	sl.Validate = true
+	sl.Draft = gojsonschema.Draft7
+	sl.AddSchemas(c.globalSchemas...)
+
 	/*
 		Validate all loaded config entries against their schemas.
 	*/
@@ -435,7 +581,12 @@ func (c *impl) validateSchemas() error {
 			continue
 		}
 
-		result, err := entry.cfg.Schema().Validate(gojsonschema.NewBytesLoader(entry.data))
+		compiledSchema, err := sl.Compile(entry.cfg.SchemaJSONLoader())
+		if err != nil {
+			return err
+		}
+
+		result, err := compiledSchema.Validate(gojsonschema.NewBytesLoader(entry.data))
 		if err != nil {
 			return err
 		}

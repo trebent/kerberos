@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://trebent.com/kerberos/schemas/derived_schema.json",
+  "type": "object",
+  "properties": {
+    "global": {
+      "$ref": "http://trebent.com/kerberos/schemas/global_schema.json"
+    },
+    "test": {
+      "$ref": "http://trebent.com/kerberos/schemas/testcfg_schema.json"
+    }
+  },
+  "additionalProperties": false
+}

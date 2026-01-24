@@ -22,12 +22,16 @@ var (
 )
 
 func (o *obsConfig) Schema() *gojsonschema.Schema {
-	s, err := gojsonschema.NewSchema(gojsonschema.NewBytesLoader(schemaBytes))
+	s, err := gojsonschema.NewSchema(o.SchemaJSONLoader())
 	if err != nil {
 		panic("Failed to create schema for routerConfig: " + err.Error())
 	}
 
 	return s
+}
+
+func (o *obsConfig) SchemaJSONLoader() gojsonschema.JSONLoader {
+	return gojsonschema.NewBytesLoader(schemaBytes)
 }
 
 func RegisterWith(cfg config.Map) (string, error) {

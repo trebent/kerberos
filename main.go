@@ -100,7 +100,7 @@ func main() {
 func setupConfig() config.Map {
 	zerologr.Info("Setting up configuration...")
 
-	cfg := config.New()
+	cfg := config.New(&config.Opts{})
 
 	var (
 		err              error

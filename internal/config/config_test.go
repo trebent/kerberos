@@ -26,6 +26,14 @@ type (
 		Number int    `json:"number"`
 		String string `json:"string"`
 	}
+	globalCfg struct {
+		Identifier string `json:"identifier"`
+		Enabled    bool   `json:"enabled"`
+	}
+	derivedCfg struct {
+		testCfg   `json:"test"`
+		globalCfg `json:"global"`
+	}
 	noSchema struct {
 		Bool   bool   `json:"bool"`
 		Number int    `json:"number"`
@@ -33,12 +41,17 @@ type (
 	}
 )
 
-//go:embed testcfg_schema.json
-var testCfgSchema []byte
+var (
+	//go:embed testschemas/testcfg_schema.json
+	testCfgSchema []byte
+	//go:embed testschemas/global_schema.json
+	globalCfgSchema []byte
+	//go:embed testschemas/derived_schema.json
+	derivedCfgSchema []byte
+)
 
 func (t *testCfg) Schema() *gojsonschema.Schema {
-	s, err := gojsonschema.NewSchema(gojsonschema.NewBytesLoader(testCfgSchema))
-
+	s, err := gojsonschema.NewSchema(t.SchemaJSONLoader())
 	if err != nil {
 		panic("Failed to create schema for testCfg: " + err.Error())
 	}
@@ -46,16 +59,80 @@ func (t *testCfg) Schema() *gojsonschema.Schema {
 	return s
 }
 
+func (t *testCfg) SchemaJSONLoader() gojsonschema.JSONLoader {
+	return gojsonschema.NewBytesLoader(testCfgSchema)
+}
+
+func (n *derivedCfg) Schema() *gojsonschema.Schema {
+	s, err := gojsonschema.NewSchema(n.SchemaJSONLoader())
+	if err != nil {
+		panic("Failed to create schema for derivedCfg: " + err.Error())
+	}
+
+	return s
+}
+
+func (n *derivedCfg) SchemaJSONLoader() gojsonschema.JSONLoader {
+	return gojsonschema.NewBytesLoader(derivedCfgSchema)
+}
+
+func (n *globalCfg) Schema() *gojsonschema.Schema {
+	s, err := gojsonschema.NewSchema(n.SchemaJSONLoader())
+	if err != nil {
+		panic("Failed to create schema for globalCfg: " + err.Error())
+	}
+
+	return s
+}
+
+func (n *globalCfg) SchemaJSONLoader() gojsonschema.JSONLoader {
+	return gojsonschema.NewBytesLoader(globalCfgSchema)
+}
+
 func (n *noSchema) Schema() *gojsonschema.Schema {
 	return NoSchema
 }
 
-func TestLoadNoName(t *testing.T) {
-	m := New()
+func (n *noSchema) SchemaJSONLoader() gojsonschema.JSONLoader {
+	return nil
+}
 
+func TestDerivedConfig(t *testing.T) {
+	dc := &derivedCfg{}
+	tc := &testCfg{}
+	gc := &globalCfg{}
+	m := New(&Opts{GlobalSchemas: []gojsonschema.JSONLoader{
+		gc.SchemaJSONLoader(),
+		tc.SchemaJSONLoader(),
+	}})
+	m.Register("derived", dc)
+
+	if err := m.Load("derived", []byte(`{}`)); err != nil {
+		t.Fatalf("Unexpected error when loading registered config name: %v", err)
+	}
+
+	if err := m.Parse(); err != nil {
+		t.Fatalf("Unexpected error when parsing loaded config: %v", err)
+	}
+
+	accessCfg, _ := m.Access("derived")
+	decodedAccessCfg := accessCfg.(*derivedCfg)
+
+	if decodedAccessCfg.globalCfg.Identifier != "" {
+		t.Fatalf("Expected globalCfg.Identifier to be empty, got: %s", decodedAccessCfg.globalCfg.Identifier)
+	}
+
+	if decodedAccessCfg.testCfg.Enabled != false {
+		t.Fatalf("Expected testCfg.Enabled to be false, got: %v", decodedAccessCfg.testCfg.Enabled)
+	}
+}
+
+func TestLoadNoName(t *testing.T) {
+	m := New(&Opts{})
 	m.Register("ok", &testCfg{})
 
 	if err := m.Load("ok", []byte{}); err != nil {
+		t.Fatalf("Unexpected error when loading registered config name: %v", err)
 	}
 
 	if err := m.Load("nok", []byte{}); err == nil {
@@ -77,7 +154,7 @@ func TestParseEnvRef(t *testing.T) {
   }
 }`)
 
-	m := New()
+	m := New(&Opts{})
 	m.Register("1", cfg)
 
 	if err := m.Load("1", cfgData); err != nil {
@@ -113,7 +190,7 @@ func TestParseEnvRefFailed(t *testing.T) {
   }
 }`)
 
-	m := New()
+	m := New(&Opts{})
 	m.Register("1", cfg)
 
 	if err := m.Load("1", cfgData); err != nil {
@@ -142,7 +219,7 @@ func TestParseEnvRefDefault(t *testing.T) {
   }
 }`)
 
-	m := New()
+	m := New(&Opts{})
 	m.Register("1", cfg)
 
 	if err := m.Load("1", cfgData); err != nil {
@@ -182,7 +259,7 @@ func TestParsePathRef(t *testing.T) {
   }
 }`)
 
-	m := New()
+	m := New(&Opts{})
 	m.Register("1", cfg)
 
 	if err := m.Load("1", data); err != nil {
@@ -225,7 +302,7 @@ func TestParsePathRefCircular(t *testing.T) {
   }
 }`)
 
-	m := New()
+	m := New(&Opts{})
 	m.Register("1", cfg)
 
 	if err := m.Load("1", data); err != nil {
@@ -253,7 +330,7 @@ func TestParsePathRefCircularBackRef(t *testing.T) {
   }
 }`)
 
-	m := New()
+	m := New(&Opts{})
 	m.Register("1", cfg)
 
 	if err := m.Load("1", data); err != nil {
@@ -288,7 +365,7 @@ func TestParsePathRefArrayIndex(t *testing.T) {
 		]
 }`)
 
-	m := New()
+	m := New(&Opts{})
 	m.Register("1", cfg)
 
 	if err := m.Load("1", data); err != nil {
@@ -333,7 +410,7 @@ func TestParsePathRefToEnvRef(t *testing.T) {
 		]
 }`)
 
-	m := New()
+	m := New(&Opts{})
 	m.Register("1", cfg)
 
 	if err := m.Load("1", data); err != nil {
@@ -374,7 +451,7 @@ func TestParsePathRefCrossDocument(t *testing.T) {
   "string": "${ref:1.string}"
 }`)
 
-	m := New()
+	m := New(&Opts{})
 	m.Register("1", cfg)
 	m.Register("2", cfg)
 
@@ -407,7 +484,7 @@ func TestParseJSONSchemaValidationFail(t *testing.T) {
 	// Enabled is required but missing
 	data := []byte(`{}`)
 
-	m := New()
+	m := New(&Opts{})
 	m.Register("1", cfg)
 
 	if err := m.Load("1", data); err != nil {
@@ -433,7 +510,7 @@ func TestParseJSONSchemaValidationExtraField(t *testing.T) {
 	"unknown": "value"	
 }`)
 
-	m := New()
+	m := New(&Opts{})
 	m.Register("1", cfg)
 
 	if err := m.Load("1", data); err != nil {
@@ -459,7 +536,7 @@ func TestParseJSONSchemaValidationWrongType(t *testing.T) {
 	"enabled": "true"	
 }`)
 
-	m := New()
+	m := New(&Opts{})
 	m.Register("1", cfg)
 
 	if err := m.Load("1", data); err != nil {
@@ -487,7 +564,7 @@ func TestParseNoSchema(t *testing.T) {
 	"string": "test"	
 }`)
 
-	m := New()
+	m := New(&Opts{})
 	m.Register("1", cfg)
 
 	if err := m.Load("1", data); err != nil {

@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://trebent.com/kerberos/schemas/testcfg_schema.json",
   "type": "object",
   "properties": {
     "enabled": {
@@ -27,7 +28,9 @@
       }
     }
   },
-  "required": ["enabled"],
+  "required": [
+    "enabled"
+  ],
   "definitions": {
     "subCfg": {
       "type": "object",
