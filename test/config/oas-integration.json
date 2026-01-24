@@ -2,11 +2,11 @@
   "mappings": [
     {
       "backend": "${ref:router.backends[0].name}",
-      "oasFile": "/oas/echo.yaml"
+      "specification": "/oas/echo.yaml"
     },
     {
       "backend": "${ref:router.backends[1].name}",
-      "oasFile": "/oas/echo-protected.yaml"
+      "specification": "/oas/echo-protected.yaml"
     }
   ],
   "order": 100

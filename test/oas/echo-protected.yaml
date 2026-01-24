@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=https://spec.openapis.org/oas/3.0/schema/2024-10-18
+openapi: 3.0.4
+info:
+  title: Echo
+  description: An echo service that returns request details.
+  version: 0.1.0
+
+components:
+  schemas:
+    EchoResponse:
+      type: object
+      properties:
+        method:
+          type: string
+        url:
+          type: string
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        body:
+          type: object
+          additionalProperties:
+            type: string
+
+paths:
+  /:
+    get:
+      summary: Root endpoint.
+      operationId: root
+      responses:
+        "200": # status code
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
+
+  /hi:
+    get:
+      summary: Say hi to echo.
+      operationId: sayHi
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"

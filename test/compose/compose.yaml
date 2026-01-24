@@ -18,11 +18,11 @@ services:
       - LOG_VERBOSITY=20
       - PORT=${KERBEROS_PORT}
       - VERSION=${VERSION}
-      - ROUTE_JSON_FILE=/echo.json
-      - AUTH_JSON_FILE=/auth.json
+      - ROUTE_JSON_FILE=/config/router-integration.json
+      - AUTH_JSON_FILE=/config/auth-integration.json
+      - OAS_JSON_FILE=/config/oas-integration.json
     volumes:
-      - ../config/router-integration.json:/echo.json
-      - ../config/auth-integration.json:/auth.json
+      - ../config:/config:ro
   
   echo:
     image: "ghcr.io/trebent/kerberos/echo:${VERSION}"
