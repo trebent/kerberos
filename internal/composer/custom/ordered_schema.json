@@ -2,5 +2,6 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "http://trebent.com/kerberos/schemas/ordered_schema.json",
   "type": "integer",
-  "minimum": 1
+  "minimum": 1,
+  "default": 1
 }
