@@ -176,6 +176,7 @@ func startServer(ctx context.Context, cfg config.Map) error {
 
 	zerologr.Info("Loading observability")
 	observability := obs.NewComponent(&obs.Opts{Cfg: cfg})
+
 	zerologr.Info("Loading router")
 	router := router.NewComponent(&router.Opts{Cfg: cfg})
 
