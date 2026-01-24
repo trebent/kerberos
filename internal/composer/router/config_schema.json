@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://trebent.com/kerberos/schemas/router_schema.json",
   "type": "object",
   "properties": {
     "backends": {
@@ -20,12 +21,18 @@
             "description": "The port number of the backend."
           }
         },
-        "required": ["name", "host", "port"],
+        "required": [
+          "name",
+          "host",
+          "port"
+        ],
         "additionalProperties": false
       },
       "minItems": 1
     }
   },
-  "required": ["backends"],
+  "required": [
+    "backends"
+  ],
   "additionalProperties": false
 }

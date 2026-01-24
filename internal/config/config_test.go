@@ -76,6 +76,65 @@ func (n *noSchema) SchemaJSONLoader() gojsonschema.JSONLoader {
 	return nil
 }
 
+func TestMultipleDerivedConfigs(t *testing.T) {
+	disable := enableLogging()
+	defer disable()
+
+	dc := &derivedCfg{}
+	dc2 := &derivedCfg{}
+	tc := &testCfg{}
+	gc := &globalCfg{}
+	m := New(&Opts{GlobalSchemas: []gojsonschema.JSONLoader{
+		gc.SchemaJSONLoader(),
+		tc.SchemaJSONLoader(),
+	}})
+
+	m.Register("derived", dc)
+	m.Register("derived2", dc2)
+	if err := m.Load("derived", []byte(`{
+	"global": {
+		"enabled": true,
+		"identifier": "set_in_global"
+	}, 
+	"test": {
+		"enabled": true
+	}
+}`,
+	)); err != nil {
+		t.Fatalf("Unexpected error when loading registered config name: %v", err)
+	}
+
+	if err := m.Load("derived2", []byte(`{
+	"global": {
+		"enabled": true,
+		"identifier": "set_in_global"
+	}, 
+	"test": {
+		"enabled": true
+	}
+}`,
+	)); err != nil {
+		t.Fatalf("Unexpected error when loading registered config name: %v", err)
+	}
+
+	if err := m.Parse(); err != nil {
+		t.Fatalf("Unexpected error when parsing loaded config: %v", err)
+	}
+
+	accessCfg, _ := m.Access("derived")
+	decodedAccessCfg := accessCfg.(*derivedCfg)
+
+	if !decodedAccessCfg.globalCfg.Enabled {
+		t.Fatalf("Expected globalCfg.Enabled to be true, got: %v", decodedAccessCfg.globalCfg.Enabled)
+	}
+	if decodedAccessCfg.globalCfg.Identifier != "set_in_global" {
+		t.Fatalf("Expected globalCfg.Identifier to be \"set_in_global\", got: %s", decodedAccessCfg.globalCfg.Identifier)
+	}
+	if !decodedAccessCfg.testCfg.Enabled {
+		t.Fatalf("Expected testCfg.Enabled to be true, got: %v", decodedAccessCfg.testCfg.Enabled)
+	}
+}
+
 func TestDerivedMissingRef(t *testing.T) {
 	disable := enableLogging()
 	defer disable()

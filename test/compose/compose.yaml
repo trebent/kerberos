@@ -22,7 +22,7 @@ services:
       - AUTH_JSON_FILE=/auth.json
     volumes:
       - ../config/router-integration.json:/echo.json
-      - ../config/auth-basic.json:/auth.json
+      - ../config/auth-integration.json:/auth.json
   
   echo:
     image: "ghcr.io/trebent/kerberos/echo:${VERSION}"

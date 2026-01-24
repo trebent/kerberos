@@ -51,7 +51,7 @@ coverage:
 
 integrationtest: compose
 	$(call cecho,Running integration tests for Kerberos...,$(BOLD_YELLOW))
-	@cd test/integration && go test -v ./... -count=1
+	@cd test/integration && go test -v ./... -count=1 -failfast
 
 vulncheck:
 	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
@@ -92,6 +92,11 @@ docker-run: image docker-stop docker-rm
 		-e OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
 		-e LOG_TO_CONSOLE=true \
 		-e LOG_VERBOSITY=$(LOG_VERBOSITY) \
+		-e ROUTE_JSON_FILE=/config/router-echo.json \
+		-e OBS_JSON_FILE=/config/obs-disabled.json \
+		-e AUTH_JSON_FILE=/config/auth-basic.json \
+		-v $(PWD)/build/db:/db \
+		-v $(PWD)/test/config:/config:ro \
 		--name kerberos \
 		ghcr.io/trebent/kerberos:$(VERSION)
 

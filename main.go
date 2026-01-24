@@ -24,6 +24,7 @@ import (
 	"github.com/trebent/kerberos/internal/db/sqlite"
 	internalenv "github.com/trebent/kerberos/internal/env"
 	"github.com/trebent/zerologr"
+	"github.com/xeipuuv/gojsonschema"
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 )
 
@@ -100,7 +101,9 @@ func main() {
 func setupConfig() config.Map {
 	zerologr.Info("Setting up configuration...")
 
-	cfg := config.New(&config.Opts{})
+	cfg := config.New(&config.Opts{GlobalSchemas: []gojsonschema.JSONLoader{
+		custom.OrderedSchemaJSONLoader(),
+	}})
 
 	var (
 		err              error
@@ -136,6 +139,9 @@ func setupConfig() config.Map {
 		os.Exit(1)
 	}
 	cfg.MustLoad(routerConfigName, routerData)
+
+	zerologr.Info("Configuration data loaded")
+	zerologr.Info("Parsing configurations...")
 
 	// Parse configurations.
 	//nolint: govet

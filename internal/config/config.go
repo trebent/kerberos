@@ -539,12 +539,6 @@ func (c *impl) replaceReferencesInData() error {
 func (c *impl) validateSchemas() error {
 	zerologr.V(100).Info("Validating schemas for all config entries")
 
-	sl := gojsonschema.NewSchemaLoader()
-	sl.AutoDetect = false
-	sl.Validate = true
-	sl.Draft = gojsonschema.Draft7
-	sl.AddSchemas(c.globalSchemas...)
-
 	/*
 		Validate all loaded config entries against their schemas.
 	*/
@@ -559,8 +553,16 @@ func (c *impl) validateSchemas() error {
 			continue
 		}
 
+		// Since the root validation schema is registered anonymously, we need to compile it here, per
+		// configuration entry.
+		sl := gojsonschema.NewSchemaLoader()
+		sl.AutoDetect = false
+		sl.Validate = true
+		sl.Draft = gojsonschema.Draft7
+		sl.AddSchemas(c.globalSchemas...)
 		compiledSchema, err := sl.Compile(entry.cfg.SchemaJSONLoader())
 		if err != nil {
+			zerologr.Error(err, "Failed to compile root schema")
 			return err
 		}
 

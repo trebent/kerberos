@@ -14,6 +14,7 @@ import (
 	"github.com/trebent/kerberos/internal/auth/admin"
 	"github.com/trebent/kerberos/internal/auth/method"
 	"github.com/trebent/kerberos/internal/auth/method/basic"
+	"github.com/trebent/kerberos/internal/composer/custom"
 	composertypes "github.com/trebent/kerberos/internal/composer/types"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/db"
@@ -41,6 +42,7 @@ type (
 
 var (
 	_ composertypes.FlowComponent = (*authorizer)(nil)
+	_ custom.Ordered              = (*authorizer)(nil)
 
 	//go:embed dbschema/schema.sql
 	dbschemaBytes []byte
@@ -80,6 +82,10 @@ func New(opts *Opts) composertypes.FlowComponent {
 	}
 
 	return authorizer
+}
+
+func (a *authorizer) Order() int {
+	return a.cfg.Order
 }
 
 func (a *authorizer) Next(next composertypes.FlowComponent) {

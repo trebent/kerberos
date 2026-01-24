@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://trebent.com/kerberos/schemas/auth_schema.json",
   "type": "object",
   "properties": {
     "methods": {
@@ -24,16 +25,23 @@
               },
               "method": {
                 "type": "string",
-                "enum": ["basic"]
+                "enum": [
+                  "basic"
+                ]
               }
             },
-            "required": ["backend", "method"],
+            "required": [
+              "backend",
+              "method"
+            ],
             "additionalProperties": false
           },
           "minItems": 1
         }
       },
-      "required": ["mappings"],
+      "required": [
+        "mappings"
+      ],
       "additionalProperties": false
     },
     "administration": {
@@ -55,16 +63,35 @@
         }
       },
       "additionalProperties": false
+    },
+    "order": {
+      "$ref": "http://trebent.com/kerberos/schemas/ordered_schema.json"
     }
   },
   "allOf": [
     {
-      "if": { "required": ["methods"] },
-      "then": { "required": ["scheme"] }
+      "if": {
+        "required": [
+          "methods"
+        ]
+      },
+      "then": {
+        "required": [
+          "scheme"
+        ]
+      }
     },
     {
-      "if": { "required": ["scheme"] },
-      "then": { "required": ["methods"] }
+      "if": {
+        "required": [
+          "scheme"
+        ]
+      },
+      "then": {
+        "required": [
+          "methods"
+        ]
+      }
     }
   ],
   "additionalProperties": false

@@ -12,6 +12,7 @@ type (
 		Methods        *methods        `json:"methods"`
 		Scheme         *scheme         `json:"scheme"`
 		Administration *administration `json:"administration"`
+		Order          int             `json:"order"`
 	}
 	methods struct {
 		Basic *basicAuthentication `json:"basic"`
@@ -38,6 +39,7 @@ const (
 
 	defaultSuperUserClientID     = "admin"
 	defaultSuperUserClientSecret = "password"
+	defaultOrder                 = 1
 )
 
 var (
@@ -67,6 +69,7 @@ func RegisterWith(cfg config.Map) (string, error) {
 				ClientSecret: defaultSuperUserClientSecret,
 			},
 		},
+		Order: defaultOrder,
 	})
 	return configName, nil
 }
