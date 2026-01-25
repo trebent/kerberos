@@ -130,7 +130,7 @@ func main() {
 				)
 				return
 			}
-			zerologr.Info("Read body: "+string(data), "size", len(data))
+			zerologr.V(20).Info("Read body: "+string(data), "size", len(data))
 
 			resp.Body = data
 		}
@@ -145,7 +145,7 @@ func main() {
 			return
 		}
 
-		zerologr.Info("Writing response: "+string(responseBytes), "size", len(responseBytes))
+		zerologr.V(20).Info("Writing response: "+string(responseBytes), "size", len(responseBytes))
 
 		_, _ = w.Write(responseBytes)
 	})
