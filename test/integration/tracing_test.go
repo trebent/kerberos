@@ -18,7 +18,7 @@ import (
 // Verifies that basic tracing works as expected.
 func TestTracingBasic(t *testing.T) {
 	start := time.Now()
-	response := get(fmt.Sprintf("http://%s:%d/gw/backend/echo/tracing-test", getHost(), getPort()), t)
+	response := get(fmt.Sprintf("http://%s:%d/gw/backend/echo/hi", getHost(), getPort()), t)
 
 	decodedResponse := verifyGWResponse(response, http.StatusOK, t)
 

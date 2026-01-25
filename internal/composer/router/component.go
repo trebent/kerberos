@@ -32,7 +32,10 @@ var (
 	ErrNoBackendFound     = errors.New("no backend found")
 )
 
-const expectedPatternMatches = 2
+const (
+	expectedPatternMatches = 2
+	prefix                 = "/gw/backend/"
+)
 
 func NewComponent(opts *Opts) composertypes.FlowComponent {
 	cfg := config.AccessAs[*routerConfig](opts.Cfg, configName)
@@ -56,7 +59,7 @@ func (r *router) Next(next composertypes.FlowComponent) {
 func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	logger, _ := logr.FromContext(req.Context())
 	rLogger := logger.WithName("router")
-	rLogger.Info("Routing request")
+	rLogger.Info("Routing request", "path", req.URL.Path)
 
 	backend, err := r.GetBackend(*req)
 	if errors.Is(err, ErrNoBackendFound) {
@@ -84,6 +87,8 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	wrapper, _ := wrapped.(*response.Wrapper)
 	wrapper.SetRequestContext(ctx)
 
+	req.URL.Path = stripKrbPrefix(req.URL.Path, backend.Name())
+
 	// Serve the request with the updated context.
 	r.next.ServeHTTP(wrapped, req.WithContext(ctx))
 }
@@ -102,4 +107,8 @@ func (r *router) GetBackend(req http.Request) (Backend, error) {
 	}
 
 	return nil, fmt.Errorf("%w: %s", ErrNoBackendFound, req.URL.Path)
+}
+
+func stripKrbPrefix(path, backend string) string {
+	return path[len(prefix)+len(backend):]
 }

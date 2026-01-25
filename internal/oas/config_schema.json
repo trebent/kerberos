@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://trebent.com/kerberos/schemas/oas_schema.json",
+  "type": "object",
+  "properties": {
+    "mappings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "backend": {
+            "type": "string"
+          },
+          "specification": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "backend",
+          "specification"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "order": {
+      "$ref": "http://trebent.com/kerberos/schemas/ordered_schema.json"
+    }
+  },
+  "required": [
+    "mappings"
+  ],
+  "additionalProperties": false
+}

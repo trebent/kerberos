@@ -49,6 +49,7 @@ var (
 	schemaBytes []byte
 )
 
+// SchemaJSONLoader implements [config.Config].
 func (a *authConfig) SchemaJSONLoader() gojsonschema.JSONLoader {
 	return gojsonschema.NewBytesLoader(schemaBytes)
 }

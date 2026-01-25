@@ -74,6 +74,20 @@ run:
 		ROUTE_JSON_FILE=./test/config/router-echo.json \
 		OBS_JSON_FILE=./test/config/obs-disabled.json \
 		AUTH_JSON_FILE=./test/config/auth-basic.json \
+		OAS_JSON_FILE=./test/config/oas-echo.json \
+		DB_DIRECTORY=$(PWD)/build \
+		VERSION=$(VERSION) \
+		go run .
+
+run-unprotected:
+	$(call cecho,Running Kerberos...,$(BOLD_YELLOW))
+	OTEL_METRICS_EXPORTER=prometheus \
+		OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
+		LOG_TO_CONSOLE=true \
+		LOG_VERBOSITY=$(LOG_VERBOSITY) \
+		ROUTE_JSON_FILE=./test/config/router-echo.json \
+		OBS_JSON_FILE=./test/config/obs-disabled.json \
+		OAS_JSON_FILE=./test/config/oas-echo.json \
 		DB_DIRECTORY=$(PWD)/build \
 		VERSION=$(VERSION) \
 		go run .
@@ -95,8 +109,27 @@ docker-run: image docker-stop docker-rm
 		-e ROUTE_JSON_FILE=/config/router-echo.json \
 		-e OBS_JSON_FILE=/config/obs-disabled.json \
 		-e AUTH_JSON_FILE=/config/auth-basic.json \
-		-v $(PWD)/build/db:/db \
+		-e OAS_JSON_FILE=/config/oas-docker.json \
 		-v $(PWD)/test/config:/config:ro \
+		-v $(PWD)/test/oas:/oas:ro \
+		--name kerberos \
+		ghcr.io/trebent/kerberos:$(VERSION)
+
+docker-run-unprotected: image docker-stop docker-rm
+	$(call cecho,Running Kerberos Docker container...,$(BOLD_YELLOW))
+	docker run -d \
+		-p $(KERBEROS_PORT):$(KERBEROS_PORT) \
+		-p $(KERBEROS_METRICS_PORT):$(KERBEROS_METRICS_PORT) \
+		-e PORT=$(KERBEROS_PORT) \
+		-e OTEL_METRICS_EXPORTER=prometheus \
+		-e OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
+		-e LOG_TO_CONSOLE=true \
+		-e LOG_VERBOSITY=$(LOG_VERBOSITY) \
+		-e ROUTE_JSON_FILE=/config/router-echo.json \
+		-e OBS_JSON_FILE=/config/obs-disabled.json \
+		-e OAS_JSON_FILE=/config/oas-docker.json \
+		-v $(PWD)/test/config:/config:ro \
+		-v $(PWD)/test/oas:/oas:ro \
 		--name kerberos \
 		ghcr.io/trebent/kerberos:$(VERSION)
 
@@ -203,13 +236,13 @@ echo-docker-logs:
 
 test-echo:
 	$(call cecho,Sending a test request to echo...,$(BOLD_YELLOW))
-	curl -X GET -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
+	curl -X GET -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
 
 test-echo-methods:
 	$(call cecho,Generating test HTTP requests for the echo backend...,$(BOLD_YELLOW))
-	curl -X GET -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
-	curl -X PUT -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
-	curl -X POST -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
-	curl -X PATCH -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
-	curl -X DELETE -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
-	curl -X OPTIONS -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
+	curl -X GET -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
+	curl -X PUT -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
+	curl -X POST -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
+	curl -X PATCH -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
+	curl -X DELETE -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
+	curl -X OPTIONS -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
