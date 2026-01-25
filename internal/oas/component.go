@@ -59,7 +59,7 @@ func (v *validator) Next(next composertypes.FlowComponent) {
 
 // ServeHTTP implements [types.FlowComponent].
 func (v *validator) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	backend := req.Context().Value(composertypes.BackendContextKey).(string)
+	backend, _ := req.Context().Value(composertypes.BackendContextKey).(string)
 	oLogger, _ := logr.FromContext(req.Context())
 	oLogger = oLogger.WithName("oas-validator")
 	oLogger.Info("Running OAS validation", "backend", backend)

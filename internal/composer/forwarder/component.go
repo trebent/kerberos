@@ -36,8 +36,6 @@ var (
 	ErrFailedForwarding    = errors.New("failed to forward request")
 )
 
-const expectedPatternMatches = 2
-
 func NewComponent(opts *Opts) composertypes.FlowComponent {
 	return &forwarder{
 		targetContextKey: opts.TargetContextKey,

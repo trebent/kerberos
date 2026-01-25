@@ -71,7 +71,7 @@ func TestGWNested(t *testing.T) {
 
 	testData := "{\"test\": \"value\"}"
 	buf := bytes.NewBuffer([]byte(testData))
-	urlSegment := "/hi/hello"
+	urlSegment := "/long/hello"
 	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", getPort(), urlSegment)
 
 	response := put(url, buf.Bytes(), t)

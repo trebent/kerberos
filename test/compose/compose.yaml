@@ -23,6 +23,7 @@ services:
       - OAS_JSON_FILE=/config/oas-integration.json
     volumes:
       - ../config:/config:ro
+      - ../oas:/oas:ro
   
   echo:
     image: "ghcr.io/trebent/kerberos/echo:${VERSION}"

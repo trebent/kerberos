@@ -14,7 +14,7 @@ import (
 func TestMetricsBasic(t *testing.T) {
 	startMetrics := fetchMetrics(t)
 
-	url := fmt.Sprintf("http://%s:%d/gw/backend/echo/metrics-test", getHost(), getPort())
+	url := fmt.Sprintf("http://%s:%d/gw/backend/echo/hi", getHost(), getPort())
 	_ = get(url, t)
 	_ = put(url, []byte("metrics test"), t)
 	_ = post(url, []byte("metrics test"), t)
