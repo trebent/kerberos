@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/trebent/kerberos/internal/composer/custom"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/xeipuuv/gojsonschema"
 )
@@ -17,6 +18,7 @@ func TestConfigMissingMethod(t *testing.T) {
 	}
 
 	sl := gojsonschema.NewSchemaLoader()
+	sl.AddSchemas(custom.OrderedSchemaJSONLoader())
 	schema, err := sl.Compile(ac.SchemaJSONLoader())
 	if err != nil {
 		t.Fatalf("Failed to compile schema: %v", err)
@@ -45,6 +47,7 @@ func TestConfigMissingScheme(t *testing.T) {
 	}
 
 	sl := gojsonschema.NewSchemaLoader()
+	sl.AddSchemas(custom.OrderedSchemaJSONLoader())
 	schema, err := sl.Compile(ac.SchemaJSONLoader())
 	if err != nil {
 		t.Fatalf("Failed to compile schema: %v", err)
@@ -73,6 +76,7 @@ func TestConfigMissingSchemeMappings(t *testing.T) {
 	}
 
 	sl := gojsonschema.NewSchemaLoader()
+	sl.AddSchemas(custom.OrderedSchemaJSONLoader())
 	schema, err := sl.Compile(ac.SchemaJSONLoader())
 	if err != nil {
 		t.Fatalf("Failed to compile schema: %v", err)
@@ -101,6 +105,7 @@ func TestConfigOnlyAdmin(t *testing.T) {
 	}
 
 	sl := gojsonschema.NewSchemaLoader()
+	sl.AddSchemas(custom.OrderedSchemaJSONLoader())
 	schema, err := sl.Compile(ac.SchemaJSONLoader())
 	if err != nil {
 		t.Fatalf("Failed to compile schema: %v", err)

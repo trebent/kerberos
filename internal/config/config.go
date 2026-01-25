@@ -559,7 +559,11 @@ func (c *impl) validateSchemas() error {
 		sl.AutoDetect = false
 		sl.Validate = true
 		sl.Draft = gojsonschema.Draft7
-		sl.AddSchemas(c.globalSchemas...)
+		if err := sl.AddSchemas(c.globalSchemas...); err != nil {
+			zerologr.Error(err, "Failed to add global schemas")
+			return err
+		}
+
 		compiledSchema, err := sl.Compile(entry.cfg.SchemaJSONLoader())
 		if err != nil {
 			zerologr.Error(err, "Failed to compile root schema")

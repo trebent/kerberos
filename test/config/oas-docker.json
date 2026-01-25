@@ -1,0 +1,9 @@
+{
+  "mappings": [
+    {
+      "backend": "${ref:router.backends[0].name}",
+      "specification": "/oas/echo.yaml"
+    }
+  ],
+  "order": 100
+}

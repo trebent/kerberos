@@ -23,6 +23,7 @@ import (
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/db/sqlite"
 	internalenv "github.com/trebent/kerberos/internal/env"
+	"github.com/trebent/kerberos/internal/oas"
 	"github.com/trebent/zerologr"
 	"github.com/xeipuuv/gojsonschema"
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
@@ -110,6 +111,7 @@ func setupConfig() config.Map {
 		obsConfigName    string
 		routerConfigName string
 		authConfigName   string
+		oasConfigName    string
 	)
 
 	// Register all configurations.
@@ -118,6 +120,8 @@ func setupConfig() config.Map {
 	routerConfigName, err = router.RegisterWith(cfg)
 	must(err)
 	authConfigName, err = auth.RegisterWith(cfg)
+	must(err)
+	oasConfigName, err = oas.RegisterWith(cfg)
 	must(err)
 
 	// Load all input configuration data.
@@ -131,6 +135,12 @@ func setupConfig() config.Map {
 		zerologr.Info("Auth configuration detected, loading")
 		authData, _ := os.ReadFile(internalenv.AuthJSONFile.Value())
 		cfg.MustLoad(authConfigName, authData)
+	}
+
+	if internalenv.OASJSONFile.Value() != "" {
+		zerologr.Info("OAS configuration detected, loading")
+		oasData, _ := os.ReadFile(internalenv.OASJSONFile.Value())
+		cfg.MustLoad(oasConfigName, oasData)
 	}
 
 	routerData, _ := os.ReadFile(internalenv.RouteJSONFile.Value())
@@ -166,6 +176,7 @@ func startServer(ctx context.Context, cfg config.Map) error {
 
 	zerologr.Info("Loading observability")
 	observability := obs.NewComponent(&obs.Opts{Cfg: cfg})
+
 	zerologr.Info("Loading router")
 	router := router.NewComponent(&router.Opts{Cfg: cfg})
 
@@ -181,6 +192,16 @@ func startServer(ctx context.Context, cfg config.Map) error {
 		})
 		customFlowComponents = append(customFlowComponents, authorizer)
 	}
+
+	if internalenv.OASJSONFile.Value() != "" {
+		zerologr.Info("Loading OAS validator")
+		oasValidator := oas.New(&oas.Opts{
+			Cfg: cfg,
+			Mux: mux,
+		})
+		customFlowComponents = append(customFlowComponents, oasValidator)
+	}
+
 	custom := custom.NewComponent(customFlowComponents...)
 
 	zerologr.Info("Loading forwarder")
@@ -190,6 +211,7 @@ func startServer(ctx context.Context, cfg config.Map) error {
 		},
 	)
 
+	zerologr.Info("Loading composer")
 	composer := composer.New(&composer.Opts{
 		Observability: observability,
 		Router:        router,
@@ -197,6 +219,7 @@ func startServer(ctx context.Context, cfg config.Map) error {
 		Forwarder:     forwarder,
 	})
 
+	zerologr.Info("Starting server")
 	mux.Handle("/gw/", composer)
 	server := http.Server{
 		Addr:         fmt.Sprintf(":%d", internalenv.Port.Value()),

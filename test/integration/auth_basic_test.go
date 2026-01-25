@@ -55,7 +55,7 @@ func TestAuthBasicCall(t *testing.T) {
 	session := loginResp.HTTPResponse.Header.Get("x-krb-session")
 
 	response := get(
-		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/hello", getHost(), getPort()),
+		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/hi", getHost(), getPort()),
 		t,
 		map[string][]string{"x-krb-session": {session}},
 	)
@@ -73,7 +73,7 @@ func TestAuthBasicCall(t *testing.T) {
 
 func TestAuthBasicUnauthenticated(t *testing.T) {
 	response := get(
-		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/hello", getHost(), getPort()),
+		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/hi", getHost(), getPort()),
 		t,
 	)
 
@@ -88,7 +88,7 @@ func TestAuthBasicUnauthenticated(t *testing.T) {
 	}
 
 	response = get(
-		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/hello", getHost(), getPort()),
+		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/hi", getHost(), getPort()),
 		t,
 		http.Header{"x-krb-session": {"fake"}},
 	)

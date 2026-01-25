@@ -1,0 +1,181 @@
+# yaml-language-server: $schema=https://spec.openapis.org/oas/3.0/schema/2024-10-18
+openapi: 3.0.4
+info:
+  title: Echo
+  description: An echo service that returns request details.
+  version: 0.1.0
+
+components:
+  schemas:
+    EchoResponse:
+      type: object
+      properties:
+        method:
+          type: string
+        url:
+          type: string
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        body:
+          type: object
+          additionalProperties:
+            type: string
+
+paths:
+  /:
+    post:
+      summary: Root endpoint POST.
+      operationId: rootPost
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
+    get:
+      summary: Root endpoint GET.
+      operationId: rootGet
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
+    put:
+      summary: Root endpoint PUT.
+      operationId: rootPut
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
+    delete:
+      summary: Root endpoint DELETE.
+      operationId: rootDelete
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
+    patch:
+      summary: Root endpoint PATCH.
+      operationId: rootPatch
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
+
+  /hi:
+    post:
+      summary: Say hi to echo POST.
+      operationId: sayHiPost
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
+    get:
+      summary: Say hi to echo GET.
+      operationId: sayHiGet
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
+    put:
+      summary: Say hi to echo PUT.
+      operationId: sayHiPut
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
+    delete:
+      summary: Say hi to echo DELETE.
+      operationId: sayHiDelete
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
+    patch:
+      summary: Say hi to echo PATCH.
+      operationId: sayHiPatch
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
+
+  /long/hello:
+    get:
+      summary: Long hello endpoint GET.
+      operationId: longHelloGet
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
+    post:
+      summary: Long hello endpoint POST.
+      operationId: longHelloPost
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
+    put:
+      summary: Long hello endpoint PUT.
+      operationId: longHelloPut
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
+    delete:
+      summary: Long hello endpoint DELETE.
+      operationId: longHelloDelete
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
+    patch:
+      summary: Long hello endpoint PATCH.
+      operationId: longHelloPatch
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"

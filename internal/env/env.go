@@ -101,6 +101,12 @@ var (
 		Value:    "",
 		Validate: validateFilePath,
 	})
+	OASJSONFile = envparser.Register(&envparser.Opts[string]{
+		Name:     "OAS_JSON_FILE",
+		Desc:     "JSON file to load OAS settings from.",
+		Value:    "",
+		Validate: validateFilePath,
+	})
 
 	DBDirectory = envparser.Register(&envparser.Opts[string]{
 		Name:     "DB_DIRECTORY",
