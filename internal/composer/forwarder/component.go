@@ -6,7 +6,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"regexp"
 	"strconv"
 
 	"github.com/go-logr/logr"
@@ -30,10 +29,7 @@ type (
 )
 
 var (
-	_              composertypes.FlowComponent = (*forwarder)(nil)
-	forwardPattern                             = regexp.MustCompile(
-		`^/gw/backend/[-_a-z0-9]+/(.+)?$`,
-	)
+	_ composertypes.FlowComponent = (*forwarder)(nil)
 
 	ErrFailedPatternMatch  = errors.New("forward pattern match failed")
 	ErrFailedTargetExtract = errors.New("could not determine target from context")
@@ -71,23 +67,13 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	forwardURL := forwardPattern.FindStringSubmatch(req.URL.Path)
-	if len(forwardURL) != expectedPatternMatches {
-		rLogger.Error(
-			fmt.Errorf("%w: %s", ErrFailedPatternMatch, req.URL.Path),
-			"Pattern match failed",
-		)
-		response.JSONError(wrapped, ErrFailedForwarding, http.StatusInternalServerError)
-		return
-	}
-
 	forwardRequest, err := http.NewRequestWithContext(
 		req.Context(),
 		req.Method,
 		fmt.Sprintf(
-			"http://%s/%s",
+			"http://%s%s",
 			net.JoinHostPort(target.Host(), strconv.Itoa(target.Port())),
-			forwardURL[1],
+			req.URL.Path,
 		),
 		req.Body,
 	)
