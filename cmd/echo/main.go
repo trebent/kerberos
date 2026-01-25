@@ -27,7 +27,7 @@ type response struct {
 	Method  string              `json:"method"`
 	URL     string              `json:"url"`
 	Headers map[string][]string `json:"headers"`
-	Body    []byte              `json:"body"`
+	Body    json.RawMessage     `json:"body,omitempty"`
 }
 
 var _ io.Writer = &response{}
@@ -106,8 +106,8 @@ func main() {
 
 		if r.Body != nil && r.Body != http.NoBody {
 			defer r.Body.Close()
-			// Read the request body
-			_, err := io.Copy(resp, r.Body)
+
+			data, err := io.ReadAll(r.Body)
 			if err != nil {
 				http.Error(
 					w,
@@ -116,6 +116,9 @@ func main() {
 				)
 				return
 			}
+			zerologr.Info("Read body: "+string(data), "size", len(data))
+
+			resp.Body = data
 		}
 
 		responseBytes, err := json.MarshalIndent(resp, "", "  ")
@@ -127,6 +130,8 @@ func main() {
 			)
 			return
 		}
+
+		zerologr.Info("Writing response: "+string(responseBytes), "size", len(responseBytes))
 
 		_, _ = w.Write(responseBytes)
 	})

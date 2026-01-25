@@ -202,6 +202,7 @@ echo-run:
 	$(call cecho,Running echo...,$(BOLD_YELLOW))
 	@OTEL_METRICS_EXPORTER=prometheus \
 		OTEL_EXPORTER_PROMETHEUS_PORT=$(ECHO_METRICS_PORT) \
+		VERSION=$(VERSION) \
 		go run ./cmd/echo
 
 echo-image:
@@ -218,6 +219,7 @@ echo-docker-run: echo-image echo-d-stop echo-d-rm
 		-p $(ECHO_METRICS_PORT):$(ECHO_METRICS_PORT) \
 		-e OTEL_METRICS_EXPORTER=prometheus \
 		-e OTEL_EXPORTER_PROMETHEUS_PORT=$(ECHO_METRICS_PORT) \
+		-e VERSION=$(VERSION) \
 		--name echo \
 		ghcr.io/trebent/kerberos/echo:$(VERSION)
 
