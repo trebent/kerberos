@@ -93,6 +93,7 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 		return
 	}
 	defer resp.Body.Close()
+	wrapped.WriteHeader(resp.StatusCode)
 
 	for key, values := range resp.Header {
 		rLogger.V(100).Info("Adding header to response", "key", key, "values", values)
@@ -108,6 +109,5 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	wrapped.WriteHeader(resp.StatusCode)
 	rLogger.V(50).Info("Forwarded request")
 }
