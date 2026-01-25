@@ -43,7 +43,7 @@ services:
       - OTEL_EXPORTER_PROMETHEUS_PORT=${ECHO_METRICS_PORT}
 
   protected-echo:
-    image: "ghcr.io/trebent/kerberos/echo:${VERSION}"
+    image: "ghcr.io/trebent/kerberos/protected-echo:${VERSION}"
     pull_policy: if_not_present
     build:
       context: ../..

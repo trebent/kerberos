@@ -205,6 +205,10 @@ test-echo:
 	$(call cecho,Sending a test request to echo...,$(BOLD_YELLOW))
 	curl -X GET -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
 
+test-protected-echo:
+	$(call cecho,Sending a test request to protected-echo...,$(BOLD_YELLOW))
+	curl -X GET -i localhost:$(KERBEROS_PORT)/gw/backend/protected-echo/hi
+
 test-echo-methods:
 	$(call cecho,Generating test HTTP requests for the echo backend...,$(BOLD_YELLOW))
 	curl -X GET -I localhost:$(KERBEROS_PORT)/gw/backend/echo/test
