@@ -36,6 +36,9 @@ var (
 )
 
 func New(opts *Opts) composertypes.FlowComponent {
+	// Prevent schema error details from being included in validation errors.
+	openapi3.SchemaErrorDetailsDisabled = true
+
 	cfg := config.AccessAs[*oasConfig](opts.Cfg, configName)
 	v := &validator{cfg: cfg, validators: make(map[string]func(http.Handler) http.Handler)}
 
