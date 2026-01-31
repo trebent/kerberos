@@ -10,7 +10,7 @@ import (
 	_ "embed"
 
 	"github.com/go-logr/logr"
-	"github.com/trebent/kerberos/internal/apierror"
+	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/auth/admin"
 	"github.com/trebent/kerberos/internal/auth/method"
 	"github.com/trebent/kerberos/internal/auth/method/basic"

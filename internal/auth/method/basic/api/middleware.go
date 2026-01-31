@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/trebent/kerberos/internal/apierror"
+	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/zerologr"
 )
 

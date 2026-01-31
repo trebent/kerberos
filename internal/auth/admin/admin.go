@@ -3,7 +3,7 @@ package admin
 import (
 	"net/http"
 
-	"github.com/trebent/kerberos/internal/apierror"
+	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/auth/admin/api"
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/zerologr"

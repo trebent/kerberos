@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/trebent/kerberos/internal/apierror"
+	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/auth/model"
 	"github.com/trebent/kerberos/internal/auth/util"
 	"github.com/trebent/kerberos/internal/db"
