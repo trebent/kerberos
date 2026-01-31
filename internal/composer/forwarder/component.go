@@ -102,21 +102,12 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	data, err := io.ReadAll(resp.Body)
+	_, err = io.Copy(wrapped, resp.Body)
 	if err != nil {
-		rLogger.Error(err, "Failed to read response body")
+		rLogger.Error(err, "Failed to copy response body")
 		response.JSONError(wrapped, ErrFailedForwarding, http.StatusInternalServerError)
 		return
 	}
-	rLogger.Info("DEBUG: Read response body", "data", string(data))
-	wrapped.Write(data)
-
-	// _, err = io.Copy(wrapped, resp.Body)
-	// if err != nil {
-	// 	rLogger.Error(err, "Failed to copy response body")
-	// 	response.JSONError(wrapped, ErrFailedForwarding, http.StatusInternalServerError)
-	// 	return
-	// }
 
 	rLogger.V(50).Info("Forwarded request")
 }

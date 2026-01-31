@@ -13,14 +13,16 @@ type (
 		Order    int        `json:"order"`
 	}
 	mapping struct {
-		Backend       string `json:"backend"`
-		Specification string `json:"specification"`
+		Backend       string   `json:"backend"`
+		Specification string   `json:"specification"`
+		Options       *options `json:"options,omitempty"`
+	}
+	options struct {
+		ValidateBody bool `json:"validateBody"`
 	}
 )
 
-const (
-	configName = "oas"
-)
+const configName = "oas"
 
 var (
 	_ config.Config = &oasConfig{}
@@ -28,6 +30,12 @@ var (
 	//go:embed config_schema.json
 	schemaBytes []byte
 )
+
+func defaultOptions() *options {
+	return &options{
+		ValidateBody: true,
+	}
+}
 
 // SchemaJSONLoader implements [config.Config].
 func (o *oasConfig) SchemaJSONLoader() gojsonschema.JSONLoader {

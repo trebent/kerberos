@@ -72,6 +72,10 @@ func (v *validator) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func (v *validator) register(m *mapping) error {
+	if m.Options == nil {
+		m.Options = defaultOptions()
+	}
+
 	// Load OpenAPI document.
 	zerologr.Info("Preparing OAS validator", "backend", m.Backend)
 	bs, err := os.ReadFile(m.Specification)
@@ -82,6 +86,15 @@ func (v *validator) register(m *mapping) error {
 	spec, err := openapi3.NewLoader().LoadFromData(bs)
 	if err != nil {
 		return err
+	}
+
+	if !m.Options.ValidateBody {
+		zerologr.Info("Disabling body validation", "backend", m.Backend)
+		for _, path := range spec.Paths.Map() {
+			for _, op := range path.Operations() {
+				op.RequestBody = nil
+			}
+		}
 	}
 
 	opts := &nethttpmiddleware.Options{
