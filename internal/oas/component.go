@@ -37,6 +37,7 @@ var (
 
 func New(opts *Opts) composertypes.FlowComponent {
 	// Prevent schema error details from being included in validation errors.
+	//nolint:reassign // yolo
 	openapi3.SchemaErrorDetailsDisabled = true
 
 	cfg := config.AccessAs[*oasConfig](opts.Cfg, configName)

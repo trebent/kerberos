@@ -57,6 +57,11 @@ vulncheck:
 	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
 	@go tool govulncheck ./...
 
+vulncheck-sarif:
+	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
+	@mkdir -p build
+	@go tool govulncheck -format sarif ./... > build/govulncheck-report.sarif
+
 staticcheck: lint unittest vulncheck
 	$(call cecho,Static analysis complete.,$(BOLD_GREEN))
 
