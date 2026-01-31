@@ -1,5 +1,5 @@
 //nolint:gocognit // ?
-package api
+package basicauthapi
 
 import (
 	"context"

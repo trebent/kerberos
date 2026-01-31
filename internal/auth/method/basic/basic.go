@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"time"
 
+	api "github.com/trebent/kerberos/internal/api/auth/basic"
 	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/auth/method"
-	"github.com/trebent/kerberos/internal/auth/method/basic/api"
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/zerologr"
 )

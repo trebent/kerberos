@@ -1,4 +1,4 @@
-package api
+package basicauthapi
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"github.com/trebent/zerologr"
 )
 
-//go:generate go tool oapi-codegen -config ./config.yaml -o ./gen.go ../../../../../openapi/basic_auth.yaml
+//go:generate go tool oapi-codegen -config ./config.yaml -o ./gen.go ../../../../openapi/basic_auth.yaml
 
 type impl struct {
 	db db.SQLClient
@@ -23,6 +23,10 @@ type impl struct {
 var (
 	_ StrictServerInterface = (*impl)(nil)
 
+	GenErrInternal = APIErrorResponse{Errors: []string{apierror.ErrInternal.Error()}}
+)
+
+const (
 	// Organisations.
 	queryCreateOrg = "INSERT INTO organisations (name) VALUES(@name);"
 	queryDeleteOrg = "DELETE FROM organisations WHERE id = @orgID;"
@@ -59,10 +63,8 @@ var (
 	queryGetSession         = "SELECT s.user_id, s.organisation_id, u.administrator, u.super_user, s.expires FROM sessions s INNER JOIN users u ON s.user_id = u.id WHERE session_id = @sessionID;"
 	queryDeleteUserSessions = "DELETE FROM sessions WHERE organisation_id = @orgID AND user_id = @userID;"
 
-	GenErrInternal = APIErrorResponse{Errors: []string{apierror.ErrInternal.Error()}}
+	sessionExpiry = 15 * time.Minute
 )
-
-const sessionExpiry = 15 * time.Minute
 
 func makeGenAPIError(msg string) APIErrorResponse {
 	return APIErrorResponse{Errors: []string{msg}}
