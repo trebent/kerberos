@@ -99,15 +99,6 @@ paths:
     get:
       summary: Say hi to echo GET.
       operationId: sayHiGet
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
       responses:
         "200":
           description: Echo response.

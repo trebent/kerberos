@@ -111,6 +111,7 @@ func main() {
 		defer newSpan.End()
 
 		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Echo-Server", "true")
 
 		resp := &response{
 			Method:  r.Method,
