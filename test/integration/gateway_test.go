@@ -2,6 +2,7 @@ package integration
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -33,8 +34,7 @@ func TestGWHappy(t *testing.T) {
 // Validate calls to a backend's root path works.
 func TestGWRoot(t *testing.T) {
 	t.Parallel()
-
-	testData := "{\"test\": \"value\"}"
+	testData := `{"test": "value"}`
 	buf := bytes.NewBuffer([]byte(testData))
 	urlSegment := "/"
 	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", getPort(), urlSegment)
@@ -54,7 +54,13 @@ func TestGWRoot(t *testing.T) {
 		t.Errorf("unexpected method in response: got %s, want %s", decodedResponse.Method, http.MethodPost)
 	}
 
-	if string(decodedResponse.Body) != testData {
+	m := map[string]any{}
+	err := json.Unmarshal(decodedResponse.Body, &m)
+	if err != nil {
+		t.Errorf("failed to unmarshal response body: %v", err)
+	}
+
+	if m["test"] != "value" {
 		t.Errorf("unexpected body in response: got %s, want %s", string(decodedResponse.Body), testData)
 	}
 
@@ -69,7 +75,7 @@ func TestGWRoot(t *testing.T) {
 func TestGWNested(t *testing.T) {
 	t.Parallel()
 
-	testData := "{\"test\": \"value\"}"
+	testData := `{"test": "value"}`
 	buf := bytes.NewBuffer([]byte(testData))
 	urlSegment := "/long/hello"
 	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", getPort(), urlSegment)
@@ -89,7 +95,13 @@ func TestGWNested(t *testing.T) {
 		t.Errorf("unexpected method in response: got %s, want %s", decodedResponse.Method, http.MethodPut)
 	}
 
-	if string(decodedResponse.Body) != testData {
+	m := map[string]any{}
+	err := json.Unmarshal(decodedResponse.Body, &m)
+	if err != nil {
+		t.Errorf("failed to unmarshal response body: %v", err)
+	}
+
+	if m["test"] != "value" {
 		t.Errorf("unexpected body in response: got %s, want %s", string(decodedResponse.Body), testData)
 	}
 

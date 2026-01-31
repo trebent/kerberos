@@ -13,6 +13,17 @@
           },
           "specification": {
             "type": "string"
+          },
+          "options": {
+            "type": "object",
+            "description": "Additional options for the OAS backend.",
+            "default": {},
+            "properties": {
+              "validateBody": {
+                "type": "boolean",
+                "default": true
+              }
+            }
           }
         },
         "required": [

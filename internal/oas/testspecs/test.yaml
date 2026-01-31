@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=https://spec.openapis.org/oas/3.0/schema/2024-10-18
+openapi: 3.0.4
+info:
+  title: Test
+  description: A test specification.
+  version: 0.1.0
+
+paths:
+  /:
+    post:
+      summary: Root endpoint POST.
+      operationId: rootPost
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                uuid:
+                  type: string
+                  format: uuid
+              required:
+                - uuid
+      responses:
+        "204":
+          description: Response.
+
+    get:
+      summary: Root endpoint GET.
+      operationId: rootGet
+      responses:
+        "204":
+          description: Response.

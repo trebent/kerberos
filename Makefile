@@ -57,6 +57,11 @@ vulncheck:
 	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
 	@go tool govulncheck ./...
 
+vulncheck-sarif:
+	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
+	@mkdir -p build
+	@go tool govulncheck -format sarif ./... > build/govulncheck-report.sarif
+
 staticcheck: lint unittest vulncheck
 	$(call cecho,Static analysis complete.,$(BOLD_GREEN))
 
@@ -202,6 +207,7 @@ echo-run:
 	$(call cecho,Running echo...,$(BOLD_YELLOW))
 	@OTEL_METRICS_EXPORTER=prometheus \
 		OTEL_EXPORTER_PROMETHEUS_PORT=$(ECHO_METRICS_PORT) \
+		VERSION=$(VERSION) \
 		go run ./cmd/echo
 
 echo-image:
@@ -218,6 +224,7 @@ echo-docker-run: echo-image echo-d-stop echo-d-rm
 		-p $(ECHO_METRICS_PORT):$(ECHO_METRICS_PORT) \
 		-e OTEL_METRICS_EXPORTER=prometheus \
 		-e OTEL_EXPORTER_PROMETHEUS_PORT=$(ECHO_METRICS_PORT) \
+		-e VERSION=$(VERSION) \
 		--name echo \
 		ghcr.io/trebent/kerberos/echo:$(VERSION)
 
@@ -237,6 +244,10 @@ echo-docker-logs:
 test-echo:
 	$(call cecho,Sending a test request to echo...,$(BOLD_YELLOW))
 	curl -X GET -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
+
+test-protected-echo:
+	$(call cecho,Sending a test request to protected-echo...,$(BOLD_YELLOW))
+	curl -X GET -i localhost:$(KERBEROS_PORT)/gw/backend/protected-echo/hi
 
 test-echo-methods:
 	$(call cecho,Generating test HTTP requests for the echo backend...,$(BOLD_YELLOW))

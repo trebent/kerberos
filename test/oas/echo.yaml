@@ -19,9 +19,9 @@ components:
           additionalProperties:
             type: string
         body:
-          type: object
-          additionalProperties:
-            type: string
+          anyOf:
+            - type: object
+            - type: array
 
 paths:
   /:
@@ -80,6 +80,15 @@ paths:
     post:
       summary: Say hi to echo POST.
       operationId: sayHiPost
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
       responses:
         "200":
           description: Echo response.

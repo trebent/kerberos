@@ -7,14 +7,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 
+	"github.com/trebent/envparser"
 	intotel "github.com/trebent/kerberos/internal/otel"
 	"github.com/trebent/zerologr"
 	"go.opentelemetry.io/otel"
@@ -27,14 +28,15 @@ type response struct {
 	Method  string              `json:"method"`
 	URL     string              `json:"url"`
 	Headers map[string][]string `json:"headers"`
-	Body    []byte              `json:"body"`
+	Body    json.RawMessage     `json:"body,omitempty"`
 }
 
 var _ io.Writer = &response{}
 
 const (
-	tracerName  = "echo"
-	defaultPort = "15000"
+	tracerName          = "echo"
+	defaultLogVerbosity = 0
+	defaultPort         = 15000
 )
 
 // Write implements io.Writer.
@@ -44,26 +46,38 @@ func (r *response) Write(p []byte) (n int, err error) {
 }
 
 func main() {
-	val, found := os.LookupEnv("PORT")
-	if !found {
-		val = defaultPort
-	}
+	verbosity := envparser.Register(&envparser.Opts[int]{
+		Name:  "LOG_VERBOSITY",
+		Desc:  "Sets the logging verbosity level.",
+		Value: defaultLogVerbosity,
+	})
+	version := envparser.Register(&envparser.Opts[string]{
+		Name:  "VERSION",
+		Desc:  "Sets the application version.",
+		Value: "unset",
+	})
+	port := envparser.Register(&envparser.Opts[int]{
+		Name:  "PORT",
+		Desc:  "Port to listen on.",
+		Value: defaultPort,
+	})
 
-	port, err := strconv.Atoi(val) // just to validate
-	if err != nil {
-		zerologr.Error(err, "Failed to parse PORT environment variable")
-		os.Exit(1)
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), "An echo HTTP server that echoes back request body and headers.\n\n")
+		flag.PrintDefaults()
+		fmt.Fprintln(flag.CommandLine.Output(), envparser.Help())
 	}
+	flag.Parse()
+	envparser.Parse()
+
+	logger := zerologr.New(&zerologr.Opts{Console: true, Caller: true, V: verbosity.Value()})
+	logger.WithName("echo")
+	logger.WithValues(semconv.ServiceName("echo"), semconv.ServiceVersion(version.Value()))
+	zerologr.Set(logger)
 
 	signalCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
-
-	logger := zerologr.New(&zerologr.Opts{Console: true}).
-		WithValues(
-			string(semconv.ServiceVersionKey), os.Getenv("VERSION"),
-			string(semconv.ServiceNameKey), "echo",
-		)
-	zerologr.Set(logger)
 
 	shutdown, err := intotel.Instrument(signalCtx, "echo", "0.1.0")
 	if err != nil {
@@ -74,7 +88,7 @@ func main() {
 
 	// Create a new HTTP server
 	srv := &http.Server{
-		Addr: fmt.Sprintf(":%d", port),
+		Addr: fmt.Sprintf(":%d", port.Value()),
 	}
 
 	// Register the echo handler
@@ -97,6 +111,7 @@ func main() {
 		defer newSpan.End()
 
 		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Echo-Server", "true")
 
 		resp := &response{
 			Method:  r.Method,
@@ -106,8 +121,8 @@ func main() {
 
 		if r.Body != nil && r.Body != http.NoBody {
 			defer r.Body.Close()
-			// Read the request body
-			_, err := io.Copy(resp, r.Body)
+
+			data, err := io.ReadAll(r.Body)
 			if err != nil {
 				http.Error(
 					w,
@@ -116,6 +131,9 @@ func main() {
 				)
 				return
 			}
+			zerologr.V(20).Info("Read body: "+string(data), "size", len(data))
+
+			resp.Body = data
 		}
 
 		responseBytes, err := json.MarshalIndent(resp, "", "  ")
@@ -128,6 +146,8 @@ func main() {
 			return
 		}
 
+		zerologr.V(20).Info("Writing response: "+string(responseBytes), "size", len(responseBytes))
+
 		_, _ = w.Write(responseBytes)
 	})
 
@@ -138,7 +158,7 @@ func main() {
 		}
 	}()
 
-	zerologr.Info("Echo server started", "port", port)
+	zerologr.Info("Echo server started", "port", port.Value())
 	<-signalCtx.Done()
 	srv.Shutdown(context.Background())
 	zerologr.Info("Echo gracefully stopped")

@@ -19,9 +19,9 @@ components:
           additionalProperties:
             type: string
         body:
-          type: object
-          additionalProperties:
-            type: string
+          anyOf:
+            - type: object
+            - type: array
 
 paths:
   /:

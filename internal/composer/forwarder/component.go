@@ -101,6 +101,8 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 		}
 	}
 
+	wrapped.WriteHeader(resp.StatusCode)
+
 	_, err = io.Copy(wrapped, resp.Body)
 	if err != nil {
 		rLogger.Error(err, "Failed to copy response body")
@@ -108,6 +110,5 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	wrapped.WriteHeader(resp.StatusCode)
 	rLogger.V(50).Info("Forwarded request")
 }
