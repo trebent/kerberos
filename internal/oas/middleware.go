@@ -10,7 +10,7 @@ import (
 )
 
 // ValidationMiddleware returns a wrapper function that will validate incoming requests using the
-// input OAS.
+// input OAS before calling the input next handler.
 func ValidationMiddleware(spec *openapi3.T) func(http.Handler) http.Handler {
 	options := &nethttpmiddleware.Options{
 		SilenceServersWarning: true,
