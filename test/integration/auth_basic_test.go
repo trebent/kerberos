@@ -7,14 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/trebent/kerberos/ft/client/admin"
-	"github.com/trebent/kerberos/ft/client/basic"
+	authadminapi "github.com/trebent/kerberos/ft/client/auth/admin"
+	authbasicapi "github.com/trebent/kerberos/ft/client/auth/basic"
 )
 
 func TestAuthBasicCall(t *testing.T) {
 	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
-		admin.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "client-secret"},
+		authadminapi.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "client-secret"},
 	)
 	checkErr(err, t)
 	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
@@ -22,8 +22,8 @@ func TestAuthBasicCall(t *testing.T) {
 
 	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		basic.CreateOrganisationJSONRequestBody{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
-		basic.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(orgResp.StatusCode(), http.StatusCreated, t)
@@ -33,8 +33,8 @@ func TestAuthBasicCall(t *testing.T) {
 	userResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		basic.CreateUserJSONRequestBody{Name: "username", Password: "password"},
-		basic.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.CreateUserJSONRequestBody{Name: "username", Password: "password"},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(userResp.StatusCode(), http.StatusCreated, t)
@@ -44,11 +44,11 @@ func TestAuthBasicCall(t *testing.T) {
 	loginResp, err := basicAuthClient.LoginWithResponse(
 		t.Context(),
 		orgID,
-		basic.LoginJSONRequestBody{
+		authbasicapi.LoginJSONRequestBody{
 			Username: "username",
 			Password: "password",
 		},
-		basic.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)

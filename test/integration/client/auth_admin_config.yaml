@@ -1,8 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/oapi-codegen/oapi-codegen/HEAD/configuration-schema.json
-package: basicauthapi
+package: authadminapi
 generate:
-  std-http-server: true
-  strict-server: true
+  client: true
   models: true
-  embedded-spec: true
-output: "gen.go"
+output: "auth/admin/client.go"

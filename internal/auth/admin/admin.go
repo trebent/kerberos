@@ -5,6 +5,7 @@ import (
 
 	api "github.com/trebent/kerberos/internal/api/auth/admin"
 	apierror "github.com/trebent/kerberos/internal/api/error"
+	adminapi "github.com/trebent/kerberos/internal/auth/admin/api"
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/zerologr"
 )
@@ -24,7 +25,7 @@ const adminBasePath = "/api/auth/admin"
 func Init(opts *Opts) {
 	zerologr.Info("Setting up administration API")
 
-	ssi := api.NewSSI(opts.DB, opts.ClientID, opts.ClientSecret)
+	ssi := adminapi.NewSSI(opts.DB, opts.ClientID, opts.ClientSecret)
 	_ = api.HandlerFromMuxWithBaseURL(
 		api.NewStrictHandlerWithOptions(
 			ssi,

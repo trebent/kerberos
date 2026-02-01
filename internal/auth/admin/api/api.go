@@ -6,14 +6,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	authadminapi "github.com/trebent/kerberos/internal/api/auth/admin"
 	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/auth/model"
 	"github.com/trebent/kerberos/internal/auth/util"
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/zerologr"
 )
-
-//go:generate go tool oapi-codegen -config config.yaml -o ./gen.go ../../../openapi/admin_auth.yaml
 
 type (
 	impl struct {
@@ -46,21 +45,21 @@ const (
 	sessionExpiry = 15 * time.Minute
 )
 
-func makeGenAPIError(msg string) APIErrorResponse {
-	return APIErrorResponse{Errors: []string{msg}}
+func makeGenAPIError(msg string) authadminapi.APIErrorResponse {
+	return authadminapi.APIErrorResponse{Errors: []string{msg}}
 }
 
-func NewSSI(db db.SQLClient, clientID, clientSecret string) StrictServerInterface {
+func NewSSI(db db.SQLClient, clientID, clientSecret string) authadminapi.StrictServerInterface {
 	return &impl{db: db, clientID: clientID, clientSecret: clientSecret}
 }
 
 // LoginSuperuser implements [StrictServerInterface].
 func (i *impl) LoginSuperuser(
 	ctx context.Context,
-	request LoginSuperuserRequestObject,
-) (LoginSuperuserResponseObject, error) {
+	request authadminapi.LoginSuperuserRequestObject,
+) (authadminapi.LoginSuperuserResponseObject, error) {
 	if request.Body.ClientId != i.clientID {
-		return LoginSuperuser401JSONResponse(makeGenAPIError("Login failed.")), nil
+		return authadminapi.LoginSuperuser401JSONResponse(makeGenAPIError("Login failed.")), nil
 	}
 
 	org, err := i.getOrCreateOrg(ctx)
@@ -76,17 +75,19 @@ func (i *impl) LoginSuperuser(
 
 	if !util.PasswordMatch(user.Salt, user.HashedPassword, request.Body.ClientSecret) {
 		zerologr.Info("User login failed due to password mismatch")
-		return LoginSuperuser401JSONResponse(makeGenAPIError("Login failed.")), nil
+		return authadminapi.LoginSuperuser401JSONResponse(makeGenAPIError("Login failed.")), nil
 	}
 
 	session, err := i.createSession(ctx, user)
 	if err != nil {
 		zerologr.Error(err, "Failed to store new session ID")
-		return LoginSuperuser500JSONResponse(makeGenAPIError(apierror.ErrInternal.Error())), nil
+		return authadminapi.LoginSuperuser500JSONResponse(
+			makeGenAPIError(apierror.ErrInternal.Error()),
+		), nil
 	}
 
-	return LoginSuperuser204Response{
-		Headers: LoginSuperuser204ResponseHeaders{
+	return authadminapi.LoginSuperuser204Response{
+		Headers: authadminapi.LoginSuperuser204ResponseHeaders{
 			XKrbSession: session,
 		},
 	}, nil
@@ -95,12 +96,14 @@ func (i *impl) LoginSuperuser(
 // LogoutSuperuser implements [StrictServerInterface].
 func (i *impl) LogoutSuperuser(
 	ctx context.Context,
-	_ LogoutSuperuserRequestObject,
-) (LogoutSuperuserResponseObject, error) {
+	_ authadminapi.LogoutSuperuserRequestObject,
+) (authadminapi.LogoutSuperuserResponseObject, error) {
 	org, err := i.getOrCreateOrg(ctx)
 	if err != nil {
 		//nolint:nilerr // that's the point
-		return LogoutSuperuser500JSONResponse(makeGenAPIError(apierror.APIErrInternal.Error())), nil
+		return authadminapi.LogoutSuperuser500JSONResponse(
+			makeGenAPIError(apierror.APIErrInternal.Error()),
+		), nil
 	}
 	i.organisationID = org.ID
 
@@ -111,10 +114,12 @@ func (i *impl) LogoutSuperuser(
 		sql.NamedArg{Name: "username", Value: i.clientID},
 	); err != nil {
 		zerologr.Error(err, "Failed to clear user sessions")
-		return LogoutSuperuser500JSONResponse(makeGenAPIError(apierror.APIErrInternal.Error())), nil
+		return authadminapi.LogoutSuperuser500JSONResponse(
+			makeGenAPIError(apierror.APIErrInternal.Error()),
+		), nil
 	}
 
-	return LogoutSuperuser204Response{}, nil
+	return authadminapi.LogoutSuperuser204Response{}, nil
 }
 
 func (i *impl) getOrCreateOrg(ctx context.Context) (*model.Organisation, error) {

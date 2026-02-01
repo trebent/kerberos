@@ -9,6 +9,7 @@ import (
 	api "github.com/trebent/kerberos/internal/api/auth/basic"
 	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/auth/method"
+	basicapi "github.com/trebent/kerberos/internal/auth/method/basic/api"
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/zerologr"
 )
@@ -107,11 +108,11 @@ func (a *basic) Authorized(req *http.Request) error {
 }
 
 func (a *basic) registerAPI(mux *http.ServeMux) {
-	ssi := api.NewSSI(a.db)
+	ssi := basicapi.NewSSI(a.db)
 	_ = api.HandlerFromMuxWithBaseURL(
 		api.NewStrictHandlerWithOptions(
 			ssi,
-			[]api.StrictMiddlewareFunc{api.AuthMiddleware(ssi)},
+			[]api.StrictMiddlewareFunc{basicapi.AuthMiddleware(ssi)},
 			api.StrictHTTPServerOptions{
 				RequestErrorHandlerFunc:  apierror.RequestErrorHandler,
 				ResponseErrorHandlerFunc: apierror.ResponseErrorHandler,

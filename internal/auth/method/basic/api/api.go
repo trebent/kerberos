@@ -1,4 +1,4 @@
-package basicauthapi
+package basicapi
 
 import (
 	"context"
@@ -8,22 +8,21 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	authbasicapi "github.com/trebent/kerberos/internal/api/auth/basic"
 	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/auth/util"
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/zerologr"
 )
 
-//go:generate go tool oapi-codegen -config ./config.yaml -o ./gen.go ../../../../openapi/basic_auth.yaml
-
 type impl struct {
 	db db.SQLClient
 }
 
 var (
-	_ StrictServerInterface = (*impl)(nil)
+	_ authbasicapi.StrictServerInterface = (*impl)(nil)
 
-	GenErrInternal = APIErrorResponse{Errors: []string{apierror.ErrInternal.Error()}}
+	GenErrInternal = authbasicapi.APIErrorResponse{Errors: []string{apierror.ErrInternal.Error()}}
 )
 
 const (
@@ -66,16 +65,19 @@ const (
 	sessionExpiry = 15 * time.Minute
 )
 
-func makeGenAPIError(msg string) APIErrorResponse {
-	return APIErrorResponse{Errors: []string{msg}}
+func makeGenAPIError(msg string) authbasicapi.APIErrorResponse {
+	return authbasicapi.APIErrorResponse{Errors: []string{msg}}
 }
 
-func NewSSI(db db.SQLClient) StrictServerInterface {
+func NewSSI(db db.SQLClient) authbasicapi.StrictServerInterface {
 	return &impl{db}
 }
 
 // Login implements [StrictServerInterface].
-func (i *impl) Login(ctx context.Context, req LoginRequestObject) (LoginResponseObject, error) {
+func (i *impl) Login(
+	ctx context.Context,
+	req authbasicapi.LoginRequestObject,
+) (authbasicapi.LoginResponseObject, error) {
 	rows, err := i.db.Query(
 		ctx,
 		queryLoginLookup,
@@ -84,7 +86,7 @@ func (i *impl) Login(ctx context.Context, req LoginRequestObject) (LoginResponse
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query for a user")
-		return Login500JSONResponse(GenErrInternal), nil
+		return authbasicapi.Login500JSONResponse(GenErrInternal), nil
 	}
 
 	if !rows.Next() {
@@ -92,7 +94,7 @@ func (i *impl) Login(ctx context.Context, req LoginRequestObject) (LoginResponse
 			zerologr.Error(err, "Failed to prepare rows for scanning")
 		}
 
-		return Login401JSONResponse(makeGenAPIError("Login failed.")), nil
+		return authbasicapi.Login401JSONResponse(makeGenAPIError("Login failed.")), nil
 	}
 
 	id := 0
@@ -104,12 +106,12 @@ func (i *impl) Login(ctx context.Context, req LoginRequestObject) (LoginResponse
 	_ = rows.Close()
 	if err != nil {
 		zerologr.Error(err, "Failed to scan for a matching user row")
-		return Login500JSONResponse(GenErrInternal), nil
+		return authbasicapi.Login500JSONResponse(GenErrInternal), nil
 	}
 
 	if !util.PasswordMatch(salt, storedHashed, req.Body.Password) {
 		zerologr.Info("User login failed due to password mismatch")
-		return Login401JSONResponse(makeGenAPIError("Login failed.")), nil
+		return authbasicapi.Login401JSONResponse(makeGenAPIError("Login failed.")), nil
 	}
 	zerologr.V(10).Info("User has logged in successfully", "username", req.Body.Username)
 
@@ -124,11 +126,11 @@ func (i *impl) Login(ctx context.Context, req LoginRequestObject) (LoginResponse
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to store new session ID")
-		return Login500JSONResponse(GenErrInternal), nil
+		return authbasicapi.Login500JSONResponse(GenErrInternal), nil
 	}
 
-	return Login204Response{
-		Headers: Login204ResponseHeaders{
+	return authbasicapi.Login204Response{
+		Headers: authbasicapi.Login204ResponseHeaders{
 			XKrbSession: sessionID,
 		},
 	}, nil
@@ -137,8 +139,8 @@ func (i *impl) Login(ctx context.Context, req LoginRequestObject) (LoginResponse
 // Logout implements [StrictServerInterface].
 func (i *impl) Logout(
 	ctx context.Context,
-	req LogoutRequestObject,
-) (LogoutResponseObject, error) {
+	req authbasicapi.LogoutRequestObject,
+) (authbasicapi.LogoutResponseObject, error) {
 	userID := userFromContext(ctx)
 	if _, err := i.db.Exec(
 		ctx,
@@ -147,17 +149,17 @@ func (i *impl) Logout(
 		sql.NamedArg{Name: "userID", Value: userID},
 	); err != nil {
 		zerologr.Error(err, "Failed to clear user sessions")
-		return Logout500JSONResponse(GenErrInternal), nil
+		return authbasicapi.Logout500JSONResponse(GenErrInternal), nil
 	}
 
-	return Logout204Response{}, nil
+	return authbasicapi.Logout204Response{}, nil
 }
 
 // ChangePassword implements [StrictServerInterface].
 func (i *impl) ChangePassword(
 	ctx context.Context,
-	req ChangePasswordRequestObject,
-) (ChangePasswordResponseObject, error) {
+	req authbasicapi.ChangePasswordRequestObject,
+) (authbasicapi.ChangePasswordResponseObject, error) {
 	rows, err := i.db.Query(
 		ctx,
 		queryGetFullUser,
@@ -166,16 +168,16 @@ func (i *impl) ChangePassword(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to get user from session")
-		return ChangePassword500JSONResponse(GenErrInternal), nil
+		return authbasicapi.ChangePassword500JSONResponse(GenErrInternal), nil
 	}
 
 	if !rows.Next() {
 		if err := rows.Err(); err != nil {
 			zerologr.Error(err, "Failed to scan rows")
-			return ChangePassword500JSONResponse(GenErrInternal), nil
+			return authbasicapi.ChangePassword500JSONResponse(GenErrInternal), nil
 		}
 
-		return ChangePassword401JSONResponse(
+		return authbasicapi.ChangePassword401JSONResponse(
 			makeGenAPIError("Failed to change user password."),
 		), nil
 	}
@@ -187,12 +189,12 @@ func (i *impl) ChangePassword(
 	_ = rows.Close()
 	if err != nil {
 		zerologr.Error(err, "Failed to scan row")
-		return ChangePassword500JSONResponse(GenErrInternal), nil
+		return authbasicapi.ChangePassword500JSONResponse(GenErrInternal), nil
 	}
 
 	if !util.PasswordMatch(salt, hashedPassword, req.Body.OldPassword) {
 		zerologr.Error(err, "Mismatched old password")
-		return ChangePassword401JSONResponse(
+		return authbasicapi.ChangePassword401JSONResponse(
 			makeGenAPIError("Failed to change user password."),
 		), nil
 	}
@@ -207,17 +209,17 @@ func (i *impl) ChangePassword(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to update user password")
-		return ChangePassword500JSONResponse(GenErrInternal), nil
+		return authbasicapi.ChangePassword500JSONResponse(GenErrInternal), nil
 	}
 
-	return ChangePassword204Response{}, nil
+	return authbasicapi.ChangePassword204Response{}, nil
 }
 
 // CreateGroup implements [StrictServerInterface].
 func (i *impl) CreateGroup(
 	ctx context.Context,
-	req CreateGroupRequestObject,
-) (CreateGroupResponseObject, error) {
+	req authbasicapi.CreateGroupRequestObject,
+) (authbasicapi.CreateGroupResponseObject, error) {
 	res, err := i.db.Exec(
 		ctx,
 		queryCreateGroup,
@@ -226,11 +228,11 @@ func (i *impl) CreateGroup(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to insert group")
-		return CreateGroup500JSONResponse(GenErrInternal), nil
+		return authbasicapi.CreateGroup500JSONResponse(GenErrInternal), nil
 	}
 
 	id, _ := res.LastInsertId()
-	return CreateGroup201JSONResponse{
+	return authbasicapi.CreateGroup201JSONResponse{
 		Id:   id,
 		Name: req.Body.Name,
 	}, nil
@@ -239,12 +241,12 @@ func (i *impl) CreateGroup(
 // CreateOrganisation implements [StrictServerInterface].
 func (i *impl) CreateOrganisation(
 	ctx context.Context,
-	req CreateOrganisationRequestObject,
-) (CreateOrganisationResponseObject, error) {
+	req authbasicapi.CreateOrganisationRequestObject,
+) (authbasicapi.CreateOrganisationResponseObject, error) {
 	tx, err := i.db.Begin(ctx)
 	if err != nil {
 		zerologr.Error(err, "Failed to start transaction")
-		return CreateOrganisation500JSONResponse(GenErrInternal), nil
+		return authbasicapi.CreateOrganisation500JSONResponse(GenErrInternal), nil
 	}
 	//nolint:errcheck // no reason to
 	defer tx.Rollback() // Just in case
@@ -253,7 +255,7 @@ func (i *impl) CreateOrganisation(
 	res, err := tx.Exec(ctx, queryCreateOrg, sql.NamedArg{Name: "name", Value: req.Body.Name})
 	if err != nil {
 		zerologr.Error(err, "Failed to create org")
-		return CreateOrganisation500JSONResponse(GenErrInternal), nil
+		return authbasicapi.CreateOrganisation500JSONResponse(GenErrInternal), nil
 	}
 	id, _ := res.LastInsertId()
 	zerologr.Info(fmt.Sprintf("Created organisation with id %d", id))
@@ -273,17 +275,17 @@ func (i *impl) CreateOrganisation(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to create admin user")
-		return CreateOrganisation500JSONResponse(GenErrInternal), nil
+		return authbasicapi.CreateOrganisation500JSONResponse(GenErrInternal), nil
 	}
 
 	err = tx.Commit()
 	if err != nil {
 		zerologr.Error(err, "Failed to commit transaction")
-		return CreateOrganisation500JSONResponse(GenErrInternal), nil
+		return authbasicapi.CreateOrganisation500JSONResponse(GenErrInternal), nil
 	}
 
 	userID, _ := res.LastInsertId()
-	return CreateOrganisation201JSONResponse{
+	return authbasicapi.CreateOrganisation201JSONResponse{
 		Id:            id,
 		Name:          req.Body.Name,
 		AdminUserId:   userID,
@@ -295,8 +297,8 @@ func (i *impl) CreateOrganisation(
 // CreateUser implements [StrictServerInterface].
 func (i *impl) CreateUser(
 	ctx context.Context,
-	req CreateUserRequestObject,
-) (CreateUserResponseObject, error) {
+	req authbasicapi.CreateUserRequestObject,
+) (authbasicapi.CreateUserResponseObject, error) {
 	_, salt, hashedPassword := util.MakePassword(req.Body.Password)
 	res, err := i.db.Exec(
 		ctx,
@@ -309,11 +311,11 @@ func (i *impl) CreateUser(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to insert new user")
-		return CreateUser500JSONResponse(GenErrInternal), nil
+		return authbasicapi.CreateUser500JSONResponse(GenErrInternal), nil
 	}
 
 	id, _ := res.LastInsertId()
-	return CreateUser201JSONResponse{
+	return authbasicapi.CreateUser201JSONResponse{
 		Id:   id,
 		Name: req.Body.Name,
 	}, nil
@@ -322,8 +324,8 @@ func (i *impl) CreateUser(
 // DeleteGroup implements [StrictServerInterface].
 func (i *impl) DeleteGroup(
 	ctx context.Context,
-	req DeleteGroupRequestObject,
-) (DeleteGroupResponseObject, error) {
+	req authbasicapi.DeleteGroupRequestObject,
+) (authbasicapi.DeleteGroupResponseObject, error) {
 	_, err := i.db.Exec(
 		ctx,
 		queryDeleteGroup,
@@ -332,17 +334,17 @@ func (i *impl) DeleteGroup(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to delete group")
-		return DeleteGroup500JSONResponse(GenErrInternal), nil
+		return authbasicapi.DeleteGroup500JSONResponse(GenErrInternal), nil
 	}
 
-	return DeleteGroup204Response{}, nil
+	return authbasicapi.DeleteGroup204Response{}, nil
 }
 
 // DeleteOrganisation implements [StrictServerInterface].
 func (i *impl) DeleteOrganisation(
 	ctx context.Context,
-	req DeleteOrganisationRequestObject,
-) (DeleteOrganisationResponseObject, error) {
+	req authbasicapi.DeleteOrganisationRequestObject,
+) (authbasicapi.DeleteOrganisationResponseObject, error) {
 	_, err := i.db.Exec(
 		ctx,
 		queryDeleteOrg,
@@ -350,17 +352,17 @@ func (i *impl) DeleteOrganisation(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to delete org")
-		return DeleteOrganisation500JSONResponse(GenErrInternal), nil
+		return authbasicapi.DeleteOrganisation500JSONResponse(GenErrInternal), nil
 	}
 
-	return DeleteOrganisation204Response{}, nil
+	return authbasicapi.DeleteOrganisation204Response{}, nil
 }
 
 // DeleteUser implements [StrictServerInterface].
 func (i *impl) DeleteUser(
 	ctx context.Context,
-	req DeleteUserRequestObject,
-) (DeleteUserResponseObject, error) {
+	req authbasicapi.DeleteUserRequestObject,
+) (authbasicapi.DeleteUserResponseObject, error) {
 	_, err := i.db.Exec(
 		ctx,
 		queryDeleteUser,
@@ -369,10 +371,10 @@ func (i *impl) DeleteUser(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to delete user")
-		return DeleteUser500JSONResponse(GenErrInternal), nil
+		return authbasicapi.DeleteUser500JSONResponse(GenErrInternal), nil
 	}
 
-	return DeleteUser204Response{}, nil
+	return authbasicapi.DeleteUser204Response{}, nil
 }
 
 // GetGroup implements [StrictServerInterface].
@@ -380,8 +382,8 @@ func (i *impl) DeleteUser(
 //nolint:dupl // welp
 func (i *impl) GetGroup(
 	ctx context.Context,
-	req GetGroupRequestObject,
-) (GetGroupResponseObject, error) {
+	req authbasicapi.GetGroupRequestObject,
+) (authbasicapi.GetGroupResponseObject, error) {
 	rows, err := i.db.Query(
 		ctx,
 		queryGetGroup,
@@ -390,16 +392,16 @@ func (i *impl) GetGroup(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query groups")
-		return GetGroup500JSONResponse(GenErrInternal), nil
+		return authbasicapi.GetGroup500JSONResponse(GenErrInternal), nil
 	}
 
 	if !rows.Next() {
 		if err := rows.Err(); err != nil {
 			zerologr.Error(err, "Failed to scan next row")
-			return GetGroup500JSONResponse(GenErrInternal), nil
+			return authbasicapi.GetGroup500JSONResponse(GenErrInternal), nil
 		}
 
-		return GetGroup404Response{}, nil
+		return authbasicapi.GetGroup404Response{}, nil
 	}
 
 	var (
@@ -411,10 +413,10 @@ func (i *impl) GetGroup(
 	_ = rows.Close()
 	if err != nil {
 		zerologr.Error(err, "Failed to scan row")
-		return GetGroup500JSONResponse(GenErrInternal), nil
+		return authbasicapi.GetGroup500JSONResponse(GenErrInternal), nil
 	}
 
-	return GetGroup200JSONResponse{
+	return authbasicapi.GetGroup200JSONResponse{
 		Id:   id,
 		Name: name,
 	}, nil
@@ -425,8 +427,8 @@ func (i *impl) GetGroup(
 //nolint:dupl // welp
 func (i *impl) GetOrganisation(
 	ctx context.Context,
-	req GetOrganisationRequestObject,
-) (GetOrganisationResponseObject, error) {
+	req authbasicapi.GetOrganisationRequestObject,
+) (authbasicapi.GetOrganisationResponseObject, error) {
 	rows, err := i.db.Query(
 		ctx,
 		queryGetOrg,
@@ -434,16 +436,16 @@ func (i *impl) GetOrganisation(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query organisations")
-		return GetOrganisation500JSONResponse(GenErrInternal), nil
+		return authbasicapi.GetOrganisation500JSONResponse(GenErrInternal), nil
 	}
 
 	if !rows.Next() {
 		if err := rows.Err(); err != nil {
 			zerologr.Error(err, "Failed to scan next row")
-			return GetOrganisation500JSONResponse(GenErrInternal), nil
+			return authbasicapi.GetOrganisation500JSONResponse(GenErrInternal), nil
 		}
 
-		return GetOrganisation404Response{}, nil
+		return authbasicapi.GetOrganisation404Response{}, nil
 	}
 
 	var (
@@ -455,10 +457,10 @@ func (i *impl) GetOrganisation(
 	_ = rows.Close()
 	if err != nil {
 		zerologr.Error(err, "Failed to scan row")
-		return GetOrganisation500JSONResponse(GenErrInternal), nil
+		return authbasicapi.GetOrganisation500JSONResponse(GenErrInternal), nil
 	}
 
-	return GetOrganisation200JSONResponse{
+	return authbasicapi.GetOrganisation200JSONResponse{
 		Id:   id,
 		Name: name,
 	}, nil
@@ -469,8 +471,8 @@ func (i *impl) GetOrganisation(
 //nolint:dupl // welp
 func (i *impl) GetUser(
 	ctx context.Context,
-	req GetUserRequestObject,
-) (GetUserResponseObject, error) {
+	req authbasicapi.GetUserRequestObject,
+) (authbasicapi.GetUserResponseObject, error) {
 	rows, err := i.db.Query(
 		ctx,
 		queryGetUser,
@@ -479,16 +481,16 @@ func (i *impl) GetUser(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query users")
-		return GetUser500JSONResponse(GenErrInternal), nil
+		return authbasicapi.GetUser500JSONResponse(GenErrInternal), nil
 	}
 
 	if !rows.Next() {
 		if err := rows.Err(); err != nil {
 			zerologr.Error(err, "Failed to scan next row")
-			return GetUser500JSONResponse(GenErrInternal), nil
+			return authbasicapi.GetUser500JSONResponse(GenErrInternal), nil
 		}
 
-		return GetUser404Response{}, nil
+		return authbasicapi.GetUser404Response{}, nil
 	}
 
 	var (
@@ -500,10 +502,10 @@ func (i *impl) GetUser(
 	_ = rows.Close()
 	if err != nil {
 		zerologr.Error(err, "Failed to scan row")
-		return GetUser500JSONResponse(GenErrInternal), nil
+		return authbasicapi.GetUser500JSONResponse(GenErrInternal), nil
 	}
 
-	return GetUser200JSONResponse{
+	return authbasicapi.GetUser200JSONResponse{
 		Id:   id,
 		Name: name,
 	}, nil
@@ -512,8 +514,8 @@ func (i *impl) GetUser(
 // GetUserGroups implements [StrictServerInterface].
 func (i *impl) GetUserGroups(
 	ctx context.Context,
-	req GetUserGroupsRequestObject,
-) (GetUserGroupsResponseObject, error) {
+	req authbasicapi.GetUserGroupsRequestObject,
+) (authbasicapi.GetUserGroupsResponseObject, error) {
 	rows, err := i.db.Query(
 		ctx,
 		queryListUserGroups,
@@ -522,7 +524,7 @@ func (i *impl) GetUserGroups(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query user groups")
-		return GetUserGroups500JSONResponse(GenErrInternal), nil
+		return authbasicapi.GetUserGroups500JSONResponse(GenErrInternal), nil
 	}
 	// Fine to defer since we're iterating, not just doing one scan.
 	defer rows.Close()
@@ -532,16 +534,16 @@ func (i *impl) GetUserGroups(
 		if !rows.Next() {
 			if err := rows.Err(); err != nil {
 				zerologr.Error(err, "Failed to scan next row")
-				return GetUserGroups500JSONResponse(GenErrInternal), nil
+				return authbasicapi.GetUserGroups500JSONResponse(GenErrInternal), nil
 			}
 
-			return GetUserGroups200JSONResponse(userGroups), nil
+			return authbasicapi.GetUserGroups200JSONResponse(userGroups), nil
 		}
 
 		groupName := ""
 		if err = rows.Scan(&groupName); err != nil {
 			zerologr.Error(err, "Failed to scan row")
-			return GetUserGroups500JSONResponse(GenErrInternal), nil
+			return authbasicapi.GetUserGroups500JSONResponse(GenErrInternal), nil
 		}
 
 		userGroups = append(userGroups, groupName)
@@ -553,8 +555,8 @@ func (i *impl) GetUserGroups(
 //nolint:dupl // welp
 func (i *impl) ListGroups(
 	ctx context.Context,
-	req ListGroupsRequestObject,
-) (ListGroupsResponseObject, error) {
+	req authbasicapi.ListGroupsRequestObject,
+) (authbasicapi.ListGroupsResponseObject, error) {
 	rows, err := i.db.Query(
 		ctx,
 		queryListGroups,
@@ -562,20 +564,20 @@ func (i *impl) ListGroups(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query groups")
-		return ListGroups500JSONResponse(GenErrInternal), nil
+		return authbasicapi.ListGroups500JSONResponse(GenErrInternal), nil
 	}
 	// Fine to defer since we're iterating, not just doing one scan.
 	defer rows.Close()
 
-	groups := make([]Group, 0)
+	groups := make([]authbasicapi.Group, 0)
 	for {
 		if !rows.Next() {
 			if err := rows.Err(); err != nil {
 				zerologr.Error(err, "Failed to scan next row")
-				return ListGroups500JSONResponse(GenErrInternal), nil
+				return authbasicapi.ListGroups500JSONResponse(GenErrInternal), nil
 			}
 
-			return ListGroups200JSONResponse(groups), nil
+			return authbasicapi.ListGroups200JSONResponse(groups), nil
 		}
 
 		var (
@@ -584,38 +586,38 @@ func (i *impl) ListGroups(
 		)
 		if err = rows.Scan(&id, &name); err != nil {
 			zerologr.Error(err, "Failed to scan row")
-			return ListGroups500JSONResponse(GenErrInternal), nil
+			return authbasicapi.ListGroups500JSONResponse(GenErrInternal), nil
 		}
 
-		groups = append(groups, Group{Id: id, Name: name})
+		groups = append(groups, authbasicapi.Group{Id: id, Name: name})
 	}
 }
 
 // ListOrganisations implements [StrictServerInterface].
 func (i *impl) ListOrganisations(
 	ctx context.Context,
-	_ ListOrganisationsRequestObject,
-) (ListOrganisationsResponseObject, error) {
+	_ authbasicapi.ListOrganisationsRequestObject,
+) (authbasicapi.ListOrganisationsResponseObject, error) {
 	rows, err := i.db.Query(
 		ctx,
 		queryListOrgs,
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query organisations")
-		return ListOrganisations500JSONResponse(GenErrInternal), nil
+		return authbasicapi.ListOrganisations500JSONResponse(GenErrInternal), nil
 	}
 	// Fine to defer since we're iterating, not just doing one scan.
 	defer rows.Close()
 
-	orgs := make([]Organisation, 0)
+	orgs := make([]authbasicapi.Organisation, 0)
 	for {
 		if !rows.Next() {
 			if err := rows.Err(); err != nil {
 				zerologr.Error(err, "Failed to scan next row")
-				return ListOrganisations500JSONResponse(GenErrInternal), nil
+				return authbasicapi.ListOrganisations500JSONResponse(GenErrInternal), nil
 			}
 
-			return ListOrganisations200JSONResponse(orgs), nil
+			return authbasicapi.ListOrganisations200JSONResponse(orgs), nil
 		}
 
 		var (
@@ -624,10 +626,10 @@ func (i *impl) ListOrganisations(
 		)
 		if err = rows.Scan(&id, &name); err != nil {
 			zerologr.Error(err, "Failed to scan row")
-			return ListOrganisations500JSONResponse(GenErrInternal), nil
+			return authbasicapi.ListOrganisations500JSONResponse(GenErrInternal), nil
 		}
 
-		orgs = append(orgs, Organisation{Id: id, Name: name})
+		orgs = append(orgs, authbasicapi.Organisation{Id: id, Name: name})
 	}
 }
 
@@ -636,8 +638,8 @@ func (i *impl) ListOrganisations(
 //nolint:dupl // welp
 func (i *impl) ListUsers(
 	ctx context.Context,
-	req ListUsersRequestObject,
-) (ListUsersResponseObject, error) {
+	req authbasicapi.ListUsersRequestObject,
+) (authbasicapi.ListUsersResponseObject, error) {
 	rows, err := i.db.Query(
 		ctx,
 		queryListUsers,
@@ -645,20 +647,20 @@ func (i *impl) ListUsers(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query users")
-		return ListUsers500JSONResponse(GenErrInternal), nil
+		return authbasicapi.ListUsers500JSONResponse(GenErrInternal), nil
 	}
 	// Fine to defer since we're iterating, not just doing one scan.
 	defer rows.Close()
 
-	users := make([]User, 0)
+	users := make([]authbasicapi.User, 0)
 	for {
 		if !rows.Next() {
 			if err := rows.Err(); err != nil {
 				zerologr.Error(err, "Failed to scan next row")
-				return ListUsers500JSONResponse(GenErrInternal), nil
+				return authbasicapi.ListUsers500JSONResponse(GenErrInternal), nil
 			}
 
-			return ListUsers200JSONResponse(users), nil
+			return authbasicapi.ListUsers200JSONResponse(users), nil
 		}
 
 		var (
@@ -667,18 +669,18 @@ func (i *impl) ListUsers(
 		)
 		if err = rows.Scan(&id, &name); err != nil {
 			zerologr.Error(err, "Failed to scan row")
-			return ListUsers500JSONResponse(GenErrInternal), nil
+			return authbasicapi.ListUsers500JSONResponse(GenErrInternal), nil
 		}
 
-		users = append(users, User{Id: id, Name: name})
+		users = append(users, authbasicapi.User{Id: id, Name: name})
 	}
 }
 
 // UpdateGroup implements [StrictServerInterface].
 func (i *impl) UpdateGroup(
 	ctx context.Context,
-	req UpdateGroupRequestObject,
-) (UpdateGroupResponseObject, error) {
+	req authbasicapi.UpdateGroupRequestObject,
+) (authbasicapi.UpdateGroupResponseObject, error) {
 	_, err := i.db.Exec(
 		ctx,
 		queryUpdateGroup,
@@ -688,10 +690,10 @@ func (i *impl) UpdateGroup(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to update group")
-		return UpdateGroup500JSONResponse(GenErrInternal), nil
+		return authbasicapi.UpdateGroup500JSONResponse(GenErrInternal), nil
 	}
 
-	return UpdateGroup200JSONResponse{
+	return authbasicapi.UpdateGroup200JSONResponse{
 		Id:   req.GroupID,
 		Name: req.Body.Name,
 	}, nil
@@ -700,8 +702,8 @@ func (i *impl) UpdateGroup(
 // UpdateOrganisation implements [StrictServerInterface].
 func (i *impl) UpdateOrganisation(
 	ctx context.Context,
-	req UpdateOrganisationRequestObject,
-) (UpdateOrganisationResponseObject, error) {
+	req authbasicapi.UpdateOrganisationRequestObject,
+) (authbasicapi.UpdateOrganisationResponseObject, error) {
 	_, err := i.db.Exec(
 		ctx,
 		queryUpdateOrg,
@@ -710,10 +712,10 @@ func (i *impl) UpdateOrganisation(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to update organisation")
-		return UpdateOrganisation500JSONResponse(GenErrInternal), nil
+		return authbasicapi.UpdateOrganisation500JSONResponse(GenErrInternal), nil
 	}
 
-	return UpdateOrganisation200JSONResponse{
+	return authbasicapi.UpdateOrganisation200JSONResponse{
 		Id:   req.OrgID,
 		Name: req.Body.Name,
 	}, nil
@@ -722,8 +724,8 @@ func (i *impl) UpdateOrganisation(
 // UpdateUser implements [StrictServerInterface].
 func (i *impl) UpdateUser(
 	ctx context.Context,
-	req UpdateUserRequestObject,
-) (UpdateUserResponseObject, error) {
+	req authbasicapi.UpdateUserRequestObject,
+) (authbasicapi.UpdateUserResponseObject, error) {
 	_, err := i.db.Exec(
 		ctx,
 		queryUpdateUser,
@@ -733,10 +735,10 @@ func (i *impl) UpdateUser(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to update user")
-		return UpdateUser500JSONResponse(GenErrInternal), nil
+		return authbasicapi.UpdateUser500JSONResponse(GenErrInternal), nil
 	}
 
-	return UpdateUser200JSONResponse{
+	return authbasicapi.UpdateUser200JSONResponse{
 		Id:   req.UserID,
 		Name: req.Body.Name,
 	}, nil
@@ -747,8 +749,8 @@ func (i *impl) UpdateUser(
 //nolint:gocognit // welp
 func (i *impl) UpdateUserGroups(
 	ctx context.Context,
-	req UpdateUserGroupsRequestObject,
-) (UpdateUserGroupsResponseObject, error) {
+	req authbasicapi.UpdateUserGroupsRequestObject,
+) (authbasicapi.UpdateUserGroupsResponseObject, error) {
 	rows, err := i.db.Query(
 		ctx,
 		queryListGroupBindings,
@@ -757,7 +759,7 @@ func (i *impl) UpdateUserGroups(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query group bindings")
-		return UpdateUserGroups500JSONResponse(GenErrInternal), nil
+		return authbasicapi.UpdateUserGroups500JSONResponse(GenErrInternal), nil
 	}
 	defer rows.Close()
 
@@ -770,7 +772,7 @@ func (i *impl) UpdateUserGroups(
 		if !rows.Next() {
 			if err := rows.Err(); err != nil {
 				zerologr.Error(err, "Failed to scan next row")
-				return UpdateUserGroups500JSONResponse(GenErrInternal), nil
+				return authbasicapi.UpdateUserGroups500JSONResponse(GenErrInternal), nil
 			}
 
 			break
@@ -779,7 +781,7 @@ func (i *impl) UpdateUserGroups(
 		binding := &internalGroupBinding{}
 		if err = rows.Scan(&binding.groupID, &binding.name); err != nil {
 			zerologr.Error(err, "Failed to scan row")
-			return UpdateUserGroups500JSONResponse(GenErrInternal), nil
+			return authbasicapi.UpdateUserGroups500JSONResponse(GenErrInternal), nil
 		}
 
 		bindings = append(bindings, binding)
@@ -795,7 +797,7 @@ func (i *impl) UpdateUserGroups(
 	tx, err := i.db.Begin(ctx)
 	if err != nil {
 		zerologr.Error(err, "Failed to start transaction")
-		return UpdateUserGroups500JSONResponse(GenErrInternal), nil
+		return authbasicapi.UpdateUserGroups500JSONResponse(GenErrInternal), nil
 	}
 	//nolint:errcheck // no reason to
 	defer tx.Rollback()
@@ -809,7 +811,7 @@ func (i *impl) UpdateUserGroups(
 		)
 		if err != nil {
 			zerologr.Error(err, "Failed to run group binding deletion")
-			return UpdateUserGroups500JSONResponse(GenErrInternal), nil
+			return authbasicapi.UpdateUserGroups500JSONResponse(GenErrInternal), nil
 		}
 
 		bindings = slices.DeleteFunc(
@@ -832,15 +834,15 @@ func (i *impl) UpdateUserGroups(
 			)
 			if err != nil {
 				zerologr.Error(err, "Failed to insert new binding")
-				return UpdateUserGroups500JSONResponse(GenErrInternal), nil
+				return authbasicapi.UpdateUserGroups500JSONResponse(GenErrInternal), nil
 			}
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
 		zerologr.Error(err, "Failed to commit transaction")
-		return UpdateUserGroups500JSONResponse(GenErrInternal), nil
+		return authbasicapi.UpdateUserGroups500JSONResponse(GenErrInternal), nil
 	}
 
-	return UpdateUserGroups200JSONResponse(*req.Body), nil
+	return authbasicapi.UpdateUserGroups200JSONResponse(*req.Body), nil
 }

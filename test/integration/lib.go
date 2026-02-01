@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/trebent/kerberos/ft/client/admin"
-	"github.com/trebent/kerberos/ft/client/basic"
+	authadminapi "github.com/trebent/kerberos/ft/client/auth/admin"
+	authbasicapi "github.com/trebent/kerberos/ft/client/auth/basic"
 )
 
 type (
@@ -29,10 +29,10 @@ type (
 var (
 	client = &http.Client{Timeout: 4 * time.Second}
 
-	basicAuthClient, _ = basic.NewClientWithResponses(
+	basicAuthClient, _ = authbasicapi.NewClientWithResponses(
 		fmt.Sprintf("http://%s:%d/api/auth/basic", getHost(), getPort()),
 	)
-	adminClient, _ = admin.NewClientWithResponses(
+	adminClient, _ = authadminapi.NewClientWithResponses(
 		fmt.Sprintf("http://%s:%d/api/auth/admin", getHost(), getPort()),
 	)
 )

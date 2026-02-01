@@ -4,13 +4,13 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/trebent/kerberos/ft/client/admin"
+	authadminapi "github.com/trebent/kerberos/ft/client/auth/admin"
 )
 
 func TestAuthAdminSuperuser(t *testing.T) {
 	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
-		admin.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "client-secret"},
+		authadminapi.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "client-secret"},
 	)
 	checkErr(err, t)
 	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
@@ -18,7 +18,7 @@ func TestAuthAdminSuperuser(t *testing.T) {
 
 	superLogoutResp, err := adminClient.LogoutSuperuserWithResponse(
 		t.Context(),
-		admin.RequestEditorFn(requestEditorSessionID(superSession)),
+		authadminapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(superLogoutResp.StatusCode(), http.StatusNoContent, t)
