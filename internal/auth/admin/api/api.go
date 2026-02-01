@@ -59,6 +59,7 @@ func (i *impl) LoginSuperuser(
 	request authadminapi.LoginSuperuserRequestObject,
 ) (authadminapi.LoginSuperuserResponseObject, error) {
 	if request.Body.ClientId != i.clientID {
+		zerologr.Info("User login failed due to ID mismatch")
 		return authadminapi.LoginSuperuser401JSONResponse(makeGenAPIError("Login failed.")), nil
 	}
 

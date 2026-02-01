@@ -42,10 +42,10 @@ type LoginSuperuserJSONRequestBody LoginSuperuserJSONBody
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
-	// (POST /superuser/login)
+	// (POST /api/auth/admin/superuser/login)
 	LoginSuperuser(w http.ResponseWriter, r *http.Request)
 
-	// (POST /superuser/logout)
+	// (POST /api/auth/admin/superuser/logout)
 	LogoutSuperuser(w http.ResponseWriter, r *http.Request)
 }
 
@@ -212,8 +212,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
-	m.HandleFunc("POST "+options.BaseURL+"/superuser/login", wrapper.LoginSuperuser)
-	m.HandleFunc("POST "+options.BaseURL+"/superuser/logout", wrapper.LogoutSuperuser)
+	m.HandleFunc("POST "+options.BaseURL+"/api/auth/admin/superuser/login", wrapper.LoginSuperuser)
+	m.HandleFunc("POST "+options.BaseURL+"/api/auth/admin/superuser/logout", wrapper.LogoutSuperuser)
 
 	return m
 }
@@ -238,6 +238,15 @@ func (response LoginSuperuser204Response) VisitLoginSuperuserResponse(w http.Res
 	w.Header().Set("x-krb-session", fmt.Sprint(response.Headers.XKrbSession))
 	w.WriteHeader(204)
 	return nil
+}
+
+type LoginSuperuser400JSONResponse APIErrorResponse
+
+func (response LoginSuperuser400JSONResponse) VisitLoginSuperuserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
 }
 
 type LoginSuperuser401JSONResponse APIErrorResponse
@@ -285,10 +294,10 @@ func (response LogoutSuperuser500JSONResponse) VisitLogoutSuperuserResponse(w ht
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
-	// (POST /superuser/login)
+	// (POST /api/auth/admin/superuser/login)
 	LoginSuperuser(ctx context.Context, request LoginSuperuserRequestObject) (LoginSuperuserResponseObject, error)
 
-	// (POST /superuser/logout)
+	// (POST /api/auth/admin/superuser/logout)
 	LogoutSuperuser(ctx context.Context, request LogoutSuperuserRequestObject) (LogoutSuperuserResponseObject, error)
 }
 
@@ -379,16 +388,16 @@ func (sh *strictHandler) LogoutSuperuser(w http.ResponseWriter, r *http.Request)
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/8xUT2/UPhD9Ktb8fsc0SaFccisCpKg9VJRbuwc3mWZdEo8ZT4Bole+O7GR3m26EgAPi",
-	"lNjz782bN95BRZ0ji1Y8FDvYoq6R469H7w1ZU4dDjb5i48SQhQIu1WxU5bsUEmD80hvGGgrhHhPw1RY7",
-	"HeJkcAgFeGFjGxjHcW+MJS5vyvfMxB/RO7Iew51jcshiMHpgMMc/I9j5lZQJdMaWk/E82Vs1sx4glDti",
-	"u9tn2xzc6OEJK4l+HquejQy3AR6eMmBC4xM9kIDVXYj/fvaZH85mPzhWd+YKh6ldYx/plMFPW1RXyA/I",
-	"5JWuO2ONF9bBqnQvW7Riqul4eVMq3bb0beFI7FWnrW5wPwufqN4j+0RpWyuH3Jnp/t7So5LnBWt0LQ0d",
-	"WknvI2wjbcD964jC1L8i+6mbPD1P8zAKcmi1M1DA6zRPLyABp2Ubycx875ADwqylJrC5A0dewjdMPKYu",
-	"ayjgOphv996zvNDLW6qH4F2RFbQxUDvXzqiyJ08x6VF8SylVrUErZb2qocl4ixWjrOl2qaNDqheBK8Ka",
-	"Qid5Rxiv8otTOVxT02Adh3SgSRkbWH62kUu1FTv4n/ERCvgvOy5xNvtnR/FGDBf5+W9xt5Z63tzsZG1j",
-	"hWVHH7RpQ0ekWmpWGhsTeJPnfxVSaQXZ6lbFZyBdbD0Ud5twXqqUevmpTKmXpU7/aM7Uyz/Cx/iCksUT",
-	"eLcZN+OPAAAA///RhEZlMAYAAA==",
+	"H4sIAAAAAAAC/8xUT2+cPhD9Ktb8fkcCmza9cEvUVkLJIWp6S/bgwIR1Ch53PLRFK757ZcOGsLtK/xyi",
+	"nsCe55nxm/e8hZJaRxateMi3sEFdIcdfj94bsqYKiwp9ycaJIQs5nKspqIr3KSTA+LUzjBXkwh0m4MsN",
+	"tjqck94h5OCFja1hGIZdMJY4vy4+MBN/Qu/Iegx7jskhi8GIwBCOf0aw9UdSJtAaW4zB02QX1cy6h1Bu",
+	"7u12l239BKP7Rywl4jyWHRvpb0J7eMiACRcf6YEErG7D+R8nX/j+ZMLBXN2ZS+zH6xr7QIcMft6gukS+",
+	"RyavdNUaa7ywDlGlO9mgFVOOy/PrQummoe8LILFXrba6xt0sfKI6j+wTpW2lHHJrxv07Sw9Knhes0DXU",
+	"t2glvYttG2lC37/fUZj6N2Q/3maVnqarMApyaLUzkMPbdJWeQQJOyyaSmWlnspAoi8kz3znk0HDWUB3I",
+	"3YIjL+EbBBArFRXkcBXCNzv0pDb0ckFVH9AlWUEbD2rnmqnJ7NFTTDprcamssjFopYizbY29QlvL5rmE",
+	"ZoGN0BssGeWX8D3JPZXZS3NEg8O+keLG6IzY8pvV2aGSrqiusYrzfaJUGRsG9MzMS6HmW/if8QFy+C+b",
+	"/Z9N+GzWfWzqbLX6I56PpZ5Mnx04PlZY3uhCV2qacQqx/umr1v+oTRMYJdVQfYTYIYF3r0xJYQXZ6kbF",
+	"FyxdPFiQ367D+kWDUScvOow6WVrsr2RHnfwj9Ax7DC0e89v1sB5+BgAA//+1AXz9+gYAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

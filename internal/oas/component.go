@@ -1,17 +1,14 @@
 package oas
 
 import (
-	"context"
 	"net/http"
 	"os"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-logr/logr"
-	nethttpmiddleware "github.com/oapi-codegen/nethttp-middleware"
 	"github.com/trebent/kerberos/internal/composer/custom"
 	composertypes "github.com/trebent/kerberos/internal/composer/types"
 	"github.com/trebent/kerberos/internal/config"
-	"github.com/trebent/kerberos/internal/response"
 	"github.com/trebent/zerologr"
 )
 
@@ -104,22 +101,4 @@ func (v *validator) register(m *mapping) error {
 	v.validators[m.Backend] = ValidationMiddleware(spec)
 
 	return nil
-}
-
-func oasValidationErrorHandler(
-	ctx context.Context,
-	err error,
-	w http.ResponseWriter,
-	req *http.Request,
-	opts nethttpmiddleware.ErrorHandlerOpts,
-) {
-	logger, logrErr := logr.FromContext(ctx)
-	if logrErr != nil {
-		logger = zerologr.WithName("oas-validator")
-	} else {
-		logger = logger.WithName("oas-validator")
-	}
-
-	logger.Error(err, "OAS validation failed", "path", req.URL.Path)
-	response.JSONError(w, err, opts.StatusCode)
 }

@@ -40,6 +40,7 @@ paths:
       security: []
       operationId: LoginSuperuser
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -47,8 +48,10 @@ paths:
               properties:
                 clientId:
                   type: string
+                  minLength: 1
                 clientSecret:
                   type: string
+                  minLength: 1
               required:
                 - clientId
                 - clientSecret
@@ -58,6 +61,12 @@ paths:
             x-krb-session:
               $ref: "#/components/headers/sessionid"
           description: Logged the superuser in.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
           content:
             application/json:

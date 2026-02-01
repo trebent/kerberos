@@ -119,64 +119,64 @@ type ChangePasswordJSONRequestBody ChangePasswordJSONBody
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
-	// (GET /organisations)
+	// (GET /api/auth/basic/organisations)
 	ListOrganisations(w http.ResponseWriter, r *http.Request)
 
-	// (POST /organisations)
+	// (POST /api/auth/basic/organisations)
 	CreateOrganisation(w http.ResponseWriter, r *http.Request)
 
-	// (DELETE /organisations/{orgID})
+	// (DELETE /api/auth/basic/organisations/{orgID})
 	DeleteOrganisation(w http.ResponseWriter, r *http.Request, orgID Orgid)
 
-	// (GET /organisations/{orgID})
+	// (GET /api/auth/basic/organisations/{orgID})
 	GetOrganisation(w http.ResponseWriter, r *http.Request, orgID Orgid)
 
-	// (PUT /organisations/{orgID})
+	// (PUT /api/auth/basic/organisations/{orgID})
 	UpdateOrganisation(w http.ResponseWriter, r *http.Request, orgID Orgid)
 
-	// (GET /organisations/{orgID}/groups)
+	// (GET /api/auth/basic/organisations/{orgID}/groups)
 	ListGroups(w http.ResponseWriter, r *http.Request, orgID Orgid)
 
-	// (POST /organisations/{orgID}/groups)
+	// (POST /api/auth/basic/organisations/{orgID}/groups)
 	CreateGroup(w http.ResponseWriter, r *http.Request, orgID Orgid)
 
-	// (DELETE /organisations/{orgID}/groups/{groupID})
+	// (DELETE /api/auth/basic/organisations/{orgID}/groups/{groupID})
 	DeleteGroup(w http.ResponseWriter, r *http.Request, orgID Orgid, groupID Groupid)
 
-	// (GET /organisations/{orgID}/groups/{groupID})
+	// (GET /api/auth/basic/organisations/{orgID}/groups/{groupID})
 	GetGroup(w http.ResponseWriter, r *http.Request, orgID Orgid, groupID Groupid)
 
-	// (PUT /organisations/{orgID}/groups/{groupID})
+	// (PUT /api/auth/basic/organisations/{orgID}/groups/{groupID})
 	UpdateGroup(w http.ResponseWriter, r *http.Request, orgID Orgid, groupID Groupid)
 
-	// (POST /organisations/{orgID}/login)
+	// (POST /api/auth/basic/organisations/{orgID}/login)
 	Login(w http.ResponseWriter, r *http.Request, orgID Orgid)
 
-	// (POST /organisations/{orgID}/logout)
+	// (POST /api/auth/basic/organisations/{orgID}/logout)
 	Logout(w http.ResponseWriter, r *http.Request, orgID Orgid)
 
-	// (GET /organisations/{orgID}/users)
+	// (GET /api/auth/basic/organisations/{orgID}/users)
 	ListUsers(w http.ResponseWriter, r *http.Request, orgID Orgid)
 
-	// (POST /organisations/{orgID}/users)
+	// (POST /api/auth/basic/organisations/{orgID}/users)
 	CreateUser(w http.ResponseWriter, r *http.Request, orgID Orgid)
 
-	// (DELETE /organisations/{orgID}/users/{userID})
+	// (DELETE /api/auth/basic/organisations/{orgID}/users/{userID})
 	DeleteUser(w http.ResponseWriter, r *http.Request, orgID Orgid, userID Userid)
 
-	// (GET /organisations/{orgID}/users/{userID})
+	// (GET /api/auth/basic/organisations/{orgID}/users/{userID})
 	GetUser(w http.ResponseWriter, r *http.Request, orgID Orgid, userID Userid)
 
-	// (PUT /organisations/{orgID}/users/{userID})
+	// (PUT /api/auth/basic/organisations/{orgID}/users/{userID})
 	UpdateUser(w http.ResponseWriter, r *http.Request, orgID Orgid, userID Userid)
 
-	// (GET /organisations/{orgID}/users/{userID}/groups)
+	// (GET /api/auth/basic/organisations/{orgID}/users/{userID}/groups)
 	GetUserGroups(w http.ResponseWriter, r *http.Request, orgID Orgid, userID Userid)
 
-	// (PUT /organisations/{orgID}/users/{userID}/groups)
+	// (PUT /api/auth/basic/organisations/{orgID}/users/{userID}/groups)
 	UpdateUserGroups(w http.ResponseWriter, r *http.Request, orgID Orgid, userID Userid)
 
-	// (PUT /organisations/{orgID}/users/{userID}/password)
+	// (PUT /api/auth/basic/organisations/{orgID}/users/{userID}/password)
 	ChangePassword(w http.ResponseWriter, r *http.Request, orgID Orgid, userID Userid)
 }
 
@@ -982,26 +982,26 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
-	m.HandleFunc("GET "+options.BaseURL+"/organisations", wrapper.ListOrganisations)
-	m.HandleFunc("POST "+options.BaseURL+"/organisations", wrapper.CreateOrganisation)
-	m.HandleFunc("DELETE "+options.BaseURL+"/organisations/{orgID}", wrapper.DeleteOrganisation)
-	m.HandleFunc("GET "+options.BaseURL+"/organisations/{orgID}", wrapper.GetOrganisation)
-	m.HandleFunc("PUT "+options.BaseURL+"/organisations/{orgID}", wrapper.UpdateOrganisation)
-	m.HandleFunc("GET "+options.BaseURL+"/organisations/{orgID}/groups", wrapper.ListGroups)
-	m.HandleFunc("POST "+options.BaseURL+"/organisations/{orgID}/groups", wrapper.CreateGroup)
-	m.HandleFunc("DELETE "+options.BaseURL+"/organisations/{orgID}/groups/{groupID}", wrapper.DeleteGroup)
-	m.HandleFunc("GET "+options.BaseURL+"/organisations/{orgID}/groups/{groupID}", wrapper.GetGroup)
-	m.HandleFunc("PUT "+options.BaseURL+"/organisations/{orgID}/groups/{groupID}", wrapper.UpdateGroup)
-	m.HandleFunc("POST "+options.BaseURL+"/organisations/{orgID}/login", wrapper.Login)
-	m.HandleFunc("POST "+options.BaseURL+"/organisations/{orgID}/logout", wrapper.Logout)
-	m.HandleFunc("GET "+options.BaseURL+"/organisations/{orgID}/users", wrapper.ListUsers)
-	m.HandleFunc("POST "+options.BaseURL+"/organisations/{orgID}/users", wrapper.CreateUser)
-	m.HandleFunc("DELETE "+options.BaseURL+"/organisations/{orgID}/users/{userID}", wrapper.DeleteUser)
-	m.HandleFunc("GET "+options.BaseURL+"/organisations/{orgID}/users/{userID}", wrapper.GetUser)
-	m.HandleFunc("PUT "+options.BaseURL+"/organisations/{orgID}/users/{userID}", wrapper.UpdateUser)
-	m.HandleFunc("GET "+options.BaseURL+"/organisations/{orgID}/users/{userID}/groups", wrapper.GetUserGroups)
-	m.HandleFunc("PUT "+options.BaseURL+"/organisations/{orgID}/users/{userID}/groups", wrapper.UpdateUserGroups)
-	m.HandleFunc("PUT "+options.BaseURL+"/organisations/{orgID}/users/{userID}/password", wrapper.ChangePassword)
+	m.HandleFunc("GET "+options.BaseURL+"/api/auth/basic/organisations", wrapper.ListOrganisations)
+	m.HandleFunc("POST "+options.BaseURL+"/api/auth/basic/organisations", wrapper.CreateOrganisation)
+	m.HandleFunc("DELETE "+options.BaseURL+"/api/auth/basic/organisations/{orgID}", wrapper.DeleteOrganisation)
+	m.HandleFunc("GET "+options.BaseURL+"/api/auth/basic/organisations/{orgID}", wrapper.GetOrganisation)
+	m.HandleFunc("PUT "+options.BaseURL+"/api/auth/basic/organisations/{orgID}", wrapper.UpdateOrganisation)
+	m.HandleFunc("GET "+options.BaseURL+"/api/auth/basic/organisations/{orgID}/groups", wrapper.ListGroups)
+	m.HandleFunc("POST "+options.BaseURL+"/api/auth/basic/organisations/{orgID}/groups", wrapper.CreateGroup)
+	m.HandleFunc("DELETE "+options.BaseURL+"/api/auth/basic/organisations/{orgID}/groups/{groupID}", wrapper.DeleteGroup)
+	m.HandleFunc("GET "+options.BaseURL+"/api/auth/basic/organisations/{orgID}/groups/{groupID}", wrapper.GetGroup)
+	m.HandleFunc("PUT "+options.BaseURL+"/api/auth/basic/organisations/{orgID}/groups/{groupID}", wrapper.UpdateGroup)
+	m.HandleFunc("POST "+options.BaseURL+"/api/auth/basic/organisations/{orgID}/login", wrapper.Login)
+	m.HandleFunc("POST "+options.BaseURL+"/api/auth/basic/organisations/{orgID}/logout", wrapper.Logout)
+	m.HandleFunc("GET "+options.BaseURL+"/api/auth/basic/organisations/{orgID}/users", wrapper.ListUsers)
+	m.HandleFunc("POST "+options.BaseURL+"/api/auth/basic/organisations/{orgID}/users", wrapper.CreateUser)
+	m.HandleFunc("DELETE "+options.BaseURL+"/api/auth/basic/organisations/{orgID}/users/{userID}", wrapper.DeleteUser)
+	m.HandleFunc("GET "+options.BaseURL+"/api/auth/basic/organisations/{orgID}/users/{userID}", wrapper.GetUser)
+	m.HandleFunc("PUT "+options.BaseURL+"/api/auth/basic/organisations/{orgID}/users/{userID}", wrapper.UpdateUser)
+	m.HandleFunc("GET "+options.BaseURL+"/api/auth/basic/organisations/{orgID}/users/{userID}/groups", wrapper.GetUserGroups)
+	m.HandleFunc("PUT "+options.BaseURL+"/api/auth/basic/organisations/{orgID}/users/{userID}/groups", wrapper.UpdateUserGroups)
+	m.HandleFunc("PUT "+options.BaseURL+"/api/auth/basic/organisations/{orgID}/users/{userID}/password", wrapper.ChangePassword)
 
 	return m
 }
@@ -1947,64 +1947,64 @@ func (response ChangePassword500JSONResponse) VisitChangePasswordResponse(w http
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
-	// (GET /organisations)
+	// (GET /api/auth/basic/organisations)
 	ListOrganisations(ctx context.Context, request ListOrganisationsRequestObject) (ListOrganisationsResponseObject, error)
 
-	// (POST /organisations)
+	// (POST /api/auth/basic/organisations)
 	CreateOrganisation(ctx context.Context, request CreateOrganisationRequestObject) (CreateOrganisationResponseObject, error)
 
-	// (DELETE /organisations/{orgID})
+	// (DELETE /api/auth/basic/organisations/{orgID})
 	DeleteOrganisation(ctx context.Context, request DeleteOrganisationRequestObject) (DeleteOrganisationResponseObject, error)
 
-	// (GET /organisations/{orgID})
+	// (GET /api/auth/basic/organisations/{orgID})
 	GetOrganisation(ctx context.Context, request GetOrganisationRequestObject) (GetOrganisationResponseObject, error)
 
-	// (PUT /organisations/{orgID})
+	// (PUT /api/auth/basic/organisations/{orgID})
 	UpdateOrganisation(ctx context.Context, request UpdateOrganisationRequestObject) (UpdateOrganisationResponseObject, error)
 
-	// (GET /organisations/{orgID}/groups)
+	// (GET /api/auth/basic/organisations/{orgID}/groups)
 	ListGroups(ctx context.Context, request ListGroupsRequestObject) (ListGroupsResponseObject, error)
 
-	// (POST /organisations/{orgID}/groups)
+	// (POST /api/auth/basic/organisations/{orgID}/groups)
 	CreateGroup(ctx context.Context, request CreateGroupRequestObject) (CreateGroupResponseObject, error)
 
-	// (DELETE /organisations/{orgID}/groups/{groupID})
+	// (DELETE /api/auth/basic/organisations/{orgID}/groups/{groupID})
 	DeleteGroup(ctx context.Context, request DeleteGroupRequestObject) (DeleteGroupResponseObject, error)
 
-	// (GET /organisations/{orgID}/groups/{groupID})
+	// (GET /api/auth/basic/organisations/{orgID}/groups/{groupID})
 	GetGroup(ctx context.Context, request GetGroupRequestObject) (GetGroupResponseObject, error)
 
-	// (PUT /organisations/{orgID}/groups/{groupID})
+	// (PUT /api/auth/basic/organisations/{orgID}/groups/{groupID})
 	UpdateGroup(ctx context.Context, request UpdateGroupRequestObject) (UpdateGroupResponseObject, error)
 
-	// (POST /organisations/{orgID}/login)
+	// (POST /api/auth/basic/organisations/{orgID}/login)
 	Login(ctx context.Context, request LoginRequestObject) (LoginResponseObject, error)
 
-	// (POST /organisations/{orgID}/logout)
+	// (POST /api/auth/basic/organisations/{orgID}/logout)
 	Logout(ctx context.Context, request LogoutRequestObject) (LogoutResponseObject, error)
 
-	// (GET /organisations/{orgID}/users)
+	// (GET /api/auth/basic/organisations/{orgID}/users)
 	ListUsers(ctx context.Context, request ListUsersRequestObject) (ListUsersResponseObject, error)
 
-	// (POST /organisations/{orgID}/users)
+	// (POST /api/auth/basic/organisations/{orgID}/users)
 	CreateUser(ctx context.Context, request CreateUserRequestObject) (CreateUserResponseObject, error)
 
-	// (DELETE /organisations/{orgID}/users/{userID})
+	// (DELETE /api/auth/basic/organisations/{orgID}/users/{userID})
 	DeleteUser(ctx context.Context, request DeleteUserRequestObject) (DeleteUserResponseObject, error)
 
-	// (GET /organisations/{orgID}/users/{userID})
+	// (GET /api/auth/basic/organisations/{orgID}/users/{userID})
 	GetUser(ctx context.Context, request GetUserRequestObject) (GetUserResponseObject, error)
 
-	// (PUT /organisations/{orgID}/users/{userID})
+	// (PUT /api/auth/basic/organisations/{orgID}/users/{userID})
 	UpdateUser(ctx context.Context, request UpdateUserRequestObject) (UpdateUserResponseObject, error)
 
-	// (GET /organisations/{orgID}/users/{userID}/groups)
+	// (GET /api/auth/basic/organisations/{orgID}/users/{userID}/groups)
 	GetUserGroups(ctx context.Context, request GetUserGroupsRequestObject) (GetUserGroupsResponseObject, error)
 
-	// (PUT /organisations/{orgID}/users/{userID}/groups)
+	// (PUT /api/auth/basic/organisations/{orgID}/users/{userID}/groups)
 	UpdateUserGroups(ctx context.Context, request UpdateUserGroupsRequestObject) (UpdateUserGroupsResponseObject, error)
 
-	// (PUT /organisations/{orgID}/users/{userID}/password)
+	// (PUT /api/auth/basic/organisations/{orgID}/users/{userID}/password)
 	ChangePassword(ctx context.Context, request ChangePasswordRequestObject) (ChangePasswordResponseObject, error)
 }
 
@@ -2628,35 +2628,36 @@ func (sh *strictHandler) ChangePassword(w http.ResponseWriter, r *http.Request, 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"//9HUa/9bEAAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

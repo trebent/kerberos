@@ -31,10 +31,10 @@ var (
 	client = &http.Client{Timeout: 4 * time.Second}
 
 	basicAuthClient, _ = authbasicapi.NewClientWithResponses(
-		fmt.Sprintf("http://%s:%d/api/auth/basic", getHost(), getPort()),
+		fmt.Sprintf("http://%s:%d", getHost(), getPort()),
 	)
 	adminClient, _ = authadminapi.NewClientWithResponses(
-		fmt.Sprintf("http://%s:%d/api/auth/admin", getHost(), getPort()),
+		fmt.Sprintf("http://%s:%d", getHost(), getPort()),
 	)
 )
 

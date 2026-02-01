@@ -619,7 +619,7 @@ func NewListOrganisationsRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/organisations")
+	operationPath := fmt.Sprintf("/api/auth/basic/organisations")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -657,7 +657,7 @@ func NewCreateOrganisationRequestWithBody(server string, contentType string, bod
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/organisations")
+	operationPath := fmt.Sprintf("/api/auth/basic/organisations")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -693,7 +693,7 @@ func NewDeleteOrganisationRequest(server string, orgID Orgid) (*http.Request, er
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/organisations/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/auth/basic/organisations/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -727,7 +727,7 @@ func NewGetOrganisationRequest(server string, orgID Orgid) (*http.Request, error
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/organisations/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/auth/basic/organisations/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -772,7 +772,7 @@ func NewUpdateOrganisationRequestWithBody(server string, orgID Orgid, contentTyp
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/organisations/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/auth/basic/organisations/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -808,7 +808,7 @@ func NewListGroupsRequest(server string, orgID Orgid) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/organisations/%s/groups", pathParam0)
+	operationPath := fmt.Sprintf("/api/auth/basic/organisations/%s/groups", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -853,7 +853,7 @@ func NewCreateGroupRequestWithBody(server string, orgID Orgid, contentType strin
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/organisations/%s/groups", pathParam0)
+	operationPath := fmt.Sprintf("/api/auth/basic/organisations/%s/groups", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -896,7 +896,7 @@ func NewDeleteGroupRequest(server string, orgID Orgid, groupID Groupid) (*http.R
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/organisations/%s/groups/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/api/auth/basic/organisations/%s/groups/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -937,7 +937,7 @@ func NewGetGroupRequest(server string, orgID Orgid, groupID Groupid) (*http.Requ
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/organisations/%s/groups/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/api/auth/basic/organisations/%s/groups/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -989,7 +989,7 @@ func NewUpdateGroupRequestWithBody(server string, orgID Orgid, groupID Groupid, 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/organisations/%s/groups/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/api/auth/basic/organisations/%s/groups/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1036,7 +1036,7 @@ func NewLoginRequestWithBody(server string, orgID Orgid, contentType string, bod
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/organisations/%s/login", pathParam0)
+	operationPath := fmt.Sprintf("/api/auth/basic/organisations/%s/login", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1072,7 +1072,7 @@ func NewLogoutRequest(server string, orgID Orgid) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/organisations/%s/logout", pathParam0)
+	operationPath := fmt.Sprintf("/api/auth/basic/organisations/%s/logout", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1106,7 +1106,7 @@ func NewListUsersRequest(server string, orgID Orgid) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/organisations/%s/users", pathParam0)
+	operationPath := fmt.Sprintf("/api/auth/basic/organisations/%s/users", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1151,7 +1151,7 @@ func NewCreateUserRequestWithBody(server string, orgID Orgid, contentType string
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/organisations/%s/users", pathParam0)
+	operationPath := fmt.Sprintf("/api/auth/basic/organisations/%s/users", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1194,7 +1194,7 @@ func NewDeleteUserRequest(server string, orgID Orgid, userID Userid) (*http.Requ
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/organisations/%s/users/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/api/auth/basic/organisations/%s/users/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1235,7 +1235,7 @@ func NewGetUserRequest(server string, orgID Orgid, userID Userid) (*http.Request
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/organisations/%s/users/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/api/auth/basic/organisations/%s/users/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1287,7 +1287,7 @@ func NewUpdateUserRequestWithBody(server string, orgID Orgid, userID Userid, con
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/organisations/%s/users/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/api/auth/basic/organisations/%s/users/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1330,7 +1330,7 @@ func NewGetUserGroupsRequest(server string, orgID Orgid, userID Userid) (*http.R
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/organisations/%s/users/%s/groups", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/api/auth/basic/organisations/%s/users/%s/groups", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1382,7 +1382,7 @@ func NewUpdateUserGroupsRequestWithBody(server string, orgID Orgid, userID Useri
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/organisations/%s/users/%s/groups", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/api/auth/basic/organisations/%s/users/%s/groups", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1436,7 +1436,7 @@ func NewChangePasswordRequestWithBody(server string, orgID Orgid, userID Userid,
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/organisations/%s/users/%s/password", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/api/auth/basic/organisations/%s/users/%s/password", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}

@@ -33,8 +33,6 @@ type (
 const (
 	authBasicSpecification = "auth_basic.yaml"
 
-	basicBasePath = "/api/auth/basic"
-
 	queryGetSession = "SELECT user_id, organisation_id, expires FROM sessions WHERE session_id = @sessionID;"
 )
 
@@ -141,9 +139,14 @@ func (a *basic) registerAPI(mux *http.ServeMux) {
 
 	_ = api.HandlerWithOptions(strictHandler, api.StdHTTPServerOptions{
 		BaseRouter: mux,
-		BaseURL:    basicBasePath,
 		Middlewares: []api.MiddlewareFunc{
 			oas.ValidationMiddleware(spec),
+			func(next http.Handler) http.Handler {
+				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					zerologr.Info(fmt.Sprintf("%s %s", r.Method, r.URL.Path))
+					next.ServeHTTP(w, r)
+				})
+			},
 		},
 	})
 }

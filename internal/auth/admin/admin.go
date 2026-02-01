@@ -28,7 +28,6 @@ type (
 
 const (
 	authAdminSpecification = "auth_admin.yaml"
-	adminBasePath          = "/api/auth/admin"
 )
 
 func Init(opts *Opts) {
@@ -45,6 +44,7 @@ func Init(opts *Opts) {
 	}
 
 	ssi := adminapi.NewSSI(opts.DB, opts.ClientID, opts.ClientSecret)
+
 	strictHandler := api.NewStrictHandlerWithOptions(
 		ssi,
 		[]api.StrictMiddlewareFunc{},
@@ -55,10 +55,15 @@ func Init(opts *Opts) {
 	)
 
 	_ = api.HandlerWithOptions(strictHandler, api.StdHTTPServerOptions{
-		BaseURL:    adminBasePath,
 		BaseRouter: opts.Mux,
 		Middlewares: []api.MiddlewareFunc{
 			oas.ValidationMiddleware(spec),
+			func(next http.Handler) http.Handler {
+				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					zerologr.Info(fmt.Sprintf("%s %s", r.Method, r.URL.Path))
+					next.ServeHTTP(w, r)
+				})
+			},
 		},
 	})
 }
