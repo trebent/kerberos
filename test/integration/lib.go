@@ -23,6 +23,7 @@ type (
 		Headers map[string][]string `json:"headers"`
 		Body    json.RawMessage     `json:"body,omitempty"`
 	}
+	RequestEditorFn func(ctx context.Context, req *http.Request) error
 )
 
 var (
@@ -144,7 +145,7 @@ func containsAll[T comparable](source, reference []T, t *testing.T) {
 	}
 }
 
-func requestEditorSessionID(sessionID string) basic.RequestEditorFn {
+func requestEditorSessionID(sessionID string) RequestEditorFn {
 	return func(ctx context.Context, req *http.Request) error {
 		req.Header.Set("x-krb-session", sessionID)
 		return nil
@@ -200,4 +201,13 @@ func getJaegerAPIPort() int {
 	} else {
 		return decodedJaegerPort
 	}
+}
+
+func extractSession(resp *http.Response, t *testing.T) string {
+	session := resp.Header.Get("x-krb-session")
+	if session == "" {
+		t.Fatalf("missing session header in response")
+	}
+
+	return session
 }

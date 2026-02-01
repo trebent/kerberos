@@ -29,7 +29,7 @@ func TestAuthBasicAPI(t *testing.T) {
 	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		basic.CreateOrganisationRequest{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
-		requestEditorSessionID(adminSession),
+		basic.RequestEditorFn(requestEditorSessionID(adminSession)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(orgResp.StatusCode(), http.StatusCreated, t)
@@ -54,7 +54,7 @@ func TestAuthBasicAPI(t *testing.T) {
 		t.Context(),
 		orgID,
 		basic.CreateUserRequest{Name: userName},
-		requestEditorSessionID(session),
+		basic.RequestEditorFn(requestEditorSessionID(session)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(userResp.StatusCode(), http.StatusCreated, t)
@@ -63,7 +63,7 @@ func TestAuthBasicAPI(t *testing.T) {
 		t.Context(),
 		orgID,
 		basic.CreateGroupJSONRequestBody{Name: groupNameStaff},
-		requestEditorSessionID(session),
+		basic.RequestEditorFn(requestEditorSessionID(session)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(groupResp.StatusCode(), http.StatusCreated, t)
@@ -73,7 +73,7 @@ func TestAuthBasicAPI(t *testing.T) {
 		orgID,
 		userResp.JSON201.Id,
 		basic.UpdateUserGroupsJSONRequestBody{groupNameStaff},
-		requestEditorSessionID(session),
+		basic.RequestEditorFn(requestEditorSessionID(session)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(bindResp.StatusCode(), http.StatusOK, t)
@@ -81,7 +81,7 @@ func TestAuthBasicAPI(t *testing.T) {
 	getOrgResp, err := basicAuthClient.GetOrganisationWithResponse(
 		t.Context(),
 		orgID,
-		requestEditorSessionID(session),
+		basic.RequestEditorFn(requestEditorSessionID(session)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getOrgResp.StatusCode(), http.StatusOK, t)
@@ -91,7 +91,7 @@ func TestAuthBasicAPI(t *testing.T) {
 		t.Context(),
 		orgID,
 		userResp.JSON201.Id,
-		requestEditorSessionID(session),
+		basic.RequestEditorFn(requestEditorSessionID(session)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getUserResp.StatusCode(), http.StatusOK, t)
@@ -101,7 +101,7 @@ func TestAuthBasicAPI(t *testing.T) {
 		t.Context(),
 		orgID,
 		groupResp.JSON201.Id,
-		requestEditorSessionID(session),
+		basic.RequestEditorFn(requestEditorSessionID(session)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getGroupResp.StatusCode(), http.StatusOK, t)
@@ -111,7 +111,7 @@ func TestAuthBasicAPI(t *testing.T) {
 		t.Context(),
 		orgID,
 		userResp.JSON201.Id,
-		requestEditorSessionID(session),
+		basic.RequestEditorFn(requestEditorSessionID(session)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getUserGroupsResp.StatusCode(), http.StatusOK, t)
@@ -130,7 +130,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	createOrg1, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		basic.CreateOrganisationJSONRequestBody{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
-		requestEditorSessionID(adminSession),
+		basic.RequestEditorFn(requestEditorSessionID(adminSession)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createOrg1.StatusCode(), http.StatusCreated, t)
@@ -153,7 +153,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	createOrg2, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		basic.CreateOrganisationJSONRequestBody{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
-		requestEditorSessionID(adminSession),
+		basic.RequestEditorFn(requestEditorSessionID(adminSession)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createOrg2.StatusCode(), http.StatusCreated, t)
@@ -177,7 +177,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	listGroupsResp, err := basicAuthClient.ListGroupsWithResponse(
 		t.Context(),
 		createOrg1.JSON201.Id,
-		requestEditorSessionID(session2),
+		basic.RequestEditorFn(requestEditorSessionID(session2)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(listGroupsResp.StatusCode(), http.StatusForbidden, t)
@@ -185,7 +185,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	listUsersResp, err := basicAuthClient.ListUsersWithResponse(
 		t.Context(),
 		createOrg1.JSON201.Id,
-		requestEditorSessionID(session2),
+		basic.RequestEditorFn(requestEditorSessionID(session2)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(listUsersResp.StatusCode(), http.StatusForbidden, t)
@@ -194,7 +194,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 		t.Context(),
 		createOrg1.JSON201.Id,
 		createOrg1.JSON201.AdminUserId,
-		requestEditorSessionID(session2),
+		basic.RequestEditorFn(requestEditorSessionID(session2)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getUserResp.StatusCode(), http.StatusForbidden, t)
@@ -203,7 +203,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 		t.Context(),
 		createOrg1.JSON201.Id,
 		basic.CreateGroupJSONRequestBody{Name: groupNameStaff},
-		requestEditorSessionID(session1),
+		basic.RequestEditorFn(requestEditorSessionID(session1)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createGroup1Resp.StatusCode(), http.StatusCreated, t)
@@ -212,7 +212,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 		t.Context(),
 		createOrg1.JSON201.Id,
 		createGroup1Resp.JSON201.Id,
-		requestEditorSessionID(session2),
+		basic.RequestEditorFn(requestEditorSessionID(session2)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getGroupResp.StatusCode(), http.StatusForbidden, t)
@@ -229,8 +229,8 @@ func TestAuthBasicAPIOrganisationCreateDenied(t *testing.T) {
 
 	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		basic.CreateOrganisationRequest{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
-		requestEditorSessionID(superSession),
+		basic.CreateOrganisationJSONRequestBody{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
+		basic.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(orgResp.StatusCode(), http.StatusCreated, t)
@@ -253,8 +253,8 @@ func TestAuthBasicAPIOrganisationCreateDenied(t *testing.T) {
 
 	failedOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		basic.CreateOrganisationRequest{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
-		requestEditorSessionID(session),
+		basic.CreateOrganisationJSONRequestBody{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
+		basic.RequestEditorFn(requestEditorSessionID(session)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(failedOrgResp.StatusCode(), http.StatusForbidden, t)
@@ -271,8 +271,8 @@ func TestAuthBasicAPISuperuser(t *testing.T) {
 
 	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		basic.CreateOrganisationRequest{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
-		requestEditorSessionID(superSession),
+		basic.CreateOrganisationJSONRequestBody{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
+		basic.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(orgResp.StatusCode(), http.StatusCreated, t)
@@ -281,10 +281,10 @@ func TestAuthBasicAPISuperuser(t *testing.T) {
 	userResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		basic.CreateUserRequest{
+		basic.CreateUserJSONRequestBody{
 			Name: "testing",
 		},
-		requestEditorSessionID(superSession),
+		basic.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(userResp.StatusCode(), http.StatusCreated, t)
@@ -293,10 +293,10 @@ func TestAuthBasicAPISuperuser(t *testing.T) {
 	groupResp, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
 		orgID,
-		basic.CreateGroupRequest{
+		basic.CreateGroupJSONRequestBody{
 			Name: "testing",
 		},
-		requestEditorSessionID(superSession),
+		basic.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(groupResp.StatusCode(), http.StatusCreated, t)
@@ -306,7 +306,7 @@ func TestAuthBasicAPISuperuser(t *testing.T) {
 		orgID,
 		userID,
 		basic.UserGroups{"testing"},
-		requestEditorSessionID(superSession),
+		basic.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(groupBindResp.StatusCode(), http.StatusOK, t)

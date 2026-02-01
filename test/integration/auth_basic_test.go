@@ -22,8 +22,8 @@ func TestAuthBasicCall(t *testing.T) {
 
 	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		basic.CreateOrganisationRequest{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
-		requestEditorSessionID(superSession),
+		basic.CreateOrganisationJSONRequestBody{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
+		basic.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(orgResp.StatusCode(), http.StatusCreated, t)
@@ -33,8 +33,8 @@ func TestAuthBasicCall(t *testing.T) {
 	userResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		basic.CreateUserRequest{Name: "username", Password: "password"},
-		requestEditorSessionID(superSession),
+		basic.CreateUserJSONRequestBody{Name: "username", Password: "password"},
+		basic.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(userResp.StatusCode(), http.StatusCreated, t)
@@ -48,7 +48,7 @@ func TestAuthBasicCall(t *testing.T) {
 			Username: "username",
 			Password: "password",
 		},
-		requestEditorSessionID(superSession),
+		basic.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
