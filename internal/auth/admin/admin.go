@@ -45,18 +45,20 @@ func Init(opts *Opts) {
 	}
 
 	ssi := adminapi.NewSSI(opts.DB, opts.ClientID, opts.ClientSecret)
-	_ = api.HandlerFromMuxWithBaseURL(
-		api.NewStrictHandlerWithOptions(
-			ssi,
-			[]api.StrictMiddlewareFunc{
-				oas.ValidationMiddleware(spec),
-			},
-			api.StrictHTTPServerOptions{
-				RequestErrorHandlerFunc:  apierror.RequestErrorHandler,
-				ResponseErrorHandlerFunc: apierror.ResponseErrorHandler,
-			},
-		),
-		opts.Mux,
-		adminBasePath,
+	strictHandler := api.NewStrictHandlerWithOptions(
+		ssi,
+		[]api.StrictMiddlewareFunc{},
+		api.StrictHTTPServerOptions{
+			RequestErrorHandlerFunc:  apierror.RequestErrorHandler,
+			ResponseErrorHandlerFunc: apierror.ResponseErrorHandler,
+		},
 	)
+
+	_ = api.HandlerWithOptions(strictHandler, api.StdHTTPServerOptions{
+		BaseURL:    adminBasePath,
+		BaseRouter: opts.Mux,
+		Middlewares: []api.MiddlewareFunc{
+			oas.ValidationMiddleware(spec),
+		},
+	})
 }

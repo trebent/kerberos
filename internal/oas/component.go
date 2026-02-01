@@ -101,13 +101,7 @@ func (v *validator) register(m *mapping) error {
 		}
 	}
 
-	opts := &nethttpmiddleware.Options{
-		SilenceServersWarning: true,
-		DoNotValidateServers:  true,
-		ErrorHandlerWithOpts:  oasValidationErrorHandler,
-	}
-
-	v.validators[m.Backend] = nethttpmiddleware.OapiRequestValidatorWithOptions(spec, opts)
+	v.validators[m.Backend] = ValidationMiddleware(spec)
 
 	return nil
 }

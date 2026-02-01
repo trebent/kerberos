@@ -1,9 +1,7 @@
 package basic
 
 import (
-	//nolint:revive // hurr durr im a linturr
 	"database/sql"
-	_ "embed"
 	"fmt"
 	"net/http"
 	"os"
@@ -130,19 +128,22 @@ func (a *basic) registerAPI(mux *http.ServeMux) {
 	}
 
 	ssi := basicapi.NewSSI(a.db)
-	_ = api.HandlerFromMuxWithBaseURL(
-		api.NewStrictHandlerWithOptions(
-			ssi,
-			[]api.StrictMiddlewareFunc{
-				basicapi.AuthMiddleware(ssi),
-				oas.ValidationMiddleware(spec),
-			},
-			api.StrictHTTPServerOptions{
-				RequestErrorHandlerFunc:  apierror.RequestErrorHandler,
-				ResponseErrorHandlerFunc: apierror.ResponseErrorHandler,
-			},
-		),
-		mux,
-		basicBasePath,
+	strictHandler := api.NewStrictHandlerWithOptions(
+		ssi,
+		[]api.StrictMiddlewareFunc{
+			basicapi.AuthMiddleware(ssi),
+		},
+		api.StrictHTTPServerOptions{
+			RequestErrorHandlerFunc:  apierror.RequestErrorHandler,
+			ResponseErrorHandlerFunc: apierror.ResponseErrorHandler,
+		},
 	)
+
+	_ = api.HandlerWithOptions(strictHandler, api.StdHTTPServerOptions{
+		BaseRouter: mux,
+		BaseURL:    basicBasePath,
+		Middlewares: []api.MiddlewareFunc{
+			oas.ValidationMiddleware(spec),
+		},
+	})
 }
