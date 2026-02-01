@@ -32,8 +32,10 @@ components:
       properties:
         name:
           type: string
+          minLength: 10
         password:
           type: string
+          minLength: 10
       required:
         - name
         - password
@@ -53,6 +55,7 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
       required:
         - name
     Group:
@@ -63,6 +66,7 @@ components:
           format: int64
         name:
           type: string
+          minLength: 1
       required:
         - id
         - name
@@ -75,6 +79,7 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
       required:
         - name
     Organisation:
@@ -159,6 +164,12 @@ paths:
                       - adminUsername
                       - adminPassword
           description: Created a new organisation.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
           content:
             application/json:
