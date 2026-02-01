@@ -87,6 +87,7 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	wrapper, _ := wrapped.(*response.Wrapper)
 	wrapper.SetRequestContext(ctx)
 
+	// Strip the /gw/backend/{backend-name} prefix from the request URL path.
 	req.URL.Path = stripKrbPrefix(req.URL.Path, backend.Name())
 
 	// Serve the request with the updated context.
