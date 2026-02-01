@@ -21,5 +21,5 @@ func TestAuthAdminSuperuser(t *testing.T) {
 		authadminapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
-	verifyStatusCode(superLogoutResp.StatusCode(), http.StatusNoContent, t)
+	verifyStatus(superLogoutResp.HTTPResponse, http.StatusNoContent, t)
 }

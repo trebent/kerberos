@@ -21,9 +21,11 @@ services:
       - ROUTE_JSON_FILE=/config/router-integration.json
       - AUTH_JSON_FILE=/config/auth-integration.json
       - OAS_JSON_FILE=/config/oas-integration.json
+      - OAS_DIRECTORY=/krb-oas
     volumes:
       - ../config:/config:ro
       - ../oas:/oas:ro
+      - ../../openapi:/krb-oas:ro
   
   echo:
     image: "ghcr.io/trebent/kerberos/echo:${VERSION}"

@@ -1,30 +1,40 @@
 package basic
 
 import (
+	//nolint:revive // hurr durr im a linturr
 	"database/sql"
+	_ "embed"
+	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
+	"github.com/getkin/kin-openapi/openapi3"
 	api "github.com/trebent/kerberos/internal/api/auth/basic"
 	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/auth/method"
 	basicapi "github.com/trebent/kerberos/internal/auth/method/basic/api"
 	"github.com/trebent/kerberos/internal/db"
+	"github.com/trebent/kerberos/internal/oas"
 	"github.com/trebent/zerologr"
 )
 
 type (
 	basic struct {
-		db db.SQLClient
+		db     db.SQLClient
+		oasDir string
 	}
 	Opts struct {
-		Mux *http.ServeMux
-		DB  db.SQLClient
+		Mux    *http.ServeMux
+		DB     db.SQLClient
+		OASDir string
 	}
 )
 
 const (
+	authBasicSpecification = "auth_basic.yaml"
+
 	basicBasePath = "/api/auth/basic"
 
 	queryGetSession = "SELECT user_id, organisation_id, expires FROM sessions WHERE session_id = @sessionID;"
@@ -35,7 +45,8 @@ var _ method.Method = (*basic)(nil)
 // New will return an authentication method and register API endpoints with the input serve mux.
 func New(opts *Opts) method.Method {
 	b := &basic{
-		db: opts.DB,
+		db:     opts.DB,
+		oasDir: opts.OASDir,
 	}
 
 	b.registerAPI(opts.Mux)
@@ -108,11 +119,24 @@ func (a *basic) Authorized(req *http.Request) error {
 }
 
 func (a *basic) registerAPI(mux *http.ServeMux) {
+	data, err := os.ReadFile(fmt.Sprintf("%s/%s", a.oasDir, authBasicSpecification))
+	if err != nil {
+		panic(fmt.Errorf("failed to read basic authentication OAS: %w", err))
+	}
+
+	spec, err := openapi3.NewLoader().LoadFromData(data)
+	if err != nil {
+		panic(fmt.Errorf("failed to load basic authentication OAS: %w", err))
+	}
+
 	ssi := basicapi.NewSSI(a.db)
 	_ = api.HandlerFromMuxWithBaseURL(
 		api.NewStrictHandlerWithOptions(
 			ssi,
-			[]api.StrictMiddlewareFunc{basicapi.AuthMiddleware(ssi)},
+			[]api.StrictMiddlewareFunc{
+				basicapi.AuthMiddleware(ssi),
+				oas.ValidationMiddleware(spec),
+			},
 			api.StrictHTTPServerOptions{
 				RequestErrorHandlerFunc:  apierror.RequestErrorHandler,
 				ResponseErrorHandlerFunc: apierror.ResponseErrorHandler,

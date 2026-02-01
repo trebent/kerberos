@@ -57,7 +57,7 @@ func TestAuthBasicAPI(t *testing.T) {
 		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
 	)
 	checkErr(err, t)
-	verifyStatusCode(userResp.StatusCode(), http.StatusCreated, t)
+	verifyStatus(userResp.HTTPResponse, http.StatusCreated, t)
 
 	groupResp, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
@@ -299,7 +299,7 @@ func TestAuthBasicAPISuperuser(t *testing.T) {
 		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
-	verifyStatusCode(groupResp.StatusCode(), http.StatusCreated, t)
+	verifyStatus(groupResp.HTTPResponse, http.StatusCreated, t)
 
 	groupBindResp, err := basicAuthClient.UpdateUserGroupsWithResponse(
 		t.Context(),
@@ -309,5 +309,5 @@ func TestAuthBasicAPISuperuser(t *testing.T) {
 		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
-	verifyStatusCode(groupBindResp.StatusCode(), http.StatusOK, t)
+	verifyStatus(groupBindResp.HTTPResponse, http.StatusOK, t)
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"slices"
@@ -45,6 +46,7 @@ const (
 )
 
 func get(url string, t *testing.T, headers ...http.Header) *http.Response {
+	t.Helper()
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
@@ -54,6 +56,7 @@ func get(url string, t *testing.T, headers ...http.Header) *http.Response {
 }
 
 func post(url string, body []byte, t *testing.T, headers ...http.Header) *http.Response {
+	t.Helper()
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
@@ -63,6 +66,7 @@ func post(url string, body []byte, t *testing.T, headers ...http.Header) *http.R
 }
 
 func put(url string, body []byte, t *testing.T, headers ...http.Header) *http.Response {
+	t.Helper()
 	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
@@ -72,6 +76,7 @@ func put(url string, body []byte, t *testing.T, headers ...http.Header) *http.Re
 }
 
 func delete(url string, t *testing.T, headers ...http.Header) *http.Response {
+	t.Helper()
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
@@ -81,6 +86,7 @@ func delete(url string, t *testing.T, headers ...http.Header) *http.Response {
 }
 
 func patch(url string, body []byte, t *testing.T, headers ...http.Header) *http.Response {
+	t.Helper()
 	req, err := http.NewRequest(http.MethodPatch, url, bytes.NewBuffer(body))
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
@@ -90,6 +96,7 @@ func patch(url string, body []byte, t *testing.T, headers ...http.Header) *http.
 }
 
 func do(req *http.Request, t *testing.T, headers ...http.Header) *http.Response {
+	t.Helper()
 	for _, headers := range headers {
 		for key, values := range headers {
 			req.Header[key] = values
@@ -105,18 +112,37 @@ func do(req *http.Request, t *testing.T, headers ...http.Header) *http.Response 
 }
 
 func checkErr(err error, t *testing.T) {
+	t.Helper()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 }
 
+func verifyStatus(resp *http.Response, expected int, t *testing.T) {
+	t.Helper()
+
+	in := resp.StatusCode
+	if in != expected {
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Errorf("Failed to read body: %v", err)
+		} else {
+			t.Errorf("Error body:\n%s", string(data))
+		}
+
+		t.Fatalf("Expected status code %d, got %d", expected, in)
+	}
+}
+
 func verifyStatusCode(in int, expected int, t *testing.T) {
+	t.Helper()
 	if in != expected {
 		t.Fatalf("Expected status code %d, got %d", expected, in)
 	}
 }
 
 func verifyGWResponse(resp *http.Response, expectedCode int, t *testing.T) *EchoResponse {
+	t.Helper()
 	defer resp.Body.Close()
 
 	if resp.StatusCode != expectedCode {
@@ -132,12 +158,14 @@ func verifyGWResponse(resp *http.Response, expectedCode int, t *testing.T) *Echo
 }
 
 func matches[T comparable](one, two T, t *testing.T) {
+	t.Helper()
 	if one != two {
 		t.Fatalf("%v is not equal to %v", one, two)
 	}
 }
 
 func containsAll[T comparable](source, reference []T, t *testing.T) {
+	t.Helper()
 	for _, item := range source {
 		if !slices.Contains(reference, item) {
 			t.Fatalf("Reference slice does not contain %v", item)
@@ -204,6 +232,7 @@ func getJaegerAPIPort() int {
 }
 
 func extractSession(resp *http.Response, t *testing.T) string {
+	t.Helper()
 	session := resp.Header.Get("x-krb-session")
 	if session == "" {
 		t.Fatalf("missing session header in response")

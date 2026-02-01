@@ -23,6 +23,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 FROM gcr.io/distroless/static-debian12:nonroot AS runtime
 
 COPY --from=build /kerberos /kerberos
+COPY --from=build openapi/ /oas/
 
 ARG VERSION="unset"
 

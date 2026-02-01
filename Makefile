@@ -81,6 +81,7 @@ run:
 		AUTH_JSON_FILE=./test/config/auth-basic.json \
 		OAS_JSON_FILE=./test/config/oas-echo.json \
 		DB_DIRECTORY=$(PWD)/build \
+		OAS_DIRECTORY=$(PWD)/openapi \
 		VERSION=$(VERSION) \
 		go run .
 
@@ -94,6 +95,7 @@ run-unprotected:
 		OBS_JSON_FILE=./test/config/obs-disabled.json \
 		OAS_JSON_FILE=./test/config/oas-echo.json \
 		DB_DIRECTORY=$(PWD)/build \
+		OAS_DIRECTORY=$(PWD)/openapi \
 		VERSION=$(VERSION) \
 		go run .
 
@@ -115,8 +117,10 @@ docker-run: image docker-stop docker-rm
 		-e OBS_JSON_FILE=/config/obs-disabled.json \
 		-e AUTH_JSON_FILE=/config/auth-basic.json \
 		-e OAS_JSON_FILE=/config/oas-docker.json \
+		-e OAS_DIRECTORY=$(PWD)/krb-oas \
 		-v $(PWD)/test/config:/config:ro \
 		-v $(PWD)/test/oas:/oas:ro \
+		-v $(PWD)/openapi:/krb-oas:ro \
 		--name kerberos \
 		ghcr.io/trebent/kerberos:$(VERSION)
 
@@ -133,8 +137,10 @@ docker-run-unprotected: image docker-stop docker-rm
 		-e ROUTE_JSON_FILE=/config/router-echo.json \
 		-e OBS_JSON_FILE=/config/obs-disabled.json \
 		-e OAS_JSON_FILE=/config/oas-docker.json \
+		-e OAS_DIRECTORY=$(PWD)/krb-oas \
 		-v $(PWD)/test/config:/config:ro \
 		-v $(PWD)/test/oas:/oas:ro \
+		-v $(PWD)/openapi:/krb-oas:ro \
 		--name kerberos \
 		ghcr.io/trebent/kerberos:$(VERSION)
 

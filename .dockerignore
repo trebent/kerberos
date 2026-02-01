@@ -1,15 +1,27 @@
+# Git
 .git
 .gitignore
 .github
+
+# Environment
 .editorconfig
+
+# Tools
 .golangci-lint.yaml
-.nvmrc
-redocly.aml
 coverage*
+*.sarif
+
+# Docs
 docs/
 README*
+LICENSE
+pages/
+
+# Test
 test/
 build/
-Makefile
-LICENSE
 *.db
+
+# Other
+script/
+Makefile

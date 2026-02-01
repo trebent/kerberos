@@ -104,7 +104,7 @@ func (v *validator) register(m *mapping) error {
 	opts := &nethttpmiddleware.Options{
 		SilenceServersWarning: true,
 		DoNotValidateServers:  true,
-		ErrorHandlerWithOpts:  v.oasValidationErrorHandler,
+		ErrorHandlerWithOpts:  oasValidationErrorHandler,
 	}
 
 	v.validators[m.Backend] = nethttpmiddleware.OapiRequestValidatorWithOptions(spec, opts)
@@ -112,18 +112,20 @@ func (v *validator) register(m *mapping) error {
 	return nil
 }
 
-func (v *validator) oasValidationErrorHandler(
+func oasValidationErrorHandler(
 	ctx context.Context,
 	err error,
 	w http.ResponseWriter,
 	req *http.Request,
 	opts nethttpmiddleware.ErrorHandlerOpts,
 ) {
-	logger, _ := logr.FromContext(ctx)
-	logger = logger.WithName("oas-validator")
-	logger.Error(err, "OAS validation failed",
-		"backend", req.Context().Value(composertypes.BackendContextKey),
-		"path", req.URL.Path,
-	)
+	logger, logrErr := logr.FromContext(ctx)
+	if logrErr != nil {
+		logger = zerologr.WithName("oas-validator")
+	} else {
+		logger = logger.WithName("oas-validator")
+	}
+
+	logger.Error(err, "OAS validation failed", "path", req.URL.Path)
 	response.JSONError(w, err, opts.StatusCode)
 }

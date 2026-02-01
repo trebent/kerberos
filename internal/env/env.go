@@ -114,6 +114,12 @@ var (
 		Value:    "",
 		Validate: validateDirPath,
 	})
+	OASDirectory = envparser.Register(&envparser.Opts[string]{
+		Name:     "OAS_DIRECTORY",
+		Desc:     "Path to the directory where OAS specifications are stored.",
+		Value:    "",
+		Validate: validateDirPath,
+	})
 )
 
 func Parse() error {

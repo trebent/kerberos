@@ -30,6 +30,9 @@ type (
 		Mux *http.ServeMux
 
 		DB db.SQLClient
+
+		// Directory where OAS for the auth APIs can be found.
+		OASDir string
 	}
 	authorizer struct {
 		next composertypes.FlowComponent
@@ -66,8 +69,9 @@ func New(opts *Opts) composertypes.FlowComponent {
 		zerologr.Info("Basic authentication enabled")
 		// If basic auth, create the method.
 		authorizer.basic = basic.New(&basic.Opts{
-			Mux: opts.Mux,
-			DB:  opts.DB,
+			Mux:    opts.Mux,
+			DB:     opts.DB,
+			OASDir: opts.OASDir,
 		})
 	}
 
@@ -76,6 +80,7 @@ func New(opts *Opts) composertypes.FlowComponent {
 		admin.Init(&admin.Opts{
 			Mux:          opts.Mux,
 			DB:           opts.DB,
+			OASDir:       opts.OASDir,
 			ClientID:     cfg.Administration.SuperUser.ClientID,
 			ClientSecret: cfg.Administration.SuperUser.ClientSecret,
 		})
