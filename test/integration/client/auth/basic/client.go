@@ -1612,6 +1612,7 @@ type CreateOrganisationResponse struct {
 		Id            int64  `json:"id"`
 		Name          string `json:"name"`
 	}
+	JSON400 *APIErrorResponse
 	JSON401 *APIErrorResponse
 	JSON500 *APIErrorResponse
 }
@@ -2392,6 +2393,13 @@ func ParseCreateOrganisationResponse(rsp *http.Response) (*CreateOrganisationRes
 			return nil, err
 		}
 		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest APIErrorResponse

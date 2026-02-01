@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"slices"
@@ -115,22 +114,6 @@ func checkErr(err error, t *testing.T) {
 	t.Helper()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
-	}
-}
-
-func verifyStatus(resp *http.Response, expected int, t *testing.T) {
-	t.Helper()
-
-	in := resp.StatusCode
-	if in != expected {
-		data, err := io.ReadAll(resp.Body)
-		if err != nil {
-			t.Errorf("Failed to read body: %v", err)
-		} else {
-			t.Errorf("Error body:\n%s", string(data))
-		}
-
-		t.Fatalf("Expected status code %d, got %d", expected, in)
 	}
 }
 

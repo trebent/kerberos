@@ -23,7 +23,7 @@ func TestAuthAdminSuperuser(t *testing.T) {
 		authadminapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
-	verifyStatus(superLogoutResp.HTTPResponse, http.StatusNoContent, t)
+	verifyStatusCode(superLogoutResp.StatusCode(), http.StatusNoContent, t)
 }
 
 func TestAuthAdminLoginFailure(t *testing.T) {

@@ -57,7 +57,7 @@ func TestAuthBasicAPI(t *testing.T) {
 		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
 	)
 	checkErr(err, t)
-	verifyStatus(userResp.HTTPResponse, http.StatusCreated, t)
+	verifyStatusCode(userResp.StatusCode(), http.StatusCreated, t)
 
 	groupResp, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
@@ -299,7 +299,7 @@ func TestAuthBasicAPISuperuser(t *testing.T) {
 		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
-	verifyStatus(groupResp.HTTPResponse, http.StatusCreated, t)
+	verifyStatusCode(groupResp.StatusCode(), http.StatusCreated, t)
 
 	groupBindResp, err := basicAuthClient.UpdateUserGroupsWithResponse(
 		t.Context(),
@@ -309,5 +309,32 @@ func TestAuthBasicAPISuperuser(t *testing.T) {
 		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
-	verifyStatus(groupBindResp.HTTPResponse, http.StatusOK, t)
+	verifyStatusCode(groupBindResp.StatusCode(), http.StatusOK, t)
+}
+
+func TestAuthBasicAPIBadRequest(t *testing.T) {
+	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
+		t.Context(),
+		authadminapi.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "client-secret"},
+	)
+	checkErr(err, t)
+	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
+	superSession := extractSession(superLoginResp.HTTPResponse, t)
+
+	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
+		t.Context(),
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: ""},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(orgResp.StatusCode(), http.StatusBadRequest, t)
+
+	if orgResp.JSON400 != nil {
+		t.Logf("Error response: %+v", orgResp.JSON400)
+		if len(orgResp.JSON400.Errors) == 0 {
+			t.Fatalf("Expected errors in response body, but got empty errors array")
+		}
+	} else {
+		t.Fatalf("Expected JSON401 response but got nil")
+	}
 }
