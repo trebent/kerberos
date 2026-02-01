@@ -13,7 +13,7 @@ import (
 const (
 	orgName        = "Org"
 	groupNameStaff = "Staff"
-	userName       = "Smith"
+	userName       = "Smith12345"
 )
 
 // Validate org., group, user, binding creation.
@@ -53,7 +53,7 @@ func TestAuthBasicAPI(t *testing.T) {
 	userResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.CreateUserRequest{Name: userName},
+		authbasicapi.CreateUserRequest{Name: userName, Password: "password123"},
 		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
 	)
 	checkErr(err, t)
@@ -282,7 +282,8 @@ func TestAuthBasicAPISuperuser(t *testing.T) {
 		t.Context(),
 		orgID,
 		authbasicapi.CreateUserJSONRequestBody{
-			Name: "testing",
+			Name:     userName,
+			Password: "password12345",
 		},
 		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)

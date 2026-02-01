@@ -33,7 +33,7 @@ func TestAuthBasicCall(t *testing.T) {
 	userResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.CreateUserJSONRequestBody{Name: "username", Password: "password"},
+		authbasicapi.CreateUserJSONRequestBody{Name: "username123", Password: "password12345"},
 		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
@@ -45,8 +45,8 @@ func TestAuthBasicCall(t *testing.T) {
 		t.Context(),
 		orgID,
 		authbasicapi.LoginJSONRequestBody{
-			Username: "username",
-			Password: "password",
+			Username: "username123",
+			Password: "password12345",
 		},
 		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
