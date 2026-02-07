@@ -29,7 +29,6 @@ func TestAuthBasicCall(t *testing.T) {
 	)
 
 	echoResponse := verifyGWResponse(response, http.StatusOK, t)
-	t.Log(echoResponse)
 	requestHeaders := http.Header(echoResponse.Headers)
 	if requestHeaders.Get("x-krb-org") != strconv.Itoa(int(alwaysOrgID)) {
 		t.Fatalf("OrgID %s did not match expected %d", requestHeaders.Get("x-krb-org"), alwaysOrgID)

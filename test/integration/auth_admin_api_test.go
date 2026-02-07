@@ -36,7 +36,6 @@ func TestAuthAdminLoginFailure(t *testing.T) {
 
 	// The generated client already parsed the response, so check the JSON401 response directly
 	if superLoginResp.JSON401 != nil {
-		t.Logf("Error response: %+v", superLoginResp.JSON401)
 		if len(superLoginResp.JSON401.Errors) == 0 {
 			t.Fatalf("Expected errors in response body, but got empty errors array")
 		}

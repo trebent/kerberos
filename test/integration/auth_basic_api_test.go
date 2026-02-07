@@ -355,12 +355,24 @@ func TestAuthBasicAPIUserConflict(t *testing.T) {
 		t.Fatal("Expected 1 conflict error message")
 	}
 
+	createUser2Resp, err := basicAuthClient.CreateUserWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.CreateUserRequest{
+			Name:     username(),
+			Password: alwaysUserPassword,
+		},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createUser2Resp.StatusCode(), http.StatusCreated, t)
+
 	updateUserResp, err := basicAuthClient.UpdateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.Userid(alwaysUserID),
+		authbasicapi.Userid(createUser2Resp.JSON201.Id),
 		authbasicapi.UpdateUserJSONRequestBody{
-			Name: alwaysGroupDev,
+			Name: alwaysUser,
 		},
 		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
 	)
