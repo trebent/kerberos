@@ -26,7 +26,7 @@ formatters:
 
   # All settings can be found here https://golangci-lint.run/docs/formatters/configuration/
   settings:
-    golines: 
+    golines:
       max-len: 100
 
 linters:
@@ -369,17 +369,16 @@ linters:
           - revive
       - text: 'package comment should be of the form ".+"'
         source: "// ?(nolint|TODO)"
-        linters: 
+        linters:
           - revive
       - text: 'comment on exported \S+ \S+ should be of the form ".+"'
-        source: "// ?(nolint|TODO)"
         linters:
           - revive
           - staticcheck
-      - text: 'avoid meaningless package names'
-        linters: 
+      - text: "avoid meaningless package names"
+        linters:
           - revive
-      - text: 'shadow: declaration'
+      - text: "shadow: declaration"
         linters:
           - govet
       - path: '_test\.go'

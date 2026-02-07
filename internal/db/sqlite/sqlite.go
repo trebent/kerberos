@@ -101,7 +101,7 @@ func (t *txImpl) Rollback() error {
 
 func wrap(err error) error {
 	if err == nil {
-		return err
+		return nil
 	}
 
 	code := errorCode(err)

@@ -60,12 +60,12 @@ vulncheck:
 vulncheck-sarif:
 	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
-	@go tool govulncheck -format sarif ./... > build/govulncheck-report.sarif
+	@go tool -modfile=./tools/go.mod govulncheck -format sarif ./... > build/govulncheck-report.sarif
 
 staticcheck: lint unittest vulncheck
 	$(call cecho,Static analysis complete.,$(BOLD_GREEN))
 
-build:
+go-build:
 	$(call cecho,Building Kerberos binary...,$(BOLD_YELLOW))
 	@mkdir -p build
 	CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/kerberos .

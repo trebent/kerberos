@@ -27,7 +27,5 @@ type (
 	}
 )
 
-var (
-	// Failed unique constraint, conflict.
-	ErrUnique = errors.New("unique constraint failed")
-)
+// Failed unique constraint, conflict.
+var ErrUnique = errors.New("unique constraint failed")
