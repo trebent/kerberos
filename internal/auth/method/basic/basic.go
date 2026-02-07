@@ -2,29 +2,36 @@ package basic
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
-	"github.com/trebent/kerberos/internal/apierror"
+	"github.com/getkin/kin-openapi/openapi3"
+	api "github.com/trebent/kerberos/internal/api/auth/basic"
+	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/auth/method"
-	"github.com/trebent/kerberos/internal/auth/method/basic/api"
+	basicapi "github.com/trebent/kerberos/internal/auth/method/basic/api"
 	"github.com/trebent/kerberos/internal/db"
+	"github.com/trebent/kerberos/internal/oas"
 	"github.com/trebent/zerologr"
 )
 
 type (
 	basic struct {
-		db db.SQLClient
+		db     db.SQLClient
+		oasDir string
 	}
 	Opts struct {
-		Mux *http.ServeMux
-		DB  db.SQLClient
+		Mux    *http.ServeMux
+		DB     db.SQLClient
+		OASDir string
 	}
 )
 
 const (
-	basicBasePath = "/api/auth/basic"
+	authBasicSpecification = "auth_basic.yaml"
 
 	queryGetSession = "SELECT user_id, organisation_id, expires FROM sessions WHERE session_id = @sessionID;"
 )
@@ -34,7 +41,8 @@ var _ method.Method = (*basic)(nil)
 // New will return an authentication method and register API endpoints with the input serve mux.
 func New(opts *Opts) method.Method {
 	b := &basic{
-		db: opts.DB,
+		db:     opts.DB,
+		oasDir: opts.OASDir,
 	}
 
 	b.registerAPI(opts.Mux)
@@ -107,17 +115,38 @@ func (a *basic) Authorized(req *http.Request) error {
 }
 
 func (a *basic) registerAPI(mux *http.ServeMux) {
-	ssi := api.NewSSI(a.db)
-	_ = api.HandlerFromMuxWithBaseURL(
-		api.NewStrictHandlerWithOptions(
-			ssi,
-			[]api.StrictMiddlewareFunc{api.AuthMiddleware(ssi)},
-			api.StrictHTTPServerOptions{
-				RequestErrorHandlerFunc:  apierror.RequestErrorHandler,
-				ResponseErrorHandlerFunc: apierror.ResponseErrorHandler,
-			},
-		),
-		mux,
-		basicBasePath,
+	data, err := os.ReadFile(fmt.Sprintf("%s/%s", a.oasDir, authBasicSpecification))
+	if err != nil {
+		panic(fmt.Errorf("failed to read basic authentication OAS: %w", err))
+	}
+
+	spec, err := openapi3.NewLoader().LoadFromData(data)
+	if err != nil {
+		panic(fmt.Errorf("failed to load basic authentication OAS: %w", err))
+	}
+
+	ssi := basicapi.NewSSI(a.db)
+	strictHandler := api.NewStrictHandlerWithOptions(
+		ssi,
+		[]api.StrictMiddlewareFunc{
+			basicapi.AuthMiddleware(ssi),
+		},
+		api.StrictHTTPServerOptions{
+			RequestErrorHandlerFunc:  apierror.RequestErrorHandler,
+			ResponseErrorHandlerFunc: apierror.ResponseErrorHandler,
+		},
 	)
+
+	_ = api.HandlerWithOptions(strictHandler, api.StdHTTPServerOptions{
+		BaseRouter: mux,
+		Middlewares: []api.MiddlewareFunc{
+			oas.ValidationMiddleware(spec),
+			func(next http.Handler) http.Handler {
+				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					zerologr.Info(fmt.Sprintf("%s %s", r.Method, r.URL.Path))
+					next.ServeHTTP(w, r)
+				})
+			},
+		},
+	})
 }

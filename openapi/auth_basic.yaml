@@ -32,8 +32,10 @@ components:
       properties:
         name:
           type: string
+          minLength: 5
         password:
           type: string
+          minLength: 10
       required:
         - name
         - password
@@ -53,6 +55,7 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
       required:
         - name
     Group:
@@ -63,6 +66,7 @@ components:
           format: int64
         name:
           type: string
+          minLength: 1
       required:
         - id
         - name
@@ -75,6 +79,7 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
       required:
         - name
     Organisation:
@@ -130,10 +135,11 @@ security:
 
 paths:
   # Creating a new organisation will automatically create an admin user.
-  /organisations:
+  /api/auth/basic/organisations:
     post:
       operationId: CreateOrganisation
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -159,12 +165,24 @@ paths:
                       - adminUsername
                       - adminPassword
           description: Created a new organisation.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Failed to create the organisation.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Organisation already exists.
         "500":
           content:
             application/json:
@@ -195,12 +213,13 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
 
-  /organisations/{orgID}:
+  /api/auth/basic/organisations/{orgID}:
     parameters:
       - "$ref": "#/components/parameters/orgid"
     put:
       operationId: UpdateOrganisation
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -212,6 +231,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/Organisation"
           description: Updated an organisation.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
           content:
             application/json:
@@ -224,6 +249,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Failed to update the organisation.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Conflict.
         "404":
           description: Organisation does not exist.
         "500":
@@ -287,13 +318,14 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
 
-  /organisations/{orgID}/login:
+  /api/auth/basic/organisations/{orgID}/login:
     parameters:
       - $ref: "#/components/parameters/orgid"
     post:
       operationId: Login
       security: []
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -301,8 +333,10 @@ paths:
               properties:
                 username:
                   type: string
+                  minLength: 5
                 password:
                   type: string
+                  minLength: 10
               required:
                 - username
                 - password
@@ -312,6 +346,12 @@ paths:
             x-krb-session:
               $ref: "#/components/headers/sessionid"
           description: Logged a user in.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
           content:
             application/json:
@@ -325,7 +365,7 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
 
-  /organisations/{orgID}/logout:
+  /api/auth/basic/organisations/{orgID}/logout:
     parameters:
       - $ref: "#/components/parameters/orgid"
     post:
@@ -349,17 +389,17 @@ paths:
   # When invoking the /user path, the requests are automatically executed on the
   # organisation the executing user belongs to. This is ALWAYS the case, except when creating the
   # first user, which is done behind the scenes when creating a new organisation.
-  /organisations/{orgID}/users:
+  /api/auth/basic/organisations/{orgID}/users:
     parameters:
       - $ref: "#/components/parameters/orgid"
     post:
       operationId: CreateUser
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/CreateUserRequest"
-        required: true
       responses:
         "201":
           content:
@@ -367,6 +407,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/User"
           description: Created a new user.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
           content:
             application/json:
@@ -379,6 +425,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Failed to create the user.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: User already exists.
         "500":
           content:
             application/json:
@@ -415,7 +467,7 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
 
-  /organisations/{orgID}/users/{userID}:
+  /api/auth/basic/organisations/{orgID}/users/{userID}:
     parameters:
       - $ref: "#/components/parameters/orgid"
       - $ref: "#/components/parameters/userid"
@@ -451,6 +503,7 @@ paths:
     put:
       operationId: UpdateUser
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -462,6 +515,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/User"
           description: Updated a user.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
           content:
             application/json:
@@ -476,6 +535,12 @@ paths:
           description: Failed to update the user.
         "404":
           description: User does not exist.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Conflict.
         "500":
           content:
             application/json:
@@ -508,13 +573,14 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
 
-  /organisations/{orgID}/users/{userID}/groups:
+  /api/auth/basic/organisations/{orgID}/users/{userID}/groups:
     parameters:
       - $ref: "#/components/parameters/orgid"
       - $ref: "#/components/parameters/userid"
     put:
       operationId: UpdateUserGroups
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -526,6 +592,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/UserGroups"
           description: Updated the user's group bindings.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
           content:
             application/json:
@@ -572,13 +644,14 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
 
-  /organisations/{orgID}/users/{userID}/password:
+  /api/auth/basic/organisations/{orgID}/users/{userID}/password:
     parameters:
       - $ref: "#/components/parameters/orgid"
       - $ref: "#/components/parameters/userid"
     put:
       operationId: ChangePassword
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -586,8 +659,10 @@ paths:
               properties:
                 oldPassword:
                   type: string
+                  minLength: 10
                 password:
                   type: string
+                  minLength: 10
               required:
                 - oldPassword
                 - password
@@ -613,12 +688,13 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
 
-  /organisations/{orgID}/groups:
+  /api/auth/basic/organisations/{orgID}/groups:
     parameters:
       - "$ref": "#/components/parameters/orgid"
     post:
       operationId: CreateGroup
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -630,6 +706,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/Group"
           description: Created a group in the organisation.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
           content:
             application/json:
@@ -642,6 +724,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Failed to create group.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Group already exists.
         "500":
           content:
             application/json:
@@ -681,13 +769,14 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
 
-  /organisations/{orgID}/groups/{groupID}:
+  /api/auth/basic/organisations/{orgID}/groups/{groupID}:
     parameters:
       - "$ref": "#/components/parameters/orgid"
       - "$ref": "#/components/parameters/groupid"
     put:
       operationId: UpdateGroup
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -699,6 +788,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/Group"
           description: Updated a group.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
           content:
             application/json:
@@ -713,6 +808,12 @@ paths:
           description: Failed to update the group.
         "404":
           description: Groups does not exist.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Conflict.
         "500":
           content:
             application/json:
@@ -766,7 +867,7 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Failed to delete the group.
         "404":
-          description: Groups does not exist.
+          description: Group does not exist.
         "500":
           content:
             application/json:

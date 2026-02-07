@@ -1,11 +1,16 @@
 package admin
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 
-	"github.com/trebent/kerberos/internal/apierror"
-	"github.com/trebent/kerberos/internal/auth/admin/api"
+	"github.com/getkin/kin-openapi/openapi3"
+	api "github.com/trebent/kerberos/internal/api/auth/admin"
+	apierror "github.com/trebent/kerberos/internal/api/error"
+	adminapi "github.com/trebent/kerberos/internal/auth/admin/api"
 	"github.com/trebent/kerberos/internal/db"
+	"github.com/trebent/kerberos/internal/oas"
 	"github.com/trebent/zerologr"
 )
 
@@ -14,27 +19,51 @@ type (
 		Mux *http.ServeMux
 		DB  db.SQLClient
 
+		OASDir string
+
 		ClientID     string
 		ClientSecret string
 	}
 )
 
-const adminBasePath = "/api/auth/admin"
+const (
+	authAdminSpecification = "auth_admin.yaml"
+)
 
 func Init(opts *Opts) {
 	zerologr.Info("Setting up administration API")
 
-	ssi := api.NewSSI(opts.DB, opts.ClientID, opts.ClientSecret)
-	_ = api.HandlerFromMuxWithBaseURL(
-		api.NewStrictHandlerWithOptions(
-			ssi,
-			[]api.StrictMiddlewareFunc{},
-			api.StrictHTTPServerOptions{
-				RequestErrorHandlerFunc:  apierror.RequestErrorHandler,
-				ResponseErrorHandlerFunc: apierror.ResponseErrorHandler,
-			},
-		),
-		opts.Mux,
-		adminBasePath,
+	data, err := os.ReadFile(fmt.Sprintf("%s/%s", opts.OASDir, authAdminSpecification))
+	if err != nil {
+		panic(fmt.Errorf("failed to read admin authentication OAS: %w", err))
+	}
+
+	spec, err := openapi3.NewLoader().LoadFromData(data)
+	if err != nil {
+		panic(fmt.Errorf("failed to load admin authentication OAS: %w", err))
+	}
+
+	ssi := adminapi.NewSSI(opts.DB, opts.ClientID, opts.ClientSecret)
+
+	strictHandler := api.NewStrictHandlerWithOptions(
+		ssi,
+		[]api.StrictMiddlewareFunc{},
+		api.StrictHTTPServerOptions{
+			RequestErrorHandlerFunc:  apierror.RequestErrorHandler,
+			ResponseErrorHandlerFunc: apierror.ResponseErrorHandler,
+		},
 	)
+
+	_ = api.HandlerWithOptions(strictHandler, api.StdHTTPServerOptions{
+		BaseRouter: opts.Mux,
+		Middlewares: []api.MiddlewareFunc{
+			oas.ValidationMiddleware(spec),
+			func(next http.Handler) http.Handler {
+				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					zerologr.Info(fmt.Sprintf("%s %s", r.Method, r.URL.Path))
+					next.ServeHTTP(w, r)
+				})
+			},
+		},
+	})
 }

@@ -10,7 +10,7 @@ import (
 	_ "embed"
 
 	"github.com/go-logr/logr"
-	"github.com/trebent/kerberos/internal/apierror"
+	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/auth/admin"
 	"github.com/trebent/kerberos/internal/auth/method"
 	"github.com/trebent/kerberos/internal/auth/method/basic"
@@ -18,7 +18,6 @@ import (
 	composertypes "github.com/trebent/kerberos/internal/composer/types"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/db"
-	"github.com/trebent/kerberos/internal/response"
 	"github.com/trebent/zerologr"
 )
 
@@ -30,6 +29,9 @@ type (
 		Mux *http.ServeMux
 
 		DB db.SQLClient
+
+		// Directory where OAS for the auth APIs can be found.
+		OASDir string
 	}
 	authorizer struct {
 		next composertypes.FlowComponent
@@ -49,7 +51,6 @@ var (
 
 	errNoMethod           = errors.New("no authentication method defined")
 	errUnrecognizedMethod = errors.New("unrecognized authentication method")
-	errAuth               = errors.New("you do not have permission to do that")
 )
 
 const schemaApplyTimeout = 10 * time.Second
@@ -66,8 +67,9 @@ func New(opts *Opts) composertypes.FlowComponent {
 		zerologr.Info("Basic authentication enabled")
 		// If basic auth, create the method.
 		authorizer.basic = basic.New(&basic.Opts{
-			Mux: opts.Mux,
-			DB:  opts.DB,
+			Mux:    opts.Mux,
+			DB:     opts.DB,
+			OASDir: opts.OASDir,
 		})
 	}
 
@@ -76,6 +78,7 @@ func New(opts *Opts) composertypes.FlowComponent {
 		admin.Init(&admin.Opts{
 			Mux:          opts.Mux,
 			DB:           opts.DB,
+			OASDir:       opts.OASDir,
 			ClientID:     cfg.Administration.SuperUser.ClientID,
 			ClientSecret: cfg.Administration.SuperUser.ClientSecret,
 		})
@@ -108,19 +111,19 @@ func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	} else if err != nil {
 		zerologr.Error(err, "Error during authentication")
-		response.JSONError(w, apierror.ErrInternal, http.StatusInternalServerError)
+		apierror.ErrorHandler(w, req, apierror.APIErrInternal)
 		return
 	}
 
 	if err := m.Authenticated(req); err != nil {
 		zerologr.Error(err, "User tried to perform an authenticated action while unauthenticated")
-		response.JSONError(w, errAuth, http.StatusUnauthorized)
+		apierror.ErrorHandler(w, req, apierror.APIErrNoPermission)
 		return
 	}
 
 	if err := m.Authorized(req); err != nil {
 		zerologr.Error(err, "User tried to perform an action they were not authorized to do")
-		response.JSONError(w, errAuth, http.StatusForbidden)
+		apierror.ErrorHandler(w, req, apierror.APIErrForbidden)
 		return
 	}
 

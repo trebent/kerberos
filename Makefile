@@ -55,17 +55,17 @@ integrationtest: compose
 
 vulncheck:
 	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
-	@go tool govulncheck ./...
+	@go tool -modfile=./tools/go.mod govulncheck ./...
 
 vulncheck-sarif:
 	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
-	@go tool govulncheck -format sarif ./... > build/govulncheck-report.sarif
+	@go tool -modfile=./tools/go.mod govulncheck -format sarif ./... > build/govulncheck-report.sarif
 
 staticcheck: lint unittest vulncheck
 	$(call cecho,Static analysis complete.,$(BOLD_GREEN))
 
-build:
+go-build:
 	$(call cecho,Building Kerberos binary...,$(BOLD_YELLOW))
 	@mkdir -p build
 	CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/kerberos .
@@ -81,6 +81,7 @@ run:
 		AUTH_JSON_FILE=./test/config/auth-basic.json \
 		OAS_JSON_FILE=./test/config/oas-echo.json \
 		DB_DIRECTORY=$(PWD)/build \
+		OAS_DIRECTORY=$(PWD)/openapi \
 		VERSION=$(VERSION) \
 		go run .
 
@@ -94,6 +95,7 @@ run-unprotected:
 		OBS_JSON_FILE=./test/config/obs-disabled.json \
 		OAS_JSON_FILE=./test/config/oas-echo.json \
 		DB_DIRECTORY=$(PWD)/build \
+		OAS_DIRECTORY=$(PWD)/openapi \
 		VERSION=$(VERSION) \
 		go run .
 
@@ -115,8 +117,10 @@ docker-run: image docker-stop docker-rm
 		-e OBS_JSON_FILE=/config/obs-disabled.json \
 		-e AUTH_JSON_FILE=/config/auth-basic.json \
 		-e OAS_JSON_FILE=/config/oas-docker.json \
+		-e OAS_DIRECTORY=$(PWD)/krb-oas \
 		-v $(PWD)/test/config:/config:ro \
 		-v $(PWD)/test/oas:/oas:ro \
+		-v $(PWD)/openapi:/krb-oas:ro \
 		--name kerberos \
 		ghcr.io/trebent/kerberos:$(VERSION)
 
@@ -133,8 +137,10 @@ docker-run-unprotected: image docker-stop docker-rm
 		-e ROUTE_JSON_FILE=/config/router-echo.json \
 		-e OBS_JSON_FILE=/config/obs-disabled.json \
 		-e OAS_JSON_FILE=/config/oas-docker.json \
+		-e OAS_DIRECTORY=$(PWD)/krb-oas \
 		-v $(PWD)/test/config:/config:ro \
 		-v $(PWD)/test/oas:/oas:ro \
+		-v $(PWD)/openapi:/krb-oas:ro \
 		--name kerberos \
 		ghcr.io/trebent/kerberos:$(VERSION)
 
@@ -152,6 +158,7 @@ compose:
 	@VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
 		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
+		LOG_VERBOSITY=$(LOG_VERBOSITY) \
 		PROM_PORT=$(PROM_PORT) \
 		GRAFANA_PORT=$(GRAFANA_PORT) \
 		ECHO_PORT=$(ECHO_PORT) \

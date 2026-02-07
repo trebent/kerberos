@@ -15,15 +15,17 @@ services:
       - OTEL_EXPORTER_PROMETHEUS_HOST=kerberos
       - OTEL_EXPORTER_PROMETHEUS_PORT=${KERBEROS_METRICS_PORT}
       - LOG_TO_CONSOLE=1
-      - LOG_VERBOSITY=100
+      - LOG_VERBOSITY=${LOG_VERBOSITY}
       - PORT=${KERBEROS_PORT}
       - VERSION=${VERSION}
       - ROUTE_JSON_FILE=/config/router-integration.json
       - AUTH_JSON_FILE=/config/auth-integration.json
       - OAS_JSON_FILE=/config/oas-integration.json
+      - OAS_DIRECTORY=/krb-oas
     volumes:
       - ../config:/config:ro
       - ../oas:/oas:ro
+      - ../../openapi:/krb-oas:ro
   
   echo:
     image: "ghcr.io/trebent/kerberos/echo:${VERSION}"

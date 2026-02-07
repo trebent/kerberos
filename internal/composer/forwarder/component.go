@@ -9,8 +9,8 @@ import (
 	"strconv"
 
 	"github.com/go-logr/logr"
+	apierror "github.com/trebent/kerberos/internal/api/error"
 	composertypes "github.com/trebent/kerberos/internal/composer/types"
-	"github.com/trebent/kerberos/internal/response"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 )
@@ -31,9 +31,18 @@ type (
 var (
 	_ composertypes.FlowComponent = (*forwarder)(nil)
 
-	ErrFailedPatternMatch  = errors.New("forward pattern match failed")
-	ErrFailedTargetExtract = errors.New("could not determine target from context")
-	ErrFailedForwarding    = errors.New("failed to forward request")
+	errFailedTargetExtract = errors.New("could not determine target from context")
+	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
+	apiErrFailedTargetExtract = apierror.New(
+		http.StatusInternalServerError,
+		http.StatusText(http.StatusInternalServerError),
+	)
+	errFailedForwarding = errors.New("failed to forward request")
+	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
+	apiErrFailedForwarding = apierror.New(
+		http.StatusInternalServerError,
+		errFailedForwarding.Error(),
+	)
 )
 
 func NewComponent(opts *Opts) composertypes.FlowComponent {
@@ -58,10 +67,10 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	target, ok := req.Context().Value(f.targetContextKey).(Target)
 	if !ok {
 		rLogger.Error(
-			fmt.Errorf("%w: %s", ErrFailedTargetExtract, req.URL.Path),
+			fmt.Errorf("%w: %s", errFailedTargetExtract, req.URL.Path),
 			"Target extract failed",
 		)
-		response.JSONError(wrapped, ErrFailedForwarding, http.StatusInternalServerError)
+		apierror.ErrorHandler(wrapped, req, apiErrFailedTargetExtract)
 		return
 	}
 
@@ -77,7 +86,7 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	)
 	if err != nil {
 		rLogger.Error(err, "Failed to create request")
-		response.JSONError(wrapped, ErrFailedForwarding, http.StatusInternalServerError)
+		apierror.ErrorHandler(wrapped, req, apiErrFailedForwarding)
 		return
 	}
 
@@ -89,7 +98,7 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	resp, err := client.Do(forwardRequest)
 	if err != nil {
 		rLogger.Error(err, "Failed to forward request")
-		response.JSONError(wrapped, ErrFailedForwarding, http.StatusInternalServerError)
+		apierror.ErrorHandler(wrapped, req, apiErrFailedForwarding)
 		return
 	}
 	defer resp.Body.Close()
@@ -106,7 +115,7 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	_, err = io.Copy(wrapped, resp.Body)
 	if err != nil {
 		rLogger.Error(err, "Failed to copy response body")
-		response.JSONError(wrapped, ErrFailedForwarding, http.StatusInternalServerError)
+		apierror.ErrorHandler(wrapped, req, apiErrFailedForwarding)
 		return
 	}
 

@@ -186,9 +186,10 @@ func startServer(ctx context.Context, cfg config.Map) error {
 	if internalenv.AuthJSONFile.Value() != "" {
 		zerologr.Info("Loading auth")
 		authorizer := auth.New(&auth.Opts{
-			Cfg: cfg,
-			Mux: mux,
-			DB:  db,
+			Cfg:    cfg,
+			Mux:    mux,
+			DB:     db,
+			OASDir: internalenv.OASDirectory.Value(),
 		})
 		customFlowComponents = append(customFlowComponents, authorizer)
 	}

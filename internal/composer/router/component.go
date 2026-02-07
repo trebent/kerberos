@@ -7,6 +7,7 @@ import (
 	"regexp"
 
 	"github.com/go-logr/logr"
+	apierror "github.com/trebent/kerberos/internal/api/error"
 	composertypes "github.com/trebent/kerberos/internal/composer/types"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/response"
@@ -28,8 +29,12 @@ var (
 	routePattern                             = regexp.MustCompile(`^/gw/backend/([-_a-z0-9]+)?/.*$`)
 	_            composertypes.FlowComponent = (*router)(nil)
 
-	ErrFailedPatternMatch = errors.New("backend pattern match failed")
-	ErrNoBackendFound     = errors.New("no backend found")
+	errFailedPatternMatch = errors.New("bad backend pattern")
+	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
+	apiErrFailedPatternMatch = apierror.New(http.StatusBadRequest, errFailedPatternMatch.Error())
+	errNoBackendFound        = errors.New("no backend found")
+	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
+	apiErrNoBackendFound = apierror.New(http.StatusNotFound, errNoBackendFound.Error())
 )
 
 const (
@@ -62,20 +67,13 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	rLogger.Info("Routing request", "path", req.URL.Path)
 
 	backend, err := r.GetBackend(*req)
-	if errors.Is(err, ErrNoBackendFound) {
+	if errors.Is(err, errNoBackendFound) {
 		rLogger.Error(err, "Failed to route request")
-		response.JSONError(wrapped, ErrNoBackendFound, http.StatusNotFound)
+		apierror.ErrorHandler(wrapped, req, apiErrNoBackendFound)
 		return
-	} else if errors.Is(err, ErrFailedPatternMatch) {
+	} else if errors.Is(err, errFailedPatternMatch) {
 		rLogger.Error(err, "Failed to route request")
-		response.JSONError(
-			wrapped,
-			fmt.Errorf(
-				"%w: backend path must begin with /gw/backend/backend-name",
-				ErrFailedPatternMatch,
-			),
-			http.StatusBadRequest,
-		)
+		apierror.ErrorHandler(wrapped, req, apiErrFailedPatternMatch)
 		return
 	}
 
@@ -87,6 +85,7 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	wrapper, _ := wrapped.(*response.Wrapper)
 	wrapper.SetRequestContext(ctx)
 
+	// Strip the /gw/backend/{backend-name} prefix from the request URL path.
 	req.URL.Path = stripKrbPrefix(req.URL.Path, backend.Name())
 
 	// Serve the request with the updated context.
@@ -97,7 +96,7 @@ func (r *router) GetBackend(req http.Request) (Backend, error) {
 	reqPath := routePattern.FindStringSubmatch(req.URL.Path)
 
 	if len(reqPath) < expectedPatternMatches {
-		return nil, fmt.Errorf("%w: %s", ErrFailedPatternMatch, req.URL.Path)
+		return nil, fmt.Errorf("%w: %s", errFailedPatternMatch, req.URL.Path)
 	}
 
 	for _, backend := range r.cfg.Backends {
@@ -106,7 +105,7 @@ func (r *router) GetBackend(req http.Request) (Backend, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("%w: %s", ErrNoBackendFound, req.URL.Path)
+	return nil, fmt.Errorf("%w: %s", errNoBackendFound, req.URL.Path)
 }
 
 func stripKrbPrefix(path, backend string) string {

@@ -1,5 +1,5 @@
 //nolint:gocognit // ?
-package api
+package basicapi
 
 import (
 	"context"
@@ -10,7 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/trebent/kerberos/internal/apierror"
+	authbasicapi "github.com/trebent/kerberos/internal/api/auth/basic"
+	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/zerologr"
 )
 
@@ -26,11 +27,11 @@ var (
 )
 
 //nolint:funlen // welp
-func AuthMiddleware(ssi StrictServerInterface) StrictMiddlewareFunc {
+func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictMiddlewareFunc {
 	//nolint:errcheck // welp
 	apiImpl := ssi.(*impl)
 
-	return func(f StrictHandlerFunc, operationID string) StrictHandlerFunc {
+	return func(f authbasicapi.StrictHandlerFunc, operationID string) authbasicapi.StrictHandlerFunc {
 		return func(
 			ctx context.Context,
 			w http.ResponseWriter,

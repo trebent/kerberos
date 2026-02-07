@@ -1,0 +1,111 @@
+# yaml-language-server: $schema=https://spec.openapis.org/oas/3.0/schema/2024-10-18
+openapi: "3.0.4"
+info:
+  version: 0.1.0
+  title: Kerberos Gateway API.
+  description: |
+    The Kerberos Gateway API proxies requests to registered backends.
+
+components:
+  schemas:
+    JSONResponse:
+      description: Proxy response from a backend.
+      oneOf:
+        - type: object
+        - type: array
+
+    JSONRequest:
+      description: Proxy request to a backend.
+      oneOf:
+        - type: object
+        - type: array
+
+  responses:
+    ProxyResponse:
+      description: Proxy response from a backend.
+      content:
+        text/*:
+          schema:
+            type: string
+        application/json:
+          schema:
+            $ref: "#/components/schemas/JSONResponse"
+
+  requestBodies:
+    ProxyRequest:
+      description: Proxy request to a backend.
+      required: false
+      content:
+        text/*:
+          schema:
+            type: string
+        application/json:
+          schema:
+            $ref: "#/components/schemas/JSONRequest"
+
+paths:
+  # Dispatch a request to a backend
+  /gw/backend/{backend}/*:
+    parameters:
+      - name: backend
+        in: path
+        required: true
+        schema:
+          type: string
+        description: The backend to which the request is dispatched.
+    get:
+      operationId: ProxyGet
+      requestBody:
+        $ref: "#/components/requestBodies/ProxyRequest"
+      responses:
+        default:
+          $ref: "#/components/responses/ProxyResponse"
+    post:
+      operationId: ProxyPost
+      requestBody:
+        $ref: "#/components/requestBodies/ProxyRequest"
+      responses:
+        default:
+          $ref: "#/components/responses/ProxyResponse"
+    put:
+      operationId: ProxyPut
+      requestBody:
+        $ref: "#/components/requestBodies/ProxyRequest"
+      responses:
+        default:
+          $ref: "#/components/responses/ProxyResponse"
+    delete:
+      operationId: ProxyDelete
+      requestBody:
+        $ref: "#/components/requestBodies/ProxyRequest"
+      responses:
+        default:
+          $ref: "#/components/responses/ProxyResponse"
+    patch:
+      operationId: ProxyPatch
+      requestBody:
+        $ref: "#/components/requestBodies/ProxyRequest"
+      responses:
+        default:
+          $ref: "#/components/responses/ProxyResponse"
+    trace:
+      operationId: ProxyTrace
+      requestBody:
+        $ref: "#/components/requestBodies/ProxyRequest"
+      responses:
+        default:
+          $ref: "#/components/responses/ProxyResponse"
+    head:
+      operationId: ProxyHead
+      requestBody:
+        $ref: "#/components/requestBodies/ProxyRequest"
+      responses:
+        default:
+          $ref: "#/components/responses/ProxyResponse"
+    options:
+      operationId: ProxyOptions
+      requestBody:
+        $ref: "#/components/requestBodies/ProxyRequest"
+      responses:
+        default:
+          $ref: "#/components/responses/ProxyResponse"

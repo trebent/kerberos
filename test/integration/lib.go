@@ -9,11 +9,12 @@ import (
 	"os"
 	"slices"
 	"strconv"
+	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/trebent/kerberos/ft/client/admin"
-	"github.com/trebent/kerberos/ft/client/basic"
+	authadminapi "github.com/trebent/kerberos/ft/client/auth/admin"
+	authbasicapi "github.com/trebent/kerberos/ft/client/auth/basic"
 )
 
 type (
@@ -23,20 +24,59 @@ type (
 		Headers map[string][]string `json:"headers"`
 		Body    json.RawMessage     `json:"body,omitempty"`
 	}
+	RequestEditorFn func(ctx context.Context, req *http.Request) error
 )
 
 var (
 	client = &http.Client{Timeout: 4 * time.Second}
 
-	basicAuthClient, _ = basic.NewClientWithResponses(
-		fmt.Sprintf("http://%s:%d/api/auth/basic", getHost(), getPort()),
+	basicAuthClient, _ = authbasicapi.NewClientWithResponses(
+		fmt.Sprintf("http://%s:%d", getHost(), getPort()),
 	)
-	adminClient, _ = admin.NewClientWithResponses(
-		fmt.Sprintf("http://%s:%d/api/auth/admin", getHost(), getPort()),
+	adminClient, _ = authadminapi.NewClientWithResponses(
+		fmt.Sprintf("http://%s:%d", getHost(), getPort()),
 	)
+
+	alwaysOrgID        = 0
+	alwaysUserID       = 0
+	alwaysGroupStaffID = 0
+	alwaysGroupPlebID  = 0
+	alwaysGroupDevID   = 0
+
+	// Used to generate unique names.
+	// This is initialised with a random int32 in TestMain.
+	a = atomic.Int32{}
 )
 
+// Returns a guaranteed unique username.
+func username() string {
+	return fmt.Sprintf("%s-%d", usernameBase, a.Add(1))
+}
+
+// Returns a guaranteed unique org name.
+func orgName() string {
+	return fmt.Sprintf("%s-%d", orgNameBase, a.Add(1))
+}
+
+// Returns a guaranteed unique group name.
+func groupName() string {
+	return fmt.Sprintf("%s-%d", groupNameBase, a.Add(1))
+}
+
 const (
+	orgNameBase   = "Org"
+	usernameBase  = "Smith"
+	groupNameBase = "Group"
+
+	// Always resource names, used to denote resource that all tests can expect to be present.
+	// Always resource must never be altered or deleted by test cases, and are set up by test main.
+	alwaysOrg          = "always"
+	alwaysUser         = "always"
+	alwaysUserPassword = "alwayspassword"
+	alwaysGroupStaff   = "staff"
+	alwaysGroupPleb    = "pleb"
+	alwaysGroupDev     = "dev"
+
 	defaultHost              = "localhost"
 	defaultKerberosPort      = 30000
 	defaultMetricsPort       = 9464
@@ -44,6 +84,7 @@ const (
 )
 
 func get(url string, t *testing.T, headers ...http.Header) *http.Response {
+	t.Helper()
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
@@ -53,6 +94,7 @@ func get(url string, t *testing.T, headers ...http.Header) *http.Response {
 }
 
 func post(url string, body []byte, t *testing.T, headers ...http.Header) *http.Response {
+	t.Helper()
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
@@ -62,6 +104,7 @@ func post(url string, body []byte, t *testing.T, headers ...http.Header) *http.R
 }
 
 func put(url string, body []byte, t *testing.T, headers ...http.Header) *http.Response {
+	t.Helper()
 	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
@@ -71,6 +114,7 @@ func put(url string, body []byte, t *testing.T, headers ...http.Header) *http.Re
 }
 
 func delete(url string, t *testing.T, headers ...http.Header) *http.Response {
+	t.Helper()
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
@@ -80,6 +124,7 @@ func delete(url string, t *testing.T, headers ...http.Header) *http.Response {
 }
 
 func patch(url string, body []byte, t *testing.T, headers ...http.Header) *http.Response {
+	t.Helper()
 	req, err := http.NewRequest(http.MethodPatch, url, bytes.NewBuffer(body))
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
@@ -89,6 +134,7 @@ func patch(url string, body []byte, t *testing.T, headers ...http.Header) *http.
 }
 
 func do(req *http.Request, t *testing.T, headers ...http.Header) *http.Response {
+	t.Helper()
 	for _, headers := range headers {
 		for key, values := range headers {
 			req.Header[key] = values
@@ -104,18 +150,21 @@ func do(req *http.Request, t *testing.T, headers ...http.Header) *http.Response 
 }
 
 func checkErr(err error, t *testing.T) {
+	t.Helper()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 }
 
 func verifyStatusCode(in int, expected int, t *testing.T) {
+	t.Helper()
 	if in != expected {
 		t.Fatalf("Expected status code %d, got %d", expected, in)
 	}
 }
 
 func verifyGWResponse(resp *http.Response, expectedCode int, t *testing.T) *EchoResponse {
+	t.Helper()
 	defer resp.Body.Close()
 
 	if resp.StatusCode != expectedCode {
@@ -130,13 +179,37 @@ func verifyGWResponse(resp *http.Response, expectedCode int, t *testing.T) *Echo
 	return response
 }
 
+func verifyAdminAPIErrorResponse(er *authadminapi.APIErrorResponse, t *testing.T) {
+	t.Helper()
+	if er != nil {
+		if len(er.Errors) == 0 {
+			t.Fatalf("Expected errors in response body, but got empty errors array")
+		}
+	} else {
+		t.Fatalf("Expected error response but got nil")
+	}
+}
+
+func verifyAuthBasicAPIErrorResponse(er *authbasicapi.APIErrorResponse, t *testing.T) {
+	t.Helper()
+	if er != nil {
+		if len(er.Errors) == 0 {
+			t.Fatalf("Expected errors in response body, but got empty errors array")
+		}
+	} else {
+		t.Fatalf("Expected error response but got nil")
+	}
+}
+
 func matches[T comparable](one, two T, t *testing.T) {
+	t.Helper()
 	if one != two {
 		t.Fatalf("%v is not equal to %v", one, two)
 	}
 }
 
 func containsAll[T comparable](source, reference []T, t *testing.T) {
+	t.Helper()
 	for _, item := range source {
 		if !slices.Contains(reference, item) {
 			t.Fatalf("Reference slice does not contain %v", item)
@@ -144,7 +217,7 @@ func containsAll[T comparable](source, reference []T, t *testing.T) {
 	}
 }
 
-func requestEditorSessionID(sessionID string) basic.RequestEditorFn {
+func requestEditorSessionID(sessionID string) RequestEditorFn {
 	return func(ctx context.Context, req *http.Request) error {
 		req.Header.Set("x-krb-session", sessionID)
 		return nil
@@ -200,4 +273,14 @@ func getJaegerAPIPort() int {
 	} else {
 		return decodedJaegerPort
 	}
+}
+
+func extractSession(resp *http.Response, t *testing.T) string {
+	t.Helper()
+	session := resp.Header.Get("x-krb-session")
+	if session == "" {
+		t.Fatalf("missing session header in response")
+	}
+
+	return session
 }

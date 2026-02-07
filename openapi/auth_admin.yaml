@@ -2,9 +2,9 @@
 openapi: "3.0.4"
 info:
   version: 0.1.0
-  title: Kerberos administration API.
+  title: Kerberos administration authentication API.
   description: |
-    The Kerberos administration API allows administrators manage sessions, users, and permissions
+    The Kerberos administration authentication API allows administrators manage sessions, users, and permissions
     of the Kerberos deployment.
 components:
   schemas:
@@ -35,11 +35,12 @@ security:
 
 paths:
   # Log the superuser in.
-  /superuser/login:
+  /api/auth/admin/superuser/login:
     post:
       security: []
       operationId: LoginSuperuser
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -47,8 +48,10 @@ paths:
               properties:
                 clientId:
                   type: string
+                  minLength: 1
                 clientSecret:
                   type: string
+                  minLength: 1
               required:
                 - clientId
                 - clientSecret
@@ -58,6 +61,12 @@ paths:
             x-krb-session:
               $ref: "#/components/headers/sessionid"
           description: Logged the superuser in.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
           content:
             application/json:
@@ -72,7 +81,7 @@ paths:
           description: Internal error.
 
   # Log the superuser out.
-  /superuser/logout:
+  /api/auth/admin/superuser/logout:
     post:
       operationId: LogoutSuperuser
       responses:
