@@ -55,7 +55,7 @@ integrationtest: compose
 
 vulncheck:
 	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
-	@go tool govulncheck ./...
+	@go tool -modfile=./tools/go.mod govulncheck ./...
 
 vulncheck-sarif:
 	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))

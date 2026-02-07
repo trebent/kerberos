@@ -3,6 +3,7 @@ package basicapi
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -228,6 +229,10 @@ func (i *impl) CreateGroup(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to insert group")
+
+		if errors.Is(err, db.ErrUnique) {
+			return authbasicapi.CreateGroup500JSONResponse(GenErrInternal), nil
+		}
 		return authbasicapi.CreateGroup500JSONResponse(GenErrInternal), nil
 	}
 
@@ -252,7 +257,7 @@ func (i *impl) CreateOrganisation(
 	defer tx.Rollback() // Just in case
 
 	// Create an organisation.
-	res, err := tx.Exec(queryCreateOrg, sql.NamedArg{Name: "name", Value: req.Body.Name})
+	res, err := tx.Exec(ctx, queryCreateOrg, sql.NamedArg{Name: "name", Value: req.Body.Name})
 	if err != nil {
 		zerologr.Error(err, "Failed to create org")
 		return authbasicapi.CreateOrganisation500JSONResponse(GenErrInternal), nil
@@ -265,6 +270,7 @@ func (i *impl) CreateOrganisation(
 
 	adminPassword, salt, hashedAdminPassword := util.MakePassword("")
 	res, err = tx.Exec(
+		ctx,
 		queryCreateUser,
 		sql.NamedArg{Name: "name", Value: adminUsername},
 		sql.NamedArg{Name: "salt", Value: salt},
@@ -803,6 +809,7 @@ func (i *impl) UpdateUserGroups(
 
 	for _, bindingToDelete := range toDelete {
 		_, err := tx.Exec(
+			ctx,
 			queryDeleteGroupBinding,
 			sql.NamedArg{Name: "userID", Value: req.UserID},
 			sql.NamedArg{Name: "groupID", Value: bindingToDelete.groupID},
@@ -824,6 +831,7 @@ func (i *impl) UpdateUserGroups(
 			func(binding *internalGroupBinding) bool { return binding.name == requestBinding },
 		) {
 			_, err = tx.Exec(
+				ctx,
 				queryCreateGroupBinding,
 				sql.NamedArg{Name: "userID", Value: req.UserID},
 				sql.NamedArg{Name: "orgID", Value: req.OrgID},

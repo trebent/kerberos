@@ -4,8 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/trebent/kerberos/internal/db"
+	"github.com/trebent/zerologr"
+
 	// this is how it works.
 	_ "modernc.org/sqlite"
 )
@@ -57,42 +60,62 @@ func New(opts *Opts) db.SQLClient {
 func (i *impl) Begin(ctx context.Context) (db.Transaction, error) {
 	tx, err := i.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, wrap(err)
 	}
 
 	_, err = tx.ExecContext(ctx, queryEnableForeignKeys)
 	if err != nil {
-		return nil, err
+		return nil, wrap(err)
 	}
 
 	return &txImpl{tx: tx}, err
 }
 
 func (i *impl) Exec(ctx context.Context, query string, args ...any) (sql.Result, error) {
-	return i.db.ExecContext(ctx, query, args...)
+	res, err := i.db.ExecContext(ctx, query, args...)
+	return res, wrap(err)
 }
 
 func (i *impl) Query(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
-	return i.db.QueryContext(ctx, query, args...)
+	rows, err := i.db.QueryContext(ctx, query, args...)
+	return rows, wrap(err)
 }
 
-func (t *txImpl) Exec(stmt string, args ...any) (sql.Result, error) {
-	return t.tx.Exec(stmt, args...)
+func (t *txImpl) Exec(ctx context.Context, stmt string, args ...any) (sql.Result, error) {
+	res, err := t.tx.ExecContext(ctx, stmt, args...)
+	return res, wrap(err)
 }
 
-func (t *txImpl) Query(stmt string, args ...any) (*sql.Rows, error) {
-	return t.tx.Query(stmt, args...)
+func (t *txImpl) Query(ctx context.Context, stmt string, args ...any) (*sql.Rows, error) {
+	rows, err := t.tx.QueryContext(ctx, stmt, args...)
+	return rows, wrap(err)
 }
 
 func (t *txImpl) Commit() error {
-	return t.tx.Commit()
+	return wrap(t.tx.Commit())
 }
 
 func (t *txImpl) Rollback() error {
-	return t.tx.Rollback()
+	return wrap(t.tx.Rollback())
 }
 
-func (t *impl) ErrorCode(err error) int {
+func wrap(err error) error {
+	if err == nil {
+		return err
+	}
+
+	code := errorCode(err)
+	switch code {
+	case 2067:
+		return fmt.Errorf("%w: %w", db.ErrUnique, err)
+	default:
+		zerologr.Info("Unrecognized error code", "code", code)
+	}
+
+	return err
+}
+
+func errorCode(err error) int {
 	var coder interface{ Code() int }
 	if errors.As(err, &coder) {
 		return coder.Code()
