@@ -1211,6 +1211,15 @@ func (response UpdateOrganisation200JSONResponse) VisitUpdateOrganisationRespons
 	return json.NewEncoder(w).Encode(response)
 }
 
+type UpdateOrganisation400JSONResponse APIErrorResponse
+
+func (response UpdateOrganisation400JSONResponse) VisitUpdateOrganisationResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type UpdateOrganisation401JSONResponse APIErrorResponse
 
 func (response UpdateOrganisation401JSONResponse) VisitUpdateOrganisationResponse(w http.ResponseWriter) error {
@@ -1304,6 +1313,15 @@ type CreateGroup201JSONResponse Group
 func (response CreateGroup201JSONResponse) VisitCreateGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateGroup400JSONResponse APIErrorResponse
+
+func (response CreateGroup400JSONResponse) VisitCreateGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -1459,6 +1477,15 @@ func (response UpdateGroup200JSONResponse) VisitUpdateGroupResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
+type UpdateGroup400JSONResponse APIErrorResponse
+
+func (response UpdateGroup400JSONResponse) VisitUpdateGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type UpdateGroup401JSONResponse APIErrorResponse
 
 func (response UpdateGroup401JSONResponse) VisitUpdateGroupResponse(w http.ResponseWriter) error {
@@ -1515,6 +1542,15 @@ func (response Login204Response) VisitLoginResponse(w http.ResponseWriter) error
 	w.Header().Set("x-krb-session", fmt.Sprint(response.Headers.XKrbSession))
 	w.WriteHeader(204)
 	return nil
+}
+
+type Login400JSONResponse APIErrorResponse
+
+func (response Login400JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
 }
 
 type Login401JSONResponse APIErrorResponse
@@ -1627,6 +1663,15 @@ type CreateUser201JSONResponse User
 func (response CreateUser201JSONResponse) VisitCreateUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateUser400JSONResponse APIErrorResponse
+
+func (response CreateUser400JSONResponse) VisitCreateUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -1782,6 +1827,15 @@ func (response UpdateUser200JSONResponse) VisitUpdateUserResponse(w http.Respons
 	return json.NewEncoder(w).Encode(response)
 }
 
+type UpdateUser400JSONResponse APIErrorResponse
+
+func (response UpdateUser400JSONResponse) VisitUpdateUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type UpdateUser401JSONResponse APIErrorResponse
 
 func (response UpdateUser401JSONResponse) VisitUpdateUserResponse(w http.ResponseWriter) error {
@@ -1877,6 +1931,15 @@ type UpdateUserGroups200JSONResponse UserGroups
 func (response UpdateUserGroups200JSONResponse) VisitUpdateUserGroupsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateUserGroups400JSONResponse APIErrorResponse
+
+func (response UpdateUserGroups400JSONResponse) VisitUpdateUserGroupsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -2637,36 +2700,36 @@ func (sh *strictHandler) ChangePassword(w http.ResponseWriter, r *http.Request, 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

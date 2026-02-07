@@ -35,9 +35,23 @@ var (
 	adminClient, _ = authadminapi.NewClientWithResponses(
 		fmt.Sprintf("http://%s:%d", getHost(), getPort()),
 	)
+
+	alwaysOrgID        = 0
+	alwaysUserID       = 0
+	alwaysGroupStaffID = 0
+	alwaysGroupPlebID  = 0
+	alwaysGroupDevID   = 0
 )
 
 const (
+	// Always resource names, used to denote resource that all tests can expect to be present.
+	// Always resource must never be altered or deleted by test cases, and are set up by test main.
+	alwaysOrg        = "always"
+	alwaysUser       = "always"
+	alwaysGroupStaff = "staff"
+	alwaysGroupPleb  = "pleb"
+	alwaysGroupDev   = "dev"
+
 	defaultHost              = "localhost"
 	defaultKerberosPort      = 30000
 	defaultMetricsPort       = 9464
@@ -138,6 +152,28 @@ func verifyGWResponse(resp *http.Response, expectedCode int, t *testing.T) *Echo
 	}
 
 	return response
+}
+
+func verifyAdminAPIErrorResponse(er *authadminapi.APIErrorResponse, t *testing.T) {
+	t.Helper()
+	if er != nil {
+		if len(er.Errors) == 0 {
+			t.Fatalf("Expected errors in response body, but got empty errors array")
+		}
+	} else {
+		t.Fatalf("Expected error response but got nil")
+	}
+}
+
+func verifyAuthBasicAPIErrorResponse(er *authbasicapi.APIErrorResponse, t *testing.T) {
+	t.Helper()
+	if er != nil {
+		if len(er.Errors) == 0 {
+			t.Fatalf("Expected errors in response body, but got empty errors array")
+		}
+	} else {
+		t.Fatalf("Expected error response but got nil")
+	}
 }
 
 func matches[T comparable](one, two T, t *testing.T) {

@@ -32,7 +32,7 @@ components:
       properties:
         name:
           type: string
-          minLength: 10
+          minLength: 5
         password:
           type: string
           minLength: 10
@@ -139,6 +139,7 @@ paths:
     post:
       operationId: CreateOrganisation
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -176,6 +177,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Failed to create the organisation.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Organisation already exists.
         "500":
           content:
             application/json:
@@ -212,6 +219,7 @@ paths:
     put:
       operationId: UpdateOrganisation
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -223,6 +231,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/Organisation"
           description: Updated an organisation.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
           content:
             application/json:
@@ -305,6 +319,7 @@ paths:
       operationId: Login
       security: []
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -312,8 +327,10 @@ paths:
               properties:
                 username:
                   type: string
+                  minLength: 5
                 password:
                   type: string
+                  minLength: 10
               required:
                 - username
                 - password
@@ -323,6 +340,12 @@ paths:
             x-krb-session:
               $ref: "#/components/headers/sessionid"
           description: Logged a user in.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
           content:
             application/json:
@@ -366,11 +389,11 @@ paths:
     post:
       operationId: CreateUser
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/CreateUserRequest"
-        required: true
       responses:
         "201":
           content:
@@ -378,6 +401,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/User"
           description: Created a new user.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
           content:
             application/json:
@@ -390,6 +419,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Failed to create the user.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: User already exists.
         "500":
           content:
             application/json:
@@ -462,6 +497,7 @@ paths:
     put:
       operationId: UpdateUser
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -473,6 +509,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/User"
           description: Updated a user.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
           content:
             application/json:
@@ -526,6 +568,7 @@ paths:
     put:
       operationId: UpdateUserGroups
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -537,6 +580,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/UserGroups"
           description: Updated the user's group bindings.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
           content:
             application/json:
@@ -590,6 +639,7 @@ paths:
     put:
       operationId: ChangePassword
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -597,8 +647,10 @@ paths:
               properties:
                 oldPassword:
                   type: string
+                  minLength: 10
                 password:
                   type: string
+                  minLength: 10
               required:
                 - oldPassword
                 - password
@@ -630,6 +682,7 @@ paths:
     post:
       operationId: CreateGroup
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -641,6 +694,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/Group"
           description: Created a group in the organisation.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
           content:
             application/json:
@@ -653,6 +712,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Failed to create group.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Group already exists.
         "500":
           content:
             application/json:
@@ -699,6 +764,7 @@ paths:
     put:
       operationId: UpdateGroup
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -710,6 +776,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/Group"
           description: Updated a group.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
           content:
             application/json:
@@ -777,7 +849,7 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Failed to delete the group.
         "404":
-          description: Groups does not exist.
+          description: Group does not exist.
         "500":
           content:
             application/json:

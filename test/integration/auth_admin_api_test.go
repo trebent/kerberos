@@ -46,20 +46,8 @@ func TestAuthAdminLoginFailure(t *testing.T) {
 }
 
 func TestAuthAdminOASFailure(t *testing.T) {
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		authadminapi.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: ""},
-	)
+	badSuperLoginResp, err := adminClient.LoginSuperuserWithResponse(t.Context(), authadminapi.LoginSuperuserJSONRequestBody{})
 	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusBadRequest, t)
-
-	// The generated client already parsed the response, so check the JSON400 response directly
-	if superLoginResp.JSON400 != nil {
-		t.Logf("Error response: %+v", superLoginResp.JSON400)
-		if len(superLoginResp.JSON400.Errors) == 0 {
-			t.Fatalf("Expected errors in response body, but got empty errors array")
-		}
-	} else {
-		t.Fatalf("Expected JSON401 response but got nil")
-	}
+	verifyStatusCode(badSuperLoginResp.StatusCode(), http.StatusBadRequest, t)
+	verifyAdminAPIErrorResponse(badSuperLoginResp.JSON400, t)
 }

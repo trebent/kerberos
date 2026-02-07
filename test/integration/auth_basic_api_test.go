@@ -313,10 +313,9 @@ func TestAuthBasicAPISuperuser(t *testing.T) {
 	verifyStatusCode(groupBindResp.StatusCode(), http.StatusOK, t)
 }
 
-func TestAuthBasicAPIBadRequest(t *testing.T) {
+func TestAuthBasicAPIOASFailure(t *testing.T) {
 	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		authadminapi.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "client-secret"},
+		t.Context(), authadminapi.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "client-secret"},
 	)
 	checkErr(err, t)
 	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
@@ -329,13 +328,5 @@ func TestAuthBasicAPIBadRequest(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(orgResp.StatusCode(), http.StatusBadRequest, t)
-
-	if orgResp.JSON400 != nil {
-		t.Logf("Error response: %+v", orgResp.JSON400)
-		if len(orgResp.JSON400.Errors) == 0 {
-			t.Fatalf("Expected errors in response body, but got empty errors array")
-		}
-	} else {
-		t.Fatalf("Expected JSON401 response but got nil")
-	}
+	verifyAuthBasicAPIErrorResponse(orgResp.JSON400, t)
 }
