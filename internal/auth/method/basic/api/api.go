@@ -24,6 +24,7 @@ var (
 	_ authbasicapi.StrictServerInterface = (*impl)(nil)
 
 	GenErrInternal = authbasicapi.APIErrorResponse{Errors: []string{apierror.ErrInternal.Error()}}
+	GenErrConflict = authbasicapi.APIErrorResponse{Errors: []string{apierror.ErrConflict.Error()}}
 )
 
 const (
@@ -231,7 +232,7 @@ func (i *impl) CreateGroup(
 		zerologr.Error(err, "Failed to insert group")
 
 		if errors.Is(err, db.ErrUnique) {
-			return authbasicapi.CreateGroup500JSONResponse(GenErrInternal), nil
+			return authbasicapi.CreateGroup409JSONResponse(GenErrInternal), nil
 		}
 		return authbasicapi.CreateGroup500JSONResponse(GenErrInternal), nil
 	}
@@ -248,6 +249,7 @@ func (i *impl) CreateOrganisation(
 	ctx context.Context,
 	req authbasicapi.CreateOrganisationRequestObject,
 ) (authbasicapi.CreateOrganisationResponseObject, error) {
+	zerologr.Info("Creating organisation " + req.Body.Name)
 	tx, err := i.db.Begin(ctx)
 	if err != nil {
 		zerologr.Error(err, "Failed to start transaction")
@@ -260,6 +262,10 @@ func (i *impl) CreateOrganisation(
 	res, err := tx.Exec(ctx, queryCreateOrg, sql.NamedArg{Name: "name", Value: req.Body.Name})
 	if err != nil {
 		zerologr.Error(err, "Failed to create org")
+
+		if errors.Is(err, db.ErrUnique) {
+			return authbasicapi.CreateOrganisation409JSONResponse(GenErrConflict), nil
+		}
 		return authbasicapi.CreateOrganisation500JSONResponse(GenErrInternal), nil
 	}
 	id, _ := res.LastInsertId()
@@ -316,6 +322,10 @@ func (i *impl) CreateUser(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to insert new user")
+
+		if errors.Is(err, db.ErrUnique) {
+			return authbasicapi.CreateUser409JSONResponse(GenErrConflict), nil
+		}
 		return authbasicapi.CreateUser500JSONResponse(GenErrInternal), nil
 	}
 
@@ -695,6 +705,10 @@ func (i *impl) UpdateGroup(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to update group")
+
+		if errors.Is(err, db.ErrUnique) {
+			return authbasicapi.UpdateGroup409JSONResponse(GenErrConflict), nil
+		}
 		return authbasicapi.UpdateGroup500JSONResponse(GenErrInternal), nil
 	}
 
@@ -717,6 +731,10 @@ func (i *impl) UpdateOrganisation(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to update organisation")
+
+		if errors.Is(err, db.ErrUnique) {
+			return authbasicapi.UpdateOrganisation409JSONResponse(GenErrConflict), nil
+		}
 		return authbasicapi.UpdateOrganisation500JSONResponse(GenErrInternal), nil
 	}
 
@@ -740,6 +758,10 @@ func (i *impl) UpdateUser(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to update user")
+
+		if errors.Is(err, db.ErrUnique) {
+			return authbasicapi.UpdateUser409JSONResponse(GenErrConflict), nil
+		}
 		return authbasicapi.UpdateUser500JSONResponse(GenErrInternal), nil
 	}
 

@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"math/rand/v2"
 	"net/http"
 	"os"
 	"testing"
@@ -11,6 +12,11 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	println("Running TestMain, setting up test foundation...")
+
+	// Init atomic iterator with random number
+	a.Store(rand.Int32())
+
 	loginResp, err := adminClient.LoginSuperuserWithResponse(
 		context.Background(), authadminapi.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "client-secret"},
 	)
@@ -61,7 +67,7 @@ func TestMain(m *testing.M) {
 	userResp, err := basicAuthClient.CreateUserWithResponse(
 		context.Background(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserRequest{Name: alwaysUser, Password: "1234567890"},
+		authbasicapi.CreateUserRequest{Name: alwaysUser, Password: alwaysUserPassword},
 		authbasicapi.RequestEditorFn(requestEditorSuper),
 	)
 	if err != nil {
@@ -109,7 +115,9 @@ func TestMain(m *testing.M) {
 		panic("failed to find staff group id")
 	}
 
+	println("Running tests...")
 	code := m.Run()
+	println("Testing done! Exit code:", code)
 	os.Exit(code)
 }
 

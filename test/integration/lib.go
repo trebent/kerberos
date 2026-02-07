@@ -9,6 +9,7 @@ import (
 	"os"
 	"slices"
 	"strconv"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -41,16 +42,40 @@ var (
 	alwaysGroupStaffID = 0
 	alwaysGroupPlebID  = 0
 	alwaysGroupDevID   = 0
+
+	// Used to generate unique names.
+	// This is initialised with a random int32 in TestMain.
+	a = atomic.Int32{}
 )
 
+// Returns a guaranteed unique username.
+func username() string {
+	return fmt.Sprintf("%s-%d", usernameBase, a.Add(1))
+}
+
+// Returns a guaranteed unique org name.
+func orgName() string {
+	return fmt.Sprintf("%s-%d", orgNameBase, a.Add(1))
+}
+
+// Returns a guaranteed unique group name.
+func groupName() string {
+	return fmt.Sprintf("%s-%d", groupNameBase, a.Add(1))
+}
+
 const (
+	orgNameBase   = "Org"
+	usernameBase  = "Smith"
+	groupNameBase = "Group"
+
 	// Always resource names, used to denote resource that all tests can expect to be present.
 	// Always resource must never be altered or deleted by test cases, and are set up by test main.
-	alwaysOrg        = "always"
-	alwaysUser       = "always"
-	alwaysGroupStaff = "staff"
-	alwaysGroupPleb  = "pleb"
-	alwaysGroupDev   = "dev"
+	alwaysOrg          = "always"
+	alwaysUser         = "always"
+	alwaysUserPassword = "alwayspassword"
+	alwaysGroupStaff   = "staff"
+	alwaysGroupPleb    = "pleb"
+	alwaysGroupDev     = "dev"
 
 	defaultHost              = "localhost"
 	defaultKerberosPort      = 30000

@@ -249,6 +249,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Failed to update the organisation.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Conflict.
         "404":
           description: Organisation does not exist.
         "500":
@@ -529,6 +535,12 @@ paths:
           description: Failed to update the user.
         "404":
           description: User does not exist.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Conflict.
         "500":
           content:
             application/json:
@@ -796,6 +808,12 @@ paths:
           description: Failed to update the group.
         "404":
           description: Groups does not exist.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Conflict.
         "500":
           content:
             application/json:

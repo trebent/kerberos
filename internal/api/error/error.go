@@ -22,6 +22,7 @@ var (
 	ErrNoPermission = errors.New("you do not have permission to do that")
 	ErrNoSession    = errors.New("no session found")
 	ErrInternal     = errors.New("internal error")
+	ErrConflict     = errors.New("conflict")
 	ErrNotFound     = errors.New("not found")
 	ErrMethod       = errors.New("method not allowed")
 

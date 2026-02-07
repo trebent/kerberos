@@ -5,54 +5,22 @@ import (
 	"net/http"
 	"strconv"
 	"testing"
-	"time"
 
-	authadminapi "github.com/trebent/kerberos/ft/client/auth/admin"
 	authbasicapi "github.com/trebent/kerberos/ft/client/auth/basic"
 )
 
 func TestAuthBasicCall(t *testing.T) {
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		authadminapi.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "client-secret"},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := superLoginResp.HTTPResponse.Header.Get("x-krb-session")
-
-	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
-		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: fmt.Sprintf("%s-%s", orgName, time.Now().String())},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(orgResp.StatusCode(), http.StatusCreated, t)
-	orgID := orgResp.JSON201.Id
-	t.Logf("Created org with ID %d", orgID)
-
-	userResp, err := basicAuthClient.CreateUserWithResponse(
-		t.Context(),
-		orgID,
-		authbasicapi.CreateUserJSONRequestBody{Name: "username123", Password: "password12345"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(userResp.StatusCode(), http.StatusCreated, t)
-	userID := userResp.JSON201.Id
-	t.Logf("Created user with ID %d", userID)
-
 	loginResp, err := basicAuthClient.LoginWithResponse(
 		t.Context(),
-		orgID,
+		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.LoginJSONRequestBody{
-			Username: "username123",
-			Password: "password12345",
+			Username: alwaysUser,
+			Password: alwaysUserPassword,
 		},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	session := loginResp.HTTPResponse.Header.Get("x-krb-session")
+	session := extractSession(loginResp.HTTPResponse, t)
 
 	response := get(
 		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/hi", getHost(), getPort()),
@@ -63,11 +31,11 @@ func TestAuthBasicCall(t *testing.T) {
 	echoResponse := verifyGWResponse(response, http.StatusOK, t)
 	t.Log(echoResponse)
 	requestHeaders := http.Header(echoResponse.Headers)
-	if requestHeaders.Get("x-krb-org") != strconv.Itoa(int(orgID)) {
-		t.Fatalf("OrgID %s did not match expected %d", requestHeaders.Get("x-krb-org"), orgID)
+	if requestHeaders.Get("x-krb-org") != strconv.Itoa(int(alwaysOrgID)) {
+		t.Fatalf("OrgID %s did not match expected %d", requestHeaders.Get("x-krb-org"), alwaysOrgID)
 	}
-	if requestHeaders.Get("x-krb-user") != strconv.Itoa(int(userID)) {
-		t.Fatalf("UserID %s did not match expected %d", requestHeaders.Get("x-krb-user"), userID)
+	if requestHeaders.Get("x-krb-user") != strconv.Itoa(int(alwaysUserID)) {
+		t.Fatalf("UserID %s did not match expected %d", requestHeaders.Get("x-krb-user"), alwaysUserID)
 	}
 }
 
