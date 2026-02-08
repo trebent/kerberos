@@ -191,3 +191,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EchoResponse"
+
+  /unprotected/nested:
+    get:
+      summary: Unprotected nested GET.
+      operationId: unprotectedNestedGet
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"

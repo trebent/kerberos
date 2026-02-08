@@ -84,4 +84,19 @@ func TestAuthBasicUnauthenticatedExempted(t *testing.T) {
 	if vals := requestHeaders.Values("x-krb-org"); len(vals) != 0 {
 		t.Fatal("Org ID should not have been set")
 	}
+
+	response = get(
+		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/unprotected/nested", getHost(), getPort()),
+		t,
+	)
+
+	echoResponse = verifyGWResponse(response, http.StatusOK, t)
+	requestHeaders = http.Header(echoResponse.Headers)
+	if vals := requestHeaders.Values("x-krb-user"); len(vals) != 0 {
+		t.Fatal("User ID should not have been set")
+	}
+
+	if vals := requestHeaders.Values("x-krb-org"); len(vals) != 0 {
+		t.Fatal("Org ID should not have been set")
+	}
 }
