@@ -21,8 +21,9 @@ type (
 		Mappings []*mapping `json:"mappings"`
 	}
 	mapping struct {
-		Backend string `json:"backend"`
-		Method  string `json:"method"`
+		Backend string   `json:"backend"`
+		Method  string   `json:"method"`
+		Exempt  []string `json:"exempt"`
 	}
 	administration struct {
 		SuperUser *superuser `json:"superUser"`
