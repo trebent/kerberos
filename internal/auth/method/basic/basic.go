@@ -118,12 +118,15 @@ func (a *basic) Authenticated(req *http.Request) error {
 	return nil
 }
 
+//nolint:gocognit // welp
 func (a *basic) Authorized(req *http.Request) error {
 	zerologr.V(50).Info("Authorizing request " + req.URL.Path)
+	//nolint:errcheck // bigger problems if this is missing
 	backend := req.Context().Value(composertypes.BackendContextKey).(string)
 
 	authZ, ok := a.config[backend]
 	if !ok {
+		zerologr.V(50).Info("No authorization scheme defined for backend " + backend)
 		return nil
 	}
 
@@ -143,20 +146,24 @@ func (a *basic) Authorized(req *http.Request) error {
 
 	// Return nil if neither global groups are configured, nor any path override exists.
 	if len(groupsToValidate) == 0 && len(authZ.Groups) == 0 {
+		zerologr.V(50).Info("No authorization group mapping defined for backend " + backend)
 		return nil
 	}
 
 	// Set validation groups depending on if global or path override.
 	if len(groupsToValidate) == 0 {
+		zerologr.V(50).Info("Validating global group mapping for " + backend)
 		groupsToValidate = authZ.Groups
+	} else {
+		zerologr.V(50).Info("Validating path group mapping for " + backend)
 	}
 
 	// Fetch the user's groups.
 	rows, err := a.db.Query(
 		req.Context(),
 		queryListUserGroups,
-		sql.NamedArg{Name: "orgID", Value: req.Header.Get("x-krb-org")},
-		sql.NamedArg{Name: "userID", Value: req.Header.Get("x-krb-user")},
+		sql.NamedArg{Name: "orgID", Value: req.Header.Get("X-Krb-Org")},
+		sql.NamedArg{Name: "userID", Value: req.Header.Get("X-Krb-User")},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query user groups")
@@ -183,7 +190,7 @@ func (a *basic) Authorized(req *http.Request) error {
 		}
 
 		userGroups = append(userGroups, groupName)
-		req.Header.Add("x-krb-groups", groupName)
+		req.Header.Add("X-Krb-Groups", groupName)
 	}
 
 	for _, usergroup := range userGroups {

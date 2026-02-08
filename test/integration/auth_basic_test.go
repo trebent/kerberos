@@ -36,6 +36,9 @@ func TestAuthBasicCall(t *testing.T) {
 	if requestHeaders.Get("x-krb-user") != strconv.Itoa(int(alwaysUserID)) {
 		t.Fatalf("UserID %s did not match expected %d", requestHeaders.Get("x-krb-user"), alwaysUserID)
 	}
+	if vals := requestHeaders.Values("x-krb-groups"); len(vals) == 0 {
+		t.Fatal("Groups should have been set")
+	}
 }
 
 func TestAuthBasicUnauthenticated(t *testing.T) {
@@ -98,5 +101,39 @@ func TestAuthBasicUnauthenticatedExempted(t *testing.T) {
 
 	if vals := requestHeaders.Values("x-krb-org"); len(vals) != 0 {
 		t.Fatal("Org ID should not have been set")
+	}
+}
+
+func TestAuthBasicAuthorizedPleb(t *testing.T) {
+	loginResp, err := basicAuthClient.LoginWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.LoginJSONRequestBody{
+			Username: alwaysUser,
+			Password: alwaysUserPassword,
+		},
+	)
+	checkErr(err, t)
+	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
+	session := extractSession(loginResp.HTTPResponse, t)
+
+	response := get(
+		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/long/hello", getHost(), getPort()),
+		t,
+		map[string][]string{"x-krb-session": {session}},
+	)
+
+	echoResponse := verifyGWResponse(response, http.StatusOK, t)
+	requestHeaders := http.Header(echoResponse.Headers)
+	if vals := requestHeaders.Values("x-krb-user"); len(vals) == 0 {
+		t.Fatal("User ID should have been set")
+	}
+
+	if vals := requestHeaders.Values("x-krb-org"); len(vals) == 0 {
+		t.Fatal("Org ID should have been set")
+	}
+
+	if vals := requestHeaders.Values("x-krb-groups"); len(vals) == 0 {
+		t.Fatal("Groups should have been set")
 	}
 }

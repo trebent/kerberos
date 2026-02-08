@@ -107,16 +107,18 @@ func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	backend := ctx.Value(composertypes.BackendContextKey).(string)
 
 	m, err := a.findMethod(backend, req)
-	if errors.Is(err, errNoMethod) {
+	switch {
+	case errors.Is(err, errNoMethod):
 		zerologr.V(20).
 			Info(fmt.Sprintf("Backend %s does not have a defined auth method, calling next", backend))
 		a.next.ServeHTTP(w, req)
 		return
-	} else if errors.Is(err, errExempted) {
-		zerologr.V(20).Info(fmt.Sprintf("Backend %s path %s is exempted, calling next", backend, req.URL.Path))
+	case errors.Is(err, errExempted):
+		zerologr.V(20).
+			Info(fmt.Sprintf("Backend %s path %s is exempted, calling next", backend, req.URL.Path))
 		a.next.ServeHTTP(w, req)
 		return
-	} else if err != nil {
+	case err != nil:
 		zerologr.Error(err, "Error during authentication")
 		apierror.ErrorHandler(w, req, apierror.APIErrInternal)
 		return
