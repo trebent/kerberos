@@ -31,6 +31,7 @@
               },
               "exempt": {
                 "type": "array",
+                "description": "An array of path matching strings, or static paths. Matching is done according to https://pkg.go.dev/path#Match.",
                 "items": {
                   "type": "string",
                   "minLength": 1

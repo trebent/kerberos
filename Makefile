@@ -49,7 +49,7 @@ unittest:
 coverage:
 	@go tool cover -func=build/coverage.out | awk 'END {print $$3}'
 
-integrationtest: compose
+integrationtest:
 	$(call cecho,Running integration tests for Kerberos...,$(BOLD_YELLOW))
 	@cd test/integration && go test -v ./... -count=1 -failfast
 
