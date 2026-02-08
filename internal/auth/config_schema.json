@@ -21,7 +21,8 @@
             "type": "object",
             "properties": {
               "backend": {
-                "type": "string"
+                "type": "string",
+                "minLength": 1
               },
               "method": {
                 "type": "string",
@@ -35,6 +36,28 @@
                 "items": {
                   "type": "string",
                   "minLength": 1
+                }
+              },
+              "authorization": {
+                "type": "object",
+                "properties": {
+                  "groups": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "paths": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
                 }
               }
             },
