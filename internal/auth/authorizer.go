@@ -69,9 +69,10 @@ func New(opts *Opts) composertypes.FlowComponent {
 		zerologr.Info("Basic authentication enabled")
 		// If basic auth, create the method.
 		authorizer.basic = basic.New(&basic.Opts{
-			Mux:    opts.Mux,
-			DB:     opts.DB,
-			OASDir: opts.OASDir,
+			Mux:         opts.Mux,
+			DB:          opts.DB,
+			OASDir:      opts.OASDir,
+			AuthZConfig: makeAuthZMap(cfg.Scheme.Mappings),
 		})
 	}
 
@@ -170,4 +171,12 @@ func (a *authorizer) applySchemas() {
 	if _, err := a.db.Exec(timeoutCtx, string(dbschemaBytes)); err != nil {
 		panic(err)
 	}
+}
+
+func makeAuthZMap(mappings []*mapping) map[string]method.AuthZConfig {
+	m := make(map[string]method.AuthZConfig)
+	for _, mapping := range mappings {
+		m[mapping.Backend] = mapping.Authorization
+	}
+	return m
 }

@@ -3,6 +3,7 @@ package auth
 import (
 	_ "embed"
 
+	"github.com/trebent/kerberos/internal/auth/method"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/xeipuuv/gojsonschema"
 )
@@ -21,13 +22,10 @@ type (
 		Mappings []*mapping `json:"mappings"`
 	}
 	mapping struct {
-		Backend       string        `json:"backend"`
-		Method        string        `json:"method"`
-		Exempt        []string      `json:"exempt"`
-		Authorization authorization `json:"authorization"`
-	}
-	authorization struct {
-		Paths map[string][]string `json:"paths"`
+		Backend       string             `json:"backend"`
+		Method        string             `json:"method"`
+		Exempt        []string           `json:"exempt"`
+		Authorization method.AuthZConfig `json:"authorization"`
 	}
 	administration struct {
 		SuperUser *superuser `json:"superUser"`

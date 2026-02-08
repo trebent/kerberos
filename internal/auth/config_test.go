@@ -199,3 +199,61 @@ func TestConfigAuthorization(t *testing.T) {
 		t.Fatal("Got errors")
 	}
 }
+
+func TestConfigAuthorizationEmptyGroups(t *testing.T) {
+	ac := &authConfig{}
+
+	configData, err := os.ReadFile("./testconfigs/missing-authorization-groups.json")
+	if err != nil {
+		t.Fatalf("Failed to read config file: %v", err)
+	}
+
+	sl := gojsonschema.NewSchemaLoader()
+	sl.AddSchemas(custom.OrderedSchemaJSONLoader())
+	schema, err := sl.Compile(ac.SchemaJSONLoader())
+	if err != nil {
+		t.Fatalf("Failed to compile schema: %v", err)
+	}
+
+	result, err := schema.Validate(gojsonschema.NewBytesLoader(configData))
+	if err != nil {
+		t.Fatalf("Got error: %v", err)
+	}
+
+	if len(result.Errors()) == 0 {
+		t.Fatal("Got 0 errors")
+	}
+
+	for _, e := range result.Errors() {
+		t.Log(e.Description())
+	}
+}
+
+func TestConfigAuthorizationEmptyPathsGroups(t *testing.T) {
+	ac := &authConfig{}
+
+	configData, err := os.ReadFile("./testconfigs/missing-authorization-paths-group.json")
+	if err != nil {
+		t.Fatalf("Failed to read config file: %v", err)
+	}
+
+	sl := gojsonschema.NewSchemaLoader()
+	sl.AddSchemas(custom.OrderedSchemaJSONLoader())
+	schema, err := sl.Compile(ac.SchemaJSONLoader())
+	if err != nil {
+		t.Fatalf("Failed to compile schema: %v", err)
+	}
+
+	result, err := schema.Validate(gojsonschema.NewBytesLoader(configData))
+	if err != nil {
+		t.Fatalf("Got error: %v", err)
+	}
+
+	if len(result.Errors()) == 0 {
+		t.Fatal("Got 0 errors")
+	}
+
+	for _, e := range result.Errors() {
+		t.Log(e.Description())
+	}
+}

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path"
+	"slices"
 	"strconv"
 	"time"
 
@@ -13,6 +15,8 @@ import (
 	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/auth/method"
 	basicapi "github.com/trebent/kerberos/internal/auth/method/basic/api"
+	composertypes "github.com/trebent/kerberos/internal/composer/types"
+
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/kerberos/internal/oas"
 	"github.com/trebent/zerologr"
@@ -22,8 +26,11 @@ type (
 	basic struct {
 		db     db.SQLClient
 		oasDir string
+		config map[string]method.AuthZConfig
 	}
 	Opts struct {
+		AuthZConfig map[string]method.AuthZConfig
+
 		Mux    *http.ServeMux
 		DB     db.SQLClient
 		OASDir string
@@ -33,7 +40,8 @@ type (
 const (
 	authBasicSpecification = "auth_basic.yaml"
 
-	queryGetSession = "SELECT user_id, organisation_id, expires FROM sessions WHERE session_id = @sessionID;"
+	queryGetSession     = "SELECT user_id, organisation_id, expires FROM sessions WHERE session_id = @sessionID;"
+	queryListUserGroups = "SELECT name FROM groups WHERE id IN (SELECT group_id FROM group_bindings WHERE user_id = @userID) AND organisation_id = @orgID;"
 )
 
 var _ method.Method = (*basic)(nil)
@@ -43,6 +51,7 @@ func New(opts *Opts) method.Method {
 	b := &basic{
 		db:     opts.DB,
 		oasDir: opts.OASDir,
+		config: opts.AuthZConfig,
 	}
 
 	b.registerAPI(opts.Mux)
@@ -111,7 +120,80 @@ func (a *basic) Authenticated(req *http.Request) error {
 
 func (a *basic) Authorized(req *http.Request) error {
 	zerologr.V(50).Info("Authorizing request " + req.URL.Path)
-	return nil
+	backend := req.Context().Value(composertypes.BackendContextKey).(string)
+
+	authZ, ok := a.config[backend]
+	if !ok {
+		return nil
+	}
+
+	var groupsToValidate []string
+	// Check if path override is present for the backend:
+	for p, pathGroups := range authZ.Paths {
+		match, err := path.Match(p, req.URL.Path)
+		if err != nil {
+			return err
+		}
+
+		if match {
+			groupsToValidate = pathGroups
+			break
+		}
+	}
+
+	// Return nil if neither global groups are configured, nor any path override exists.
+	if len(groupsToValidate) == 0 && len(authZ.Groups) == 0 {
+		return nil
+	}
+
+	// Set validation groups depending on if global or path override.
+	if len(groupsToValidate) == 0 {
+		groupsToValidate = authZ.Groups
+	}
+
+	// Fetch the user's groups.
+	rows, err := a.db.Query(
+		req.Context(),
+		queryListUserGroups,
+		sql.NamedArg{Name: "orgID", Value: req.Header.Get("x-krb-org")},
+		sql.NamedArg{Name: "userID", Value: req.Header.Get("x-krb-user")},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to query user groups")
+		return apierror.APIErrInternal
+	}
+	// Fine to defer since we're iterating, not just doing one scan.
+	defer rows.Close()
+
+	userGroups := make([]string, 0)
+	for {
+		if !rows.Next() {
+			if err := rows.Err(); err != nil {
+				zerologr.Error(err, "Failed to scan next row")
+				return apierror.APIErrInternal
+			}
+
+			break
+		}
+
+		groupName := ""
+		if err = rows.Scan(&groupName); err != nil {
+			zerologr.Error(err, "Failed to scan row")
+			return apierror.APIErrInternal
+		}
+
+		userGroups = append(userGroups, groupName)
+		req.Header.Add("x-krb-groups", groupName)
+	}
+
+	for _, usergroup := range userGroups {
+		if slices.Contains(groupsToValidate, usergroup) {
+			return nil
+		}
+	}
+
+	// No group match found -> 403
+	return apierror.APIErrForbidden
 }
 
 func (a *basic) registerAPI(mux *http.ServeMux) {
