@@ -36,6 +36,7 @@ components:
         password:
           type: string
           minLength: 10
+          maxLength: 40
       required:
         - name
         - password
