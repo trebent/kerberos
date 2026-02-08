@@ -24,7 +24,12 @@ func MakePassword(password string) (string, string, string) {
 		panic(err)
 	}
 
-	hash, err := bcrypt.GenerateFromPassword(append(salt, []byte(password)...), bcrypt.DefaultCost)
+	fullPassword := make([]byte, saltBytes+len(password))
+	copy(fullPassword, salt)
+	for i, c := range password {
+		fullPassword[len(salt)+i] = byte(c)
+	}
+	hash, err := bcrypt.GenerateFromPassword(fullPassword, bcrypt.DefaultCost)
 	if err != nil {
 		panic(err)
 	}
