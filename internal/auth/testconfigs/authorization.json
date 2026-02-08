@@ -1,0 +1,27 @@
+{
+  "methods": {
+    "basic": {}
+  },
+  "scheme": {
+    "mappings": [
+      {
+        "backend": "backend",
+        "method": "basic",
+        "authorization": {
+          "groups": [
+            "group5"
+          ],
+          "paths": {
+            "/some/path/1": [
+              "group1"
+            ],
+            "/*/path/*/2": [
+              "group2",
+              "group3"
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

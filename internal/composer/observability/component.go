@@ -177,7 +177,8 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	defer span.End() // Stop the span after EVERYTHING is done
 
 	rLogger := o.logger.WithValues("path", req.URL.Path, "method", req.Method)
-	rLogger.Info(req.Method + " " + req.URL.Path)
+	originalPath := req.URL.Path
+	rLogger.Info(req.Method + " " + originalPath)
 	ctx = logr.NewContext(ctx, rLogger)
 
 	// Wrap the request body to extract size
@@ -225,7 +226,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	o.responseSizeHistogram.Record(ctx, wrapper.NumBytes(), requestMeta, krbMetricMeta)
 
 	rLogger.Info(
-		req.Method+" "+req.URL.Path+" "+strconv.Itoa(wrapper.StatusCode()),
+		req.Method+" "+originalPath+" "+strconv.Itoa(wrapper.StatusCode()),
 		string(semconv.HTTPStatusCodeKey), wrapper.StatusCode(),
 	)
 }

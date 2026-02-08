@@ -6,7 +6,21 @@
     "mappings": [
       {
         "backend": "${ref:router.backends[1].name}",
-        "method": "basic"
+        "method": "basic",
+        "exempt": [
+          "/unprotected",
+          "/unprotected/*"
+        ],
+        "authorization": {
+          "groups": [
+            "staff"
+          ],
+          "paths": {
+            "/long/hello": [
+              "pleb"
+            ]
+          }
+        }
       }
     ]
   },

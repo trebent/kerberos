@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"path"
 	"time"
 
 	_ "embed"
@@ -49,6 +50,7 @@ var (
 	//go:embed dbschema/schema.sql
 	dbschemaBytes []byte
 
+	errExempted           = errors.New("path is exempted from auth")
 	errNoMethod           = errors.New("no authentication method defined")
 	errUnrecognizedMethod = errors.New("unrecognized authentication method")
 )
@@ -67,9 +69,10 @@ func New(opts *Opts) composertypes.FlowComponent {
 		zerologr.Info("Basic authentication enabled")
 		// If basic auth, create the method.
 		authorizer.basic = basic.New(&basic.Opts{
-			Mux:    opts.Mux,
-			DB:     opts.DB,
-			OASDir: opts.OASDir,
+			Mux:         opts.Mux,
+			DB:          opts.DB,
+			OASDir:      opts.OASDir,
+			AuthZConfig: makeAuthZMap(cfg.Scheme.Mappings),
 		})
 	}
 
@@ -103,13 +106,19 @@ func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	//nolint:errcheck // if this isn't populated the flow chain has been broken.
 	backend := ctx.Value(composertypes.BackendContextKey).(string)
 
-	m, err := a.findMethod(backend)
-	if err != nil && errors.Is(err, errNoMethod) {
+	m, err := a.findMethod(backend, req)
+	switch {
+	case errors.Is(err, errNoMethod):
 		zerologr.V(20).
 			Info(fmt.Sprintf("Backend %s does not have a defined auth method, calling next", backend))
 		a.next.ServeHTTP(w, req)
 		return
-	} else if err != nil {
+	case errors.Is(err, errExempted):
+		zerologr.V(20).
+			Info(fmt.Sprintf("Backend %s path %s is exempted, calling next", backend, req.URL.Path))
+		a.next.ServeHTTP(w, req)
+		return
+	case err != nil:
 		zerologr.Error(err, "Error during authentication")
 		apierror.ErrorHandler(w, req, apierror.APIErrInternal)
 		return
@@ -132,12 +141,22 @@ func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 // findMethod attempts to find the method which protects the input backend, if any.
-func (a *authorizer) findMethod(backend string) (method.Method, error) {
+func (a *authorizer) findMethod(backend string, req *http.Request) (method.Method, error) {
 	for _, mapping := range a.cfg.Scheme.Mappings {
 		if mapping.Backend == backend {
 			switch mapping.Method {
 			case "basic":
-				zerologr.V(50).Info("Using basic authentication for backend: " + backend)
+				zerologr.V(20).Info("Using basic authentication for backend: " + backend)
+				for _, exemption := range mapping.Exempt {
+					match, err := path.Match(exemption, req.URL.Path)
+					if err != nil {
+						return nil, err
+					}
+
+					if match {
+						return nil, fmt.Errorf("%w: %s", errExempted, req.URL.Path)
+					}
+				}
 				return a.basic, nil
 			default:
 				return nil, errUnrecognizedMethod
@@ -154,4 +173,12 @@ func (a *authorizer) applySchemas() {
 	if _, err := a.db.Exec(timeoutCtx, string(dbschemaBytes)); err != nil {
 		panic(err)
 	}
+}
+
+func makeAuthZMap(mappings []*mapping) map[string]method.AuthZConfig {
+	m := make(map[string]method.AuthZConfig)
+	for _, mapping := range mappings {
+		m[mapping.Backend] = mapping.Authorization
+	}
+	return m
 }

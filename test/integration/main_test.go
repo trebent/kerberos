@@ -115,6 +115,20 @@ func TestMain(m *testing.M) {
 		panic("failed to find staff group id")
 	}
 
+	updateUserGroupsResp, err := basicAuthClient.UpdateUserGroupsWithResponse(
+		context.Background(),
+		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.Userid(alwaysUserID),
+		authbasicapi.UpdateUserGroupsJSONRequestBody{alwaysGroupStaff, alwaysGroupPleb, alwaysGroupDev},
+		authbasicapi.RequestEditorFn(requestEditorSuper),
+	)
+	if err != nil {
+		panic(err)
+	}
+	if updateUserGroupsResp.StatusCode() != http.StatusOK {
+		panic("expected status 200")
+	}
+
 	println("Running tests...")
 	code := m.Run()
 	println("Testing done! Exit code:", code)

@@ -1,0 +1,18 @@
+{
+  "methods": {
+    "basic": {}
+  },
+  "scheme": {
+    "mappings": [
+      {
+        "backend": "backend",
+        "method": "basic",
+        "exempt": [
+          "/path",
+          "/another/path",
+          "/some/*/path"
+        ]
+      }
+    ]
+  }
+}

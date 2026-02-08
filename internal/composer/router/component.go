@@ -108,6 +108,7 @@ func (r *router) GetBackend(req http.Request) (Backend, error) {
 	return nil, fmt.Errorf("%w: %s", errNoBackendFound, req.URL.Path)
 }
 
+// stripKrbPrefix strips the /gw/backend/{backend-name} prefix from the request URL path.
 func stripKrbPrefix(path, backend string) string {
 	return path[len(prefix)+len(backend):]
 }
