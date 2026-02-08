@@ -52,6 +52,9 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Run test environment
+        run: make compose
+
       - name: Run integration tests
         run: make integrationtest
 
