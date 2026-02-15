@@ -20,7 +20,7 @@ All users, groups, and sessions are scoped to a single organisation, ensuring co
 Organisations are created through the basic authentication API:
 
 ```
-POST /auth/basic/organisations
+POST /api/auth/basic/organisations
 {
   "name": "my-organization"
 }
@@ -53,7 +53,7 @@ The creation response includes:
 Super user accounts can list all organisations:
 
 ```
-GET /auth/basic/organisations
+GET /api/auth/basic/organisations
 ```
 
 Regular users (including organisation administrators) cannot list organisations - this operation is restricted to super users only.
@@ -62,9 +62,9 @@ Regular users (including organisation administrators) cannot list organisations 
 
 Organisation administrators can:
 
-- View organisation details: `GET /auth/basic/organisations/{orgID}`
-- Update organisation name: `PUT /auth/basic/organisations/{orgID}`
-- Delete organisation: `DELETE /auth/basic/organisations/{orgID}`
+- View organisation details: `GET /api/auth/basic/organisations/{orgID}`
+- Update organisation name: `PUT /api/auth/basic/organisations/{orgID}`
+- Delete organisation: `DELETE /api/auth/basic/organisations/{orgID}`
 
 Deleting an organisation will cascade delete all associated users, groups, group bindings, and sessions due to database foreign key constraints.
 
@@ -77,23 +77,23 @@ Organisation administrator accounts have special privileges that allow them to m
 An organisation administrator can:
 
 1. **Manage Users**
-   - Create new users: `POST /auth/basic/organisations/{orgID}/users`
-   - List all users: `GET /auth/basic/organisations/{orgID}/users`
-   - View any user: `GET /auth/basic/organisations/{orgID}/users/{userID}`
-   - Update any user: `PUT /auth/basic/organisations/{orgID}/users/{userID}`
-   - Delete any user: `DELETE /auth/basic/organisations/{orgID}/users/{userID}`
-   - Change any user's password: `POST /auth/basic/organisations/{orgID}/users/{userID}/password`
+   - Create new users: `POST /api/auth/basic/organisations/{orgID}/users`
+   - List all users: `GET /api/auth/basic/organisations/{orgID}/users`
+   - View any user: `GET /api/auth/basic/organisations/{orgID}/users/{userID}`
+   - Update any user: `PUT /api/auth/basic/organisations/{orgID}/users/{userID}`
+   - Delete any user: `DELETE /api/auth/basic/organisations/{orgID}/users/{userID}`
+   - Change any user's password: `PUT /api/auth/basic/organisations/{orgID}/users/{userID}/password`
 
 2. **Manage Groups**
-   - Create groups: `POST /auth/basic/organisations/{orgID}/groups`
-   - List all groups: `GET /auth/basic/organisations/{orgID}/groups`
-   - View group details: `GET /auth/basic/organisations/{orgID}/groups/{groupID}`
-   - Update group names: `PUT /auth/basic/organisations/{orgID}/groups/{groupID}`
-   - Delete groups: `DELETE /auth/basic/organisations/{orgID}/groups/{groupID}`
+   - Create groups: `POST /api/auth/basic/organisations/{orgID}/groups`
+   - List all groups: `GET /api/auth/basic/organisations/{orgID}/groups`
+   - View group details: `GET /api/auth/basic/organisations/{orgID}/groups/{groupID}`
+   - Update group names: `PUT /api/auth/basic/organisations/{orgID}/groups/{groupID}`
+   - Delete groups: `DELETE /api/auth/basic/organisations/{orgID}/groups/{groupID}`
 
 3. **Manage Group Memberships**
-   - View user's groups: `GET /auth/basic/organisations/{orgID}/users/{userID}/groups`
-   - Update user's group memberships: `PUT /auth/basic/organisations/{orgID}/users/{userID}/groups`
+   - View user's groups: `GET /api/auth/basic/organisations/{orgID}/users/{userID}/groups`
+   - Update user's group memberships: `PUT /api/auth/basic/organisations/{orgID}/users/{userID}/groups`
 
 4. **Organisation Management**
    - View organisation details
@@ -102,10 +102,11 @@ An organisation administrator can:
 
 ### Regular User Limitations
 
-Regular users (non-administrators) have much more limited access:
+Regular users (non-administrators) have very limited access:
 
-- They can only view their own user details (`GET /auth/basic/organisations/{orgID}/users/{userID}` where userID matches their own)
-- They cannot create, update, or delete users
+- They can only view their own user details (`GET /api/auth/basic/organisations/{orgID}/users/{userID}` where userID matches their own)
+- They cannot update their own user information or change their own password (administrator access required)
+- They cannot create, update, or delete other users
 - They cannot manage groups or group memberships
 - They cannot perform any organisation-level operations
 
@@ -118,11 +119,8 @@ Each user account in the system has the following properties:
 - **Organisation ID**: The organisation this user belongs to
 - **Salt & Hashed Password**: Secure password storage
 - **Administrator**: Boolean flag indicating if the user has administrator privileges
-- **Super User**: Boolean flag for system-level super user accounts (used by admin API)
 
-The `administrator` flag is what grants the elevated privileges within an organisation. This flag can only be set by:
-- Super user accounts when creating a user
-- The initial administrator account created with the organisation
+The `administrator` flag is what grants the elevated privileges within an organisation. In the current implementation, this flag is set automatically only for the initial administrator account created with the organisation. Additional administrator accounts cannot be created or modified through the API.
 
 ## Best Practices
 

@@ -32,11 +32,11 @@ Basic authentication is the primary authentication method supported by Kerberos.
 
 ### Session Management
 
-- Sessions are created upon successful login via the `/auth/basic/{orgID}/login` endpoint
+- Sessions are created upon successful login via the `/api/auth/basic/organisations/{orgID}/login` endpoint
 - Each session is identified by a unique session ID returned in the `X-Krb-Session` header
 - Sessions have a 15-minute expiration time
 - Subsequent requests must include the session ID in the `X-Krb-Session` header
-- Users can logout via the `/auth/basic/{orgID}/logout` endpoint, which invalidates all their active sessions
+- Users can logout via the `/api/auth/basic/organisations/{orgID}/logout` endpoint, which invalidates all their active sessions
 
 ### Authentication Process
 
@@ -98,4 +98,4 @@ When a new organisation is created, an administrator account is automatically ge
 - A randomly generated password (returned in the creation response)
 - The `administrator` flag set to `true`
 
-Additional users can be created within an organisation, but only existing administrators or super users can designate new users as administrators.
+This is the only way to create an administrator account. Additional users created through the API are always created as regular users without administrator privileges.
