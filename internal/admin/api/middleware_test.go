@@ -2,6 +2,7 @@ package adminapi
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	adminapi "github.com/trebent/kerberos/internal/api/admin"
+	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/db/sqlite"
 )
 
@@ -48,5 +50,31 @@ func TestAdminSessionMiddleware(t *testing.T) {
 
 	if err != nil {
 		t.Fatalf("Did not expect error: %v", err)
+	}
+}
+
+func TestRequireSessionMiddleware(t *testing.T) {
+	mw := RequireSessionMiddleware()
+
+	handler := mw(func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return nil, nil
+	}, "operation")
+
+	enrichedContext := context.Background()
+	enrichedContext = context.WithValue(enrichedContext, adminContextSession, "session")
+	_, err := handler(enrichedContext, httptest.NewRecorder(), &http.Request{}, adminapi.LoginSuperuserRequestObject{})
+
+	if err != nil {
+		t.Fatalf("Did not expect error: %v", err)
+	}
+
+	emptyContext := context.Background()
+	_, err = handler(emptyContext, httptest.NewRecorder(), &http.Request{}, adminapi.LoginSuperuserJSONRequestBody{})
+	if err == nil {
+		t.Fatal("Expected an error")
+	}
+
+	if !errors.Is(err, apierror.APIErrNoSession) {
+		t.Fatal("Expected an apierror")
 	}
 }
