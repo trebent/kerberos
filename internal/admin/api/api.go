@@ -53,7 +53,7 @@ func NewSSI(db db.SQLClient, clientID, clientSecret string) adminapi.StrictServe
 		<-im.sessionCleaner.C
 
 		im.superSessions.Range(func(key, value any) bool {
-			t := value.(time.Time)
+			t, _ := value.(time.Time)
 			if time.Now().After(t) {
 				zerologr.V(20).Info("Cleaning up an expired super user session")
 				im.superSessions.Delete(key)
@@ -67,7 +67,7 @@ func NewSSI(db db.SQLClient, clientID, clientSecret string) adminapi.StrictServe
 
 // LoginSuperuser implements [StrictServerInterface].
 func (i *impl) LoginSuperuser(
-	ctx context.Context,
+	_ context.Context,
 	request adminapi.LoginSuperuserRequestObject,
 ) (adminapi.LoginSuperuserResponseObject, error) {
 	//nolint:nilerr // on purpose

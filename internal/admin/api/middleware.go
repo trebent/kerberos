@@ -32,7 +32,7 @@ func AdminSessionMiddleware(
 
 	return func(
 		f nethttp.StrictHTTPHandlerFunc,
-		opID string,
+		_ string,
 	) nethttp.StrictHTTPHandlerFunc {
 		return func(
 			ctx context.Context,
@@ -60,7 +60,7 @@ func AdminSessionMiddleware(
 			// It's set here not to confuse a non-admin session ID with admin ones, since we only have the super user check
 			// right now.
 
-			tsessionExpiry := sessionExpiry.(time.Time)
+			tsessionExpiry, _ := sessionExpiry.(time.Time)
 			if !time.Now().After(tsessionExpiry) {
 				ctx = context.WithValue(ctx, adminContextIsSuperUser, true)
 				ctx = context.WithValue(ctx, adminContextSession, session)
@@ -80,7 +80,8 @@ func RequireSessionMiddleware() adminapigen.StrictMiddlewareFunc {
 			ctx context.Context,
 			w http.ResponseWriter,
 			r *http.Request,
-			request any) (response any, err error) {
+			request any,
+		) (any, error) {
 			zerologr.V(20).Info("Running admin require session middleware")
 
 			// auto-approve since no session exists.

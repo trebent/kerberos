@@ -60,7 +60,9 @@ jobs:
 
       - name: Output logs if tests fail
         if: failure()
-        run: make compose-logs > build/integration-test.log
+        run: |
+          mkdir -p build
+          make compose-logs > build/integration-test.log
 
       - name: Upload logs
         if: failure()
