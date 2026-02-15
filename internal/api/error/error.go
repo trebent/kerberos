@@ -56,6 +56,11 @@ var (
 		Errors:     []string{ErrNoPermission.Error()},
 		StatusCode: http.StatusForbidden,
 	}
+	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
+	APIErrTooManyRequests = &Error{
+		Errors:     []string{http.StatusText(http.StatusTooManyRequests)},
+		StatusCode: http.StatusTooManyRequests,
+	}
 )
 
 func New(statusCode int, message string) *Error {

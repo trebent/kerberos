@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/trebent/kerberos/internal/composer/custom"
-	"github.com/trebent/kerberos/internal/config"
 	"github.com/xeipuuv/gojsonschema"
 )
 
@@ -122,23 +121,6 @@ func TestConfigOnlyAdmin(t *testing.T) {
 		}
 
 		t.Fatal("Got errors")
-	}
-}
-
-func TestConfigAdminSuperUserDefault(t *testing.T) {
-	cm := config.New(&config.Opts{})
-	_, err := RegisterWith(cm)
-	if err != nil {
-		t.Fatalf("Failed to register auth config: %v", err)
-	}
-
-	ac := config.AccessAs[*authConfig](cm, configName)
-	if ac.Administration.SuperUser.ClientID != defaultSuperUserClientID {
-		t.Fatal("Client ID was not defaulted")
-	}
-
-	if ac.Administration.SuperUser.ClientSecret != defaultSuperUserClientSecret {
-		t.Fatal("Client secret was not defaulted")
 	}
 }
 

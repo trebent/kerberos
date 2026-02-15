@@ -10,10 +10,9 @@ import (
 
 type (
 	authConfig struct {
-		Methods        *methods        `json:"methods"`
-		Scheme         *scheme         `json:"scheme"`
-		Administration *administration `json:"administration"`
-		Order          int             `json:"order"`
+		Methods *methods `json:"methods"`
+		Scheme  *scheme  `json:"scheme"`
+		Order   int      `json:"order"`
 	}
 	methods struct {
 		Basic *basicAuthentication `json:"basic"`
@@ -27,22 +26,13 @@ type (
 		Exempt        []string           `json:"exempt"`
 		Authorization method.AuthZConfig `json:"authorization"`
 	}
-	administration struct {
-		SuperUser *superuser `json:"superUser"`
-	}
-	superuser struct {
-		ClientID     string `json:"clientId"`
-		ClientSecret string `json:"clientSecret"`
-	}
 	basicAuthentication struct{}
 )
 
 const (
 	configName = "auth"
 
-	defaultSuperUserClientID     = "admin"
-	defaultSuperUserClientSecret = "password"
-	defaultOrder                 = 1
+	defaultOrder = 1
 )
 
 var (
@@ -61,19 +51,7 @@ func (a *authConfig) BasicEnabled() bool {
 	return a.Methods.Basic != nil
 }
 
-func (a *authConfig) AdministrationEnabled() bool {
-	return a.Administration != nil
-}
-
 func RegisterWith(cfg config.Map) (string, error) {
-	cfg.Register(configName, &authConfig{
-		Administration: &administration{
-			SuperUser: &superuser{
-				ClientID:     defaultSuperUserClientID,
-				ClientSecret: defaultSuperUserClientSecret,
-			},
-		},
-		Order: defaultOrder,
-	})
+	cfg.Register(configName, &authConfig{Order: defaultOrder})
 	return configName, nil
 }

@@ -1,14 +1,18 @@
 package admin
 
 import (
+	"context"
+	_ "embed"
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
-	api "github.com/trebent/kerberos/internal/api/auth/admin"
+	adminapi "github.com/trebent/kerberos/internal/admin/api"
+	adminapigen "github.com/trebent/kerberos/internal/api/admin"
 	apierror "github.com/trebent/kerberos/internal/api/error"
-	adminapi "github.com/trebent/kerberos/internal/auth/admin/api"
+	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/kerberos/internal/oas"
 	"github.com/trebent/zerologr"
@@ -21,17 +25,22 @@ type (
 
 		OASDir string
 
-		ClientID     string
-		ClientSecret string
+		Cfg config.Map
 	}
 )
 
+//go:embed dbschema/schema.sql
+var dbschemaBytes []byte
+
 const (
-	authAdminSpecification = "auth_admin.yaml"
+	authAdminSpecification = "admin.yaml"
+	schemaApplyTimeout     = 10 * time.Second
 )
 
+// Runs the administration API.
 func Init(opts *Opts) {
 	zerologr.Info("Setting up administration API")
+	applySchemas(opts.DB)
 
 	data, err := os.ReadFile(fmt.Sprintf("%s/%s", opts.OASDir, authAdminSpecification))
 	if err != nil {
@@ -43,20 +52,21 @@ func Init(opts *Opts) {
 		panic(fmt.Errorf("failed to load admin authentication OAS: %w", err))
 	}
 
-	ssi := adminapi.NewSSI(opts.DB, opts.ClientID, opts.ClientSecret)
+	cfg := config.AccessAs[*adminConfig](opts.Cfg, configName)
+	ssi := adminapi.NewSSI(opts.DB, cfg.SuperUser.ClientID, cfg.SuperUser.ClientSecret)
 
-	strictHandler := api.NewStrictHandlerWithOptions(
+	strictHandler := adminapigen.NewStrictHandlerWithOptions(
 		ssi,
-		[]api.StrictMiddlewareFunc{},
-		api.StrictHTTPServerOptions{
+		[]adminapigen.StrictMiddlewareFunc{},
+		adminapigen.StrictHTTPServerOptions{
 			RequestErrorHandlerFunc:  apierror.RequestErrorHandler,
 			ResponseErrorHandlerFunc: apierror.ResponseErrorHandler,
 		},
 	)
 
-	_ = api.HandlerWithOptions(strictHandler, api.StdHTTPServerOptions{
+	_ = adminapigen.HandlerWithOptions(strictHandler, adminapigen.StdHTTPServerOptions{
 		BaseRouter: opts.Mux,
-		Middlewares: []api.MiddlewareFunc{
+		Middlewares: []adminapigen.MiddlewareFunc{
 			oas.ValidationMiddleware(spec),
 			func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -66,4 +76,12 @@ func Init(opts *Opts) {
 			},
 		},
 	})
+}
+
+func applySchemas(db db.SQLClient) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), schemaApplyTimeout)
+	defer cancel()
+	if _, err := db.Exec(timeoutCtx, string(dbschemaBytes)); err != nil {
+		panic(err)
+	}
 }

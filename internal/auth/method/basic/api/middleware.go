@@ -82,10 +82,9 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 				sessionUserID int64
 				sessionOrgID  int64
 				administrator bool
-				superUser     bool
 				expires       int64
 			)
-			err = rows.Scan(&sessionUserID, &sessionOrgID, &administrator, &superUser, &expires)
+			err = rows.Scan(&sessionUserID, &sessionOrgID, &administrator, &expires)
 			//nolint:sqlclosecheck // won't help here
 			_ = rows.Close()
 			if err != nil {
@@ -96,13 +95,6 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 			if time.Now().UnixMilli() > expires {
 				zerologr.Error(apierror.ErrNoSession, "Session expired")
 				return nil, apierror.APIErrNoSession
-			}
-
-			if superUser {
-				zerologr.Info(
-					fmt.Sprintf("Permitting super user access to operation %s", operationID),
-				)
-				return f(ctx, w, r, request)
 			}
 
 			var validation []error

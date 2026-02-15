@@ -1,36 +1,22 @@
-CREATE TABLE IF NOT EXISTS organisations (
+CREATE TABLE IF NOT EXISTS groups (
   id INTEGER PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   created TEXT NOT NULL DEFAULT current_timestamp,
   updated TEXT NOT NULL DEFAULT current_timestamp
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS organisation_name ON organisations(name);
-
-CREATE TABLE IF NOT EXISTS groups (
-  id INTEGER PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  organisation_id INTEGER,
-  created TEXT NOT NULL DEFAULT current_timestamp,
-  updated TEXT NOT NULL DEFAULT current_timestamp,
-  FOREIGN KEY(organisation_id) REFERENCES organisations(id) ON DELETE CASCADE ON UPDATE CASCADE
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS group_name ON groups(organisation_id, name);
+CREATE UNIQUE INDEX IF NOT EXISTS group_name ON groups(name);
 
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   salt VARCHAR(100) NOT NULL,
   hashed_password VARCHAR(100) NOT NULL,
-  organisation_id INTEGER,
-  administrator BOOLEAN DEFAULT FALSE NOT NULL,
   created TEXT NOT NULL DEFAULT current_timestamp,
-  updated TEXT NOT NULL DEFAULT current_timestamp,
-  FOREIGN KEY(organisation_id) REFERENCES organisations(id) ON DELETE CASCADE ON UPDATE CASCADE
+  updated TEXT NOT NULL DEFAULT current_timestamp
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS user_name ON users(organisation_id, name);
+CREATE UNIQUE INDEX IF NOT EXISTS user_name ON users(name);
 
 CREATE TABLE IF NOT EXISTS group_bindings (
   user_id INTEGER,
@@ -45,11 +31,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS user_groups ON group_bindings(user_id, group_i
 
 CREATE TABLE IF NOT EXISTS sessions (
   user_id INTEGER,
-  organisation_id INTEGER,
   session_id VARCHAR(100),
   expires INTEGER NOT NULL,
-  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
-  FOREIGN KEY(organisation_id) REFERENCES organisations(id) ON DELETE CASCADE ON UPDATE CASCADE
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TRIGGER IF NOT EXISTS group_bindings_updated 
@@ -72,11 +56,3 @@ WHEN old.updated = new.updated
 BEGIN
   UPDATE groups SET updated = current_timestamp WHERE id = old.id;
 END;
-
-CREATE TRIGGER IF NOT EXISTS organisation_updated 
-AFTER UPDATE ON organisations
-WHEN old.updated = new.updated
-BEGIN
-  UPDATE organisations SET updated = current_timestamp WHERE id = old.id;
-END;
-

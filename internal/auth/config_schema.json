@@ -78,26 +78,6 @@
       ],
       "additionalProperties": false
     },
-    "administration": {
-      "type": "object",
-      "properties": {
-        "superUser": {
-          "type": "object",
-          "properties": {
-            "clientId": {
-              "type": "string",
-              "default": "admin"
-            },
-            "clientSecret": {
-              "type": "string",
-              "default": "password"
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
     "order": {
       "$ref": "http://trebent.com/kerberos/schemas/ordered_schema.json"
     }

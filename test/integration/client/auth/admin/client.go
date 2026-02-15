@@ -170,7 +170,7 @@ func NewLoginSuperuserRequestWithBody(server string, contentType string, body io
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/api/auth/admin/superuser/login")
+	operationPath := fmt.Sprintf("/api/admin/superuser/login")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -199,7 +199,7 @@ func NewLogoutSuperuserRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/api/auth/admin/superuser/logout")
+	operationPath := fmt.Sprintf("/api/admin/superuser/logout")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -274,6 +274,7 @@ type LoginSuperuserResponse struct {
 	HTTPResponse *http.Response
 	JSON400      *APIErrorResponse
 	JSON401      *APIErrorResponse
+	JSON429      *APIErrorResponse
 	JSON500      *APIErrorResponse
 }
 
@@ -368,6 +369,13 @@ func ParseLoginSuperuserResponse(rsp *http.Response) (*LoginSuperuserResponse, e
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest APIErrorResponse

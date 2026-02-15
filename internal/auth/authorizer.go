@@ -12,7 +12,6 @@ import (
 
 	"github.com/go-logr/logr"
 	apierror "github.com/trebent/kerberos/internal/api/error"
-	"github.com/trebent/kerberos/internal/auth/admin"
 	"github.com/trebent/kerberos/internal/auth/method"
 	"github.com/trebent/kerberos/internal/auth/method/basic"
 	"github.com/trebent/kerberos/internal/composer/custom"
@@ -73,17 +72,6 @@ func New(opts *Opts) composertypes.FlowComponent {
 			DB:          opts.DB,
 			OASDir:      opts.OASDir,
 			AuthZConfig: makeAuthZMap(cfg.Scheme.Mappings),
-		})
-	}
-
-	if cfg.AdministrationEnabled() {
-		zerologr.Info("Administration enabled")
-		admin.Init(&admin.Opts{
-			Mux:          opts.Mux,
-			DB:           opts.DB,
-			OASDir:       opts.OASDir,
-			ClientID:     cfg.Administration.SuperUser.ClientID,
-			ClientSecret: cfg.Administration.SuperUser.ClientSecret,
 		})
 	}
 
