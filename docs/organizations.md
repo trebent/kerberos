@@ -100,12 +100,13 @@ An organisation administrator can:
    - Update organisation name
    - Delete organisation (and all associated data)
 
-### Regular User Limitations
+### Regular User Capabilities
 
-Regular users (non-administrators) have very limited access:
+Regular users (non-administrators) have limited but essential self-management capabilities:
 
-- They can only view their own user details (`GET /api/auth/basic/organisations/{orgID}/users/{userID}` where userID matches their own)
-- They cannot update their own user information or change their own password (administrator access required)
+- They can view their own user details (`GET /api/auth/basic/organisations/{orgID}/users/{userID}` where userID matches their own)
+- They can update their own user information (`PUT /api/auth/basic/organisations/{orgID}/users/{userID}` for their own userID)
+- They can change their own password (`PUT /api/auth/basic/organisations/{orgID}/users/{userID}/password` for their own userID)
 - They cannot create, update, or delete other users
 - They cannot manage groups or group memberships
 - They cannot perform any organisation-level operations
