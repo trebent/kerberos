@@ -115,7 +115,7 @@ Each user account in the system has the following properties:
 
 - **ID**: Unique identifier
 - **Name**: Username used for login
-- **Organisation ID**: The organization this user belongs to
+- **Organisation ID**: The organisation this user belongs to
 - **Salt & Hashed Password**: Secure password storage
 - **Administrator**: Boolean flag indicating if the user has administrator privileges
 - **Super User**: Boolean flag for system-level super user accounts (used by admin API)
