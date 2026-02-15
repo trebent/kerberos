@@ -40,6 +40,7 @@ func AdminSessionMiddleware(
 			r *http.Request,
 			request any,
 		) (any, error) {
+
 			zerologr.V(20).Info("Running admin session middleware")
 
 			session := r.Header.Get("X-Krb-Session")
