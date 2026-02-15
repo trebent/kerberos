@@ -1,10 +1,10 @@
-# Organizations
+# Organisations
 
-Organizations (or "organisations" in the codebase) are the top-level entity in Kerberos' multi-tenant authentication system. They provide isolation between different groups of users and their resources.
+Organisations are the top-level entity in Kerberos' multi-tenant authentication system. They provide isolation between different groups of users and their resources.
 
-## Organization Structure
+## Organisation Structure
 
-Each organization contains:
+Each organisation contains:
 
 - **Users**: Individual accounts that can authenticate and access resources
 - **Groups**: Named collections used for authorization
@@ -13,11 +13,11 @@ Each organization contains:
 
 All users, groups, and sessions are scoped to a single organisation, ensuring complete isolation between tenants.
 
-## Working with Organizations
+## Working with Organisations
 
-### Creating an Organization
+### Creating an Organisation
 
-Organizations are created through the basic authentication API:
+Organisations are created through the basic authentication API:
 
 ```
 POST /auth/basic/organisations
@@ -26,13 +26,13 @@ POST /auth/basic/organisations
 }
 ```
 
-When an organization is created:
+When an organisation is created:
 
-1. The organization record is created in the database with a unique ID
+1. The organisation record is created in the database with a unique ID
 2. An administrator account is automatically created with:
    - Username: `admin-{organisation-name}`
    - A randomly generated password (returned in the response)
-   - Full administrative privileges within the organization
+   - Full administrative privileges within the organisation
 
 The creation response includes:
 
@@ -48,33 +48,33 @@ The creation response includes:
 
 **Important**: Save the administrator password from the creation response, as it cannot be retrieved later. The administrator can change their password after logging in.
 
-### Listing Organizations
+### Listing Organisations
 
-Super user accounts can list all organizations:
+Super user accounts can list all organisations:
 
 ```
 GET /auth/basic/organisations
 ```
 
-Regular users (including organization administrators) cannot list organizations - this operation is restricted to super users only.
+Regular users (including organisation administrators) cannot list organisations - this operation is restricted to super users only.
 
-### Managing an Organization
+### Managing an Organisation
 
-Organization administrators can:
+Organisation administrators can:
 
-- View organization details: `GET /auth/basic/organisations/{orgID}`
-- Update organization name: `PUT /auth/basic/organisations/{orgID}`
-- Delete organization: `DELETE /auth/basic/organisations/{orgID}`
+- View organisation details: `GET /auth/basic/organisations/{orgID}`
+- Update organisation name: `PUT /auth/basic/organisations/{orgID}`
+- Delete organisation: `DELETE /auth/basic/organisations/{orgID}`
 
-Deleting an organization will cascade delete all associated users, groups, group bindings, and sessions due to database foreign key constraints.
+Deleting an organisation will cascade delete all associated users, groups, group bindings, and sessions due to database foreign key constraints.
 
-## Organization Administrator Accounts
+## Organisation Administrator Accounts
 
-Organization administrator accounts have special privileges that allow them to manage their organization.
+Organisation administrator accounts have special privileges that allow them to manage their organisation.
 
 ### Administrator Capabilities
 
-An organization administrator can:
+An organisation administrator can:
 
 1. **Manage Users**
    - Create new users: `POST /auth/basic/organisations/{orgID}/users`
@@ -95,10 +95,10 @@ An organization administrator can:
    - View user's groups: `GET /auth/basic/organisations/{orgID}/users/{userID}/groups`
    - Update user's group memberships: `PUT /auth/basic/organisations/{orgID}/users/{userID}/groups`
 
-4. **Organization Management**
-   - View organization details
-   - Update organization name
-   - Delete organization (and all associated data)
+4. **Organisation Management**
+   - View organisation details
+   - Update organisation name
+   - Delete organisation (and all associated data)
 
 ### Regular User Limitations
 
@@ -107,7 +107,7 @@ Regular users (non-administrators) have much more limited access:
 - They can only view their own user details (`GET /auth/basic/organisations/{orgID}/users/{userID}` where userID matches their own)
 - They cannot create, update, or delete users
 - They cannot manage groups or group memberships
-- They cannot perform any organization-level operations
+- They cannot perform any organisation-level operations
 
 ### User Account Structure
 
@@ -120,22 +120,22 @@ Each user account in the system has the following properties:
 - **Administrator**: Boolean flag indicating if the user has administrator privileges
 - **Super User**: Boolean flag for system-level super user accounts (used by admin API)
 
-The `administrator` flag is what grants the elevated privileges within an organization. This flag can only be set by:
+The `administrator` flag is what grants the elevated privileges within an organisation. This flag can only be set by:
 - Super user accounts when creating a user
-- The initial administrator account created with the organization
+- The initial administrator account created with the organisation
 
 ## Best Practices
 
 ### Security
 
-1. **Change default passwords**: Immediately change the administrator password after organization creation
+1. **Change default passwords**: Immediately change the administrator password after organisation creation
 2. **Limit administrator accounts**: Only grant administrator privileges to users who need them
 3. **Use groups for authorization**: Define groups that map to your authorization requirements
 4. **Regular auditing**: Periodically review user and group memberships
 
-### Organization Design
+### Organisation Design
 
-1. **One organization per tenant**: Each customer or isolated environment should have its own organization
+1. **One organisation per tenant**: Each customer or isolated environment should have its own organisation
 2. **Meaningful group names**: Use group names that clearly indicate their purpose
 3. **Document group purposes**: Keep external documentation of what each group is authorized to do
 4. **Plan for growth**: Design your group structure to accommodate future authorization requirements
