@@ -186,13 +186,15 @@ func startServer(ctx context.Context, cfg config.Map) error {
 		&sqlite.Opts{DSN: filepath.Join(internalenv.DBDirectory.Value(), sqlite.DBName)},
 	)
 
-	// Even though the admin configuration is optional, it's always available.
+	// Even though the admin configuration is optional, it's always available. The admin initialisation
+	// output is used to configure and prepare other internal components for administration.
 	zerologr.Info("Loading admin")
-	admin.Init(
+	out := admin.Init(
 		&admin.Opts{
 			Mux:    mux,
 			DB:     db,
 			OASDir: internalenv.OASDirectory.Value(),
+			Cfg:    cfg,
 		},
 	)
 
@@ -208,10 +210,11 @@ func startServer(ctx context.Context, cfg config.Map) error {
 	if internalenv.AuthJSONFile.Value() != "" {
 		zerologr.Info("Loading auth")
 		authorizer := auth.New(&auth.Opts{
-			Cfg:    cfg,
-			Mux:    mux,
-			DB:     db,
-			OASDir: internalenv.OASDirectory.Value(),
+			Cfg:                    cfg,
+			Mux:                    mux,
+			DB:                     db,
+			OASDir:                 internalenv.OASDirectory.Value(),
+			AdminSessionMiddleware: out.AdminSessionMiddleware,
 		})
 		customFlowComponents = append(customFlowComponents, authorizer)
 	}

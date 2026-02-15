@@ -27,6 +27,9 @@ type (
 
 		Cfg config.Map
 	}
+	Output struct {
+		AdminSessionMiddleware adminapigen.StrictMiddlewareFunc
+	}
 )
 
 //go:embed dbschema/schema.sql
@@ -38,7 +41,7 @@ const (
 )
 
 // Runs the administration API.
-func Init(opts *Opts) {
+func Init(opts *Opts) *Output {
 	zerologr.Info("Setting up administration API")
 	applySchemas(opts.DB)
 
@@ -54,6 +57,7 @@ func Init(opts *Opts) {
 
 	cfg := config.AccessAs[*adminConfig](opts.Cfg, configName)
 	ssi := adminapi.NewSSI(opts.DB, cfg.SuperUser.ClientID, cfg.SuperUser.ClientSecret)
+	adminSessionMiddleware := adminapi.AdminSessionMiddleware(ssi)
 
 	strictHandler := adminapigen.NewStrictHandlerWithOptions(
 		ssi,
@@ -76,6 +80,10 @@ func Init(opts *Opts) {
 			},
 		},
 	})
+
+	return &Output{
+		AdminSessionMiddleware: adminSessionMiddleware,
+	}
 }
 
 func applySchemas(db db.SQLClient) {

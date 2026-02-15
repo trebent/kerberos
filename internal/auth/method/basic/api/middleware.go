@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	adminapi "github.com/trebent/kerberos/internal/admin/api"
 	authbasicapi "github.com/trebent/kerberos/internal/api/auth/basic"
 	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/zerologr"
@@ -43,6 +44,11 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 			// No middleware operations needed for logging in.
 			if operationID == "Login" {
 				zerologr.V(20).Info("Skipping authentication for the login path")
+				return f(ctx, w, r, request)
+			}
+
+			if adminapi.IsSuperUserContext(ctx) {
+				zerologr.V(20).Info("Permitting super user access")
 				return f(ctx, w, r, request)
 			}
 
