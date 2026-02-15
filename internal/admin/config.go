@@ -18,7 +18,12 @@ type (
 	}
 )
 
-const configName = "admin"
+const (
+	configName = "admin"
+
+	defaultClientID     = "admin"
+	defaultClientSecret = "secret"
+)
 
 var (
 	_ config.Config = &adminConfig{}
@@ -38,7 +43,7 @@ func (a *adminConfig) SchemaJSONLoader() gojsonschema.JSONLoader {
 
 func RegisterWith(cfg config.Map) (string, error) {
 	cfg.Register(configName, &adminConfig{SuperUser: superUser{
-		ClientID: "admin", ClientSecret: "secret",
+		ClientID: defaultClientID, ClientSecret: defaultClientSecret,
 	}})
 	return configName, nil
 }

@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "http://trebent.com/kerberos/schemas/auth_schema.json",
+  "$id": "http://trebent.com/kerberos/schemas/admin_schema.json",
   "type": "object",
   "properties": {
     "superUser": {
@@ -12,7 +12,7 @@
         },
         "clientSecret": {
           "type": "string",
-          "default": "password"
+          "default": "secret"
         }
       },
       "additionalProperties": false

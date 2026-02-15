@@ -61,7 +61,10 @@ func Init(opts *Opts) *Output {
 
 	strictHandler := adminapigen.NewStrictHandlerWithOptions(
 		ssi,
-		[]adminapigen.StrictMiddlewareFunc{},
+		[]adminapigen.StrictMiddlewareFunc{
+			adminapi.RequireSessionMiddleware(),
+			adminapi.AdminSessionMiddleware(ssi),
+		},
 		adminapigen.StrictHTTPServerOptions{
 			RequestErrorHandlerFunc:  apierror.RequestErrorHandler,
 			ResponseErrorHandlerFunc: apierror.ResponseErrorHandler,

@@ -11,7 +11,7 @@ import (
 
 type (
 	Error struct {
-		StatusCode int      `json:"statusCode"`
+		StatusCode int      `json:"-"`
 		Errors     []string `json:"errors"`
 	}
 )

@@ -250,6 +250,9 @@ echo-docker-logs:
 # TEST
 #
 
+test-login-superuser:
+	curl -X POST -H "Content-Type: application/json" -i localhost:$(KERBEROS_PORT)/api/admin/superuser/login --data '{"clientId": "admin", "clientSecret": "secret"}'
+
 test-echo:
 	$(call cecho,Sending a test request to echo...,$(BOLD_YELLOW))
 	curl -X GET -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
