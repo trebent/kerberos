@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	authadminapi "github.com/trebent/kerberos/ft/client/auth/admin"
+	adminapi "github.com/trebent/kerberos/ft/client/admin"
 	authbasicapi "github.com/trebent/kerberos/ft/client/auth/basic"
 )
 
@@ -33,7 +33,7 @@ var (
 	basicAuthClient, _ = authbasicapi.NewClientWithResponses(
 		fmt.Sprintf("http://%s:%d", getHost(), getPort()),
 	)
-	adminClient, _ = authadminapi.NewClientWithResponses(
+	adminClient, _ = adminapi.NewClientWithResponses(
 		fmt.Sprintf("http://%s:%d", getHost(), getPort()),
 	)
 
@@ -46,6 +46,11 @@ var (
 	// Used to generate unique names.
 	// This is initialised with a random int32 in TestMain.
 	a = atomic.Int32{}
+)
+
+const (
+	superUserClientID     = "admin"
+	superUserClientSecret = "secret"
 )
 
 // Returns a guaranteed unique username.
@@ -179,7 +184,7 @@ func verifyGWResponse(resp *http.Response, expectedCode int, t *testing.T) *Echo
 	return response
 }
 
-func verifyAdminAPIErrorResponse(er *authadminapi.APIErrorResponse, t *testing.T) {
+func verifyAdminAPIErrorResponse(er *adminapi.APIErrorResponse, t *testing.T) {
 	t.Helper()
 	if er != nil {
 		if len(er.Errors) == 0 {

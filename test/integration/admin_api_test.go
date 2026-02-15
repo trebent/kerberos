@@ -4,14 +4,14 @@ import (
 	"net/http"
 	"testing"
 
-	authadminapi "github.com/trebent/kerberos/ft/client/auth/admin"
+	adminapi "github.com/trebent/kerberos/ft/client/admin"
 )
 
 func TestAuthAdminSuperuser(t *testing.T) {
 	t.Log("Logging the superuser in")
 	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
-		authadminapi.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "client-secret"},
+		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
 	)
 	checkErr(err, t)
 	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
@@ -20,7 +20,7 @@ func TestAuthAdminSuperuser(t *testing.T) {
 	t.Log("Logging the superuser out")
 	superLogoutResp, err := adminClient.LogoutSuperuserWithResponse(
 		t.Context(),
-		authadminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(superLogoutResp.StatusCode(), http.StatusNoContent, t)
@@ -29,7 +29,7 @@ func TestAuthAdminSuperuser(t *testing.T) {
 func TestAuthAdminLoginFailure(t *testing.T) {
 	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
-		authadminapi.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "not-correct"},
+		adminapi.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "not-correct"},
 	)
 	checkErr(err, t)
 	verifyStatusCode(superLoginResp.StatusCode(), http.StatusUnauthorized, t)
@@ -45,7 +45,7 @@ func TestAuthAdminLoginFailure(t *testing.T) {
 }
 
 func TestAuthAdminOASFailure(t *testing.T) {
-	badSuperLoginResp, err := adminClient.LoginSuperuserWithResponse(t.Context(), authadminapi.LoginSuperuserJSONRequestBody{})
+	badSuperLoginResp, err := adminClient.LoginSuperuserWithResponse(t.Context(), adminapi.LoginSuperuserJSONRequestBody{})
 	checkErr(err, t)
 	verifyStatusCode(badSuperLoginResp.StatusCode(), http.StatusBadRequest, t)
 	verifyAdminAPIErrorResponse(badSuperLoginResp.JSON400, t)
