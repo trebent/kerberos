@@ -132,9 +132,16 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 				"UpdateUser",
 				"DeleteUser",
 				"GetUserGroups",
-				"UpdateUserGroups",
 				"ChangePassword":
-				zerologr.V(20).Info("Validating auth for specific user paths")
+				zerologr.V(20).Info("Validating auth for user owned paths")
+				validation = make([]error, 2)
+				validation[0] = orgValidator(sessionOrgID, r)
+				validation[1] = or(
+					administratorValidator(administrator),
+					ownerUserValidator(sessionUserID, r),
+				)
+			case "UpdateUserGroups":
+				zerologr.V(20).Info("Validating auth for update user membership paths")
 				validation = make([]error, 2)
 				validation[0] = orgValidator(sessionOrgID, r)
 				validation[1] = administratorValidator(administrator)
