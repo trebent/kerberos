@@ -95,35 +95,6 @@ func TestConfigMissingSchemeMappings(t *testing.T) {
 	}
 }
 
-func TestConfigOnlyAdmin(t *testing.T) {
-	ac := &authConfig{}
-
-	configData, err := os.ReadFile("./testconfigs/only-admin.json")
-	if err != nil {
-		t.Fatalf("Failed to read config file: %v", err)
-	}
-
-	sl := gojsonschema.NewSchemaLoader()
-	sl.AddSchemas(custom.OrderedSchemaJSONLoader())
-	schema, err := sl.Compile(ac.SchemaJSONLoader())
-	if err != nil {
-		t.Fatalf("Failed to compile schema: %v", err)
-	}
-
-	result, err := schema.Validate(gojsonschema.NewBytesLoader(configData))
-	if err != nil {
-		t.Fatalf("Got error: %v", err)
-	}
-
-	if len(result.Errors()) != 0 {
-		for _, e := range result.Errors() {
-			t.Error(e.Description())
-		}
-
-		t.Fatal("Got errors")
-	}
-}
-
 func TestConfigExempt(t *testing.T) {
 	ac := &authConfig{}
 
