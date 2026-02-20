@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"strconv"
 	"time"
 
 	_ "embed"
@@ -89,6 +90,20 @@ func (a *authorizer) Order() int {
 
 func (a *authorizer) Next(next composertypes.FlowComponent) {
 	a.next = next
+}
+
+// GetMeta implements [types.FlowComponent].
+func (a *authorizer) GetMeta() composertypes.FlowMeta {
+	meta := composertypes.FlowMeta{
+		Name:        "authorizer",
+		Description: "Authenticates and authorizes incoming requests.",
+		Data:        map[string]string{"order": strconv.Itoa(a.cfg.Order)},
+	}
+	if a.next != nil {
+		next := a.next.GetMeta()
+		meta.Next = &next
+	}
+	return meta
 }
 
 func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {

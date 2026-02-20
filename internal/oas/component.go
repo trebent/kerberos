@@ -3,6 +3,7 @@ package oas
 import (
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-logr/logr"
@@ -56,6 +57,23 @@ func (v *validator) Order() int {
 // Next implements [types.FlowComponent].
 func (v *validator) Next(next composertypes.FlowComponent) {
 	v.next = next
+}
+
+// GetMeta implements [types.FlowComponent].
+func (v *validator) GetMeta() composertypes.FlowMeta {
+	meta := composertypes.FlowMeta{
+		Name:        "oas-validator",
+		Description: "Validates incoming requests against OpenAPI specifications.",
+		Data: map[string]string{
+			"backend_count": strconv.Itoa(len(v.validators)),
+			"order":         strconv.Itoa(v.cfg.Order),
+		},
+	}
+	if v.next != nil {
+		next := v.next.GetMeta()
+		meta.Next = &next
+	}
+	return meta
 }
 
 // ServeHTTP implements [types.FlowComponent].
