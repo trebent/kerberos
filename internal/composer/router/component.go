@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 
 	"github.com/go-logr/logr"
 	apierror "github.com/trebent/kerberos/internal/api/error"
@@ -58,6 +59,20 @@ func NewComponent(opts *Opts) composertypes.FlowComponent {
 // Next implements [types.FlowComponent].
 func (r *router) Next(next composertypes.FlowComponent) {
 	r.next = next
+}
+
+// GetMeta implements [types.FlowComponent].
+func (r *router) GetMeta() composertypes.FlowMeta {
+	meta := composertypes.FlowMeta{
+		Name:        "router",
+		Description: "Routes incoming requests to the appropriate configured backend.",
+		Data:        map[string]string{"backend_count": strconv.Itoa(len(r.cfg.Backends))},
+	}
+	if r.next != nil {
+		next := r.next.GetMeta()
+		meta.Next = &next
+	}
+	return meta
 }
 
 // ServeHTTP implements [types.FlowComponent].

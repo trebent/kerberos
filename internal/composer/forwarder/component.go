@@ -56,6 +56,15 @@ func (f *forwarder) Next(_ composertypes.FlowComponent) {
 	panic("the forwarder is intended to be the last component in the flow")
 }
 
+// GetMeta implements [types.FlowComponent].
+func (f *forwarder) GetMeta() composertypes.FlowMeta {
+	return composertypes.FlowMeta{
+		Name:        "forwarder",
+		Description: "Forwards requests to the resolved target backend.",
+		Data:        map[string]string{},
+	}
+}
+
 // ServeHTTP implements [types.FlowComponent].
 func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	// Obtain matching backend to route to.

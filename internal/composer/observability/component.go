@@ -166,6 +166,20 @@ func (o *obs) Next(next composertypes.FlowComponent) {
 	o.next = next
 }
 
+// GetMeta implements [types.FlowComponent].
+func (o *obs) GetMeta() composertypes.FlowMeta {
+	meta := composertypes.FlowMeta{
+		Name:        "observability",
+		Description: "Collects metrics, traces, and logs for incoming requests.",
+		Data:        map[string]string{"enabled": "true"},
+	}
+	if o.next != nil {
+		next := o.next.GetMeta()
+		meta.Next = &next
+	}
+	return meta
+}
+
 // ServeHTTP implements [types.FlowComponent].
 func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// Check request trace context

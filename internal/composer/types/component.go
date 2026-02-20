@@ -12,6 +12,19 @@ type (
 		http.Handler
 
 		Next(FlowComponent)
+		GetMeta() FlowMeta
+	}
+
+	// FlowMeta holds metadata about a FlowComponent and links to the next component's metadata.
+	FlowMeta struct {
+		// Name is the name of the FlowComponent.
+		Name string
+		// Description is a short description of what the FlowComponent does.
+		Description string
+		// Data holds dynamic key-value pairs associated with this component.
+		Data map[string]string
+		// Next points to the metadata of the subsequent FlowComponent, if any.
+		Next *FlowMeta
 	}
 
 	// Dummy can be used to replace components with a block that just forwards whatever request it's called to handle.
@@ -44,6 +57,19 @@ func (d *Dummy) Next(next FlowComponent) {
 
 func (d *Dummy) Order() int {
 	return d.O
+}
+
+func (d *Dummy) GetMeta() FlowMeta {
+	meta := FlowMeta{
+		Name:        "dummy",
+		Description: "A passthrough component that forwards requests to the next component.",
+		Data:        map[string]string{},
+	}
+	if d.next != nil {
+		next := d.next.GetMeta()
+		meta.Next = &next
+	}
+	return meta
 }
 
 func (d *Dummy) defaultHandler(w http.ResponseWriter, req *http.Request) {

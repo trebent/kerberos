@@ -3,6 +3,7 @@ package custom
 import (
 	"net/http"
 	"slices"
+	"strconv"
 
 	"github.com/trebent/kerberos/internal/composer/types"
 )
@@ -79,4 +80,18 @@ func (c *custom) Next(next types.FlowComponent) {
 		// component slice the input next component.
 		c.all[len(c.all)-1].Next(next)
 	}
+}
+
+// GetMeta implements [types.FlowComponent].
+func (c *custom) GetMeta() types.FlowMeta {
+	meta := types.FlowMeta{
+		Name:        "custom",
+		Description: "Executes a configurable chain of custom flow components.",
+		Data:        map[string]string{"component_count": strconv.Itoa(len(c.all))},
+	}
+	if c.first != nil {
+		next := c.first.GetMeta()
+		meta.Next = &next
+	}
+	return meta
 }
