@@ -57,13 +57,13 @@ func Init(opts *Opts) *Output {
 
 	cfg := config.AccessAs[*adminConfig](opts.Cfg, configName)
 	ssi := adminapi.NewSSI(opts.DB, cfg.SuperUser.ClientID, cfg.SuperUser.ClientSecret)
-	adminSessionMiddleware := adminapi.AdminSessionMiddleware(ssi)
 
+	adminSessionMiddleware := adminapi.AdminSessionMiddleware(ssi)
 	strictHandler := adminapigen.NewStrictHandlerWithOptions(
 		ssi,
 		[]adminapigen.StrictMiddlewareFunc{
 			adminapi.RequireSessionMiddleware(),
-			adminapi.AdminSessionMiddleware(ssi),
+			adminSessionMiddleware,
 		},
 		adminapigen.StrictHTTPServerOptions{
 			RequestErrorHandlerFunc:  apierror.RequestErrorHandler,

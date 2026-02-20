@@ -50,17 +50,18 @@ func NewSSI(db db.SQLClient, clientID, clientSecret string) adminapi.StrictServe
 	}
 
 	go func(im *impl) {
-		<-im.sessionCleaner.C
+		for range im.sessionCleaner.C {
 
-		im.superSessions.Range(func(key, value any) bool {
-			t, _ := value.(time.Time)
-			if time.Now().After(t) {
-				zerologr.V(20).Info("Cleaning up an expired super user session")
-				im.superSessions.Delete(key)
-			}
+			im.superSessions.Range(func(key, value any) bool {
+				t, _ := value.(time.Time)
+				if time.Now().After(t) {
+					zerologr.V(20).Info("Cleaning up an expired super user session")
+					im.superSessions.Delete(key)
+				}
 
-			return true
-		})
+				return true
+			})
+		}
 	}(i)
 	return i
 }
