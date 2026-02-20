@@ -11,8 +11,8 @@ import (
 	_ "embed"
 
 	"github.com/go-logr/logr"
+	basicapigen "github.com/trebent/kerberos/internal/api/auth/basic"
 	apierror "github.com/trebent/kerberos/internal/api/error"
-	"github.com/trebent/kerberos/internal/auth/admin"
 	"github.com/trebent/kerberos/internal/auth/method"
 	"github.com/trebent/kerberos/internal/auth/method/basic"
 	"github.com/trebent/kerberos/internal/composer/custom"
@@ -33,6 +33,9 @@ type (
 
 		// Directory where OAS for the auth APIs can be found.
 		OASDir string
+
+		// Enriches call flows with administrator metadata, if admin calls.
+		AdminSessionMiddleware basicapigen.StrictMiddlewareFunc
 	}
 	authorizer struct {
 		next composertypes.FlowComponent
@@ -69,21 +72,11 @@ func New(opts *Opts) composertypes.FlowComponent {
 		zerologr.Info("Basic authentication enabled")
 		// If basic auth, create the method.
 		authorizer.basic = basic.New(&basic.Opts{
-			Mux:         opts.Mux,
-			DB:          opts.DB,
-			OASDir:      opts.OASDir,
-			AuthZConfig: makeAuthZMap(cfg.Scheme.Mappings),
-		})
-	}
-
-	if cfg.AdministrationEnabled() {
-		zerologr.Info("Administration enabled")
-		admin.Init(&admin.Opts{
-			Mux:          opts.Mux,
-			DB:           opts.DB,
-			OASDir:       opts.OASDir,
-			ClientID:     cfg.Administration.SuperUser.ClientID,
-			ClientSecret: cfg.Administration.SuperUser.ClientSecret,
+			Mux:                    opts.Mux,
+			DB:                     opts.DB,
+			OASDir:                 opts.OASDir,
+			AuthZConfig:            makeAuthZMap(cfg.Scheme.Mappings),
+			AdminSessionMiddleware: opts.AdminSessionMiddleware,
 		})
 	}
 

@@ -31,9 +31,10 @@ type (
 	Opts struct {
 		AuthZConfig map[string]method.AuthZConfig
 
-		Mux    *http.ServeMux
-		DB     db.SQLClient
-		OASDir string
+		Mux                    *http.ServeMux
+		DB                     db.SQLClient
+		OASDir                 string
+		AdminSessionMiddleware api.StrictMiddlewareFunc
 	}
 )
 
@@ -54,7 +55,7 @@ func New(opts *Opts) method.Method {
 		config: opts.AuthZConfig,
 	}
 
-	b.registerAPI(opts.Mux)
+	b.registerAPI(opts)
 	return b
 }
 
@@ -203,7 +204,7 @@ func (a *basic) Authorized(req *http.Request) error {
 	return apierror.APIErrForbidden
 }
 
-func (a *basic) registerAPI(mux *http.ServeMux) {
+func (a *basic) registerAPI(opts *Opts) {
 	data, err := os.ReadFile(fmt.Sprintf("%s/%s", a.oasDir, authBasicSpecification))
 	if err != nil {
 		panic(fmt.Errorf("failed to read basic authentication OAS: %w", err))
@@ -219,6 +220,7 @@ func (a *basic) registerAPI(mux *http.ServeMux) {
 		ssi,
 		[]api.StrictMiddlewareFunc{
 			basicapi.AuthMiddleware(ssi),
+			opts.AdminSessionMiddleware,
 		},
 		api.StrictHTTPServerOptions{
 			RequestErrorHandlerFunc:  apierror.RequestErrorHandler,
@@ -227,7 +229,7 @@ func (a *basic) registerAPI(mux *http.ServeMux) {
 	)
 
 	_ = api.HandlerWithOptions(strictHandler, api.StdHTTPServerOptions{
-		BaseRouter: mux,
+		BaseRouter: opts.Mux,
 		Middlewares: []api.MiddlewareFunc{
 			oas.ValidationMiddleware(spec),
 			func(next http.Handler) http.Handler {

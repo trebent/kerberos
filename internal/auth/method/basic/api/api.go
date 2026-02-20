@@ -61,7 +61,7 @@ const (
 
 	// Sessions.
 	queryCreateSession      = "INSERT INTO sessions (user_id, organisation_id, session_id, expires) VALUES(@userID, @orgID, @session, @expires);"
-	queryGetSession         = "SELECT s.user_id, s.organisation_id, u.administrator, u.super_user, s.expires FROM sessions s INNER JOIN users u ON s.user_id = u.id WHERE session_id = @sessionID;"
+	queryGetSession         = "SELECT s.user_id, s.organisation_id, u.administrator, s.expires FROM sessions s INNER JOIN users u ON s.user_id = u.id WHERE session_id = @sessionID;"
 	queryDeleteUserSessions = "DELETE FROM sessions WHERE organisation_id = @orgID AND user_id = @userID;"
 
 	sessionExpiry = 15 * time.Minute

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/trebent/envparser"
+	"github.com/trebent/kerberos/internal/admin"
 	"github.com/trebent/kerberos/internal/auth"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/composer/custom"
@@ -108,6 +109,7 @@ func setupConfig() config.Map {
 
 	var (
 		err              error
+		adminConfigName  string
 		obsConfigName    string
 		routerConfigName string
 		authConfigName   string
@@ -115,6 +117,8 @@ func setupConfig() config.Map {
 	)
 
 	// Register all configurations.
+	adminConfigName, err = admin.RegisterWith(cfg)
+	must(err)
 	obsConfigName, err = obs.RegisterWith(cfg)
 	must(err)
 	routerConfigName, err = router.RegisterWith(cfg)
@@ -123,6 +127,14 @@ func setupConfig() config.Map {
 	must(err)
 	oasConfigName, err = oas.RegisterWith(cfg)
 	must(err)
+
+	if internalenv.AdminJSONFile.Value() != "" {
+		zerologr.Info("Admin configuration detected, loading")
+		adminData, _ := os.ReadFile(internalenv.AdminJSONFile.Value())
+		cfg.MustLoad(adminConfigName, adminData)
+	} else {
+		zerologr.Error(admin.ErrNoConfig, "No administration configuration found")
+	}
 
 	// Load all input configuration data.
 	if internalenv.ObsJSONFile.Value() != "" {
@@ -174,6 +186,18 @@ func startServer(ctx context.Context, cfg config.Map) error {
 		&sqlite.Opts{DSN: filepath.Join(internalenv.DBDirectory.Value(), sqlite.DBName)},
 	)
 
+	// Even though the admin configuration is optional, it's always available. The admin initialisation
+	// output is used to configure and prepare other internal components for administration.
+	zerologr.Info("Loading admin")
+	out := admin.Init(
+		&admin.Opts{
+			Mux:    mux,
+			DB:     db,
+			OASDir: internalenv.OASDirectory.Value(),
+			Cfg:    cfg,
+		},
+	)
+
 	zerologr.Info("Loading observability")
 	observability := obs.NewComponent(&obs.Opts{Cfg: cfg})
 
@@ -186,10 +210,11 @@ func startServer(ctx context.Context, cfg config.Map) error {
 	if internalenv.AuthJSONFile.Value() != "" {
 		zerologr.Info("Loading auth")
 		authorizer := auth.New(&auth.Opts{
-			Cfg:    cfg,
-			Mux:    mux,
-			DB:     db,
-			OASDir: internalenv.OASDirectory.Value(),
+			Cfg:                    cfg,
+			Mux:                    mux,
+			DB:                     db,
+			OASDir:                 internalenv.OASDirectory.Value(),
+			AdminSessionMiddleware: out.AdminSessionMiddleware,
 		})
 		customFlowComponents = append(customFlowComponents, authorizer)
 	}

@@ -25,7 +25,6 @@ CREATE TABLE IF NOT EXISTS users (
   hashed_password VARCHAR(100) NOT NULL,
   organisation_id INTEGER,
   administrator BOOLEAN DEFAULT FALSE NOT NULL,
-  super_user BOOLEAN DEFAULT FALSE NOT NULL,
   created TEXT NOT NULL DEFAULT current_timestamp,
   updated TEXT NOT NULL DEFAULT current_timestamp,
   FOREIGN KEY(organisation_id) REFERENCES organisations(id) ON DELETE CASCADE ON UPDATE CASCADE

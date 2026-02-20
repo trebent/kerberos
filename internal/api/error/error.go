@@ -11,7 +11,7 @@ import (
 
 type (
 	Error struct {
-		StatusCode int      `json:"statusCode"`
+		StatusCode int      `json:"-"`
 		Errors     []string `json:"errors"`
 	}
 )
@@ -55,6 +55,11 @@ var (
 	APIErrForbidden = &Error{
 		Errors:     []string{ErrNoPermission.Error()},
 		StatusCode: http.StatusForbidden,
+	}
+	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
+	APIErrTooManyRequests = &Error{
+		Errors:     []string{http.StatusText(http.StatusTooManyRequests)},
+		StatusCode: http.StatusTooManyRequests,
 	}
 )
 

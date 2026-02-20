@@ -76,6 +76,7 @@ run:
 		OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
 		LOG_TO_CONSOLE=true \
 		LOG_VERBOSITY=$(LOG_VERBOSITY) \
+		ADMIN_JSON_FILE=./test/config/admin.json \
 		ROUTE_JSON_FILE=./test/config/router-echo.json \
 		OBS_JSON_FILE=./test/config/obs-disabled.json \
 		AUTH_JSON_FILE=./test/config/auth-basic.json \
@@ -113,11 +114,12 @@ docker-run: image docker-stop docker-rm
 		-e OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
 		-e LOG_TO_CONSOLE=true \
 		-e LOG_VERBOSITY=$(LOG_VERBOSITY) \
+		-e ADMIN_JSON_FILE=/config/admin.json \
 		-e ROUTE_JSON_FILE=/config/router-echo.json \
 		-e OBS_JSON_FILE=/config/obs-disabled.json \
 		-e AUTH_JSON_FILE=/config/auth-basic.json \
 		-e OAS_JSON_FILE=/config/oas-docker.json \
-		-e OAS_DIRECTORY=$(PWD)/krb-oas \
+		-e OAS_DIRECTORY=/krb-oas \
 		-v $(PWD)/test/config:/config:ro \
 		-v $(PWD)/test/oas:/oas:ro \
 		-v $(PWD)/openapi:/krb-oas:ro \
@@ -247,6 +249,9 @@ echo-docker-logs:
 #
 # TEST
 #
+
+test-login-superuser:
+	curl -X POST -H "Content-Type: application/json" -i localhost:$(KERBEROS_PORT)/api/admin/superuser/login --data '{"clientId": "admin", "clientSecret": "secret"}'
 
 test-echo:
 	$(call cecho,Sending a test request to echo...,$(BOLD_YELLOW))

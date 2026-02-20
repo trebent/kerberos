@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	authadminapi "github.com/trebent/kerberos/ft/client/auth/admin"
+	adminapi "github.com/trebent/kerberos/ft/client/admin"
 	authbasicapi "github.com/trebent/kerberos/ft/client/auth/basic"
 )
 
@@ -12,7 +12,7 @@ import (
 func TestAuthBasicAPI(t *testing.T) {
 	adminLoginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
-		authadminapi.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "client-secret"},
+		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
 	)
 	checkErr(err, t)
 	verifyStatusCode(adminLoginResp.StatusCode(), http.StatusNoContent, t)
@@ -113,7 +113,7 @@ func TestAuthBasicAPI(t *testing.T) {
 func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	adminLoginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
-		authadminapi.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "client-secret"},
+		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
 	)
 	checkErr(err, t)
 	verifyStatusCode(adminLoginResp.StatusCode(), http.StatusNoContent, t)
@@ -213,7 +213,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 func TestAuthBasicAPIOrganisationCreateDenied(t *testing.T) {
 	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
-		authadminapi.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "client-secret"},
+		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
 	)
 	checkErr(err, t)
 	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
@@ -252,62 +252,9 @@ func TestAuthBasicAPIOrganisationCreateDenied(t *testing.T) {
 	verifyStatusCode(failedOrgResp.StatusCode(), http.StatusForbidden, t)
 }
 
-func TestAuthBasicAPISuperuser(t *testing.T) {
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		authadminapi.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "client-secret"},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := superLoginResp.HTTPResponse.Header.Get("x-krb-session")
-
-	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
-		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(orgResp.StatusCode(), http.StatusCreated, t)
-	orgID := orgResp.JSON201.Id
-
-	userResp, err := basicAuthClient.CreateUserWithResponse(
-		t.Context(),
-		orgID,
-		authbasicapi.CreateUserJSONRequestBody{
-			Name:     username(),
-			Password: "password12345",
-		},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(userResp.StatusCode(), http.StatusCreated, t)
-	userID := userResp.JSON201.Id
-
-	groupResp, err := basicAuthClient.CreateGroupWithResponse(
-		t.Context(),
-		orgID,
-		authbasicapi.CreateGroupJSONRequestBody{
-			Name: "testing",
-		},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(groupResp.StatusCode(), http.StatusCreated, t)
-
-	groupBindResp, err := basicAuthClient.UpdateUserGroupsWithResponse(
-		t.Context(),
-		orgID,
-		userID,
-		authbasicapi.UserGroups{"testing"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(groupBindResp.StatusCode(), http.StatusOK, t)
-}
-
 func TestAuthBasicAPIOASFailure(t *testing.T) {
 	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(), authadminapi.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "client-secret"},
+		t.Context(), adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
 	)
 	checkErr(err, t)
 	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
@@ -326,9 +273,9 @@ func TestAuthBasicAPIOASFailure(t *testing.T) {
 func TestAuthBasicAPIUserConflict(t *testing.T) {
 	loginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
-		authadminapi.LoginSuperuserJSONRequestBody{
-			ClientId:     "client-id",
-			ClientSecret: "client-secret",
+		adminapi.LoginSuperuserJSONRequestBody{
+			ClientId:     superUserClientID,
+			ClientSecret: superUserClientSecret,
 		},
 	)
 	checkErr(err, t)
@@ -391,9 +338,9 @@ func TestAuthBasicAPIUserConflict(t *testing.T) {
 func TestAuthBasicAPIGroupConflict(t *testing.T) {
 	loginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
-		authadminapi.LoginSuperuserJSONRequestBody{
-			ClientId:     "client-id",
-			ClientSecret: "client-secret",
+		adminapi.LoginSuperuserJSONRequestBody{
+			ClientId:     superUserClientID,
+			ClientSecret: superUserClientSecret,
 		},
 	)
 	checkErr(err, t)
@@ -454,9 +401,9 @@ func TestAuthBasicAPIGroupConflict(t *testing.T) {
 func TestAuthBasicAPIOrgConflict(t *testing.T) {
 	loginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
-		authadminapi.LoginSuperuserJSONRequestBody{
-			ClientId:     "client-id",
-			ClientSecret: "client-secret",
+		adminapi.LoginSuperuserJSONRequestBody{
+			ClientId:     superUserClientID,
+			ClientSecret: superUserClientSecret,
 		},
 	)
 	checkErr(err, t)

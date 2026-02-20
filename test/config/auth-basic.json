@@ -10,11 +10,5 @@
       }
     ]
   },
-  "administration": {
-    "superUser": {
-      "clientId": "client-id",
-      "clientSecret": "client-secret"
-    }
-  },
   "order": 1
 }

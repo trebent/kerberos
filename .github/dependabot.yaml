@@ -19,7 +19,9 @@ updates:
           - "patch"
 
   - package-ecosystem: "docker"
-    directory: "/"
+    directories:
+      - "/"
+      - "/cmd/echo"
     schedule:
       interval: "daily"
     groups:

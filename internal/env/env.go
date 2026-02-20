@@ -120,6 +120,13 @@ var (
 		Value:    "",
 		Validate: validateDirPath,
 	})
+
+	AdminJSONFile = envparser.Register(&envparser.Opts[string]{
+		Name:     "ADMIN_JSON_FILE",
+		Desc:     "JSON file to load admin settings from.",
+		Value:    "",
+		Validate: validateFilePath,
+	})
 )
 
 func Parse() error {

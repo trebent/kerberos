@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/trebent/kerberos/internal/composer/custom"
-	"github.com/trebent/kerberos/internal/config"
 	"github.com/xeipuuv/gojsonschema"
 )
 
@@ -93,52 +92,6 @@ func TestConfigMissingSchemeMappings(t *testing.T) {
 
 	for _, e := range result.Errors() {
 		t.Log(e.Description())
-	}
-}
-
-func TestConfigOnlyAdmin(t *testing.T) {
-	ac := &authConfig{}
-
-	configData, err := os.ReadFile("./testconfigs/only-admin.json")
-	if err != nil {
-		t.Fatalf("Failed to read config file: %v", err)
-	}
-
-	sl := gojsonschema.NewSchemaLoader()
-	sl.AddSchemas(custom.OrderedSchemaJSONLoader())
-	schema, err := sl.Compile(ac.SchemaJSONLoader())
-	if err != nil {
-		t.Fatalf("Failed to compile schema: %v", err)
-	}
-
-	result, err := schema.Validate(gojsonschema.NewBytesLoader(configData))
-	if err != nil {
-		t.Fatalf("Got error: %v", err)
-	}
-
-	if len(result.Errors()) != 0 {
-		for _, e := range result.Errors() {
-			t.Error(e.Description())
-		}
-
-		t.Fatal("Got errors")
-	}
-}
-
-func TestConfigAdminSuperUserDefault(t *testing.T) {
-	cm := config.New(&config.Opts{})
-	_, err := RegisterWith(cm)
-	if err != nil {
-		t.Fatalf("Failed to register auth config: %v", err)
-	}
-
-	ac := config.AccessAs[*authConfig](cm, configName)
-	if ac.Administration.SuperUser.ClientID != defaultSuperUserClientID {
-		t.Fatal("Client ID was not defaulted")
-	}
-
-	if ac.Administration.SuperUser.ClientSecret != defaultSuperUserClientSecret {
-		t.Fatal("Client secret was not defaulted")
 	}
 }
 

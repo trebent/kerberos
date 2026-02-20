@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	adminapi "github.com/trebent/kerberos/internal/admin/api"
 	authbasicapi "github.com/trebent/kerberos/internal/api/auth/basic"
 	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/zerologr"
@@ -43,6 +44,11 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 			// No middleware operations needed for logging in.
 			if operationID == "Login" {
 				zerologr.V(20).Info("Skipping authentication for the login path")
+				return f(ctx, w, r, request)
+			}
+
+			if adminapi.IsSuperUserContext(ctx) {
+				zerologr.V(20).Info("Permitting super user access")
 				return f(ctx, w, r, request)
 			}
 
@@ -82,10 +88,9 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 				sessionUserID int64
 				sessionOrgID  int64
 				administrator bool
-				superUser     bool
 				expires       int64
 			)
-			err = rows.Scan(&sessionUserID, &sessionOrgID, &administrator, &superUser, &expires)
+			err = rows.Scan(&sessionUserID, &sessionOrgID, &administrator, &expires)
 			//nolint:sqlclosecheck // won't help here
 			_ = rows.Close()
 			if err != nil {
@@ -96,13 +101,6 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 			if time.Now().UnixMilli() > expires {
 				zerologr.Error(apierror.ErrNoSession, "Session expired")
 				return nil, apierror.APIErrNoSession
-			}
-
-			if superUser {
-				zerologr.Info(
-					fmt.Sprintf("Permitting super user access to operation %s", operationID),
-				)
-				return f(ctx, w, r, request)
 			}
 
 			var validation []error
@@ -134,9 +132,16 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 				"UpdateUser",
 				"DeleteUser",
 				"GetUserGroups",
-				"UpdateUserGroups",
 				"ChangePassword":
-				zerologr.V(20).Info("Validating auth for specific user paths")
+				zerologr.V(20).Info("Validating auth for user owned paths")
+				validation = make([]error, 2)
+				validation[0] = orgValidator(sessionOrgID, r)
+				validation[1] = or(
+					administratorValidator(administrator),
+					ownerUserValidator(sessionUserID, r),
+				)
+			case "UpdateUserGroups":
+				zerologr.V(20).Info("Validating auth for update user membership paths")
 				validation = make([]error, 2)
 				validation[0] = orgValidator(sessionOrgID, r)
 				validation[1] = administratorValidator(administrator)

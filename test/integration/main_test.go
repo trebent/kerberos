@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	authadminapi "github.com/trebent/kerberos/ft/client/auth/admin"
+	adminapi "github.com/trebent/kerberos/ft/client/admin"
 	authbasicapi "github.com/trebent/kerberos/ft/client/auth/basic"
 )
 
@@ -18,7 +18,10 @@ func TestMain(m *testing.M) {
 	a.Store(rand.Int32())
 
 	loginResp, err := adminClient.LoginSuperuserWithResponse(
-		context.Background(), authadminapi.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "client-secret"},
+		context.Background(), adminapi.LoginSuperuserJSONRequestBody{
+			ClientId:     superUserClientID,
+			ClientSecret: superUserClientSecret,
+		},
 	)
 	if err != nil {
 		panic(err)

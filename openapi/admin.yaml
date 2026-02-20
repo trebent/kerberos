@@ -35,7 +35,7 @@ security:
 
 paths:
   # Log the superuser in.
-  /api/auth/admin/superuser/login:
+  /api/admin/superuser/login:
     post:
       security: []
       operationId: LoginSuperuser
@@ -73,6 +73,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Failed to log the superuser in.
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Rate limited.
         "500":
           content:
             application/json:
@@ -81,7 +87,7 @@ paths:
           description: Internal error.
 
   # Log the superuser out.
-  /api/auth/admin/superuser/logout:
+  /api/admin/superuser/logout:
     post:
       operationId: LogoutSuperuser
       responses:
