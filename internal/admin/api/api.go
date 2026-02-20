@@ -51,7 +51,6 @@ func NewSSI(db db.SQLClient, clientID, clientSecret string) adminapi.StrictServe
 
 	go func(im *impl) {
 		for range im.sessionCleaner.C {
-
 			im.superSessions.Range(func(key, value any) bool {
 				t, _ := value.(time.Time)
 				if time.Now().After(t) {
