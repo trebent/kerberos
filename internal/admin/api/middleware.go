@@ -62,7 +62,7 @@ func AdminSessionMiddleware(
 			// right now.
 
 			tsessionExpiry, _ := sessionExpiry.(time.Time)
-			if !time.Now().After(tsessionExpiry) {
+			if time.Now().Before(tsessionExpiry) {
 				ctx = context.WithValue(ctx, adminContextIsSuperUser, true)
 				ctx = context.WithValue(ctx, adminContextSession, session)
 			}
