@@ -9,8 +9,8 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/composer/custom"
-	composertypes "github.com/trebent/kerberos/internal/composer/types"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/xeipuuv/gojsonschema"
 )
@@ -35,20 +35,20 @@ func TestComponentWithOptions(t *testing.T) {
 	}
 
 	// Fake router to populate the request context with backend name.
-	start := &composertypes.Dummy{
-		CustomHandler: func(fc composertypes.FlowComponent, w http.ResponseWriter, r *http.Request) {
+	start := &composer.Dummy{
+		CustomHandler: func(fc composer.FlowComponent, w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			ctx = context.WithValue(ctx, composertypes.BackendContextKey, "test-backend")
+			ctx = context.WithValue(ctx, composer.BackendContextKey, "test-backend")
 			fc.ServeHTTP(w, r.WithContext(ctx))
 		},
 	}
-	c := New(opts)
+	c := NewComponent(opts)
 	if c == nil {
 		t.Fatal("Expected non-nil component")
 	}
 	start.Next(c)
-	c.Next(&composertypes.Dummy{
-		CustomHandler: func(fc composertypes.FlowComponent, w http.ResponseWriter, r *http.Request) {},
+	c.Next(&composer.Dummy{
+		CustomHandler: func(fc composer.FlowComponent, w http.ResponseWriter, r *http.Request) {},
 	})
 	mux.Handle("/", start)
 
@@ -97,20 +97,20 @@ func TestComponentWithoutOptions(t *testing.T) {
 		Mux: mux,
 	}
 
-	start := &composertypes.Dummy{
-		CustomHandler: func(fc composertypes.FlowComponent, w http.ResponseWriter, r *http.Request) {
+	start := &composer.Dummy{
+		CustomHandler: func(fc composer.FlowComponent, w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			ctx = context.WithValue(ctx, composertypes.BackendContextKey, "test-backend")
+			ctx = context.WithValue(ctx, composer.BackendContextKey, "test-backend")
 			fc.ServeHTTP(w, r.WithContext(ctx))
 		},
 	}
-	c := New(opts)
+	c := NewComponent(opts)
 	if c == nil {
 		t.Fatal("Expected non-nil component")
 	}
 	start.Next(c)
-	c.Next(&composertypes.Dummy{
-		CustomHandler: func(fc composertypes.FlowComponent, w http.ResponseWriter, r *http.Request) {},
+	c.Next(&composer.Dummy{
+		CustomHandler: func(fc composer.FlowComponent, w http.ResponseWriter, r *http.Request) {},
 	})
 	mux.Handle("/", start)
 
@@ -143,20 +143,20 @@ func TestComponentWithoutBodyValidation(t *testing.T) {
 		Mux: mux,
 	}
 
-	start := &composertypes.Dummy{
-		CustomHandler: func(fc composertypes.FlowComponent, w http.ResponseWriter, r *http.Request) {
+	start := &composer.Dummy{
+		CustomHandler: func(fc composer.FlowComponent, w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			ctx = context.WithValue(ctx, composertypes.BackendContextKey, "test-backend")
+			ctx = context.WithValue(ctx, composer.BackendContextKey, "test-backend")
 			fc.ServeHTTP(w, r.WithContext(ctx))
 		},
 	}
-	c := New(opts)
+	c := NewComponent(opts)
 	if c == nil {
 		t.Fatal("Expected non-nil component")
 	}
 	start.Next(c)
-	c.Next(&composertypes.Dummy{
-		CustomHandler: func(fc composertypes.FlowComponent, w http.ResponseWriter, r *http.Request) {},
+	c.Next(&composer.Dummy{
+		CustomHandler: func(fc composer.FlowComponent, w http.ResponseWriter, r *http.Request) {},
 	})
 	mux.Handle("/", start)
 

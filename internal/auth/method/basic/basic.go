@@ -15,7 +15,7 @@ import (
 	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/auth/method"
 	basicapi "github.com/trebent/kerberos/internal/auth/method/basic/api"
-	composertypes "github.com/trebent/kerberos/internal/composer/types"
+	"github.com/trebent/kerberos/internal/composer"
 
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/kerberos/internal/oas"
@@ -123,7 +123,7 @@ func (a *basic) Authenticated(req *http.Request) error {
 func (a *basic) Authorized(req *http.Request) error {
 	zerologr.V(50).Info("Authorizing request " + req.URL.Path)
 	//nolint:errcheck // bigger problems if this is missing
-	backend := req.Context().Value(composertypes.BackendContextKey).(string)
+	backend := req.Context().Value(composer.BackendContextKey).(string)
 
 	authZ, ok := a.config[backend]
 	if !ok {

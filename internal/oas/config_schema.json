@@ -23,7 +23,8 @@
                 "type": "boolean",
                 "default": true
               }
-            }
+            },
+            "additionalProperties": false
           }
         },
         "required": [

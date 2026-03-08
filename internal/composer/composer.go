@@ -2,8 +2,6 @@ package composer
 
 import (
 	"net/http"
-
-	"github.com/trebent/kerberos/internal/composer/types"
 )
 
 type (
@@ -13,19 +11,19 @@ type (
 
 		// GetFlowMeta returns metadata for all FlowComponents in the chain, starting from
 		// the first component and traversing to the last.
-		GetFlowMeta() types.FlowMeta
+		GetFlowMeta() *FlowMeta
 	}
 	Opts struct {
-		Observability types.FlowComponent
-		Router        types.FlowComponent
-		Custom        types.FlowComponent
-		Forwarder     types.FlowComponent
+		Observability FlowComponent
+		Router        FlowComponent
+		Custom        FlowComponent
+		Forwarder     FlowComponent
 	}
 	impl struct {
-		Observability types.FlowComponent
-		Router        types.FlowComponent
-		Custom        types.FlowComponent
-		Forwarder     types.FlowComponent
+		Observability FlowComponent
+		Router        FlowComponent
+		Custom        FlowComponent
+		Forwarder     FlowComponent
 	}
 )
 
@@ -49,6 +47,6 @@ func (c *impl) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 // GetFlowMeta returns metadata for the entire FlowComponent chain.
-func (c *impl) GetFlowMeta() types.FlowMeta {
+func (c *impl) GetFlowMeta() *FlowMeta {
 	return c.Observability.GetMeta()
 }

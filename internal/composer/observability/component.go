@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	composertypes "github.com/trebent/kerberos/internal/composer/types"
+	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/env"
 	"github.com/trebent/kerberos/internal/response"
@@ -23,7 +23,7 @@ import (
 
 type (
 	obs struct {
-		next composertypes.FlowComponent
+		next composer.FlowComponent
 		cfg  *obsConfig
 
 		logger                   logr.Logger
@@ -52,19 +52,19 @@ const (
 
 // nolint: gochecknoglobals
 var (
-	tracer                             = otel.Tracer(tracerName)
-	_      composertypes.FlowComponent = (*obs)(nil)
+	tracer                        = otel.Tracer(tracerName)
+	_      composer.FlowComponent = (*obs)(nil)
 )
 
-func NewComponent(opts *Opts) composertypes.FlowComponent {
+func NewComponent(opts *Opts) composer.FlowComponent {
 	cfg := config.AccessAs[*obsConfig](opts.Cfg, configName)
 	logger := zerologr.WithName("request")
 
 	if !cfg.Enabled {
 		zerologr.Info("Observability has been disabled, setting dummy component for logging")
 		// Observability disabled still logs incoming requests.
-		return &composertypes.Dummy{CustomHandler: func(
-			next composertypes.FlowComponent,
+		return &composer.Dummy{CustomHandler: func(
+			next composer.FlowComponent,
 			w http.ResponseWriter,
 			req *http.Request,
 		) {
@@ -161,23 +161,18 @@ func NewComponent(opts *Opts) composertypes.FlowComponent {
 	return o
 }
 
-// Next implements [types.FlowComponent].
-func (o *obs) Next(next composertypes.FlowComponent) {
+// Next implements [composer.FlowComponent].
+func (o *obs) Next(next composer.FlowComponent) {
 	o.next = next
 }
 
-// GetMeta implements [types.FlowComponent].
-func (o *obs) GetMeta() composertypes.FlowMeta {
-	meta := composertypes.FlowMeta{
-		Name:        "observability",
-		Description: "Collects metrics, traces, and logs for incoming requests.",
-		Data:        map[string]string{"enabled": "true"},
+// GetMeta implements [composer.FlowComponent].
+func (o *obs) GetMeta() *composer.FlowMeta {
+	return &composer.FlowMeta{
+		Name: "observability",
+		Data: map[string]any{"enabled": o.cfg.Enabled},
+		Next: o.next.GetMeta(),
 	}
-	if o.next != nil {
-		next := o.next.GetMeta()
-		meta.Next = &next
-	}
-	return meta
 }
 
 // ServeHTTP implements [types.FlowComponent].
@@ -253,7 +248,7 @@ func must(err error) {
 
 func extractKrbAttributes(ctx context.Context) []attribute.KeyValue {
 	attributes := make([]attribute.KeyValue, 0, 1)
-	backend := ctx.Value(composertypes.BackendContextKey)
+	backend := ctx.Value(composer.BackendContextKey)
 	if backend == nil {
 		attributes = append(attributes, attribute.String("krb.backend", "unknown"))
 	} else {

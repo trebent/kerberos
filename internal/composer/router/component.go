@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
-	"strconv"
 
 	"github.com/go-logr/logr"
 	apierror "github.com/trebent/kerberos/internal/api/error"
-	composertypes "github.com/trebent/kerberos/internal/composer/types"
+	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/response"
 	"github.com/trebent/zerologr"
@@ -22,13 +21,13 @@ type (
 	}
 	router struct {
 		cfg  *routerConfig
-		next composertypes.FlowComponent
+		next composer.FlowComponent
 	}
 )
 
 var (
-	routePattern                             = regexp.MustCompile(`^/gw/backend/([-_a-z0-9]+)?/.*$`)
-	_            composertypes.FlowComponent = (*router)(nil)
+	routePattern                        = regexp.MustCompile(`^/gw/backend/([-_a-z0-9]+)?/.*$`)
+	_            composer.FlowComponent = (*router)(nil)
 
 	errFailedPatternMatch = errors.New("bad backend pattern")
 	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
@@ -43,7 +42,7 @@ const (
 	prefix                 = "/gw/backend/"
 )
 
-func NewComponent(opts *Opts) composertypes.FlowComponent {
+func NewComponent(opts *Opts) composer.FlowComponent {
 	cfg := config.AccessAs[*routerConfig](opts.Cfg, configName)
 	for _, backend := range cfg.Backends {
 		zerologr.Info(
@@ -56,26 +55,21 @@ func NewComponent(opts *Opts) composertypes.FlowComponent {
 	return &router{cfg: cfg}
 }
 
-// Next implements [types.FlowComponent].
-func (r *router) Next(next composertypes.FlowComponent) {
+// Next implements [composer.FlowComponent].
+func (r *router) Next(next composer.FlowComponent) {
 	r.next = next
 }
 
-// GetMeta implements [types.FlowComponent].
-func (r *router) GetMeta() composertypes.FlowMeta {
-	meta := composertypes.FlowMeta{
-		Name:        "router",
-		Description: "Routes incoming requests to the appropriate configured backend.",
-		Data:        map[string]string{"backend_count": strconv.Itoa(len(r.cfg.Backends))},
+// GetMeta implements [composer.FlowComponent].
+func (r *router) GetMeta() *composer.FlowMeta {
+	return &composer.FlowMeta{
+		Name: "router",
+		Data: map[string]any{"backend_count": len(r.cfg.Backends)},
+		Next: r.next.GetMeta(),
 	}
-	if r.next != nil {
-		next := r.next.GetMeta()
-		meta.Next = &next
-	}
-	return meta
 }
 
-// ServeHTTP implements [types.FlowComponent].
+// ServeHTTP implements [composer.FlowComponent].
 func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	logger, _ := logr.FromContext(req.Context())
 	rLogger := logger.WithName("router")

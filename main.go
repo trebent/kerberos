@@ -20,7 +20,6 @@ import (
 	"github.com/trebent/kerberos/internal/composer/forwarder"
 	obs "github.com/trebent/kerberos/internal/composer/observability"
 	"github.com/trebent/kerberos/internal/composer/router"
-	composertypes "github.com/trebent/kerberos/internal/composer/types"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/db/sqlite"
 	internalenv "github.com/trebent/kerberos/internal/env"
@@ -205,11 +204,11 @@ func startServer(ctx context.Context, cfg config.Map) error {
 	router := router.NewComponent(&router.Opts{Cfg: cfg})
 
 	zerologr.Info("Loading custom")
-	customFlowComponents := make([]composertypes.FlowComponent, 0)
+	customFlowComponents := make([]composer.FlowComponent, 0)
 
 	if internalenv.AuthJSONFile.Value() != "" {
 		zerologr.Info("Loading auth")
-		authorizer := auth.New(&auth.Opts{
+		authorizer := auth.NewComponent(&auth.Opts{
 			Cfg:                    cfg,
 			Mux:                    mux,
 			DB:                     db,
@@ -221,7 +220,7 @@ func startServer(ctx context.Context, cfg config.Map) error {
 
 	if internalenv.OASJSONFile.Value() != "" {
 		zerologr.Info("Loading OAS validator")
-		oasValidator := oas.New(&oas.Opts{
+		oasValidator := oas.NewComponent(&oas.Opts{
 			Cfg: cfg,
 			Mux: mux,
 		})
@@ -231,11 +230,7 @@ func startServer(ctx context.Context, cfg config.Map) error {
 	custom := custom.NewComponent(customFlowComponents...)
 
 	zerologr.Info("Loading forwarder")
-	forwarder := forwarder.NewComponent(
-		&forwarder.Opts{
-			TargetContextKey: composertypes.TargetContextKey,
-		},
-	)
+	forwarder := forwarder.NewComponent(&forwarder.Opts{})
 
 	zerologr.Info("Loading composer")
 	composer := composer.New(&composer.Opts{

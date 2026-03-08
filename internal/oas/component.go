@@ -1,21 +1,21 @@
 package oas
 
 import (
+	"maps"
 	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-logr/logr"
+	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/composer/custom"
-	composertypes "github.com/trebent/kerberos/internal/composer/types"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/zerologr"
 )
 
 type (
 	validator struct {
-		next composertypes.FlowComponent
+		next composer.FlowComponent
 		// Map of backend name to OAS validator handler.
 		validators map[string]func(http.Handler) http.Handler
 		cfg        *oasConfig
@@ -29,11 +29,11 @@ type (
 )
 
 var (
-	_ composertypes.FlowComponent = &validator{}
-	_ custom.Ordered              = &validator{}
+	_ composer.FlowComponent = &validator{}
+	_ custom.Ordered         = &validator{}
 )
 
-func New(opts *Opts) composertypes.FlowComponent {
+func NewComponent(opts *Opts) composer.FlowComponent {
 	// Prevent schema error details from being included in validation errors.
 	//nolint:reassign // yolo
 	openapi3.SchemaErrorDetailsDisabled = true
@@ -54,31 +54,26 @@ func (v *validator) Order() int {
 	return v.cfg.Order
 }
 
-// Next implements [types.FlowComponent].
-func (v *validator) Next(next composertypes.FlowComponent) {
+// Next implements [composer.FlowComponent].
+func (v *validator) Next(next composer.FlowComponent) {
 	v.next = next
 }
 
-// GetMeta implements [types.FlowComponent].
-func (v *validator) GetMeta() composertypes.FlowMeta {
-	meta := composertypes.FlowMeta{
-		Name:        "oas-validator",
-		Description: "Validates incoming requests against OpenAPI specifications.",
-		Data: map[string]string{
-			"backend_count": strconv.Itoa(len(v.validators)),
-			"order":         strconv.Itoa(v.cfg.Order),
+// GetMeta implements [composer.FlowComponent].
+func (v *validator) GetMeta() *composer.FlowMeta {
+	return &composer.FlowMeta{
+		Name: "oas-validator",
+		Data: map[string]any{
+			"backends":            maps.Keys(v.validators),
+			composer.MetaKeyOrder: v.cfg.Order,
 		},
+		Next: v.next.GetMeta(),
 	}
-	if v.next != nil {
-		next := v.next.GetMeta()
-		meta.Next = &next
-	}
-	return meta
 }
 
-// ServeHTTP implements [types.FlowComponent].
+// ServeHTTP implements [composer.FlowComponent].
 func (v *validator) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	backend, _ := req.Context().Value(composertypes.BackendContextKey).(string)
+	backend, _ := req.Context().Value(composer.BackendContextKey).(string)
 	oLogger, _ := logr.FromContext(req.Context())
 	oLogger = oLogger.WithName("oas-validator")
 	oLogger.Info("Running OAS validation", "backend", backend)

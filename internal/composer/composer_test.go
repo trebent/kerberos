@@ -5,14 +5,12 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
-
-	"github.com/trebent/kerberos/internal/composer/types"
 )
 
 type testFlow struct {
 	name   string
 	t      *testing.T
-	next   types.FlowComponent
+	next   FlowComponent
 	called sync.WaitGroup
 }
 
@@ -25,25 +23,26 @@ func newTestFlow(name string, t *testing.T) *testFlow {
 	return f
 }
 
-func (t *testFlow) Next(next types.FlowComponent) {
+func (t *testFlow) Next(next FlowComponent) {
 	t.next = next
 }
 
-// GetMeta implements [types.FlowComponent].
-func (t *testFlow) GetMeta() types.FlowMeta {
-	meta := types.FlowMeta{
-		Name:        t.name,
-		Description: "Test flow component",
-		Data:        map[string]string{},
-	}
+// GetMeta implements [FlowComponent].
+func (t *testFlow) GetMeta() *FlowMeta {
+	var next *FlowMeta
+
 	if t.next != nil {
-		next := t.next.GetMeta()
-		meta.Next = &next
+		next = t.next.GetMeta()
 	}
-	return meta
+
+	return &FlowMeta{
+		Name: t.name,
+		Data: map[string]any{},
+		Next: next,
+	}
 }
 
-// ServeHTTP implements [types.FlowComponent].
+// ServeHTTP implements [FlowComponent].
 func (t *testFlow) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	t.t.Logf("In test flow: %s", t.name)
 	t.called.Done()
@@ -54,7 +53,7 @@ func (t *testFlow) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var _ types.FlowComponent = (*testFlow)(nil)
+var _ FlowComponent = (*testFlow)(nil)
 
 func TestComposerGetFlowMeta(t *testing.T) {
 	one := newTestFlow("obs", t)

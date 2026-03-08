@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/trebent/kerberos/internal/composer/types"
+	"github.com/trebent/kerberos/internal/composer"
 )
 
 func TestCustom(t *testing.T) {
@@ -21,24 +21,24 @@ func TestCustom(t *testing.T) {
 	wgFinal.Add(1)
 
 	custom := NewComponent(
-		&types.Dummy{O: 3, CustomHandler: func(fc types.FlowComponent, w http.ResponseWriter, r *http.Request) {
+		&composer.Dummy{O: 3, CustomHandler: func(fc composer.FlowComponent, w http.ResponseWriter, r *http.Request) {
 			t.Log("Running component 3")
 			wg3.Done()
 			fc.ServeHTTP(w, r)
 		}},
-		&types.Dummy{O: 2, CustomHandler: func(fc types.FlowComponent, w http.ResponseWriter, r *http.Request) {
+		&composer.Dummy{O: 2, CustomHandler: func(fc composer.FlowComponent, w http.ResponseWriter, r *http.Request) {
 			t.Log("Running component 2")
 			wg2.Done()
 			fc.ServeHTTP(w, r)
 		}},
-		&types.Dummy{O: 1, CustomHandler: func(fc types.FlowComponent, w http.ResponseWriter, r *http.Request) {
+		&composer.Dummy{O: 1, CustomHandler: func(fc composer.FlowComponent, w http.ResponseWriter, r *http.Request) {
 			t.Log("Running component 1")
 			wg1.Done()
 			fc.ServeHTTP(w, r)
 		}},
 	)
-	finalComp := &types.Dummy{
-		CustomHandler: func(fc types.FlowComponent, w http.ResponseWriter, r *http.Request) {
+	finalComp := &composer.Dummy{
+		CustomHandler: func(fc composer.FlowComponent, w http.ResponseWriter, r *http.Request) {
 			t.Log("Running final componnet")
 			wgFinal.Done()
 		},

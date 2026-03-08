@@ -3,7 +3,7 @@ package router
 import (
 	"context"
 
-	composertypes "github.com/trebent/kerberos/internal/composer/types"
+	"github.com/trebent/kerberos/internal/composer"
 )
 
 type (
@@ -23,8 +23,8 @@ type (
 var _ Backend = &backend{}
 
 func NewBackendContext(ctx context.Context, backend Backend) context.Context {
-	ctx = context.WithValue(ctx, composertypes.TargetContextKey, backend)
-	return context.WithValue(ctx, composertypes.BackendContextKey, backend.Name())
+	ctx = context.WithValue(ctx, composer.TargetContextKey, backend)
+	return context.WithValue(ctx, composer.BackendContextKey, backend.Name())
 }
 
 func (b *backend) Name() string {
