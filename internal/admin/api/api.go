@@ -107,6 +107,9 @@ func (i *impl) LogoutSuperuser(
 }
 
 // GetFlow implements [adminapi.StrictServerInterface].
-func (i *impl) GetFlow(ctx context.Context, request adminapi.GetFlowRequestObject) (adminapi.GetFlowResponseObject, error) {
+func (i *impl) GetFlow(
+	_ context.Context,
+	_ adminapi.GetFlowRequestObject,
+) (adminapi.GetFlowResponseObject, error) {
 	panic("unimplemented")
 }
