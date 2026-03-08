@@ -66,7 +66,7 @@ func (fmr *flowMetaResponse) VisitGetFlowResponse(w http.ResponseWriter) error {
 		return err
 	}
 
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 	return nil
 }
 
@@ -146,7 +146,7 @@ func (i *impl) LogoutSuperuser(
 
 // GetFlow implements [adminapi.StrictServerInterface].
 func (i *impl) GetFlow(
-	ctx context.Context,
+	_ context.Context,
 	_ adminapi.GetFlowRequestObject,
 ) (adminapi.GetFlowResponseObject, error) {
 	return &flowMetaResponse{FlowMeta: i.composer.GetFlowMeta()}, nil
