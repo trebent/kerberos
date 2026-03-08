@@ -4,7 +4,7 @@ go 1.25.7
 
 require (
 	github.com/jaegertracing/jaeger-idl v0.6.0
-	github.com/oapi-codegen/runtime v1.1.2
+	github.com/oapi-codegen/runtime v1.2.0
 	github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/common v0.67.5
 	google.golang.org/grpc v1.79.1
