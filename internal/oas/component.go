@@ -6,15 +6,15 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-logr/logr"
+	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/composer/custom"
-	composertypes "github.com/trebent/kerberos/internal/composer/types"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/zerologr"
 )
 
 type (
 	validator struct {
-		next composertypes.FlowComponent
+		next composer.FlowComponent
 		// Map of backend name to OAS validator handler.
 		validators map[string]func(http.Handler) http.Handler
 		cfg        *oasConfig
@@ -28,11 +28,11 @@ type (
 )
 
 var (
-	_ composertypes.FlowComponent = &validator{}
-	_ custom.Ordered              = &validator{}
+	_ composer.FlowComponent = &validator{}
+	_ custom.Ordered         = &validator{}
 )
 
-func New(opts *Opts) composertypes.FlowComponent {
+func NewComponent(opts *Opts) composer.FlowComponent {
 	// Prevent schema error details from being included in validation errors.
 	//nolint:reassign // yolo
 	openapi3.SchemaErrorDetailsDisabled = true
@@ -53,14 +53,33 @@ func (v *validator) Order() int {
 	return v.cfg.Order
 }
 
-// Next implements [types.FlowComponent].
-func (v *validator) Next(next composertypes.FlowComponent) {
+// Next implements [composer.FlowComponent].
+func (v *validator) Next(next composer.FlowComponent) {
 	v.next = next
 }
 
-// ServeHTTP implements [types.FlowComponent].
+// GetMeta implements [composer.FlowComponent].
+func (v *validator) GetMeta() []*composer.FlowMeta {
+	return append([]*composer.FlowMeta{
+		{
+			Name: "oas-validator",
+			Data: map[string]any{
+				"backends": func() []string {
+					backends := make([]string, 0, len(v.validators))
+					for backend := range v.validators {
+						backends = append(backends, backend)
+					}
+					return backends
+				}(),
+				composer.MetaKeyOrder: v.cfg.Order,
+			},
+		},
+	}, v.next.GetMeta()...)
+}
+
+// ServeHTTP implements [composer.FlowComponent].
 func (v *validator) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	backend, _ := req.Context().Value(composertypes.BackendContextKey).(string)
+	backend, _ := req.Context().Value(composer.BackendContextKey).(string)
 	oLogger, _ := logr.FromContext(req.Context())
 	oLogger = oLogger.WithName("oas-validator")
 	oLogger.Info("Running OAS validation", "backend", backend)

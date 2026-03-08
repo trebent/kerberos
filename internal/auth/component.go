@@ -15,8 +15,8 @@ import (
 	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/auth/method"
 	"github.com/trebent/kerberos/internal/auth/method/basic"
+	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/composer/custom"
-	composertypes "github.com/trebent/kerberos/internal/composer/types"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/zerologr"
@@ -38,7 +38,7 @@ type (
 		AdminSessionMiddleware basicapigen.StrictMiddlewareFunc
 	}
 	authorizer struct {
-		next composertypes.FlowComponent
+		next composer.FlowComponent
 
 		cfg   *authConfig
 		basic method.Method
@@ -47,8 +47,8 @@ type (
 )
 
 var (
-	_ composertypes.FlowComponent = (*authorizer)(nil)
-	_ custom.Ordered              = (*authorizer)(nil)
+	_ composer.FlowComponent = (*authorizer)(nil)
+	_ custom.Ordered         = (*authorizer)(nil)
 
 	//go:embed dbschema/schema.sql
 	dbschemaBytes []byte
@@ -60,7 +60,7 @@ var (
 
 const schemaApplyTimeout = 10 * time.Second
 
-func New(opts *Opts) composertypes.FlowComponent {
+func NewComponent(opts *Opts) composer.FlowComponent {
 	cfg := config.AccessAs[*authConfig](opts.Cfg, configName)
 	authorizer := &authorizer{
 		cfg: cfg,
@@ -87,8 +87,18 @@ func (a *authorizer) Order() int {
 	return a.cfg.Order
 }
 
-func (a *authorizer) Next(next composertypes.FlowComponent) {
+func (a *authorizer) Next(next composer.FlowComponent) {
 	a.next = next
+}
+
+// GetMeta implements [composer.FlowComponent].
+func (a *authorizer) GetMeta() []*composer.FlowMeta {
+	return append([]*composer.FlowMeta{
+		{
+			Name: "authorizer",
+			Data: map[string]any{composer.MetaKeyOrder: a.cfg.Order},
+		},
+	}, a.next.GetMeta()...)
 }
 
 func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -97,7 +107,7 @@ func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	logger = logger.WithName("authorizer")
 	logger.Info("Authorizing request")
 	//nolint:errcheck // if this isn't populated the flow chain has been broken.
-	backend := ctx.Value(composertypes.BackendContextKey).(string)
+	backend := ctx.Value(composer.BackendContextKey).(string)
 
 	m, err := a.findMethod(backend, req)
 	switch {

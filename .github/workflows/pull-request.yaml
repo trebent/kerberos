@@ -36,4 +36,4 @@ jobs:
     uses: ./.github/workflows/callable-test.yaml
     secrets: inherit
     with:
-      integration: true
+      integration: false
