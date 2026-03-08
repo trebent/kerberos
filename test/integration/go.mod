@@ -1,6 +1,6 @@
 module github.com/trebent/kerberos/ft
 
-go 1.25.7
+go 1.26.1
 
 require (
 	github.com/jaegertracing/jaeger-idl v0.6.0

@@ -20,6 +20,7 @@ type (
 	Opts      struct{}
 	forwarder struct {
 		targetContextKey composer.ContextKey
+		client           *http.Client
 	}
 )
 
@@ -43,6 +44,8 @@ var (
 func NewComponent(_ *Opts) composer.FlowComponent {
 	return &forwarder{
 		targetContextKey: composer.TargetContextKey,
+		// TODO: determine timeouts from input configuration
+		client: &http.Client{},
 	}
 }
 
@@ -79,6 +82,7 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	//nolint:gosec // ignoring SSRF warning since the target is determined by our own routing logic and not user input.
 	forwardRequest, err := http.NewRequestWithContext(
 		req.Context(),
 		req.Method,
@@ -99,8 +103,8 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	otel.GetTextMapPropagator().
 		Inject(req.Context(), propagation.HeaderCarrier(forwardRequest.Header))
 
-	client := http.Client{}
-	resp, err := client.Do(forwardRequest)
+	//nolint:gosec // ignoring SSRF warning since the target is determined by our own routing logic and not user input.
+	resp, err := f.client.Do(forwardRequest)
 	if err != nil {
 		rLogger.Error(err, "Failed to forward request")
 		apierror.ErrorHandler(wrapped, req, apiErrFailedForwarding)
