@@ -1,7 +1,6 @@
 package oas
 
 import (
-	"maps"
 	"net/http"
 	"os"
 
@@ -60,15 +59,22 @@ func (v *validator) Next(next composer.FlowComponent) {
 }
 
 // GetMeta implements [composer.FlowComponent].
-func (v *validator) GetMeta() *composer.FlowMeta {
-	return &composer.FlowMeta{
-		Name: "oas-validator",
-		Data: map[string]any{
-			"backends":            maps.Keys(v.validators),
-			composer.MetaKeyOrder: v.cfg.Order,
+func (v *validator) GetMeta() []*composer.FlowMeta {
+	return append([]*composer.FlowMeta{
+		{
+			Name: "oas-validator",
+			Data: map[string]any{
+				"backends": func() []string {
+					backends := make([]string, 0, len(v.validators))
+					for backend := range v.validators {
+						backends = append(backends, backend)
+					}
+					return backends
+				}(),
+				composer.MetaKeyOrder: v.cfg.Order,
+			},
 		},
-		Next: v.next.GetMeta(),
-	}
+	}, v.next.GetMeta()...)
 }
 
 // ServeHTTP implements [composer.FlowComponent].

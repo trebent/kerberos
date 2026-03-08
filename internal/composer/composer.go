@@ -11,7 +11,7 @@ type (
 
 		// GetFlowMeta returns metadata for all FlowComponents in the chain, starting from
 		// the first component and traversing to the last.
-		GetFlowMeta() *FlowMeta
+		GetFlowMeta() []*FlowMeta
 	}
 	Opts struct {
 		Observability FlowComponent
@@ -47,6 +47,6 @@ func (c *impl) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 // GetFlowMeta returns metadata for the entire FlowComponent chain.
-func (c *impl) GetFlowMeta() *FlowMeta {
+func (c *impl) GetFlowMeta() []*FlowMeta {
 	return c.Observability.GetMeta()
 }

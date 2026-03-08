@@ -81,10 +81,11 @@ func (c *custom) Next(next composer.FlowComponent) {
 }
 
 // GetMeta implements [composer.FlowComponent].
-func (c *custom) GetMeta() *composer.FlowMeta {
-	return &composer.FlowMeta{
-		Name: "custom",
-		Data: map[string]any{"component_count": len(c.all)},
-		Next: c.first.GetMeta(),
-	}
+func (c *custom) GetMeta() []*composer.FlowMeta {
+	return append([]*composer.FlowMeta{
+		{
+			Name: "custom",
+			Data: map[string]any{"component_count": len(c.all)},
+		},
+	}, c.first.GetMeta()...)
 }

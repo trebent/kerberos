@@ -188,7 +188,7 @@ func startServer(ctx context.Context, cfg config.Map) error {
 	// Even though the admin configuration is optional, it's always available. The admin initialisation
 	// output is used to configure and prepare other internal components for administration.
 	zerologr.Info("Loading admin")
-	out := admin.Init(
+	admin := admin.New(
 		&admin.Opts{
 			Mux:    mux,
 			DB:     db,
@@ -213,7 +213,7 @@ func startServer(ctx context.Context, cfg config.Map) error {
 			Mux:                    mux,
 			DB:                     db,
 			OASDir:                 internalenv.OASDirectory.Value(),
-			AdminSessionMiddleware: out.AdminSessionMiddleware,
+			AdminSessionMiddleware: admin.SessionMiddleware,
 		})
 		customFlowComponents = append(customFlowComponents, authorizer)
 	}
@@ -239,6 +239,8 @@ func startServer(ctx context.Context, cfg config.Map) error {
 		Custom:        custom,
 		Forwarder:     forwarder,
 	})
+
+	admin.SetComposer(composer)
 
 	zerologr.Info("Starting server")
 	mux.Handle("/gw/", composer)

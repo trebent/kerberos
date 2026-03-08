@@ -27,7 +27,6 @@ type APIErrorResponse struct {
 type FlowMeta struct {
 	Data map[string]interface{} `json:"data"`
 	Name string                 `json:"name"`
-	Next *FlowMeta              `json:"next,omitempty"`
 }
 
 // LoginSuperuserJSONBody defines parameters for LoginSuperuser.
@@ -324,10 +323,8 @@ type ClientWithResponsesInterface interface {
 type GetFlowResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *struct {
-		Flow *[]FlowMeta `json:"flow,omitempty"`
-	}
-	JSON500 *APIErrorResponse
+	JSON200      *[]FlowMeta
+	JSON500      *APIErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -443,9 +440,7 @@ func ParseGetFlowResponse(rsp *http.Response) (*GetFlowResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest struct {
-			Flow *[]FlowMeta `json:"flow,omitempty"`
-		}
+		var dest []FlowMeta
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

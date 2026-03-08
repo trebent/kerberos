@@ -61,15 +61,15 @@ func (r *router) Next(next composer.FlowComponent) {
 }
 
 // GetMeta implements [composer.FlowComponent].
-func (r *router) GetMeta() *composer.FlowMeta {
-	return &composer.FlowMeta{
-		Name: "router",
-		Data: map[string]any{
-			"backend_count": len(r.cfg.Backends),
-			"backends":      r.cfg.Backends,
+func (r *router) GetMeta() []*composer.FlowMeta {
+	return append([]*composer.FlowMeta{
+		{
+			Name: "router",
+			Data: map[string]any{
+				"backends": r.cfg.Backends,
+			},
 		},
-		Next: r.next.GetMeta(),
-	}
+	}, r.next.GetMeta()...)
 }
 
 // ServeHTTP implements [composer.FlowComponent].

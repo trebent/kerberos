@@ -28,18 +28,17 @@ func (t *testFlow) Next(next FlowComponent) {
 }
 
 // GetMeta implements [FlowComponent].
-func (t *testFlow) GetMeta() *FlowMeta {
-	var next *FlowMeta
-
-	if t.next != nil {
-		next = t.next.GetMeta()
-	}
-
-	return &FlowMeta{
+func (t *testFlow) GetMeta() []*FlowMeta {
+	meta := &FlowMeta{
 		Name: t.name,
 		Data: map[string]any{},
-		Next: next,
 	}
+
+	if t.next != nil {
+		return append([]*FlowMeta{meta}, t.next.GetMeta()...)
+	}
+
+	return []*FlowMeta{meta}
 }
 
 // ServeHTTP implements [FlowComponent].
@@ -70,29 +69,29 @@ func TestComposerGetFlowMeta(t *testing.T) {
 
 	meta := c.GetFlowMeta()
 
-	if meta.Name != "obs" {
-		t.Fatalf("expected first meta name 'obs', got %q", meta.Name)
+	if meta[0].Name != "obs" {
+		t.Fatalf("expected first meta name 'obs', got %q", meta[0].Name)
 	}
-	if meta.Next == nil {
-		t.Fatal("expected meta.Next to be set")
+	if meta[1] == nil {
+		t.Fatal("expected meta[1] to be set")
 	}
-	if meta.Next.Name != "router" {
-		t.Fatalf("expected second meta name 'router', got %q", meta.Next.Name)
+	if meta[1].Name != "router" {
+		t.Fatalf("expected second meta name 'router', got %q", meta[1].Name)
 	}
-	if meta.Next.Next == nil {
-		t.Fatal("expected meta.Next.Next to be set")
+	if meta[2] == nil {
+		t.Fatal("expected meta[2] to be set")
 	}
-	if meta.Next.Next.Name != "composable" {
-		t.Fatalf("expected third meta name 'composable', got %q", meta.Next.Next.Name)
+	if meta[2].Name != "composable" {
+		t.Fatalf("expected third meta name 'composable', got %q", meta[2].Name)
 	}
-	if meta.Next.Next.Next == nil {
-		t.Fatal("expected meta.Next.Next.Next to be set")
+	if meta[3] == nil {
+		t.Fatal("expected meta[3] to be set")
 	}
-	if meta.Next.Next.Next.Name != "forwarder" {
-		t.Fatalf("expected fourth meta name 'forwarder', got %q", meta.Next.Next.Next.Name)
+	if meta[3].Name != "forwarder" {
+		t.Fatalf("expected fourth meta name 'forwarder', got %q", meta[3].Name)
 	}
-	if meta.Next.Next.Next.Next != nil {
-		t.Fatal("expected meta.Next.Next.Next.Next to be nil (end of chain)")
+	if len(meta) > 4 {
+		t.Fatal("expected meta length to be 4 (end of chain)")
 	}
 }
 

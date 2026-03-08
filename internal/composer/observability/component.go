@@ -167,12 +167,13 @@ func (o *obs) Next(next composer.FlowComponent) {
 }
 
 // GetMeta implements [composer.FlowComponent].
-func (o *obs) GetMeta() *composer.FlowMeta {
-	return &composer.FlowMeta{
-		Name: "observability",
-		Data: map[string]any{"enabled": o.cfg.Enabled},
-		Next: o.next.GetMeta(),
-	}
+func (o *obs) GetMeta() []*composer.FlowMeta {
+	return append([]*composer.FlowMeta{
+		{
+			Name: "observability",
+			Data: map[string]any{"enabled": o.cfg.Enabled},
+		},
+	}, o.next.GetMeta()...)
 }
 
 // ServeHTTP implements [types.FlowComponent].

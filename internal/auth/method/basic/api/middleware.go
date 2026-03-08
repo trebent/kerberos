@@ -29,8 +29,10 @@ var (
 
 //nolint:funlen // welp
 func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictMiddlewareFunc {
-	//nolint:errcheck // welp
-	apiImpl := ssi.(*impl)
+	apiImpl, ok := ssi.(*impl)
+	if !ok {
+		panic("expected auth api *impl")
+	}
 
 	return func(f authbasicapi.StrictHandlerFunc, operationID string) authbasicapi.StrictHandlerFunc {
 		return func(

@@ -12,6 +12,7 @@ import (
 	adminapi "github.com/trebent/kerberos/internal/admin/api"
 	adminapigen "github.com/trebent/kerberos/internal/api/admin"
 	apierror "github.com/trebent/kerberos/internal/api/error"
+	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/kerberos/internal/oas"
@@ -27,8 +28,10 @@ type (
 
 		Cfg config.Map
 	}
-	Output struct {
-		AdminSessionMiddleware adminapigen.StrictMiddlewareFunc
+	Admin struct {
+		SessionMiddleware adminapigen.StrictMiddlewareFunc
+
+		ssi adminapi.SSI
 	}
 )
 
@@ -41,7 +44,7 @@ const (
 )
 
 // Runs the administration API.
-func Init(opts *Opts) *Output {
+func New(opts *Opts) *Admin {
 	zerologr.Info("Setting up administration API")
 	applySchemas(opts.DB)
 
@@ -56,7 +59,11 @@ func Init(opts *Opts) *Output {
 	}
 
 	cfg := config.AccessAs[*adminConfig](opts.Cfg, configName)
-	ssi := adminapi.NewSSI(opts.DB, cfg.SuperUser.ClientID, cfg.SuperUser.ClientSecret)
+	ssi := adminapi.NewSSI(&adminapi.Opts{
+		DB:           opts.DB,
+		ClientID:     cfg.SuperUser.ClientID,
+		ClientSecret: cfg.SuperUser.ClientSecret,
+	})
 
 	adminSessionMiddleware := adminapi.AdminSessionMiddleware(ssi)
 	strictHandler := adminapigen.NewStrictHandlerWithOptions(
@@ -84,9 +91,14 @@ func Init(opts *Opts) *Output {
 		},
 	})
 
-	return &Output{
-		AdminSessionMiddleware: adminSessionMiddleware,
+	return &Admin{
+		SessionMiddleware: adminSessionMiddleware,
+		ssi:               ssi,
 	}
+}
+
+func (a *Admin) SetComposer(c composer.Composer) {
+	a.ssi.SetComposer(c)
 }
 
 func applySchemas(db db.SQLClient) {

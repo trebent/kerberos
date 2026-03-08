@@ -15,11 +15,10 @@ components:
         data:
           type: object
           additionalProperties: true
-        next:
-          $ref: "#/components/schemas/FlowMeta"
       required:
         - name
         - data
+      additionalProperties: false
     APIErrorResponse:
       type: object
       properties:
@@ -30,6 +29,7 @@ components:
           minItems: 1
       required:
         - errors
+      additionalProperties: false
   headers:
     sessionid:
       required: true
@@ -121,12 +121,9 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  flow:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/FlowMeta"
+                type: array
+                items:
+                  $ref: "#/components/schemas/FlowMeta"
           description: Got the flow successfully.
         "500":
           content:

@@ -52,10 +52,12 @@ func (f *forwarder) Next(_ composer.FlowComponent) {
 }
 
 // GetMeta implements [composer.FlowComponent].
-func (f *forwarder) GetMeta() *composer.FlowMeta {
-	return &composer.FlowMeta{
-		Name: "forwarder",
-		Data: map[string]any{},
+func (f *forwarder) GetMeta() []*composer.FlowMeta {
+	return []*composer.FlowMeta{
+		{
+			Name: "forwarder",
+			Data: map[string]any{},
+		},
 	}
 }
 

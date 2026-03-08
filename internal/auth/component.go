@@ -92,12 +92,13 @@ func (a *authorizer) Next(next composer.FlowComponent) {
 }
 
 // GetMeta implements [composer.FlowComponent].
-func (a *authorizer) GetMeta() *composer.FlowMeta {
-	return &composer.FlowMeta{
-		Name: "authorizer",
-		Data: map[string]any{composer.MetaKeyOrder: a.cfg.Order},
-		Next: a.next.GetMeta(),
-	}
+func (a *authorizer) GetMeta() []*composer.FlowMeta {
+	return append([]*composer.FlowMeta{
+		{
+			Name: "authorizer",
+			Data: map[string]any{composer.MetaKeyOrder: a.cfg.Order},
+		},
+	}, a.next.GetMeta()...)
 }
 
 func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {

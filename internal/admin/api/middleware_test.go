@@ -15,7 +15,11 @@ import (
 )
 
 func TestAdminSessionMiddleware(t *testing.T) {
-	ssi := NewSSI(sqlite.New(&sqlite.Opts{DSN: "test.db"}), "admin", "secret")
+	ssi := NewSSI(&Opts{
+		DB:           sqlite.New(&sqlite.Opts{DSN: "test.db"}),
+		ClientID:     "admin",
+		ClientSecret: "secret",
+	})
 	impl := ssi.(*impl)
 	impl.superSessions.Store("session", time.Now().Add(1*time.Hour))
 	mw := AdminSessionMiddleware(ssi)

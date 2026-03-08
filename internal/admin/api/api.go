@@ -2,6 +2,7 @@ package adminapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"sync"
@@ -9,20 +10,39 @@ import (
 
 	"github.com/google/uuid"
 	adminapi "github.com/trebent/kerberos/internal/api/admin"
+	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/zerologr"
 	"golang.org/x/time/rate"
 )
 
 type (
+	SSI interface {
+		adminapi.StrictServerInterface
+
+		SetComposer(composer.Composer)
+	}
+	Opts struct {
+		DB db.SQLClient
+
+		ClientID     string
+		ClientSecret string
+	}
 	impl struct {
 		db db.SQLClient
 
 		sessionCleaner *time.Ticker
-		superSessions  sync.Map
-		limiter        *rate.Limiter
-		clientID       string
-		clientSecret   string
+
+		superSessions sync.Map
+		limiter       *rate.Limiter
+
+		clientID     string
+		clientSecret string
+
+		composer composer.Composer
+	}
+	flowMetaResponse struct {
+		FlowMeta []*composer.FlowMeta
 	}
 )
 
@@ -34,23 +54,37 @@ const (
 )
 
 var (
-	_ adminapi.StrictServerInterface = (*impl)(nil)
+	_ SSI                            = (*impl)(nil)
+	_ adminapi.GetFlowResponseObject = (*flowMetaResponse)(nil)
 
 	errSuperUserRateLimited = errors.New("rate limiter does not permit action")
 )
+
+func (fmr *flowMetaResponse) VisitGetFlowResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(fmr.FlowMeta); err != nil {
+		return err
+	}
+
+	w.WriteHeader(200)
+	return nil
+}
 
 func makeGenAPIError(msg string) adminapi.APIErrorResponse {
 	return adminapi.APIErrorResponse{Errors: []string{msg}}
 }
 
-func NewSSI(db db.SQLClient, clientID, clientSecret string) adminapi.StrictServerInterface {
+func NewSSI(opts *Opts) SSI {
 	i := &impl{
-		db:             db,
+		db: opts.DB,
+
 		sessionCleaner: time.NewTicker(superSessionCleanerInterval),
-		superSessions:  sync.Map{},
-		limiter:        rate.NewLimiter(rate.Every(limiterRate), limiterMaxBurst),
-		clientID:       clientID,
-		clientSecret:   clientSecret,
+
+		superSessions: sync.Map{},
+		limiter:       rate.NewLimiter(rate.Every(limiterRate), limiterMaxBurst),
+
+		clientID:     opts.ClientID,
+		clientSecret: opts.ClientSecret,
 	}
 
 	go func(im *impl) {
@@ -67,6 +101,10 @@ func NewSSI(db db.SQLClient, clientID, clientSecret string) adminapi.StrictServe
 		}
 	}(i)
 	return i
+}
+
+func (i *impl) SetComposer(c composer.Composer) {
+	i.composer = c
 }
 
 // LoginSuperuser implements [StrictServerInterface].
@@ -108,8 +146,8 @@ func (i *impl) LogoutSuperuser(
 
 // GetFlow implements [adminapi.StrictServerInterface].
 func (i *impl) GetFlow(
-	_ context.Context,
+	ctx context.Context,
 	_ adminapi.GetFlowRequestObject,
 ) (adminapi.GetFlowResponseObject, error) {
-	panic("unimplemented")
+	return &flowMetaResponse{FlowMeta: i.composer.GetFlowMeta()}, nil
 }
