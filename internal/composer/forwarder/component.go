@@ -20,9 +20,8 @@ type (
 		Host() string
 		Port() int
 	}
-	Opts struct {
-		TargetContextKey composer.ContextKey
-	}
+	// Placeholder options struct for future use, currently empty.
+	Opts      struct{}
 	forwarder struct {
 		targetContextKey composer.ContextKey
 	}
@@ -45,7 +44,7 @@ var (
 	)
 )
 
-func NewComponent(opts *Opts) composer.FlowComponent {
+func NewComponent(_ *Opts) composer.FlowComponent {
 	return &forwarder{
 		targetContextKey: composer.TargetContextKey,
 	}
