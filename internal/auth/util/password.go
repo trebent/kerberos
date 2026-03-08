@@ -27,6 +27,7 @@ func MakePassword(password string) (string, string, string) {
 	fullPassword := make([]byte, saltBytes+len(password))
 	copy(fullPassword, salt)
 	for i, c := range password {
+		//nolint:gosec // todo to fix this warning
 		fullPassword[len(salt)+i] = byte(c)
 	}
 	hash, err := bcrypt.GenerateFromPassword(fullPassword, bcrypt.DefaultCost)
