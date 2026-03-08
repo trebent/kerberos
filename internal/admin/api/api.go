@@ -50,7 +50,8 @@ const (
 	superSessionCleanerInterval = 1 * time.Minute
 	superSessionExpiry          = 15 * time.Minute
 	limiterRate                 = 1 * time.Second
-	limiterMaxBurst             = 10
+	// TODO: make configurable
+	limiterMaxBurst = 100
 )
 
 var (
