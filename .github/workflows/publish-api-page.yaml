@@ -17,7 +17,30 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  checksum-api-pages:
+    runs-on: ubuntu-latest
+    outputs:
+      cache-hit: ${{ steps.cache.outputs.cache-hit }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Get API documentation checksum
+        id: checksum
+        run: |
+          checksum=$(find ./pages/ -type f | xargs cat | md5sum | awk '{print $1}')
+          echo "checksum=$checksum" >> $GITHUB_OUTPUT
+
+      - name: Cache
+        id: cache
+        uses: actions/cache@565629816435f6c0b50676926c9b05c254113c0c # v5.0.3
+        with:
+          path: checksum
+          key: api-pages-${{ steps.checksum.outputs.checksum }}
+
   deploy-api-pages:
+    needs: checksum-api-pages
+    if: ${{ needs.checksum-api-pages.outputs.cache-hit != 'true' }}
     environment:
       name: api-pages
       url: ${{ steps.deployment.outputs.page_url }}
