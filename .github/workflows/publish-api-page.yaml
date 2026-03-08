@@ -3,9 +3,10 @@ name: Deploy static content to Pages
 run-name: Deploy pages - ${{ github.event.head_commit.message }}
 
 on:
-  push:
-    branches: ["main"]
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
