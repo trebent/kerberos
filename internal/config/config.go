@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,229 +16,52 @@ import (
 )
 
 type (
-	// Map is a configuration map that holds multiple configuration entries.
-	//
-	// Each configuration entry is registered with a name and a config struct that implements the Config interface.
-	//
-	// Configuration data can be loaded for each entry, and all entries can be parsed to resolve references,
-	// validate against schemas, and unmarshal into the config structs.
-	//
-	// Example usage:
-	//   cfgMap := config.New(&config.Opts{})
-	//   cfgMap.Register("myConfig", &MyConfigStruct{})
-	//   err := cfgMap.Load("myConfig", []byte(`{"key": "value"}`))
-	//   if err != nil {
-	//       panic(err)
-	//   }
-	//   err = cfgMap.Parse()
-	//   if err != nil {
-	//       panic(err)
-	//   }
-	//   myCfg, err := cfgMap.Access("myConfig")
-	//   if err != nil {
-	//       panic(err)
-	//   }
-	//
-	// This creates a configuration map, registers a config entry, loads JSON data into it,
-	// parses all entries, and accesses the populated config struct.
-	//
-	// Returns errors if any step fails, such as loading data for an unregistered name,
-	// schema validation failures, or unmarshalling errors.
-	Map interface {
-		// Register a configuration producer entry with a name and a config struct.
-		// The config struct must implement the Config interface.
-		//
-		// Example:
-		//   cfgMap.Register("myConfig", &MyConfigStruct{})
-		//
-		// This registers a configuration entry named "myConfig" with the provided config struct.
-		//
-		// The config struct will be populated when Load and Parse are called.
-		//
-		// Panics if the name is already registered.
-		Register(name string, cfg Config)
-		// Load configuration data for a registered config entry by name.
-		//
-		// Example:
-		//   err := cfgMap.Load("myConfig", []byte(`{"key": "value"}`))
-		//
-		// This loads the provided JSON data into the config entry named "myConfig".
-		// Returns an error if the name is not registered.
-		//
-		// MustLoad is similar to Load but panics on error.
-		//
-		// The actual unmarshalling into the config struct happens when Parse is called.
-		//
-		// Returns an error if the name is not registered.
-		Load(name string, data []byte) error
-		// MustLoad is similar to Load but panics on error.
-		//
-		// Example:
-		//   cfgMap.MustLoad("myConfig", []byte(`{"key": "value"}`))
-		//
-		// This loads the provided JSON data into the config entry named "myConfig".
-		// Panics if the name is not registered.
-		//
-		// The actual unmarshalling into the config struct happens when Parse is called.
-		//
-		// Panics if the name is not registered.
-		MustLoad(name string, data []byte)
-		// Parse all loaded configuration entries.
-		//
-		// This performs the following steps:
-		// 1. Resolves all environment variable and path references in the loaded JSON data.
-		// 2. Validates the JSON data against the schema provided by the config struct.
-		// 3. Unmarshals the JSON data into the config struct.
-		//
-		// Returns an error if any step fails.
-		Parse() error
-		// Access a configuration entry by name.
-		//
-		// Example:
-		//   cfg, err := cfgMap.Access("myConfig")
-		//
-		// This accesses the config entry named "myConfig" and returns the config struct.
-		//
-		// Returns an error if the name is not registered.
-		Access(name string) (Config, error)
-	}
-	Config interface {
-		// SchemaJSONLoader returns the JSON loader for the config struct schema.
-		//
-		// Example:
-		//   func (c *MyConfigStruct) SchemaJSONLoader() gojsonschema.JSONLoader {
-		//       return gojsonschema.NewBytesLoader([]byte(`{
-		//           "type": "object",
-		//           "properties": {
-		//               "key": { "type": "string" }
-		//           },
-		//           "required": ["key"]
-		//       }`))
-		//   }
-		//
-		// This provides the JSON loader for the schema used in validation.
-		//
-		// Returns nil if no schema validation is needed.
-		SchemaJSONLoader() gojsonschema.JSONLoader
-	}
-	Opts struct {
-		// GlobalSchemas are JSON schemas that are applied to all config entries.
-		//
-		// These schemas can define common structures or constraints that apply to all config entries.
-		//
-		// Example:
-		//   globalSchemaLoader := gojsonschema.NewBytesLoader([]byte(`{
-		//       "type": "object",
-		//       "properties": {
-		//           "globalKey": { "type": "string" }
-		//       }
-		//   }`))
-		//   opts := &Opts{
-		//       GlobalSchemas: []gojsonschema.JSONLoader{globalSchemaLoader},
-		//   }
-		//
-		// This sets a global schema that requires a "globalKey" property in all config entries.
-		//
-		// If no global schemas are needed, this can be left nil or empty.
-		GlobalSchemas []gojsonschema.JSONLoader
-	}
-	configEntry struct {
-		cfg         Config
+	RootConfig struct {
 		data        []byte
 		escapedData []byte
-	}
-	impl struct {
-		globalSchemas []gojsonschema.JSONLoader
-		configEntries map[string]*configEntry
-		// values config values
+
 		values map[string]any
 		refs   map[string]string
 	}
 )
 
 var (
-	//nolint:gochecknoglobals
-	NoSchema = &gojsonschema.Schema{}
-
-	ErrNoRegisteredName   = errors.New("could not find a config entry with that name")
-	ErrEnvVarRef          = errors.New("could not find an environment variable")
-	ErrPathVarRef         = errors.New("could not find path variable")
-	ErrPathVarRefCircular = errors.New("circular path reference detected")
-	ErrMalformedPathRef   = errors.New("malformed path reference")
-	ErrMalformedEnvRef    = errors.New("malformed env reference")
-	ErrUnmarshal          = errors.New("failed to decode configuration")
-	ErrSubmatchEnv        = errors.New("failed to find submatch in env match")
-	ErrSchema             = errors.New("schema validation failed")
-
 	envRe  = regexp.MustCompile(`\$\{env:([a-zA-Z0-9_:]+)\}`)
 	pathRe = regexp.MustCompile(`\$\{ref:([a-zA-Z0-9_\.\[\]:]+)\}`)
+
+	//go:embed schemas/ordered_schema.json
+	schemaBytesOrdered []byte
+	//go:embed schemas/admin_schema.json
+	schemaBytesAdmin []byte
+	//go:embed schemas/auth_schema.json
+	schemaBytesAuth []byte
+	//go:embed schemas/observability_schema.json
+	schemaBytesObservability []byte
+	//go:embed schemas/router_schema.json
+	schemaBytesRouter []byte
+	//go:embed schemas/oas_schema.json
+	schemaBytesOAS []byte
+	//go:embed schemas/config_schema.json
+	schemaBytesConfig []byte
 )
 
-func New(opts *Opts) Map {
-	return &impl{
-		globalSchemas: opts.GlobalSchemas,
-		configEntries: make(map[string]*configEntry),
-		values:        make(map[string]any),
-		refs:          make(map[string]string),
+func New() *RootConfig {
+	return &RootConfig{
+		values: make(map[string]any),
+		refs:   make(map[string]string),
 	}
 }
 
-// AccessAs accesses a configuration entry by name and casts it to the provided type T.
-// It panics if the config entry is not found or if the type assertion fails.
-func AccessAs[T any](cfg Map, name string) T {
-	d, err := cfg.Access(name)
-	if err != nil {
-		panic(err)
-	}
-
-	typed, ok := d.(T)
-	if !ok {
-		panic(fmt.Sprintf("invalid config type for: %s", name))
-	}
-
-	return typed
+func (c *RootConfig) Load(data []byte) {
+	c.data = data
 }
 
-func (c *impl) Register(name string, cfg Config) {
-	c.configEntries[name] = &configEntry{cfg, nil, nil}
-}
-
-func (c *impl) Load(name string, data []byte) error {
-	entry, ok := c.configEntries[name]
-	if !ok {
-		return fmt.Errorf("%w: %s", ErrNoRegisteredName, name)
-	}
-
-	entry.data = data
-
-	return nil
-}
-
-func (c *impl) MustLoad(name string, data []byte) {
-	entry, ok := c.configEntries[name]
-	if !ok {
-		panic(fmt.Errorf("%w: %s", ErrNoRegisteredName, name))
-	}
-
-	entry.data = data
-}
-
-func (c *impl) Access(name string) (Config, error) {
-	entry, ok := c.configEntries[name]
-
-	if !ok {
-		return nil, fmt.Errorf("%w: %s", ErrNoRegisteredName, name)
-	}
-
-	return entry.cfg, nil
-}
-
-func (c *impl) Parse() error {
+func (c *RootConfig) Parse() error {
 	if err := c.resolveReferences(); err != nil {
 		return err
 	}
 
-	if err := c.validateSchemas(); err != nil {
+	if err := c.validateSchema(); err != nil {
 		return err
 	}
 
@@ -245,22 +69,16 @@ func (c *impl) Parse() error {
 		return err
 	}
 
+	// Free allocated memory for intermediate data structures.
+	c.data = nil
+	c.escapedData = nil
+	c.values = nil
+	c.refs = nil
+
 	return nil
 }
 
-func (c *impl) resolveReferences() error {
-	// Walk across all JSON objects and collect:
-	// 1. Env references
-	// 2. Path references
-	//
-	// Resolve env references where possible, replace directly.
-	//
-	// Resolve path references in the following order:
-	// 1. Iterate over all path references
-	// 2. Go to the referenced value
-	//    - If the referenced value is another reference, go to the referenced value etc. until a value is found.
-	//      If there are only references, return an error.
-
+func (c *RootConfig) resolveReferences() error {
 	if err := c.escapeReferences(); err != nil {
 		return err
 	}
@@ -280,91 +98,78 @@ func (c *impl) resolveReferences() error {
 	return nil
 }
 
-func (c *impl) escapeReferences() error {
-	/*
-		Reads through all config entries and escapes any references found to prevent them from being
-		interpreted incorrectly during JSON unmarshalling.
-	*/
-	for name, entry := range c.configEntries {
-		if len(entry.data) == 0 {
-			continue
-		}
+func (c *RootConfig) escapeReferences() error {
+	zerologr.V(100).Info("Escaping references")
+	c.escapedData = c.data
 
-		zerologr.V(100).Info("Escaping references for config '" + name + "'")
-		entry.escapedData = entry.data
+	i := 0
+	for i < len(c.data) {
+		//nolint:gocritic // ignore: nestedIfs
+		if c.data[i] == '$' && isReference(c.data[i:i+6]) && c.data[i-1] != '"' {
+			zerologr.V(100).Info(
+				fmt.Sprintf("Found unescaped reference at index %d", i),
+			)
 
-		i := 0
-		for i < len(entry.data) {
-			//nolint:gocritic // ignore: nestedIfs
-			if entry.data[i] == '$' && isReference(entry.data[i:i+6]) && entry.data[i-1] != '"' {
-				zerologr.V(100).Info(
-					fmt.Sprintf("Found unescaped reference at index %d in config %s", i, name),
-				)
-
-				end := bytes.IndexByte(entry.data[i:], '}')
-				if end == -1 {
-					return fmt.Errorf("%w: %s", ErrMalformedPathRef, name)
-				}
-
-				escapedRef := append([]byte{'"'}, entry.data[i:i+end+1]...)
-				escapedRef = append(escapedRef, '"')
-
-				zerologr.V(100).Info("Escaped reference: " + string(escapedRef))
-
-				entry.escapedData = bytes.Replace(entry.data, entry.data[i:i+end+1], escapedRef, 1)
-
-				i = i + end + 3
-			} else if entry.data[i] == '$' && isReference(entry.data[i:i+6]) {
-				zerologr.V(100).Info(
-					fmt.Sprintf("Found already escaped reference at index %d in config %s", i, name),
-				)
-
-				end := bytes.IndexByte(entry.data[i:], '}')
-				if end == -1 {
-					return fmt.Errorf("%w: %s", ErrMalformedPathRef, name)
-				}
-
-				i = i + end + 2
-			} else {
-				i++
+			end := bytes.IndexByte(c.data[i:], '}')
+			if end == -1 {
+				return errors.New("malformed reference: missing closing '}'")
 			}
-		}
 
-		zerologr.V(100).Info("Escaped references for config '" + name + "': " + string(entry.data))
+			escapedRef := append([]byte{'"'}, c.data[i:i+end+1]...)
+			escapedRef = append(escapedRef, '"')
+
+			zerologr.V(100).Info("Escaped reference: " + string(escapedRef))
+
+			c.escapedData = bytes.Replace(c.escapedData, c.data[i:i+end+1], escapedRef, 1)
+
+			zerologr.V(100).Info("Intermediate escaped data: \n" + string(c.escapedData))
+
+			i = i + end + 3
+		} else if c.data[i] == '$' && isReference(c.data[i:i+6]) {
+			zerologr.V(100).Info(
+				fmt.Sprintf("Found already escaped reference at index %d", i),
+			)
+
+			end := bytes.IndexByte(c.data[i:], '}')
+			if end == -1 {
+				return errors.New("malformed reference: missing closing '}'")
+			}
+
+			i = i + end + 2
+		} else {
+			i++
+		}
 	}
+
+	zerologr.V(100).Info("Escaped references")
 
 	return nil
 }
 
-func (c *impl) walkForReferences() error {
-	/*
-		Reads through all config entries and gathers references and values for later resolution.
-	*/
-	for name, entry := range c.configEntries {
-		if len(entry.data) == 0 {
-			continue
-		}
-
-		zerologr.V(100).Info("Gathering references for config '" + name + "'")
-
-		generic := make(map[string]any)
-		if err := json.Unmarshal(entry.escapedData, &generic); err != nil {
-			return fmt.Errorf("%w: %s due to: %w", ErrUnmarshal, name, err)
-		}
-
-		if err := c.walk(name, generic); err != nil {
-			return err
-		}
-
-		zerologr.V(100).Info("Gathered references for config '" + name + "'")
-		zerologr.V(100).Info(fmt.Sprintf("Current values map: %+v", c.values))
-		zerologr.V(100).Info(fmt.Sprintf("Current refs map: %+v", c.refs))
+func (c *RootConfig) walkForReferences() error {
+	if len(c.data) == 0 {
+		return nil
 	}
+
+	zerologr.V(100).Info("Gathering references")
+
+	generic := make(map[string]any)
+	if err := json.Unmarshal(c.escapedData, &generic); err != nil {
+		return err
+	}
+
+	if err := c.walk("", generic); err != nil {
+		return err
+	}
+
+	zerologr.V(100).Info("Gathered references")
+	zerologr.V(100).Info(fmt.Sprintf("Current values map: %+v", c.values))
+	zerologr.V(100).Info(fmt.Sprintf("Current refs map: %+v", c.refs))
 
 	return nil
 }
 
-func (c *impl) walk(currentPath string, generic any) error {
+func (c *RootConfig) walk(currentPath string, generic any) error {
 	/*
 		Walk through a JSON object and find final values for all JSON paths.
 
@@ -377,14 +182,23 @@ func (c *impl) walk(currentPath string, generic any) error {
 	switch val := generic.(type) {
 	case map[string]any:
 		zerologr.V(100).Info("Walking into map in path '" + currentPath + "'")
+
 		for k, v := range val {
 			zerologr.V(100).Info("Key: " + k + ", Value: " + fmt.Sprint(v))
-			if err := c.walk(currentPath+"."+k, v); err != nil {
+
+			newPath := currentPath
+			if newPath != "" {
+				newPath += "."
+			}
+			newPath += k
+
+			if err := c.walk(newPath, v); err != nil {
 				return err
 			}
 		}
 	case []any:
 		zerologr.V(100).Info("Walking into array in path '" + currentPath + "'")
+
 		for i, item := range val {
 			if err := c.walk(currentPath+"["+strconv.Itoa(i)+"]", item); err != nil {
 				return err
@@ -404,7 +218,7 @@ func (c *impl) walk(currentPath string, generic any) error {
 	return nil
 }
 
-func (c *impl) findReferenceValues() error {
+func (c *RootConfig) findReferenceValues() error {
 	zerologr.V(100).Info("Finding reference values")
 	/*
 		Values contain values for full paths, but some contains references as well. Now what's needed is:
@@ -418,7 +232,7 @@ func (c *impl) findReferenceValues() error {
 	for ref := range c.refs {
 		var err error
 		if isEnvReference(ref) {
-			zerologr.V(100).Info("Checking env ref: " + ref)
+			zerologr.V(100).Info("Resolving environment reference value for: " + ref)
 			c.refs[ref], err = getEnvReferenceValue(ref)
 			if err != nil {
 				return err
@@ -431,13 +245,15 @@ func (c *impl) findReferenceValues() error {
 	for ref := range c.refs {
 		var err error
 		if isPathReference(ref) {
-			zerologr.V(100).Info("Checking path ref: " + ref)
+			zerologr.V(100).Info("Resolving path reference value for: " + ref)
 
 			// Find if the path reference can be walked to a final value
 			c.refs[ref], err = c.findReferenceValue(ref)
 			if err != nil {
 				return err
 			}
+
+			zerologr.V(100).Info("Resolved path reference value for: " + ref + ", value: " + c.refs[ref])
 		}
 	}
 
@@ -446,52 +262,51 @@ func (c *impl) findReferenceValues() error {
 	return nil
 }
 
-func (c *impl) findReferenceValue(origin string) (string, error) {
-	zerologr.V(100).Info("Finding value for ref: " + origin)
+func (c *RootConfig) findReferenceValue(ref string) (string, error) {
+	zerologr.V(100).Info("Finding value for path reference: " + ref)
 
-	originPath, err := getPathFromReference(origin)
+	valuePath, err := getPathFromReference(ref)
 	if err != nil {
 		return "", err
 	}
 
-	value, ok := c.values[originPath]
+	value, ok := c.values[valuePath]
 	if !ok {
-		return "", fmt.Errorf("%w: %s", ErrPathVarRef, origin)
+		return "", errors.New("referenced path was not found: " + valuePath)
 	}
 
 	decoded, ok := value.(string)
 	if ok {
 		if isEnvReference(decoded) {
-			zerologr.V(100).Info("Env ref found: " + decoded)
+			zerologr.V(100).Info("Nested environment reference found: " + decoded)
 			return c.refs[decoded], nil
 		} else if isPathReference(decoded) {
-			zerologr.V(100).Info("Path ref found, walking path: " + decoded)
-			return c.walkRefs(originPath, decoded)
+			zerologr.V(100).Info("Nested path reference found, walking path: " + decoded)
+			return c.walkRefs(valuePath, decoded)
 		}
 	}
 
-	return fmt.Sprintf("%v", value), nil
+	return fmt.Sprint(value), nil
 }
 
-func (c *impl) walkRefs(originPath, ref string) (string, error) {
-	zerologr.V(100).Info("Walking refs, origin: " + originPath + ", ref: " + ref)
+func (c *RootConfig) walkRefs(originPath, ref string) (string, error) {
+	zerologr.V(100).Info("Walking references, origin: " + originPath + ", ref: " + ref)
 
-	newRefPath, err := getPathFromReference(ref)
+	valuePath, err := getPathFromReference(ref)
 	if err != nil {
 		return "", err
 	}
-	zerologr.V(100).Info("New ref path: " + newRefPath + " origin: " + originPath)
 
-	if originPath == newRefPath {
-		return "", fmt.Errorf("%w: %s", ErrPathVarRefCircular, originPath)
+	if originPath == valuePath {
+		return "", errors.New("circular reference detected: " + originPath)
 	}
 
-	val, ok := c.values[newRefPath]
+	value, ok := c.values[valuePath]
 	if !ok {
-		return "", fmt.Errorf("%w: %s", ErrPathVarRef, ref)
+		return "", errors.New("reference path not found: " + valuePath)
 	}
 
-	decoded, ok := val.(string)
+	decoded, ok := value.(string)
 	if ok {
 		if isEnvReference(decoded) {
 			zerologr.V(100).Info("Env ref found during walk: " + decoded)
@@ -503,115 +318,92 @@ func (c *impl) walkRefs(originPath, ref string) (string, error) {
 			return c.walkRefs(originPath, decoded)
 		}
 	}
+	zerologr.V(100).Info("Final value found for " + originPath + " during walk: " + fmt.Sprint(value))
 
-	return decoded, nil
+	return fmt.Sprint(value), nil
 }
 
-func (c *impl) replaceReferencesInData() error {
+func (c *RootConfig) replaceReferencesInData() error {
 	/*
 		Replace all references in the original JSON data with their resolved values.
 	*/
-	for name, entry := range c.configEntries {
-		if len(entry.data) == 0 {
-			continue
-		}
+	if len(c.data) == 0 {
+		return nil
+	}
 
-		zerologr.V(100).Info("Replacing references in config '" + name + "': " + string(entry.data))
+	dataStr := string(c.data)
+	zerologr.V(100).Info("Replacing references: " + dataStr)
 
-		dataStr := string(entry.data)
+	for ref, val := range c.refs {
+		zerologr.V(100).Info(
+			fmt.Sprintf("Replacing reference '%s' with value '%s'", ref, val),
+		)
+		dataStr = strings.ReplaceAll(dataStr, ref, val)
+		zerologr.V(100).Info("Intermediate replaced data: " + dataStr)
+	}
 
-		for ref, val := range c.refs {
-			zerologr.V(100).Info(
-				fmt.Sprintf("Replacing reference '%s' with value '%s' in config '%s'", ref, val, name),
+	c.data = []byte(dataStr)
+
+	zerologr.V(100).Info("Replaced all references: " + string(c.data))
+
+	return nil
+}
+
+func (c *RootConfig) validateSchema() error {
+	zerologr.V(100).Info("Validating schema")
+
+	if len(c.data) == 0 {
+		return nil
+	}
+
+	// Since the root validation schema is registered anonymously, we need to compile it here, per
+	// configuration entry.
+	sl := gojsonschema.NewSchemaLoader()
+	sl.AutoDetect = false
+	sl.Validate = true
+	sl.Draft = gojsonschema.Draft7
+	if err := sl.AddSchemas(
+		gojsonschema.NewBytesLoader(schemaBytesOrdered),
+		gojsonschema.NewBytesLoader(schemaBytesAdmin),
+		gojsonschema.NewBytesLoader(schemaBytesAuth),
+		gojsonschema.NewBytesLoader(schemaBytesObservability),
+		gojsonschema.NewBytesLoader(schemaBytesRouter),
+		gojsonschema.NewBytesLoader(schemaBytesOAS),
+	); err != nil {
+		zerologr.Error(err, "Failed to add global schemas")
+		return err
+	}
+
+	compiledSchema, err := sl.Compile(gojsonschema.NewBytesLoader(schemaBytesConfig))
+	if err != nil {
+		zerologr.Error(err, "Failed to compile root schema")
+		return err
+	}
+
+	result, err := compiledSchema.Validate(gojsonschema.NewBytesLoader(c.data))
+	if err != nil {
+		return err
+	}
+
+	if !result.Valid() {
+		var fullError error
+		for _, validationErr := range result.Errors() {
+			fullError = fmt.Errorf(
+				"%w, %s - %s",
+				fullError,
+				validationErr.Field(),
+				validationErr.Description(),
 			)
-			dataStr = strings.ReplaceAll(dataStr, ref, val)
-			zerologr.V(100).Info("Intermediate replaced data: " + dataStr)
 		}
 
-		entry.data = []byte(dataStr)
-
-		zerologr.V(100).Info("Replaced references in config '" + name + "': " + string(entry.data))
+		return fmt.Errorf("schema validation failed: %w", fullError)
 	}
 
 	return nil
 }
 
-func (c *impl) validateSchemas() error {
-	zerologr.V(100).Info("Validating schemas for all config entries")
-
-	/*
-		Validate all loaded config entries against their schemas.
-	*/
-	for name, entry := range c.configEntries {
-		if len(entry.data) == 0 {
-			continue
-		}
-
-		zerologr.V(100).Info("Validating schema for config entry " + name)
-		if entry.cfg.SchemaJSONLoader() == nil {
-			zerologr.V(100).Info("No schema defined, skipping validation")
-			continue
-		}
-
-		// Since the root validation schema is registered anonymously, we need to compile it here, per
-		// configuration entry.
-		sl := gojsonschema.NewSchemaLoader()
-		sl.AutoDetect = false
-		sl.Validate = true
-		sl.Draft = gojsonschema.Draft7
-		if err := sl.AddSchemas(c.globalSchemas...); err != nil {
-			zerologr.Error(err, "Failed to add global schemas")
-			return err
-		}
-
-		compiledSchema, err := sl.Compile(entry.cfg.SchemaJSONLoader())
-		if err != nil {
-			zerologr.Error(err, "Failed to compile root schema")
-			return err
-		}
-
-		result, err := compiledSchema.Validate(gojsonschema.NewBytesLoader(entry.data))
-		if err != nil {
-			return err
-		}
-
-		if !result.Valid() {
-			var fullError error
-			for _, validationErr := range result.Errors() {
-				fullError = fmt.Errorf(
-					"%w, %s - %s",
-					fullError,
-					validationErr.Field(),
-					validationErr.Description(),
-				)
-			}
-
-			return fmt.Errorf(
-				"%s: %w: %s",
-				name,
-				ErrSchema,
-				strings.TrimPrefix(fullError.Error(), "<nil>, "),
-			)
-		}
-
-		zerologr.V(100).Info("Schema for config entry " + name + " is valid")
-	}
-
-	return nil
-}
-
-func (c *impl) loadData() error {
-	for name, entry := range c.configEntries {
-		if len(entry.data) == 0 {
-			continue
-		}
-
-		if err := json.Unmarshal(entry.data, entry.cfg); err != nil {
-			return fmt.Errorf("%w: %s due to: %w", ErrUnmarshal, name, err)
-		}
-	}
-
-	return nil
+func (c *RootConfig) loadData() error {
+	return json.Unmarshal(c.data, c)
 }
 
 func isReference(data []byte) bool {
@@ -640,7 +432,7 @@ func getEnvReferenceValue(ref string) (string, error) {
 	groups := envRe.FindStringSubmatch(ref)
 	zerologr.V(100).Info("Found env ref submatch groups: ", "ref", ref, "groups", groups)
 	if len(groups) < 2 {
-		return "", fmt.Errorf("%w: %s", ErrMalformedEnvRef, ref)
+		return "", errors.New("malformed env var reference: " + ref)
 	}
 
 	split := strings.Split(groups[1], ":")
@@ -651,7 +443,7 @@ func getEnvReferenceValue(ref string) (string, error) {
 			zerologr.V(100).Info("Using default env var value: " + split[1])
 			return split[1], nil
 		}
-		return "", fmt.Errorf("%w: %s", ErrEnvVarRef, split[0])
+		return "", errors.New("environment variable not found: " + split[0])
 	}
 	zerologr.V(100).Info("Found env var value: " + val)
 
@@ -660,10 +452,10 @@ func getEnvReferenceValue(ref string) (string, error) {
 
 func getPathFromReference(ref string) (string, error) {
 	groups := pathRe.FindStringSubmatch(ref)
-	zerologr.V(100).Info("Found path ref submatch groups: ", "ref", ref, "groups", groups)
 	if len(groups) < 2 {
-		return "", fmt.Errorf("%w: %s", ErrMalformedPathRef, ref)
+		return "", errors.New("malformed path reference: " + ref)
 	}
+	zerologr.V(100).Info("Extracted path from reference", "ref", ref, "path", groups[1])
 
 	return groups[1], nil
 }

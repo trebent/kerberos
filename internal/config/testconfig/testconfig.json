@@ -1,0 +1,16 @@
+{
+  "router": {
+    "backends": [
+      {
+        "name": "backend1",
+        "host": "localhost",
+        "port": 8080
+      },
+      {
+        "name": "backend2",
+        "host": "localhost",
+        "port": 8081
+      }
+    ]
+  }
+}
