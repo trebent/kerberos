@@ -10,26 +10,21 @@ import (
 
 	"github.com/go-logr/logr"
 	apierror "github.com/trebent/kerberos/internal/api/error"
-	composertypes "github.com/trebent/kerberos/internal/composer/types"
+	"github.com/trebent/kerberos/internal/composer"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 )
 
 type (
-	Target interface {
-		Host() string
-		Port() int
-	}
-	Opts struct {
-		TargetContextKey composertypes.ContextKey
-	}
+	// Placeholder options struct for future use, currently empty.
+	Opts      struct{}
 	forwarder struct {
-		targetContextKey composertypes.ContextKey
+		targetContextKey composer.ContextKey
 	}
 )
 
 var (
-	_ composertypes.FlowComponent = (*forwarder)(nil)
+	_ composer.FlowComponent = (*forwarder)(nil)
 
 	errFailedTargetExtract = errors.New("could not determine target from context")
 	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
@@ -45,18 +40,28 @@ var (
 	)
 )
 
-func NewComponent(opts *Opts) composertypes.FlowComponent {
+func NewComponent(_ *Opts) composer.FlowComponent {
 	return &forwarder{
-		targetContextKey: opts.TargetContextKey,
+		targetContextKey: composer.TargetContextKey,
 	}
 }
 
-// Next implements [types.FlowComponent].
-func (f *forwarder) Next(_ composertypes.FlowComponent) {
+// Next implements [composer.FlowComponent].
+func (f *forwarder) Next(_ composer.FlowComponent) {
 	panic("the forwarder is intended to be the last component in the flow")
 }
 
-// ServeHTTP implements [types.FlowComponent].
+// GetMeta implements [composer.FlowComponent].
+func (f *forwarder) GetMeta() []*composer.FlowMeta {
+	return []*composer.FlowMeta{
+		{
+			Name: "forwarder",
+			Data: map[string]any{},
+		},
+	}
+}
+
+// ServeHTTP implements [composer.FlowComponent].
 func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	// Obtain matching backend to route to.
 	// Forward request and pipe forwarded response into origin response.
@@ -64,7 +69,7 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	rLogger = rLogger.WithName("forwarder")
 	rLogger.Info("Forwarding request")
 
-	target, ok := req.Context().Value(f.targetContextKey).(Target)
+	target, ok := req.Context().Value(f.targetContextKey).(composer.Target)
 	if !ok {
 		rLogger.Error(
 			fmt.Errorf("%w: %s", errFailedTargetExtract, req.URL.Path),

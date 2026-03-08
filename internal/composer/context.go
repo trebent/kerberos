@@ -1,5 +1,4 @@
-//nolint:revive // welp
-package types
+package composer
 
 type ContextKey string
 

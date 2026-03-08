@@ -2,7 +2,10 @@ name: Dependabot auto-approve
 
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened]
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 permissions:
   pull-requests: write
@@ -14,14 +17,14 @@ jobs:
     steps:
       - name: Generate GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf  # v2.2.1
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         with:
           app-id: ${{ secrets.JEEVES_APP_ID }}
           private-key: ${{ secrets.JEEVES_APP_PRIVATE_KEY }}
 
       - name: Dependabot metadata
         id: metadata
-        uses: dependabot/fetch-metadata@21025c705c08248db411dc16f3619e6b5f9ea21a  # v2.5.0
+        uses: dependabot/fetch-metadata@21025c705c08248db411dc16f3619e6b5f9ea21a # v2.5.0
         with:
           github-token: "${{ steps.app-token.outputs.token }}"
 

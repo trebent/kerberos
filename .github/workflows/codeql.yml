@@ -4,9 +4,11 @@ run-name: CodeQL - ${{ github.event.pull_request.title || github.event.head_comm
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
   pull_request:
-    branches: ["main"]
+    branches:
+      - main
 
 env:
   CODEQL_EXTRACTOR_GO_OPTION_EXTRACT_TESTS: true

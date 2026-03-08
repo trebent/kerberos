@@ -4,32 +4,31 @@ import (
 	"net/http"
 	"slices"
 
-	"github.com/trebent/kerberos/internal/composer/types"
+	"github.com/trebent/kerberos/internal/composer"
 )
 
 type (
 	custom struct {
 		http.Handler
 
-		all   []types.FlowComponent
-		first types.FlowComponent
+		all   []composer.FlowComponent
+		first composer.FlowComponent
 	}
 	Ordered interface {
-		types.FlowComponent
-
+		composer.FlowComponent
 		Order() int
 	}
 )
 
-var _ types.FlowComponent = (*custom)(nil)
+var _ composer.FlowComponent = (*custom)(nil)
 
-func NewComponent(components ...types.FlowComponent) types.FlowComponent {
+func NewComponent(components ...composer.FlowComponent) composer.FlowComponent {
 	if len(components) == 0 {
 		return &custom{}
 	}
 
 	ordered := make([]Ordered, 0)
-	unordered := make([]types.FlowComponent, 0)
+	unordered := make([]composer.FlowComponent, 0)
 	for _, component := range components {
 		ord, ok := component.(Ordered)
 		if ok {
@@ -43,7 +42,7 @@ func NewComponent(components ...types.FlowComponent) types.FlowComponent {
 		return one.Order() - two.Order()
 	})
 
-	all := make([]types.FlowComponent, 0, len(ordered)+len(unordered))
+	all := make([]composer.FlowComponent, 0, len(ordered)+len(unordered))
 	for _, ord := range ordered {
 		all = append(all, ord)
 	}
@@ -69,7 +68,7 @@ func (c *custom) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c.first.ServeHTTP(w, req)
 }
 
-func (c *custom) Next(next types.FlowComponent) {
+func (c *custom) Next(next composer.FlowComponent) {
 	// first will be nil if 0 components were given to the custom constructor, use next
 	// as first in this case.
 	if c.first == nil {
@@ -79,4 +78,14 @@ func (c *custom) Next(next types.FlowComponent) {
 		// component slice the input next component.
 		c.all[len(c.all)-1].Next(next)
 	}
+}
+
+// GetMeta implements [composer.FlowComponent].
+func (c *custom) GetMeta() []*composer.FlowMeta {
+	return append([]*composer.FlowMeta{
+		{
+			Name: "custom",
+			Data: map[string]any{"component_count": len(c.all)},
+		},
+	}, c.first.GetMeta()...)
 }

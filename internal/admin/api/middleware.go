@@ -20,8 +20,7 @@ const (
 
 // AdminSessionMiddleware provides context population of administration session information.
 // If put in front of a handler, the context to the handler will contain information that can
-// be used to determine if a KRB admin made the call, or if it was external. This is useful
-// for internal KRB APIs to verify if a call is external or not.
+// be used to determine if a KRB admin made the call, or if it was external.
 func AdminSessionMiddleware(
 	ssi adminapigen.StrictServerInterface,
 ) adminapigen.StrictMiddlewareFunc {

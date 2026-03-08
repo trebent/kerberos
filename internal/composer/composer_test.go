@@ -5,14 +5,12 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
-
-	"github.com/trebent/kerberos/internal/composer/types"
 )
 
 type testFlow struct {
 	name   string
 	t      *testing.T
-	next   types.FlowComponent
+	next   FlowComponent
 	called sync.WaitGroup
 }
 
@@ -25,11 +23,25 @@ func newTestFlow(name string, t *testing.T) *testFlow {
 	return f
 }
 
-func (t *testFlow) Next(next types.FlowComponent) {
+func (t *testFlow) Next(next FlowComponent) {
 	t.next = next
 }
 
-// ServeHTTP implements [types.FlowComponent].
+// GetMeta implements [FlowComponent].
+func (t *testFlow) GetMeta() []*FlowMeta {
+	meta := &FlowMeta{
+		Name: t.name,
+		Data: map[string]any{},
+	}
+
+	if t.next != nil {
+		return append([]*FlowMeta{meta}, t.next.GetMeta()...)
+	}
+
+	return []*FlowMeta{meta}
+}
+
+// ServeHTTP implements [FlowComponent].
 func (t *testFlow) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	t.t.Logf("In test flow: %s", t.name)
 	t.called.Done()
@@ -40,7 +52,48 @@ func (t *testFlow) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var _ types.FlowComponent = (*testFlow)(nil)
+var _ FlowComponent = (*testFlow)(nil)
+
+func TestComposerGetFlowMeta(t *testing.T) {
+	one := newTestFlow("obs", t)
+	two := newTestFlow("router", t)
+	three := newTestFlow("composable", t)
+	four := newTestFlow("forwarder", t)
+
+	c := New(&Opts{
+		Observability: one,
+		Router:        two,
+		Custom:        three,
+		Forwarder:     four,
+	})
+
+	meta := c.GetFlowMeta()
+
+	if meta[0].Name != "obs" {
+		t.Fatalf("expected first meta name 'obs', got %q", meta[0].Name)
+	}
+	if meta[1] == nil {
+		t.Fatal("expected meta[1] to be set")
+	}
+	if meta[1].Name != "router" {
+		t.Fatalf("expected second meta name 'router', got %q", meta[1].Name)
+	}
+	if meta[2] == nil {
+		t.Fatal("expected meta[2] to be set")
+	}
+	if meta[2].Name != "composable" {
+		t.Fatalf("expected third meta name 'composable', got %q", meta[2].Name)
+	}
+	if meta[3] == nil {
+		t.Fatal("expected meta[3] to be set")
+	}
+	if meta[3].Name != "forwarder" {
+		t.Fatalf("expected fourth meta name 'forwarder', got %q", meta[3].Name)
+	}
+	if len(meta) > 4 {
+		t.Fatal("expected meta length to be 4 (end of chain)")
+	}
+}
 
 func TestComposerFlow(t *testing.T) {
 	one := newTestFlow("obs", t)
