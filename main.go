@@ -25,7 +25,6 @@ import (
 	internalenv "github.com/trebent/kerberos/internal/env"
 	"github.com/trebent/kerberos/internal/oas"
 	"github.com/trebent/zerologr"
-	"github.com/xeipuuv/gojsonschema"
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 )
 
@@ -81,7 +80,7 @@ func main() {
 	)
 	defer signalCancel()
 
-	cleanup, err := obs.Instrument(signalCtx, cfg, serviceName, internalenv.Version.Value())
+	cleanup, err := obs.Instrument(signalCtx, cfg.ObservabilityConfig, serviceName, internalenv.Version.Value())
 	if err != nil {
 		startLogger.Error(err, "Failed to instrument OpenTelemetry")
 		os.Exit(1) // nolint: gocritic
@@ -99,69 +98,14 @@ func main() {
 
 // setupConfig sets up the configuration map and registers all necessary
 // configurations. It returns the configuration map after calling Parse().
-func setupConfig() config.Map {
+func setupConfig() *config.RootConfig {
 	zerologr.Info("Setting up configuration...")
+	cfg := config.New()
 
-	cfg := config.New(&config.Opts{GlobalSchemas: []gojsonschema.JSONLoader{
-		custom.OrderedSchemaJSONLoader(),
-	}})
-
-	var (
-		err              error
-		adminConfigName  string
-		obsConfigName    string
-		routerConfigName string
-		authConfigName   string
-		oasConfigName    string
-	)
-
-	// Register all configurations.
-	adminConfigName, err = admin.RegisterWith(cfg)
-	must(err)
-	obsConfigName, err = obs.RegisterWith(cfg)
-	must(err)
-	routerConfigName, err = router.RegisterWith(cfg)
-	must(err)
-	authConfigName, err = auth.RegisterWith(cfg)
-	must(err)
-	oasConfigName, err = oas.RegisterWith(cfg)
-	must(err)
-
-	if internalenv.AdminJSONFile.Value() != "" {
-		zerologr.Info("Admin configuration detected, loading")
-		adminData, _ := os.ReadFile(internalenv.AdminJSONFile.Value())
-		cfg.MustLoad(adminConfigName, adminData)
-	} else {
-		zerologr.Error(admin.ErrNoConfig, "No administration configuration found")
-	}
-
-	// Load all input configuration data.
-	if internalenv.ObsJSONFile.Value() != "" {
-		zerologr.Info("Observability configuration detected, loading")
-		obsData, _ := os.ReadFile(internalenv.ObsJSONFile.Value())
-		cfg.MustLoad(obsConfigName, obsData)
-	}
-
-	if internalenv.AuthJSONFile.Value() != "" {
-		zerologr.Info("Auth configuration detected, loading")
-		authData, _ := os.ReadFile(internalenv.AuthJSONFile.Value())
-		cfg.MustLoad(authConfigName, authData)
-	}
-
-	if internalenv.OASJSONFile.Value() != "" {
-		zerologr.Info("OAS configuration detected, loading")
-		oasData, _ := os.ReadFile(internalenv.OASJSONFile.Value())
-		cfg.MustLoad(oasConfigName, oasData)
-	}
-
-	routerData, _ := os.ReadFile(internalenv.RouteJSONFile.Value())
-	if len(routerData) == 0 {
-		zerologr.Error(errors.New("missing router data"), "Router data empty")
-		os.Exit(1)
-	}
-	cfg.MustLoad(routerConfigName, routerData)
+	zerologr.Info("Loading configuration data")
 
 	zerologr.Info("Configuration data loaded")
+
 	zerologr.Info("Parsing configurations...")
 
 	// Parse configurations.
@@ -171,7 +115,7 @@ func setupConfig() config.Map {
 		os.Exit(1) // nolint: gocritic
 	}
 
-	zerologr.Info("Loaded configurations")
+	zerologr.Info("Configuration parsed successfully")
 
 	return cfg
 }
@@ -179,7 +123,7 @@ func setupConfig() config.Map {
 // startServer starts the HTTP server and listens for incoming requests.
 // It returns an error if the server fails to start and when stopping. If
 // the server is stopped, it returns http.ErrServerClosed.
-func startServer(ctx context.Context, cfg config.Map) error {
+func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	mux := http.NewServeMux()
 	db := sqlite.New(
 		&sqlite.Opts{DSN: filepath.Join(internalenv.DBDirectory.Value(), sqlite.DBName)},
@@ -193,15 +137,15 @@ func startServer(ctx context.Context, cfg config.Map) error {
 			Mux:    mux,
 			DB:     db,
 			OASDir: internalenv.OASDirectory.Value(),
-			Cfg:    cfg,
+			Cfg:    cfg.AdminConfig,
 		},
 	)
 
 	zerologr.Info("Loading observability")
-	observability := obs.NewComponent(&obs.Opts{Cfg: cfg})
+	observability := obs.NewComponent(&obs.Opts{Cfg: cfg.ObservabilityConfig})
 
 	zerologr.Info("Loading router")
-	router := router.NewComponent(&router.Opts{Cfg: cfg})
+	router := router.NewComponent(&router.Opts{Cfg: &cfg.RouterConfig})
 
 	zerologr.Info("Loading custom")
 	customFlowComponents := make([]composer.FlowComponent, 0)
@@ -209,7 +153,7 @@ func startServer(ctx context.Context, cfg config.Map) error {
 	if internalenv.AuthJSONFile.Value() != "" {
 		zerologr.Info("Loading auth")
 		authorizer := auth.NewComponent(&auth.Opts{
-			Cfg:                    cfg,
+			Cfg:                    cfg.AuthConfig,
 			Mux:                    mux,
 			DB:                     db,
 			OASDir:                 internalenv.OASDirectory.Value(),
@@ -221,7 +165,7 @@ func startServer(ctx context.Context, cfg config.Map) error {
 	if internalenv.OASJSONFile.Value() != "" {
 		zerologr.Info("Loading OAS validator")
 		oasValidator := oas.NewComponent(&oas.Opts{
-			Cfg: cfg,
+			Cfg: cfg.OASConfig,
 			Mux: mux,
 		})
 		customFlowComponents = append(customFlowComponents, oasValidator)

@@ -12,12 +12,11 @@ import (
 // If it does not return an error, make sure to call shutdown for proper cleanup.
 func Instrument(
 	ctx context.Context,
-	cfg config.Map,
+	cfg *config.ObservabilityConfig,
 	serviceName,
 	serviceVersion string,
 ) (func(context.Context) error, error) {
-	obsCfg := config.AccessAs[*obsConfig](cfg, configName)
-	if !obsCfg.Enabled || !obsCfg.RuntimeMetrics {
+	if !cfg.Enabled || !cfg.RuntimeMetrics {
 		zerologr.Info("Observability runtime metrics are disabled")
 		return func(context.Context) error { return nil }, nil
 	}

@@ -5,13 +5,15 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+
+	"github.com/trebent/kerberos/internal/config"
 )
 
 func TestFindMethod(t *testing.T) {
 	a := authorizer{
-		cfg: &authConfig{
-			Scheme: &scheme{
-				Mappings: []*mapping{
+		cfg: &config.AuthConfig{
+			Scheme: &config.AuthScheme{
+				Mappings: []*config.AuthMapping{
 					{
 						Backend: "backend1",
 						Method:  "basic",

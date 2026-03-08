@@ -24,7 +24,7 @@ import (
 
 type (
 	Opts struct {
-		Cfg config.Map
+		Cfg *config.AuthConfig
 
 		// The Mux to register the basic authentication API with, if enabled.
 		Mux *http.ServeMux
@@ -40,7 +40,7 @@ type (
 	authorizer struct {
 		next composer.FlowComponent
 
-		cfg   *authConfig
+		cfg   *config.AuthConfig
 		basic method.Method
 		db    db.SQLClient
 	}
@@ -61,21 +61,20 @@ var (
 const schemaApplyTimeout = 10 * time.Second
 
 func NewComponent(opts *Opts) composer.FlowComponent {
-	cfg := config.AccessAs[*authConfig](opts.Cfg, configName)
 	authorizer := &authorizer{
-		cfg: cfg,
+		cfg: opts.Cfg,
 		db:  opts.DB,
 	}
 	authorizer.applySchemas()
 
-	if cfg.BasicEnabled() {
+	if opts.Cfg.Methods != nil && opts.Cfg.Methods.Basic != nil {
 		zerologr.Info("Basic authentication enabled")
 		// If basic auth, create the method.
 		authorizer.basic = basic.New(&basic.Opts{
 			Mux:                    opts.Mux,
 			DB:                     opts.DB,
 			OASDir:                 opts.OASDir,
-			AuthZConfig:            makeAuthZMap(cfg.Scheme.Mappings),
+			AuthZConfig:            makeAuthZMap(opts.Cfg.Scheme.Mappings),
 			AdminSessionMiddleware: opts.AdminSessionMiddleware,
 		})
 	}
@@ -178,8 +177,8 @@ func (a *authorizer) applySchemas() {
 	}
 }
 
-func makeAuthZMap(mappings []*mapping) map[string]method.AuthZConfig {
-	m := make(map[string]method.AuthZConfig)
+func makeAuthZMap(mappings []*config.AuthMapping) map[string]*config.AuthZ {
+	m := make(map[string]*config.AuthZ)
 	for _, mapping := range mappings {
 		m[mapping.Backend] = mapping.Authorization
 	}

@@ -10,27 +10,14 @@ import (
 	"testing"
 
 	"github.com/trebent/kerberos/internal/composer"
-	"github.com/trebent/kerberos/internal/composer/custom"
 	"github.com/trebent/kerberos/internal/config"
-	"github.com/xeipuuv/gojsonschema"
 )
 
 // TestComponentWithOptions tests the OAS component with explicit options.
 func TestComponentWithOptions(t *testing.T) {
-	cfgMap := config.New(testConfigOpts())
-	_, err := RegisterWith(cfgMap)
-	if err != nil {
-		t.Fatalf("Failed to register OAS config: %v", err)
-	}
-
-	cfgMap.MustLoad(configName, []byte(configExplicitOptions()))
-	if err := cfgMap.Parse(); err != nil {
-		t.Fatalf("Failed to parse OAS config: %v", err)
-	}
-
 	mux := http.NewServeMux()
 	opts := &Opts{
-		Cfg: cfgMap,
+		Cfg: &config.OASConfig{},
 		Mux: mux,
 	}
 
@@ -80,20 +67,9 @@ func TestComponentWithOptions(t *testing.T) {
 
 // TestComponentWithoutOptions tests the OAS component with default options.
 func TestComponentWithoutOptions(t *testing.T) {
-	cfgMap := config.New(testConfigOpts())
-	_, err := RegisterWith(cfgMap)
-	if err != nil {
-		t.Fatalf("Failed to register OAS config: %v", err)
-	}
-
-	cfgMap.MustLoad(configName, []byte(configWithoutOptions()))
-	if err := cfgMap.Parse(); err != nil {
-		t.Fatalf("Failed to parse OAS config: %v", err)
-	}
-
 	mux := http.NewServeMux()
 	opts := &Opts{
-		Cfg: cfgMap,
+		Cfg: &config.OASConfig{},
 		Mux: mux,
 	}
 
@@ -126,20 +102,9 @@ func TestComponentWithoutOptions(t *testing.T) {
 
 // TestComponentWithoutBodyValidation tests the OAS component with body validation disabled.
 func TestComponentWithoutBodyValidation(t *testing.T) {
-	cfgMap := config.New(testConfigOpts())
-	_, err := RegisterWith(cfgMap)
-	if err != nil {
-		t.Fatalf("Failed to register OAS config: %v", err)
-	}
-
-	cfgMap.MustLoad(configName, []byte(configDisableBodyValidation()))
-	if err := cfgMap.Parse(); err != nil {
-		t.Fatalf("Failed to parse OAS config: %v", err)
-	}
-
 	mux := http.NewServeMux()
 	opts := &Opts{
-		Cfg: cfgMap,
+		Cfg: &config.OASConfig{},
 		Mux: mux,
 	}
 
@@ -222,12 +187,4 @@ func configDisableBodyValidation() string {
 	],
 	"order": 1
 }`
-}
-
-func testConfigOpts() *config.Opts {
-	return &config.Opts{
-		GlobalSchemas: []gojsonschema.JSONLoader{
-			custom.OrderedSchemaJSONLoader(),
-		},
-	}
 }

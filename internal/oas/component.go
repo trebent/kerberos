@@ -17,10 +17,10 @@ type (
 		next composer.FlowComponent
 		// Map of backend name to OAS validator handler.
 		validators map[string]func(http.Handler) http.Handler
-		cfg        *oasConfig
+		cfg        *config.OASConfig
 	}
 	Opts struct {
-		Cfg config.Map
+		Cfg *config.OASConfig
 
 		// TODO: use this to register API documentation.
 		Mux *http.ServeMux
@@ -37,11 +37,9 @@ func NewComponent(opts *Opts) composer.FlowComponent {
 	//nolint:reassign // yolo
 	openapi3.SchemaErrorDetailsDisabled = true
 
-	cfg := config.AccessAs[*oasConfig](opts.Cfg, configName)
-	v := &validator{cfg: cfg, validators: make(map[string]func(http.Handler) http.Handler)}
-
-	for _, mapping := range cfg.Mappings {
-		if err := v.register(mapping); err != nil {
+	v := &validator{cfg: opts.Cfg, validators: make(map[string]func(http.Handler) http.Handler)}
+	for _, mapping := range v.cfg.Mappings {
+		if err := v.register(&mapping); err != nil {
 			panic(err)
 		}
 	}
@@ -91,9 +89,9 @@ func (v *validator) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (v *validator) register(m *mapping) error {
+func (v *validator) register(m *config.OASBackendMapping) error {
 	if m.Options == nil {
-		m.Options = defaultOptions()
+		m.Options = &config.OASBackendMappingOpts{ValidateBody: true}
 	}
 
 	// Load OpenAPI document.

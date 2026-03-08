@@ -9,8 +9,4 @@ type (
 		Authenticated(*http.Request) error
 		Authorized(*http.Request) error
 	}
-	AuthZConfig struct {
-		Groups []string            `json:"groups"`
-		Paths  map[string][]string `json:"paths"`
-	}
 )
