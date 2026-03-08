@@ -9,9 +9,9 @@ import (
 type (
 	// Backend is a target backend service that KRB forwards requests to.
 	Backend interface {
+		composer.Target
+
 		Name() string
-		Host() string
-		Port() int
 	}
 	backend struct {
 		BackendName string `json:"name"`

@@ -64,7 +64,10 @@ func (r *router) Next(next composer.FlowComponent) {
 func (r *router) GetMeta() *composer.FlowMeta {
 	return &composer.FlowMeta{
 		Name: "router",
-		Data: map[string]any{"backend_count": len(r.cfg.Backends)},
+		Data: map[string]any{
+			"backend_count": len(r.cfg.Backends),
+			"backends":      r.cfg.Backends,
+		},
 		Next: r.next.GetMeta(),
 	}
 }

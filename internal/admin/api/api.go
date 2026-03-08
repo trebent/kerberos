@@ -33,7 +33,11 @@ const (
 	limiterMaxBurst             = 10
 )
 
-var errSuperUserRateLimited = errors.New("rate limiter does not permit action")
+var (
+	_ adminapi.StrictServerInterface = (*impl)(nil)
+
+	errSuperUserRateLimited = errors.New("rate limiter does not permit action")
+)
 
 func makeGenAPIError(msg string) adminapi.APIErrorResponse {
 	return adminapi.APIErrorResponse{Errors: []string{msg}}
@@ -100,4 +104,9 @@ func (i *impl) LogoutSuperuser(
 ) (adminapi.LogoutSuperuserResponseObject, error) {
 	i.superSessions.Delete(SessionIDFromContext(ctx))
 	return adminapi.LogoutSuperuser204Response{}, nil
+}
+
+// GetFlow implements [adminapi.StrictServerInterface].
+func (i *impl) GetFlow(ctx context.Context, request adminapi.GetFlowRequestObject) (adminapi.GetFlowResponseObject, error) {
+	panic("unimplemented")
 }

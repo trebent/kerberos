@@ -16,10 +16,6 @@ import (
 )
 
 type (
-	Target interface {
-		Host() string
-		Port() int
-	}
 	// Placeholder options struct for future use, currently empty.
 	Opts      struct{}
 	forwarder struct {
@@ -71,7 +67,7 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	rLogger = rLogger.WithName("forwarder")
 	rLogger.Info("Forwarding request")
 
-	target, ok := req.Context().Value(f.targetContextKey).(Target)
+	target, ok := req.Context().Value(f.targetContextKey).(composer.Target)
 	if !ok {
 		rLogger.Error(
 			fmt.Errorf("%w: %s", errFailedTargetExtract, req.URL.Path),

@@ -30,6 +30,13 @@ type APIErrorResponse struct {
 	Errors []string `json:"errors"`
 }
 
+// FlowMeta defines model for FlowMeta.
+type FlowMeta struct {
+	Data map[string]interface{} `json:"data"`
+	Name string                 `json:"name"`
+	Next *FlowMeta              `json:"next,omitempty"`
+}
+
 // LoginSuperuserJSONBody defines parameters for LoginSuperuser.
 type LoginSuperuserJSONBody struct {
 	ClientId     string `json:"clientId"`
@@ -41,6 +48,9 @@ type LoginSuperuserJSONRequestBody LoginSuperuserJSONBody
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+
+	// (GET /api/admin/flow)
+	GetFlow(w http.ResponseWriter, r *http.Request)
 
 	// (POST /api/admin/superuser/login)
 	LoginSuperuser(w http.ResponseWriter, r *http.Request)
@@ -57,6 +67,26 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// GetFlow operation middleware
+func (siw *ServerInterfaceWrapper) GetFlow(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetFlow(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // LoginSuperuser operation middleware
 func (siw *ServerInterfaceWrapper) LoginSuperuser(w http.ResponseWriter, r *http.Request) {
@@ -212,10 +242,38 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	m.HandleFunc("GET "+options.BaseURL+"/api/admin/flow", wrapper.GetFlow)
 	m.HandleFunc("POST "+options.BaseURL+"/api/admin/superuser/login", wrapper.LoginSuperuser)
 	m.HandleFunc("POST "+options.BaseURL+"/api/admin/superuser/logout", wrapper.LogoutSuperuser)
 
 	return m
+}
+
+type GetFlowRequestObject struct {
+}
+
+type GetFlowResponseObject interface {
+	VisitGetFlowResponse(w http.ResponseWriter) error
+}
+
+type GetFlow200JSONResponse struct {
+	Flow *[]FlowMeta `json:"flow,omitempty"`
+}
+
+func (response GetFlow200JSONResponse) VisitGetFlowResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetFlow500JSONResponse APIErrorResponse
+
+func (response GetFlow500JSONResponse) VisitGetFlowResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
 }
 
 type LoginSuperuserRequestObject struct {
@@ -303,6 +361,9 @@ func (response LogoutSuperuser500JSONResponse) VisitLogoutSuperuserResponse(w ht
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
+	// (GET /api/admin/flow)
+	GetFlow(ctx context.Context, request GetFlowRequestObject) (GetFlowResponseObject, error)
+
 	// (POST /api/admin/superuser/login)
 	LoginSuperuser(ctx context.Context, request LoginSuperuserRequestObject) (LoginSuperuserResponseObject, error)
 
@@ -337,6 +398,30 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// GetFlow operation middleware
+func (sh *strictHandler) GetFlow(w http.ResponseWriter, r *http.Request) {
+	var request GetFlowRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetFlow(ctx, request.(GetFlowRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetFlow")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetFlowResponseObject); ok {
+		if err := validResponse.VisitGetFlowResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // LoginSuperuser operation middleware
@@ -397,17 +482,18 @@ func (sh *strictHandler) LogoutSuperuser(w http.ResponseWriter, r *http.Request)
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/8xVTW/bMAz9KwK3o2unXXeYby22AUZ7KNrd2hxUm3XU2aJG0duCwP99kOzUdZJ9Hoqd",
-	"YolP5NPjo7KBklpHFq14yDewQl0hx0+P3huypgqLCn3JxokhCzmcqTGoivcpJMD4pTOMFeTCHSbgyxW2",
-	"OpyTtUPIwQsbW0Pf99tgLHF2VXxgJr5G78h6DHuOySGLwYjAEI5fRrD1B1Im0BpbDMHjZBvVzHoNodzE",
-	"7XabbfkEo/tHLCXiPJYdG1nfBHq4r4AJFx/kgQSsbsP570ef+f5oxMFU3ZkLXA/XNfaB9hX8tEJ1gXyP",
-	"TF7pqjXWeGEdokp3skIrphyWZ1eF0k1D32ZAYq9abXWN2174RHUe2SdK20o55NYM+3eWHpQ8L1iha2jd",
-	"opX0LtI20gTef84odP0rsh9us0iP00VoBTm02hnI4U26SE8hAadlFcXMtDNZzJv5ziEHrllDddB1A468",
-	"hN/Q+1ikqCCHyxC+2aJHo6GXc6rWAV2SFbTxoHauGfllj55i0smGc1OVjUErRWxra+wl2lpWz90zeWuA",
-	"3mDJKL+F77jtqcxOmgP263dnKG4MQxEpnyxO9010SXWNVWztk6TK2NCbZ3M892i+gdeMD5DDq2wa/WzE",
-	"Z5PlI6nTxeKvdD6Uepz3bG/YY4X5jc51pcYepxDrH79o/Y/aNEFRUg3VB4QNlE7evSilay2oGtMawSoS",
-	"ePvCPSmsIFvdqPh6prPHEvLbZVj/bLipk19ON3UyH+9/sjx18p8o0++IM/sPuV32y/5HAAAA//+cNDqx",
-	"cQcAAA==",
+	"H4sIAAAAAAAC/8xVTW/bOBD9KwR3j4rkZL2H1S3BNoGRFAiS3lIfGHEsM6VIlhw1EQL992Io27Is1egH",
+	"EORkWTOceZz33uiVF7Zy1oDBwPNXvgYhwcfHACEoa5SkPxJC4ZVDZQ3P+TnbBNni/5Qn3MPXWnmQPEdf",
+	"Q8JDsYZK0DlsHPCcB/TKlLxt220wtji/XXzw3vo7CM6aAPTOeevAo4KYARSOTwqhChMlE14ps+iCp8k2",
+	"KrwXDad2PbaHbbXlLs0+PkGBVORS2+ePgGIMQYrurZBS0f2Fvt2LdxcelTOigkmwBl6QAn97WPGc/5X1",
+	"8882k8l2WA7xx6pJh2h8CZotFLVX2NxTJRjTqIi9jmO+BclfTr74x5NNHu9H6NQ1NB1nyqzsWAaf1sCu",
+	"wT+Ct4EJWSmjAnpBUXZ+u2BCa/s8iFgfWCWMKIGJ/qgEp21TgcH0cwSgUBOCI7VJdd/Ahw7ILD1LZzRd",
+	"68AIp3jO/0ln6Zwn3AlcxzlkwqksFspW2j7TqxIiFURmLLyQPOdXgDT/qOpOlfH42WxGP4U1CCYeE85p",
+	"VcSD2VMgHK97wh9qaNtxJ+Kfo39Czoect8kBKVcWGa6BUUsW6qKAEFa11k1K9f79xWscwzly7wSahUHw",
+	"RmgWrZdSSpvscxFqB74O4DNtSxW7OxsmeLmh8P02e7N0IOCFlc0fMFNoBQYX0R2VMjdgSlzvb5Leul3q",
+	"PRS+083R9APn7toclFlOMjrcp+1IivOxF29sWYKMzO9GypQhn+zt9KHVf8DvJj/rN0cENX9j6VwIyTYc",
+	"R+nOZ6dv2v9SKE0TtUzbcmKwBOnsvzeFdCcQmFaVQpDvxM79N4fnD8tj5rY1HnW3rXFo79+SvK3x3Sy6",
+	"4XAGn+KHZbtsvwcAAP//x9tDHH0JAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
