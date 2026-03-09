@@ -13,8 +13,8 @@ import (
 	"github.com/trebent/kerberos/internal/config"
 )
 
-// TestComponentWithOptions tests the OAS component with explicit options.
-func TestComponentWithOptions(t *testing.T) {
+// TestComponentWithBodyValidation tests the OAS component with body validation enabled.
+func TestComponentWithBodyValidation(t *testing.T) {
 	mux := http.NewServeMux()
 	opts := &Opts{
 		Cfg: &config.OASConfig{
