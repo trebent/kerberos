@@ -29,7 +29,6 @@ func TestComponentWithBodyValidation(t *testing.T) {
 			},
 			Order: 1,
 		},
-		Mux: mux,
 	}
 
 	// Fake router to populate the request context with backend name.
@@ -96,7 +95,6 @@ func TestComponentWithoutBodyValidation(t *testing.T) {
 			},
 			Order: 1,
 		},
-		Mux: mux,
 	}
 
 	// Fake router to populate the request context with backend name.

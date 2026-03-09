@@ -180,7 +180,6 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		zerologr.Info("Loading OAS validator")
 		oasValidator := oas.NewComponent(&oas.Opts{
 			Cfg: cfg.OASConfig,
-			Mux: mux,
 		})
 		customFlowComponents = append(customFlowComponents, oasValidator)
 	}

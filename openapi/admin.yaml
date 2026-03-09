@@ -131,3 +131,33 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
+
+  /api/admin/oas/{backend}:
+    get:
+      operationId: GetBackendOAS
+      parameters:
+        - name: backend
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/yaml:
+              schema:
+                type: object
+                additionalProperties: true
+          description: Got the backend OAS successfully.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Backend not found.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.

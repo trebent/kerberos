@@ -152,3 +152,12 @@ func (i *impl) GetFlow(
 ) (adminapi.GetFlowResponseObject, error) {
 	return &flowMetaResponse{FlowMeta: i.composer.GetFlowMeta()}, nil
 }
+
+func (i *impl) GetBackendOAS(
+	_ context.Context,
+	request adminapi.GetBackendOASRequestObject,
+) (adminapi.GetBackendOASResponseObject, error) {
+	return adminapi.GetBackendOAS200ApplicationyamlResponse{
+		Oas: oasDoc,
+	}, nil
+}

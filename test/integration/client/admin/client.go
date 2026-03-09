@@ -12,6 +12,10 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"gopkg.in/yaml.v2"
+
+	"github.com/oapi-codegen/runtime"
 )
 
 const (
@@ -114,6 +118,9 @@ type ClientInterface interface {
 	// GetFlow request
 	GetFlow(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetBackendOAS request
+	GetBackendOAS(ctx context.Context, backend string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// LoginSuperuserWithBody request with any body
 	LoginSuperuserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -125,6 +132,18 @@ type ClientInterface interface {
 
 func (c *Client) GetFlow(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetFlowRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetBackendOAS(ctx context.Context, backend string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetBackendOASRequest(c.Server, backend)
 	if err != nil {
 		return nil, err
 	}
@@ -181,6 +200,40 @@ func NewGetFlowRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/api/admin/flow")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetBackendOASRequest generates requests for GetBackendOAS
+func NewGetBackendOASRequest(server string, backend string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "backend", backend, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/admin/oas/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -311,6 +364,9 @@ type ClientWithResponsesInterface interface {
 	// GetFlowWithResponse request
 	GetFlowWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetFlowResponse, error)
 
+	// GetBackendOASWithResponse request
+	GetBackendOASWithResponse(ctx context.Context, backend string, reqEditors ...RequestEditorFn) (*GetBackendOASResponse, error)
+
 	// LoginSuperuserWithBodyWithResponse request with any body
 	LoginSuperuserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginSuperuserResponse, error)
 
@@ -337,6 +393,30 @@ func (r GetFlowResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetFlowResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetBackendOASResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	YAML200      *map[string]interface{}
+	JSON404      *APIErrorResponse
+	JSON500      *APIErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetBackendOASResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetBackendOASResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -399,6 +479,15 @@ func (c *ClientWithResponses) GetFlowWithResponse(ctx context.Context, reqEditor
 	return ParseGetFlowResponse(rsp)
 }
 
+// GetBackendOASWithResponse request returning *GetBackendOASResponse
+func (c *ClientWithResponses) GetBackendOASWithResponse(ctx context.Context, backend string, reqEditors ...RequestEditorFn) (*GetBackendOASResponse, error) {
+	rsp, err := c.GetBackendOAS(ctx, backend, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetBackendOASResponse(rsp)
+}
+
 // LoginSuperuserWithBodyWithResponse request with arbitrary body returning *LoginSuperuserResponse
 func (c *ClientWithResponses) LoginSuperuserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginSuperuserResponse, error) {
 	rsp, err := c.LoginSuperuserWithBody(ctx, contentType, body, reqEditors...)
@@ -452,6 +541,46 @@ func ParseGetFlowResponse(rsp *http.Response) (*GetFlowResponse, error) {
 			return nil, err
 		}
 		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetBackendOASResponse parses an HTTP response from a GetBackendOASWithResponse call
+func ParseGetBackendOASResponse(rsp *http.Response) (*GetBackendOASResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetBackendOASResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "yaml") && rsp.StatusCode == 200:
+		var dest map[string]interface{}
+		if err := yaml.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.YAML200 = &dest
 
 	}
 

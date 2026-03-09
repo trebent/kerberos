@@ -12,12 +12,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
 	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/oapi-codegen/runtime"
 	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
 )
 
@@ -51,6 +53,9 @@ type ServerInterface interface {
 	// (GET /api/admin/flow)
 	GetFlow(w http.ResponseWriter, r *http.Request)
 
+	// (GET /api/admin/oas/{backend})
+	GetBackendOAS(w http.ResponseWriter, r *http.Request, backend string)
+
 	// (POST /api/admin/superuser/login)
 	LoginSuperuser(w http.ResponseWriter, r *http.Request)
 
@@ -78,6 +83,37 @@ func (siw *ServerInterfaceWrapper) GetFlow(w http.ResponseWriter, r *http.Reques
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetFlow(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetBackendOAS operation middleware
+func (siw *ServerInterfaceWrapper) GetBackendOAS(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "backend" -------------
+	var backend string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "backend", r.PathValue("backend"), &backend, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "backend", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetBackendOAS(w, r, backend)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -242,6 +278,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	}
 
 	m.HandleFunc("GET "+options.BaseURL+"/api/admin/flow", wrapper.GetFlow)
+	m.HandleFunc("GET "+options.BaseURL+"/api/admin/oas/{backend}", wrapper.GetBackendOAS)
 	m.HandleFunc("POST "+options.BaseURL+"/api/admin/superuser/login", wrapper.LoginSuperuser)
 	m.HandleFunc("POST "+options.BaseURL+"/api/admin/superuser/logout", wrapper.LogoutSuperuser)
 
@@ -267,6 +304,51 @@ func (response GetFlow200JSONResponse) VisitGetFlowResponse(w http.ResponseWrite
 type GetFlow500JSONResponse APIErrorResponse
 
 func (response GetFlow500JSONResponse) VisitGetFlowResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetBackendOASRequestObject struct {
+	Backend string `json:"backend"`
+}
+
+type GetBackendOASResponseObject interface {
+	VisitGetBackendOASResponse(w http.ResponseWriter) error
+}
+
+type GetBackendOAS200ApplicationyamlResponse struct {
+	Body          io.Reader
+	ContentLength int64
+}
+
+func (response GetBackendOAS200ApplicationyamlResponse) VisitGetBackendOASResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/yaml")
+	if response.ContentLength != 0 {
+		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
+	}
+	w.WriteHeader(200)
+
+	if closer, ok := response.Body.(io.ReadCloser); ok {
+		defer closer.Close()
+	}
+	_, err := io.Copy(w, response.Body)
+	return err
+}
+
+type GetBackendOAS404JSONResponse APIErrorResponse
+
+func (response GetBackendOAS404JSONResponse) VisitGetBackendOASResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetBackendOAS500JSONResponse APIErrorResponse
+
+func (response GetBackendOAS500JSONResponse) VisitGetBackendOASResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
 
@@ -361,6 +443,9 @@ type StrictServerInterface interface {
 	// (GET /api/admin/flow)
 	GetFlow(ctx context.Context, request GetFlowRequestObject) (GetFlowResponseObject, error)
 
+	// (GET /api/admin/oas/{backend})
+	GetBackendOAS(ctx context.Context, request GetBackendOASRequestObject) (GetBackendOASResponseObject, error)
+
 	// (POST /api/admin/superuser/login)
 	LoginSuperuser(ctx context.Context, request LoginSuperuserRequestObject) (LoginSuperuserResponseObject, error)
 
@@ -414,6 +499,32 @@ func (sh *strictHandler) GetFlow(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetFlowResponseObject); ok {
 		if err := validResponse.VisitGetFlowResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetBackendOAS operation middleware
+func (sh *strictHandler) GetBackendOAS(w http.ResponseWriter, r *http.Request, backend string) {
+	var request GetBackendOASRequestObject
+
+	request.Backend = backend
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetBackendOAS(ctx, request.(GetBackendOASRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetBackendOAS")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetBackendOASResponseObject); ok {
+		if err := validResponse.VisitGetBackendOASResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -479,18 +590,19 @@ func (sh *strictHandler) LogoutSuperuser(w http.ResponseWriter, r *http.Request)
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/8xVwW7bOBD9FWJ2j4rkZL2H1S3BNoGQFAiS3lIfGHEsM6VIlhw1FQz9e0HKtizLNZAe",
-	"gpwkc2Y4z2/eG62hNLU1GjV5yNewQi7QxVeP3kujpQg/BPrSSUvSaMjhkm2CrPg/hQQcfm+kQwE5uQYT",
-	"8OUKax7qqLUIOXhyUlfQdd02GFtc3hefnDPuAb012mM440LI0Iare2csOpLoIV9y5TEBu3e0Bgy18U0S",
-	"1v5IvwRqqYs+eJ5so9w53kLAMgB/2t622KWZ5xcsKVxyrczrZyT+RnyCnyrpqZr00rzGY8yNwcaspO8w",
-	"RRxYxrJxktrHwDZOByrDHPtpw7Yp/Dz75p7PNnkw8GXlLbb99KRemqkgvqyQ3aJ7Rmc846KWWnpyPETZ",
-	"5X3BuFLmdRQxzrOaa14h40OpQKtMW6Om9GsEIEkFBCfuDvr7gc73QGbpRToLNBqLmlsJOfyTztI5JGA5",
-	"rSIPGbcyixdlS2Vew1GFFB5hOPHiQkAON0hh8FHfvT5j+cVsFh6l0YQ6lnFrlSxjYfbiA471ngV22vzb",
-	"4RJy+CsbLJdtzJDtFNZNVNolB2TfGGK0QhbAM9+UJXq/bJRq01D97xvhnUI18ecRNIUmdJorFv2ThpQu",
-	"2efYNxZd49FlylQydrfGH+H7LoQft9mbtYKeroxo3/SXxi4slURNRVR9LfUd6opW++tgWBZ96iOWrtfD",
-	"yfQDR+7aHFxzxJ3d4cbsJhKbTz12Z6oKRZz8jlImddD/3tYeW/g3893kZ8NGiKDm7yydKy7YZsZRuvPZ",
-	"+bv2v+ZSBUYNU6Y6QmyAdPHfu0J64IRMyVoSig9i5+FbAvnT4pS5TUMn3W0aGtv7jyRvGvowi25MzugT",
-	"+7ToFt2vAAAA///oLC6aXwkAAA==",
+	"H4sIAAAAAAAC/8xWzW7bPBB8FYLfd1QkJ3UP1c1Bm8BIigRxb64PtLiWmVAkS66aCobevSAlW1bkGHAP",
+	"Rk5WxP2ZzMwutaGZLoxWoNDRdEPXwDjY8OjAOaGV4P4PDi6zwqDQiqZ0QtpDMv0a04ha+FUKC5ymaEuI",
+	"qMvWUDCfh5UBmlKHVqic1nW9PQwtJo/Tb9Zq+wTOaOXAv2OcC9+GyUerDVgU4Gi6YtJBRM3eqw0Fnxue",
+	"BELhDvSLaCHUtDm8jLanzFpWUY+lAz7fVlvswvTyGTL0RW6kfv0OyE7Ex9mxlIaqQS/FCjjEXB9siIqa",
+	"DkPEnmXISiuwmnm2YSio8Do2atNtU/rn4sUuL9o42vFlxB1UjXpCrfTQED/WQO7ALsFqRxgvhBIOLfOn",
+	"ZPI4JUxK/do70daRgimWA2FdKgcjdVWAwvhnACBQegRHanv//QbrGiCj+CoeeRq1AcWMoCn9FI/iMY2o",
+	"YbgOPCTMiCQUSlZSv/pXOaD/8eKEwlNOU3oL6IUP/m78GdKvRiP/k2mFoEIaM0aKLCQmz87j2OyNwM6b",
+	"/1tY0ZT+l3Qjl7TDkOwcVg9cWkdvyL7VSHANxIMnrswycG5VSlnFPvvzifCOoRrM5wE0U4VgFZMkzE/s",
+	"Q+pon2PNXLJZsuwFFK+PkX3dxDxMZkEtywrAsIvmrV29gp1Z25InrZ/FSVpWrJB9sk6Y5Pd1a4GTh8ls",
+	"KN94ND6rfC3pRGkkK10q/jFN5EoDtnRgE6lzEbob7Q746N4fz7bRrTnA4bXm1Un/Un+VZ1KAwmlYnYVQ",
+	"96ByXO/fKd2N04TOILONz4+Gv1nruzZvyiwO2qvv+3rg7fFwUd/rPAcebLijlAjll+je1d+/B97Rt41P",
+	"umslgBqf2TrXjJNW43aALs/a/4YJ6RnVROr8ALEe0tWXs0J6YghEikIgfJRx7j5IaDpfHBtuXeLR6dYl",
+	"9sf7nyyvS/wwi65PTu87bb6oF/XfAAAA//9A9FMUpAsAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

@@ -49,15 +49,15 @@ func AdminSessionMiddleware(
 			}
 
 			sessionExpiry, ok := apiImpl.superSessions.Load(session)
-			// Not found among super sessions, just continue. Remember this middleware does NOT enforce auth, it
-			// only populates metadata.
+			// Not found among super sessions, just continue. Remember this middleware does NOT enforce
+			// auth, it only populates metadata.
 			if !ok {
 				return f(ctx, w, r, request)
 			}
 
-			// TODO: This session needs to be set also for other admin users when support for those has been implemented.
-			// It's set here not to confuse a non-admin session ID with admin ones, since we only have the super user check
-			// right now.
+			// TODO: This session needs to be set also for other admin users when support for those has
+			// been implemented. It's set here not to confuse a non-admin session ID with admin ones,
+			// since there is only a super user check right now.
 
 			tsessionExpiry, _ := sessionExpiry.(time.Time)
 			if time.Now().Before(tsessionExpiry) {

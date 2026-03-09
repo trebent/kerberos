@@ -21,10 +21,6 @@ type (
 	}
 	Opts struct {
 		Cfg *config.OASConfig
-
-		// To verify administrator callers, adds context into call flows to be able to determine if the caller is an admin user.
-		AdminSessionMiddleware basicapigen.StrictMiddlewareFunc
-		Mux                    *http.ServeMux
 	}
 )
 
