@@ -67,7 +67,7 @@ func NewComponent(opts *Opts) composer.FlowComponent {
 	}
 	authorizer.applySchemas()
 
-	if opts.Cfg.Methods != nil && opts.Cfg.Methods.Basic != nil {
+	if opts.Cfg.Methods.Basic != nil {
 		zerologr.Info("Basic authentication enabled")
 		// If basic auth, create the method.
 		authorizer.basic = basic.New(&basic.Opts{

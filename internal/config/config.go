@@ -92,6 +92,8 @@ func (c *RootConfig) Parse() error {
 	c.values = nil
 	c.refs = nil
 
+	c.postProcess()
+
 	return nil
 }
 
@@ -421,6 +423,20 @@ func (c *RootConfig) validateSchema() error {
 
 func (c *RootConfig) loadData() error {
 	return json.Unmarshal(c.data, c)
+}
+
+// postProcess performs post-processing on the loaded configuration, such as setting default values for missing fields,
+// in accordance with the configuration schema.
+func (c *RootConfig) postProcess() {
+	if c.AuthConfig != nil {
+		c.AuthConfig.postProcess()
+	}
+	if c.OASConfig != nil {
+		c.OASConfig.postProcess()
+	}
+	c.RouterConfig.postProcess()
+	c.ObservabilityConfig.postProcess()
+	c.AdminConfig.postProcess()
 }
 
 func isReference(data []byte) bool {

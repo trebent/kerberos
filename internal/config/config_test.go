@@ -69,3 +69,37 @@ func TestConfigEmpty(t *testing.T) {
 		t.Fatalf("expected error when loading empty config, got nil")
 	}
 }
+
+func TestConfigOAS(t *testing.T) {
+	data, err := os.ReadFile("./testconfig/testconfig_oas.json")
+	if err != nil {
+		t.Fatalf("failed to read test config: %v", err)
+	}
+
+	cfg := New()
+	cfg.Load(data)
+	if err := cfg.Parse(); err != nil {
+		t.Fatalf("failed to load config: %v", err)
+	}
+
+	if len(cfg.OASConfig.Mappings) != 1 {
+		t.Fatalf("expected 1 OAS mapping, got %d", len(cfg.OASConfig.Mappings))
+	}
+
+	mapping := cfg.OASConfig.Mappings[0]
+	if mapping.Backend != "backend1" {
+		t.Errorf("expected OAS mapping backend to be 'backend1', got '%s'", mapping.Backend)
+	}
+
+	if mapping.Specification != "./testconfig/oas_spec.yaml" {
+		t.Errorf("expected OAS mapping specification to be './testconfig/oas_spec.yaml', got '%s'", mapping.Specification)
+	}
+
+	if mapping.Options == nil {
+		t.Fatalf("expected OAS mapping options to be non-nil, got nil")
+	}
+
+	if !mapping.Options.ValidateBody {
+		t.Errorf("expected OAS mapping options to have ValidateBody=true, got false")
+	}
+}

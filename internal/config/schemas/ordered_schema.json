@@ -2,6 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "http://trebent.com/kerberos/schemas/ordered_schema.json",
   "type": "integer",
+  "description": "Defines the order of execution for a component, where lower numbers indicate higher priority. This config is only valid for custom block components that implement the Ordered interface.",
   "minimum": 1,
   "default": 1
 }

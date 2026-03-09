@@ -90,10 +90,6 @@ func (v *validator) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func (v *validator) register(m *config.OASBackendMapping) error {
-	if m.Options == nil {
-		m.Options = &config.OASBackendMappingOpts{ValidateBody: true}
-	}
-
 	// Load OpenAPI document.
 	zerologr.Info("Preparing OAS validator", "backend", m.Backend)
 	bs, err := os.ReadFile(m.Specification)

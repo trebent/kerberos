@@ -12,7 +12,7 @@ import (
 func TestFindMethod(t *testing.T) {
 	a := authorizer{
 		cfg: &config.AuthConfig{
-			Scheme: &config.AuthScheme{
+			Scheme: config.AuthScheme{
 				Mappings: []*config.AuthMapping{
 					{
 						Backend: "backend1",

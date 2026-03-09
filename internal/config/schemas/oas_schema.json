@@ -5,14 +5,17 @@
   "properties": {
     "mappings": {
       "type": "array",
+      "minItems": 1,
       "items": {
         "type": "object",
         "properties": {
           "backend": {
-            "type": "string"
+            "type": "string",
+            "description": "The name of the backend this OAS mapping applies to."
           },
           "specification": {
-            "type": "string"
+            "type": "string",
+            "description": "File path to the OAS to use for this backend."
           },
           "options": {
             "type": "object",
@@ -21,6 +24,7 @@
             "properties": {
               "validateBody": {
                 "type": "boolean",
+                "description": "When true, the request bodies of incoming requests will be validated against the OAS.",
                 "default": true
               }
             },
@@ -32,8 +36,7 @@
           "specification"
         ],
         "additionalProperties": false
-      },
-      "minItems": 1
+      }
     },
     "order": {
       "$ref": "http://trebent.com/kerberos/schemas/ordered_schema.json"
