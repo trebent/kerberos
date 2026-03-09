@@ -1,10 +1,12 @@
 services:
   kerberos:
     image: "ghcr.io/trebent/kerberos:${VERSION}"
+    command: --config /config/integration.json
     pull_policy: if_not_present
     build:
       context: ../..
       dockerfile: ./Dockerfile
+    
     ports:
       - ${KERBEROS_PORT}:${KERBEROS_PORT}
       - ${KERBEROS_METRICS_PORT}:${KERBEROS_METRICS_PORT}
@@ -18,10 +20,6 @@ services:
       - LOG_VERBOSITY=${LOG_VERBOSITY:-20}
       - PORT=${KERBEROS_PORT}
       - VERSION=${VERSION}
-      - ADMIN_JSON_FILE=/config/admin.json
-      - ROUTE_JSON_FILE=/config/router-integration.json
-      - AUTH_JSON_FILE=/config/auth-integration.json
-      - OAS_JSON_FILE=/config/oas-integration.json
       - OAS_DIRECTORY=/krb-oas
     volumes:
       - ../config:/config:ro

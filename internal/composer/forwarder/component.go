@@ -11,6 +11,7 @@ import (
 	"github.com/go-logr/logr"
 	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/composer"
+	"github.com/trebent/kerberos/internal/config"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 )
@@ -72,7 +73,7 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	rLogger = rLogger.WithName("forwarder")
 	rLogger.Info("Forwarding request")
 
-	target, ok := req.Context().Value(f.targetContextKey).(composer.Target)
+	target, ok := req.Context().Value(f.targetContextKey).(*config.RouterBackend)
 	if !ok {
 		rLogger.Error(
 			fmt.Errorf("%w: %s", errFailedTargetExtract, req.URL.Path),
@@ -88,7 +89,7 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 		req.Method,
 		fmt.Sprintf(
 			"http://%s%s",
-			net.JoinHostPort(target.Host(), strconv.Itoa(target.Port())),
+			net.JoinHostPort(target.Host, strconv.Itoa(target.Port)),
 			req.URL.Path,
 		),
 		req.Body,

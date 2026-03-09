@@ -1,6 +1,7 @@
 package router
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -17,10 +18,10 @@ import (
 type (
 	// Opts are the options used to configure the router.
 	Opts struct {
-		Cfg config.Map
+		Cfg *config.RouterConfig
 	}
 	router struct {
-		cfg  *routerConfig
+		cfg  *config.RouterConfig
 		next composer.FlowComponent
 	}
 )
@@ -42,17 +43,21 @@ const (
 	prefix                 = "/gw/backend/"
 )
 
+func NewBackendContext(ctx context.Context, backend *config.RouterBackend) context.Context {
+	ctx = context.WithValue(ctx, composer.TargetContextKey, backend)
+	return context.WithValue(ctx, composer.BackendContextKey, backend.Name)
+}
+
 func NewComponent(opts *Opts) composer.FlowComponent {
-	cfg := config.AccessAs[*routerConfig](opts.Cfg, configName)
-	for _, backend := range cfg.Backends {
+	for _, backend := range opts.Cfg.Backends {
 		zerologr.Info(
 			"Configured backend",
-			"backend", backend.Name(),
-			"host", backend.Host(),
-			"port", backend.Port(),
+			"backend", backend.Name,
+			"host", backend.Host,
+			"port", backend.Port,
 		)
 	}
-	return &router{cfg: cfg}
+	return &router{cfg: opts.Cfg}
 }
 
 // Next implements [composer.FlowComponent].
@@ -90,7 +95,7 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	}
 
 	// Set backend in context logger to forward. Don't append to the name.
-	ctx := logr.NewContext(req.Context(), logger.WithValues("backend", backend.Name()))
+	ctx := logr.NewContext(req.Context(), logger.WithValues("backend", backend.Name))
 	ctx = NewBackendContext(ctx, backend)
 
 	// Update the wrapper request context to be able to extract in higher level middleware.
@@ -98,13 +103,13 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	wrapper.SetRequestContext(ctx)
 
 	// Strip the /gw/backend/{backend-name} prefix from the request URL path.
-	req.URL.Path = stripKrbPrefix(req.URL.Path, backend.Name())
+	req.URL.Path = stripKrbPrefix(req.URL.Path, backend.Name)
 
 	// Serve the request with the updated context.
 	r.next.ServeHTTP(wrapped, req.WithContext(ctx))
 }
 
-func (r *router) GetBackend(req http.Request) (Backend, error) {
+func (r *router) GetBackend(req http.Request) (*config.RouterBackend, error) {
 	reqPath := routePattern.FindStringSubmatch(req.URL.Path)
 
 	if len(reqPath) < expectedPatternMatches {
@@ -112,7 +117,7 @@ func (r *router) GetBackend(req http.Request) (Backend, error) {
 	}
 
 	for _, backend := range r.cfg.Backends {
-		if backend.Name() == reqPath[1] {
+		if backend.Name == reqPath[1] {
 			return backend, nil
 		}
 	}

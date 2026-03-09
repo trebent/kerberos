@@ -1,0 +1,48 @@
+{
+  "router": {
+    "backends": [
+      {
+        "name": "backend1",
+        "host": "${ref:router.backends[1].host}",
+        "port": 8080
+      },
+      {
+        "name": "backend2",
+        "host": "localhost",
+        "port": ${ref:router.backends[0].port}
+      }
+    ]
+  },
+  "auth": {
+    "methods": {
+      "basic": {}
+    },
+    "scheme": {
+      "mappings": [
+        {
+          "backend": "${ref:router.backends[0].name}",
+          "method": "basic",
+          "exempt": [
+            "/public/*"
+          ],
+          "authorization": {
+            "groups": [
+              "admin",
+              "user"
+            ],
+            "paths": {
+              "/admin/*": [
+                "admin"
+              ],
+              "/user/*": [
+                "admin",
+                "user"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "order": 2
+  }
+}

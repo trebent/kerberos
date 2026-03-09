@@ -6,19 +6,6 @@ import (
 	"os"
 )
 
-var validateFilePath = func(path string) error {
-	if len(path) == 0 {
-		return nil
-	}
-
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	return nil
-}
-
 var validateDirPath = func(path string) error {
 	_, err := os.ReadDir(path)
 	if err != nil {

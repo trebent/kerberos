@@ -24,7 +24,7 @@ import (
 type (
 	obs struct {
 		next composer.FlowComponent
-		cfg  *obsConfig
+		cfg  *config.ObservabilityConfig
 
 		logger                   logr.Logger
 		spanOpts                 []trace.SpanStartOption
@@ -35,7 +35,7 @@ type (
 		responseSizeHistogram    metric.Int64Histogram
 	}
 	Opts struct {
-		Cfg config.Map
+		Cfg *config.ObservabilityConfig
 	}
 )
 
@@ -57,10 +57,9 @@ var (
 )
 
 func NewComponent(opts *Opts) composer.FlowComponent {
-	cfg := config.AccessAs[*obsConfig](opts.Cfg, configName)
 	logger := zerologr.WithName("request")
 
-	if !cfg.Enabled {
+	if !opts.Cfg.Enabled {
 		zerologr.Info("Observability has been disabled, setting dummy component for logging")
 		// Observability disabled still logs incoming requests.
 		return &composer.Dummy{CustomHandler: func(
@@ -89,7 +88,7 @@ func NewComponent(opts *Opts) composer.FlowComponent {
 		spanOpts: []trace.SpanStartOption{
 			trace.WithSpanKind(trace.SpanKindServer),
 		},
-		cfg: cfg,
+		cfg: opts.Cfg,
 	}
 
 	o.logger = logger

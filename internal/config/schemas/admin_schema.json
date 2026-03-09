@@ -5,6 +5,7 @@
   "properties": {
     "superUser": {
       "type": "object",
+      "default": {},
       "properties": {
         "clientId": {
           "type": "string",
