@@ -80,7 +80,12 @@ func main() {
 	)
 	defer signalCancel()
 
-	cleanup, err := obs.Instrument(signalCtx, cfg.ObservabilityConfig, serviceName, internalenv.Version.Value())
+	cleanup, err := obs.Instrument(
+		signalCtx,
+		&cfg.ObservabilityConfig,
+		serviceName,
+		internalenv.Version.Value(),
+	)
 	if err != nil {
 		startLogger.Error(err, "Failed to instrument OpenTelemetry")
 		os.Exit(1) // nolint: gocritic
@@ -137,12 +142,12 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 			Mux:    mux,
 			DB:     db,
 			OASDir: internalenv.OASDirectory.Value(),
-			Cfg:    cfg.AdminConfig,
+			Cfg:    &cfg.AdminConfig,
 		},
 	)
 
 	zerologr.Info("Loading observability")
-	observability := obs.NewComponent(&obs.Opts{Cfg: cfg.ObservabilityConfig})
+	observability := obs.NewComponent(&obs.Opts{Cfg: &cfg.ObservabilityConfig})
 
 	zerologr.Info("Loading router")
 	router := router.NewComponent(&router.Opts{Cfg: &cfg.RouterConfig})
@@ -150,7 +155,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	zerologr.Info("Loading custom")
 	customFlowComponents := make([]composer.FlowComponent, 0)
 
-	if internalenv.AuthJSONFile.Value() != "" {
+	if cfg.AuthEnabled() {
 		zerologr.Info("Loading auth")
 		authorizer := auth.NewComponent(&auth.Opts{
 			Cfg:                    cfg.AuthConfig,
@@ -162,7 +167,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		customFlowComponents = append(customFlowComponents, authorizer)
 	}
 
-	if internalenv.OASJSONFile.Value() != "" {
+	if cfg.OASEnabled() {
 		zerologr.Info("Loading OAS validator")
 		oasValidator := oas.NewComponent(&oas.Opts{
 			Cfg: cfg.OASConfig,
