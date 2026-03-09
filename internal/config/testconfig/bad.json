@@ -1,0 +1,12 @@
+{
+  "router": {
+    "backends": [
+      {
+        "name": "test",
+        "host": "localhost",
+        "port": 8080
+      }
+    ]
+  },
+  "bad": "bad"
+}

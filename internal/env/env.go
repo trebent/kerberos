@@ -83,31 +83,6 @@ var (
 		Validate: validateGreaterThanZero,
 	})
 
-	RouteJSONFile = envparser.Register(&envparser.Opts[string]{
-		Name:     "ROUTE_JSON_FILE",
-		Desc:     "JSON file to load routes from.",
-		Value:    "./routes.json",
-		Validate: validateFilePath,
-	})
-	ObsJSONFile = envparser.Register(&envparser.Opts[string]{
-		Name:     "OBS_JSON_FILE",
-		Desc:     "JSON file to load observability settings from.",
-		Value:    "",
-		Validate: validateFilePath,
-	})
-	AuthJSONFile = envparser.Register(&envparser.Opts[string]{
-		Name:     "AUTH_JSON_FILE",
-		Desc:     "JSON file to load authentication settings from.",
-		Value:    "",
-		Validate: validateFilePath,
-	})
-	OASJSONFile = envparser.Register(&envparser.Opts[string]{
-		Name:     "OAS_JSON_FILE",
-		Desc:     "JSON file to load OAS settings from.",
-		Value:    "",
-		Validate: validateFilePath,
-	})
-
 	DBDirectory = envparser.Register(&envparser.Opts[string]{
 		Name:     "DB_DIRECTORY",
 		Desc:     "Path to the directory where DB files will be stored.",
@@ -119,13 +94,6 @@ var (
 		Desc:     "Path to the directory where OAS specifications are stored.",
 		Value:    "",
 		Validate: validateDirPath,
-	})
-
-	AdminJSONFile = envparser.Register(&envparser.Opts[string]{
-		Name:     "ADMIN_JSON_FILE",
-		Desc:     "JSON file to load admin settings from.",
-		Value:    "",
-		Validate: validateFilePath,
 	})
 )
 

@@ -16,6 +16,7 @@ import (
 	"github.com/trebent/kerberos/internal/auth/method"
 	basicapi "github.com/trebent/kerberos/internal/auth/method/basic/api"
 	"github.com/trebent/kerberos/internal/composer"
+	"github.com/trebent/kerberos/internal/config"
 
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/kerberos/internal/oas"
@@ -26,11 +27,10 @@ type (
 	basic struct {
 		db     db.SQLClient
 		oasDir string
-		config map[string]method.AuthZConfig
+		config map[string]*config.AuthZ
 	}
 	Opts struct {
-		AuthZConfig map[string]method.AuthZConfig
-
+		AuthZConfig            map[string]*config.AuthZ
 		Mux                    *http.ServeMux
 		DB                     db.SQLClient
 		OASDir                 string

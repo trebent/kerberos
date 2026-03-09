@@ -40,9 +40,11 @@
               },
               "authorization": {
                 "type": "object",
+                "description": "Authorization rules for the backend.",
                 "properties": {
                   "groups": {
                     "type": "array",
+                    "description": "Base groups needed by all endpoints of the backend, a user that is a member of *either* group is permitted access.",
                     "items": {
                       "type": "string",
                       "minLength": 1
@@ -51,6 +53,7 @@
                   },
                   "paths": {
                     "type": "object",
+                    "description": "Path-specific authorization rules for the backend.",
                     "additionalProperties": {
                       "type": "array",
                       "items": {

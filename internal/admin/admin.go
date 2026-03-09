@@ -26,7 +26,7 @@ type (
 
 		OASDir string
 
-		Cfg config.Map
+		Cfg *config.AdminConfig
 	}
 	Admin struct {
 		SessionMiddleware adminapigen.StrictMiddlewareFunc
@@ -58,11 +58,10 @@ func New(opts *Opts) *Admin {
 		panic(fmt.Errorf("failed to load admin authentication OAS: %w", err))
 	}
 
-	cfg := config.AccessAs[*adminConfig](opts.Cfg, configName)
 	ssi := adminapi.NewSSI(&adminapi.Opts{
 		DB:           opts.DB,
-		ClientID:     cfg.SuperUser.ClientID,
-		ClientSecret: cfg.SuperUser.ClientSecret,
+		ClientID:     opts.Cfg.SuperUser.ClientID,
+		ClientSecret: opts.Cfg.SuperUser.ClientSecret,
 	})
 
 	adminSessionMiddleware := adminapi.AdminSessionMiddleware(ssi)
