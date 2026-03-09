@@ -118,7 +118,7 @@ func (r *router) GetBackend(req http.Request) (*config.RouterBackend, error) {
 
 	for _, backend := range r.cfg.Backends {
 		if backend.Name == reqPath[1] {
-			return &backend, nil
+			return backend, nil
 		}
 	}
 

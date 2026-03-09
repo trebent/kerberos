@@ -17,7 +17,7 @@ type (
 
 	// RouterConfig holds configuration for the request router.
 	RouterConfig struct {
-		Backends []RouterBackend `json:"backends"`
+		Backends []*RouterBackend `json:"backends"`
 	}
 	RouterBackend struct {
 		Name string `json:"name"`
@@ -33,9 +33,9 @@ type (
 
 	// AuthConfig holds configuration for authentication and authorization.
 	AuthConfig struct {
-		Methods AuthMethods `json:"methods"`
-		Scheme  AuthScheme  `json:"scheme"`
-		Order   int         `json:"order"`
+		Methods *AuthMethods `json:"methods"`
+		Scheme  *AuthScheme  `json:"scheme"`
+		Order   int          `json:"order"`
 	}
 	AuthMethods struct {
 		Basic *AuthMethodBasic `json:"basic"`
@@ -57,7 +57,7 @@ type (
 
 	// AdminConfig holds configuration for the admin API.
 	AdminConfig struct {
-		SuperUser SuperUser `json:"superUser"`
+		SuperUser *SuperUser `json:"superUser"`
 	}
 	SuperUser struct {
 		ClientID     string `json:"clientId"`
@@ -67,7 +67,7 @@ type (
 
 func newAdminConfig() *AdminConfig {
 	return &AdminConfig{
-		SuperUser: SuperUser{
+		SuperUser: &SuperUser{
 			ClientID:     "admin",
 			ClientSecret: "secret",
 		},
