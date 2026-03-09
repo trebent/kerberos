@@ -22,7 +22,6 @@ type (
 	Opts struct {
 		Cfg *config.OASConfig
 
-		// TODO: use this to register API documentation.
 		Mux *http.ServeMux
 	}
 )

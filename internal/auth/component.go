@@ -34,7 +34,7 @@ type (
 		// Directory where OAS for the auth APIs can be found.
 		OASDir string
 
-		// Enriches call flows with administrator metadata, if admin calls.
+		// To verify administrator callers, adds context into call flows to be able to determine if the caller is an admin user.
 		AdminSessionMiddleware basicapigen.StrictMiddlewareFunc
 	}
 	authorizer struct {
