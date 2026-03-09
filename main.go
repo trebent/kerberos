@@ -239,9 +239,3 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 
 	return errors.Join(srvErr, shutdownErr)
 }
-
-func must(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
