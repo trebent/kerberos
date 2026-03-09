@@ -12,10 +12,7 @@
     "mappings": [
       {
         "backend": "backend1",
-        "specification": "./testconfig/oas_spec.yaml",
-        "options": {
-          "validateBody": true
-        }
+        "specification": "./testconfig/oas_spec.yaml"
       }
     ],
     "order": 2

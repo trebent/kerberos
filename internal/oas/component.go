@@ -39,7 +39,7 @@ func NewComponent(opts *Opts) composer.FlowComponent {
 
 	v := &validator{cfg: opts.Cfg, validators: make(map[string]func(http.Handler) http.Handler)}
 	for _, mapping := range v.cfg.Mappings {
-		if err := v.register(&mapping); err != nil {
+		if err := v.register(mapping); err != nil {
 			panic(err)
 		}
 	}

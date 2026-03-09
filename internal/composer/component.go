@@ -14,11 +14,6 @@ type (
 		GetMeta() []*FlowMeta
 	}
 
-	Target interface {
-		Host() string
-		Port() int
-	}
-
 	// FlowMeta holds metadata about a FlowComponent and links to the next component's metadata.
 	FlowMeta struct {
 		// Name is the name of the FlowComponent.

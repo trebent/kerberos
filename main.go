@@ -32,18 +32,14 @@ import (
 var (
 	readTimeout  time.Duration
 	writeTimeout time.Duration
+
+	configPath string
 )
 
 const serviceName = "krb"
 
-// TODO: Add support for prefix exemptions to allow OTEL vars to be set without
-// the KRB prefix.
-// //nolint:gochecknoinits
-// func init() {
-// 	envparser.Prefix = "KRB" //nolint:reassign
-// }
-
 func main() {
+	flag.StringVar(&configPath, "config", "", "Path to the Kerberos configuration file (required).")
 	flag.CommandLine.SetOutput(os.Stdout)
 	flag.Usage = func() { //nolint:reassign
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
@@ -53,6 +49,13 @@ func main() {
 	}
 
 	flag.Parse()
+
+	if configPath == "" {
+		fmt.Fprintln(os.Stderr, "Error: --config flag is required")
+		flag.Usage()
+		os.Exit(1)
+	}
+
 	// ExitOnError = true
 	_ = internalenv.Parse()
 
@@ -82,7 +85,7 @@ func main() {
 
 	cleanup, err := obs.Instrument(
 		signalCtx,
-		&cfg.ObservabilityConfig,
+		cfg.ObservabilityConfig,
 		serviceName,
 		internalenv.Version.Value(),
 	)
@@ -108,6 +111,12 @@ func setupConfig() *config.RootConfig {
 	cfg := config.New()
 
 	zerologr.Info("Loading configuration data")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		zerologr.Error(err, "Failed to read configuration file")
+		os.Exit(1) // nolint: gocritic
+	}
+	cfg.Load(data)
 
 	zerologr.Info("Configuration data loaded")
 
@@ -142,15 +151,15 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 			Mux:    mux,
 			DB:     db,
 			OASDir: internalenv.OASDirectory.Value(),
-			Cfg:    &cfg.AdminConfig,
+			Cfg:    cfg.AdminConfig,
 		},
 	)
 
 	zerologr.Info("Loading observability")
-	observability := obs.NewComponent(&obs.Opts{Cfg: &cfg.ObservabilityConfig})
+	observability := obs.NewComponent(&obs.Opts{Cfg: cfg.ObservabilityConfig})
 
 	zerologr.Info("Loading router")
-	router := router.NewComponent(&router.Opts{Cfg: &cfg.RouterConfig})
+	router := router.NewComponent(&router.Opts{Cfg: cfg.RouterConfig})
 
 	zerologr.Info("Loading custom")
 	customFlowComponents := make([]composer.FlowComponent, 0)

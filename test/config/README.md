@@ -1,3 +1,3 @@
 # Test configuration
 
-All files named "-integration.json" are used in the compose deployment.
+Each configuration file is named after its target environment, with an optional suffix denoting details.

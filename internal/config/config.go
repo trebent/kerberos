@@ -23,11 +23,11 @@ type (
 		values map[string]any
 		refs   map[string]string
 
-		ObservabilityConfig `json:"observability"`
-		RouterConfig        `json:"router"`
-		AdminConfig         `json:"admin"`
-		*OASConfig          `json:"oas,omitempty"`
-		*AuthConfig         `json:"auth,omitempty"`
+		*ObservabilityConfig `json:"observability"`
+		*RouterConfig        `json:"router"`
+		*AdminConfig         `json:"admin"`
+		*OASConfig           `json:"oas,omitempty"`
+		*AuthConfig          `json:"auth,omitempty"`
 	}
 )
 
@@ -69,87 +69,86 @@ func New() *RootConfig {
 	}
 }
 
-func (c *RootConfig) Load(data []byte) {
-	c.data = data
+func (rc *RootConfig) Load(data []byte) {
+	rc.data = data
 }
 
-func (c *RootConfig) Parse() error {
-	if err := c.resolveReferences(); err != nil {
+func (rc *RootConfig) Parse() error {
+	if err := rc.resolveReferences(); err != nil {
 		return err
 	}
 
-	if err := c.validateSchema(); err != nil {
+	if err := rc.validateSchema(); err != nil {
 		return err
 	}
 
-	if err := c.loadData(); err != nil {
+	if err := rc.loadData(); err != nil {
 		return err
 	}
 
 	// Free allocated memory for intermediate data structures.
-	c.data = nil
-	c.escapedData = nil
-	c.values = nil
-	c.refs = nil
+	rc.data = nil
+	rc.escapedData = nil
+	rc.values = nil
+	rc.refs = nil
 
-	c.postProcess()
-
-	return nil
-}
-
-func (c *RootConfig) resolveReferences() error {
-	if err := c.escapeReferences(); err != nil {
-		return err
-	}
-
-	if err := c.walkForReferences(); err != nil {
-		return err
-	}
-
-	if err := c.findReferenceValues(); err != nil {
-		return err
-	}
-
-	if err := c.replaceReferencesInData(); err != nil {
-		return err
-	}
+	rc.postProcess()
 
 	return nil
 }
 
-func (c *RootConfig) escapeReferences() error {
+func (rc *RootConfig) resolveReferences() error {
+	if err := rc.escapeReferences(); err != nil {
+		return err
+	}
+
+	if err := rc.walkForReferences(); err != nil {
+		return err
+	}
+
+	if err := rc.findReferenceValues(); err != nil {
+		return err
+	}
+
+	if err := rc.replaceReferencesInData(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (rc *RootConfig) escapeReferences() error {
 	zerologr.V(100).Info("Escaping references")
-	c.escapedData = c.data
-
+	rc.escapedData = rc.data
 	i := 0
-	for i < len(c.data) {
+	for i < len(rc.data) {
 		//nolint:gocritic // ignore: nestedIfs
-		if c.data[i] == '$' && isReference(c.data[i:i+6]) && c.data[i-1] != '"' {
+		if rc.data[i] == '$' && isReference(rc.data[i:i+6]) && rc.data[i-1] != '"' {
 			zerologr.V(100).Info(
 				fmt.Sprintf("Found unescaped reference at index %d", i),
 			)
 
-			end := bytes.IndexByte(c.data[i:], '}')
+			end := bytes.IndexByte(rc.data[i:], '}')
 			if end == -1 {
 				return errors.New("malformed reference: missing closing '}'")
 			}
 
-			escapedRef := append([]byte{'"'}, c.data[i:i+end+1]...)
+			escapedRef := append([]byte{'"'}, rc.data[i:i+end+1]...)
 			escapedRef = append(escapedRef, '"')
 
 			zerologr.V(100).Info("Escaped reference: " + string(escapedRef))
 
-			c.escapedData = bytes.Replace(c.escapedData, c.data[i:i+end+1], escapedRef, 1)
+			rc.escapedData = bytes.Replace(rc.escapedData, rc.data[i:i+end+1], escapedRef, 1)
 
-			zerologr.V(100).Info("Intermediate escaped data: \n" + string(c.escapedData))
+			zerologr.V(100).Info("Intermediate escaped data: \n" + string(rc.escapedData))
 
 			i = i + end + 3
-		} else if c.data[i] == '$' && isReference(c.data[i:i+6]) {
+		} else if rc.data[i] == '$' && isReference(rc.data[i:i+6]) {
 			zerologr.V(100).Info(
 				fmt.Sprintf("Found already escaped reference at index %d", i),
 			)
 
-			end := bytes.IndexByte(c.data[i:], '}')
+			end := bytes.IndexByte(rc.data[i:], '}')
 			if end == -1 {
 				return errors.New("malformed reference: missing closing '}'")
 			}
@@ -165,30 +164,30 @@ func (c *RootConfig) escapeReferences() error {
 	return nil
 }
 
-func (c *RootConfig) walkForReferences() error {
-	if len(c.data) == 0 {
+func (rc *RootConfig) walkForReferences() error {
+	if len(rc.data) == 0 {
 		return nil
 	}
 
 	zerologr.V(100).Info("Gathering references")
 
 	generic := make(map[string]any)
-	if err := json.Unmarshal(c.escapedData, &generic); err != nil {
+	if err := json.Unmarshal(rc.escapedData, &generic); err != nil {
 		return err
 	}
 
-	if err := c.walk("", generic); err != nil {
+	if err := rc.walk("", generic); err != nil {
 		return err
 	}
 
 	zerologr.V(100).Info("Gathered references")
-	zerologr.V(100).Info(fmt.Sprintf("Current values map: %+v", c.values))
-	zerologr.V(100).Info(fmt.Sprintf("Current refs map: %+v", c.refs))
+	zerologr.V(100).Info(fmt.Sprintf("Current values map: %+v", rc.values))
+	zerologr.V(100).Info(fmt.Sprintf("Current refs map: %+v", rc.refs))
 
 	return nil
 }
 
-func (c *RootConfig) walk(currentPath string, generic any) error {
+func (rc *RootConfig) walk(currentPath string, generic any) error {
 	/*
 		Walk through a JSON object and find final values for all JSON paths.
 
@@ -211,7 +210,7 @@ func (c *RootConfig) walk(currentPath string, generic any) error {
 			}
 			newPath += k
 
-			if err := c.walk(newPath, v); err != nil {
+			if err := rc.walk(newPath, v); err != nil {
 				return err
 			}
 		}
@@ -219,25 +218,25 @@ func (c *RootConfig) walk(currentPath string, generic any) error {
 		zerologr.V(100).Info("Walking into array in path '" + currentPath + "'")
 
 		for i, item := range val {
-			if err := c.walk(currentPath+"["+strconv.Itoa(i)+"]", item); err != nil {
+			if err := rc.walk(currentPath+"["+strconv.Itoa(i)+"]", item); err != nil {
 				return err
 			}
 		}
 	case string:
 		if isReference([]byte(val)) {
 			zerologr.V(100).Info("Found ref: " + val)
-			c.refs[val] = ""
+			rc.refs[val] = ""
 		}
-		c.values[currentPath] = val
+		rc.values[currentPath] = val
 	default:
 		zerologr.V(100).Info("Storing final value for path '" + currentPath + "'")
-		c.values[currentPath] = val
+		rc.values[currentPath] = val
 	}
 
 	return nil
 }
 
-func (c *RootConfig) findReferenceValues() error {
+func (rc *RootConfig) findReferenceValues() error {
 	zerologr.V(100).Info("Finding reference values")
 	/*
 		Values contain values for full paths, but some contains references as well. Now what's needed is:
@@ -248,40 +247,41 @@ func (c *RootConfig) findReferenceValues() error {
 
 		Environment variable references are resolved first, then path references.
 	*/
-	for ref := range c.refs {
+	for ref := range rc.refs {
 		var err error
 		if isEnvReference(ref) {
 			zerologr.V(100).Info("Resolving environment reference value for: " + ref)
-			c.refs[ref], err = getEnvReferenceValue(ref)
+			rc.refs[ref], err = getEnvReferenceValue(ref)
 			if err != nil {
 				return err
 			}
 		}
 	}
 
-	zerologr.V(100).Info(fmt.Sprintf("Realised env refs: %s", c.refs))
+	zerologr.V(100).Info(fmt.Sprintf("Realised env refs: %s", rc.refs))
 
-	for ref := range c.refs {
+	for ref := range rc.refs {
 		var err error
 		if isPathReference(ref) {
 			zerologr.V(100).Info("Resolving path reference value for: " + ref)
 
 			// Find if the path reference can be walked to a final value
-			c.refs[ref], err = c.findReferenceValue(ref)
+			rc.refs[ref], err = rc.findReferenceValue(ref)
 			if err != nil {
 				return err
 			}
 
-			zerologr.V(100).Info("Resolved path reference value for: " + ref + ", value: " + c.refs[ref])
+			zerologr.V(100).
+				Info("Resolved path reference value for: " + ref + ", value: " + rc.refs[ref])
 		}
 	}
 
-	zerologr.V(100).Info(fmt.Sprintf("Realised all refs: %s", c.refs))
+	zerologr.V(100).Info(fmt.Sprintf("Realised all refs: %s", rc.refs))
 
 	return nil
 }
 
-func (c *RootConfig) findReferenceValue(ref string) (string, error) {
+func (rc *RootConfig) findReferenceValue(ref string) (string, error) {
 	zerologr.V(100).Info("Finding value for path reference: " + ref)
 
 	valuePath, err := getPathFromReference(ref)
@@ -289,7 +289,7 @@ func (c *RootConfig) findReferenceValue(ref string) (string, error) {
 		return "", err
 	}
 
-	value, ok := c.values[valuePath]
+	value, ok := rc.values[valuePath]
 	if !ok {
 		return "", errors.New("referenced path was not found: " + valuePath)
 	}
@@ -298,17 +298,17 @@ func (c *RootConfig) findReferenceValue(ref string) (string, error) {
 	if ok {
 		if isEnvReference(decoded) {
 			zerologr.V(100).Info("Nested environment reference found: " + decoded)
-			return c.refs[decoded], nil
+			return rc.refs[decoded], nil
 		} else if isPathReference(decoded) {
 			zerologr.V(100).Info("Nested path reference found, walking path: " + decoded)
-			return c.walkRefs(valuePath, decoded)
+			return rc.walkRefs(valuePath, decoded)
 		}
 	}
 
 	return fmt.Sprint(value), nil
 }
 
-func (c *RootConfig) walkRefs(originPath, ref string) (string, error) {
+func (rc *RootConfig) walkRefs(originPath, ref string) (string, error) {
 	zerologr.V(100).Info("Walking references, origin: " + originPath + ", ref: " + ref)
 
 	valuePath, err := getPathFromReference(ref)
@@ -320,7 +320,7 @@ func (c *RootConfig) walkRefs(originPath, ref string) (string, error) {
 		return "", errors.New("circular reference detected: " + originPath)
 	}
 
-	value, ok := c.values[valuePath]
+	value, ok := rc.values[valuePath]
 	if !ok {
 		return "", errors.New("reference path not found: " + valuePath)
 	}
@@ -329,31 +329,32 @@ func (c *RootConfig) walkRefs(originPath, ref string) (string, error) {
 	if ok {
 		if isEnvReference(decoded) {
 			zerologr.V(100).Info("Env ref found during walk: " + decoded)
-			return c.refs[decoded], nil
+			return rc.refs[decoded], nil
 		} else if isPathReference(decoded) {
 			zerologr.V(100).Info("Path ref found during walk: " + decoded)
 			// Don't decode the reference path here, it's done recursively in the next call to walkRefs.
 			// The next call to walkRefs will extract the path from the reference and compare it to the originPath.
-			return c.walkRefs(originPath, decoded)
+			return rc.walkRefs(originPath, decoded)
 		}
 	}
-	zerologr.V(100).Info("Final value found for " + originPath + " during walk: " + fmt.Sprint(value))
+	zerologr.V(100).
+		Info("Final value found for " + originPath + " during walk: " + fmt.Sprint(value))
 
 	return fmt.Sprint(value), nil
 }
 
-func (c *RootConfig) replaceReferencesInData() error {
+func (rc *RootConfig) replaceReferencesInData() error {
 	/*
 		Replace all references in the original JSON data with their resolved values.
 	*/
-	if len(c.data) == 0 {
+	if len(rc.data) == 0 {
 		return nil
 	}
 
-	dataStr := string(c.data)
+	dataStr := string(rc.data)
 	zerologr.V(100).Info("Replacing references: " + dataStr)
 
-	for ref, val := range c.refs {
+	for ref, val := range rc.refs {
 		zerologr.V(100).Info(
 			fmt.Sprintf("Replacing reference '%s' with value '%s'", ref, val),
 		)
@@ -361,17 +362,17 @@ func (c *RootConfig) replaceReferencesInData() error {
 		zerologr.V(100).Info("Intermediate replaced data: " + dataStr)
 	}
 
-	c.data = []byte(dataStr)
+	rc.data = []byte(dataStr)
 
-	zerologr.V(100).Info("Replaced all references: " + string(c.data))
+	zerologr.V(100).Info("Replaced all references: " + string(rc.data))
 
 	return nil
 }
 
-func (c *RootConfig) validateSchema() error {
+func (rc *RootConfig) validateSchema() error {
 	zerologr.V(100).Info("Validating schema")
 
-	if len(c.data) == 0 {
+	if len(rc.data) == 0 {
 		return nil
 	}
 
@@ -399,7 +400,7 @@ func (c *RootConfig) validateSchema() error {
 		return err
 	}
 
-	result, err := compiledSchema.Validate(gojsonschema.NewBytesLoader(c.data))
+	result, err := compiledSchema.Validate(gojsonschema.NewBytesLoader(rc.data))
 	if err != nil {
 		return err
 	}
@@ -421,22 +422,22 @@ func (c *RootConfig) validateSchema() error {
 	return nil
 }
 
-func (c *RootConfig) loadData() error {
-	return json.Unmarshal(c.data, c)
+func (rc *RootConfig) loadData() error {
+	return json.Unmarshal(rc.data, rc)
 }
 
 // postProcess performs post-processing on the loaded configuration, such as setting default values for missing fields,
 // in accordance with the configuration schema.
-func (c *RootConfig) postProcess() {
-	if c.AuthConfig != nil {
-		c.AuthConfig.postProcess()
+func (rc *RootConfig) postProcess() {
+	if rc.AuthConfig != nil {
+		rc.AuthConfig.postProcess()
 	}
-	if c.OASConfig != nil {
-		c.OASConfig.postProcess()
+	if rc.OASConfig != nil {
+		rc.OASConfig.postProcess()
 	}
-	c.RouterConfig.postProcess()
-	c.ObservabilityConfig.postProcess()
-	c.AdminConfig.postProcess()
+	rc.RouterConfig.postProcess()
+	rc.ObservabilityConfig.postProcess()
+	rc.AdminConfig.postProcess()
 }
 
 func isReference(data []byte) bool {

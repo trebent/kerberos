@@ -1,0 +1,15 @@
+{
+  "router": {
+    "backends": [
+      {
+        "name": "echo",
+        "host": "localhost",
+        "port": 15000
+      }
+    ]
+  },
+  "observability": {
+    "enabled": false,
+    "runtimeMetrics": false
+  }
+}

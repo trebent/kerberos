@@ -3,8 +3,8 @@ package config
 type (
 	// OASConfig holds configuration for OAS-based request routing and validation.
 	OASConfig struct {
-		Order    int                 `json:"order"`
-		Mappings []OASBackendMapping `json:"mappings"`
+		Order    int                  `json:"order"`
+		Mappings []*OASBackendMapping `json:"mappings"`
 	}
 	OASBackendMapping struct {
 		Backend       string                 `json:"backend"`
@@ -65,8 +65,8 @@ type (
 	}
 )
 
-func newAdminConfig() AdminConfig {
-	return AdminConfig{
+func newAdminConfig() *AdminConfig {
+	return &AdminConfig{
 		SuperUser: SuperUser{
 			ClientID:     "admin",
 			ClientSecret: "secret",
@@ -74,8 +74,8 @@ func newAdminConfig() AdminConfig {
 	}
 }
 
-func newObservabilityConfig() ObservabilityConfig {
-	return ObservabilityConfig{
+func newObservabilityConfig() *ObservabilityConfig {
+	return &ObservabilityConfig{
 		Enabled:        true,
 		RuntimeMetrics: true,
 	}
