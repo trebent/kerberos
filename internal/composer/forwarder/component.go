@@ -83,8 +83,6 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	println(target.Host, target.Port)
-
 	//nolint:gosec // ignoring SSRF warning since the target is determined by our own routing logic and not user input.
 	forwardRequest, err := http.NewRequestWithContext(
 		req.Context(),

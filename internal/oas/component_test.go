@@ -17,7 +17,18 @@ import (
 func TestComponentWithOptions(t *testing.T) {
 	mux := http.NewServeMux()
 	opts := &Opts{
-		Cfg: &config.OASConfig{},
+		Cfg: &config.OASConfig{
+			Mappings: []*config.OASBackendMapping{
+				{
+					Backend:       "test-backend",
+					Specification: "testspecs/test.yaml",
+					Options: &config.OASBackendMappingOpts{
+						ValidateBody: true,
+					},
+				},
+			},
+			Order: 1,
+		},
 		Mux: mux,
 	}
 
@@ -30,15 +41,17 @@ func TestComponentWithOptions(t *testing.T) {
 		},
 	}
 	c := NewComponent(opts)
-	if c == nil {
-		t.Fatal("Expected non-nil component")
-	}
 	start.Next(c)
+
+	// Fake final component to terminate the flow.
 	c.Next(&composer.Dummy{
 		CustomHandler: func(fc composer.FlowComponent, w http.ResponseWriter, r *http.Request) {},
 	})
+
+	// Use fake router as starting handler.
 	mux.Handle("/", start)
 
+	t.Log("Running request with empty body, fails body validation")
 	executeRequest(t, &http.Request{
 		Method: http.MethodPost,
 		URL:    &url.URL{Path: "/"},
@@ -46,6 +59,7 @@ func TestComponentWithOptions(t *testing.T) {
 		Body:   http.NoBody,
 	}, mux, http.StatusBadRequest)
 
+	t.Log("Running request with invalid body, fails body validation")
 	executeRequest(t, &http.Request{
 		Method: http.MethodPost,
 		URL:    &url.URL{Path: "/"},
@@ -55,6 +69,7 @@ func TestComponentWithOptions(t *testing.T) {
 		Body: io.NopCloser(bytes.NewReader([]byte(`{"not-exist": "value"}`))),
 	}, mux, http.StatusBadRequest)
 
+	t.Log("Running request with valid body, passes body validation")
 	executeRequest(t, &http.Request{
 		Method: http.MethodPost,
 		URL:    &url.URL{Path: "/"},
