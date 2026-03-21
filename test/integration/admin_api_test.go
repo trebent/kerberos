@@ -120,3 +120,21 @@ func TestAdminGetFlow(t *testing.T) {
 		}
 	}
 }
+
+func TestAdminGetBackendOAS(t *testing.T) {
+	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
+		t.Context(),
+		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
+	)
+	checkErr(err, t)
+	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
+	superSession := extractSession(superLoginResp.HTTPResponse, t)
+
+	getBackendOASResp, err := adminClient.GetBackendOASWithResponse(
+		t.Context(),
+		"echo",
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getBackendOASResp.StatusCode(), http.StatusOK, t)
+}
