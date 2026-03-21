@@ -7,7 +7,7 @@ require (
 	github.com/go-logr/logr v1.4.3
 	github.com/google/uuid v1.6.0
 	github.com/oapi-codegen/nethttp-middleware v1.1.2
-	github.com/oapi-codegen/runtime v1.2.0
+	github.com/oapi-codegen/runtime v1.3.0
 	github.com/trebent/envparser v1.0.5
 	github.com/trebent/zerologr v1.0.1
 	github.com/xeipuuv/gojsonschema v1.2.0
