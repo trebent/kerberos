@@ -1,5 +1,5 @@
 //nolint:gocognit // ?
-package basicapi
+package basic
 
 import (
 	"context"

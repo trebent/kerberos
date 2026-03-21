@@ -11,10 +11,9 @@ import (
 	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
-	api "github.com/trebent/kerberos/internal/api/auth/basic"
+	authbasicapi "github.com/trebent/kerberos/internal/api/auth/basic"
 	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/auth/method"
-	basicapi "github.com/trebent/kerberos/internal/auth/method/basic/api"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/config"
 
@@ -34,16 +33,11 @@ type (
 		Mux                    *http.ServeMux
 		DB                     db.SQLClient
 		OASDir                 string
-		AdminSessionMiddleware api.StrictMiddlewareFunc
+		AdminSessionMiddleware authbasicapi.StrictMiddlewareFunc
 	}
 )
 
-const (
-	authBasicSpecification = "auth_basic.yaml"
-
-	queryGetSession     = "SELECT user_id, organisation_id, expires FROM sessions WHERE session_id = @sessionID;"
-	queryListUserGroups = "SELECT name FROM groups WHERE id IN (SELECT group_id FROM group_bindings WHERE user_id = @userID) AND organisation_id = @orgID;"
-)
+const authBasicSpecification = "auth_basic.yaml"
 
 var _ method.Method = (*basic)(nil)
 
@@ -98,9 +92,10 @@ func (a *basic) Authenticated(req *http.Request) error {
 	var (
 		sessionUserID int64
 		sessionOrgID  int64
+		administrator bool
 		expires       int64
 	)
-	err = rows.Scan(&sessionUserID, &sessionOrgID, &expires)
+	err = rows.Scan(&sessionUserID, &sessionOrgID, &administrator, &expires)
 	//nolint:sqlclosecheck // won't help here
 	_ = rows.Close()
 	if err != nil {
@@ -215,22 +210,22 @@ func (a *basic) registerAPI(opts *Opts) {
 		panic(fmt.Errorf("failed to load basic authentication OAS: %w", err))
 	}
 
-	ssi := basicapi.NewSSI(a.db)
-	strictHandler := api.NewStrictHandlerWithOptions(
+	ssi := newSSI(a.db)
+	strictHandler := authbasicapi.NewStrictHandlerWithOptions(
 		ssi,
-		[]api.StrictMiddlewareFunc{
-			basicapi.AuthMiddleware(ssi),
+		[]authbasicapi.StrictMiddlewareFunc{
+			AuthMiddleware(ssi),
 			opts.AdminSessionMiddleware,
 		},
-		api.StrictHTTPServerOptions{
+		authbasicapi.StrictHTTPServerOptions{
 			RequestErrorHandlerFunc:  apierror.RequestErrorHandler,
 			ResponseErrorHandlerFunc: apierror.ResponseErrorHandler,
 		},
 	)
 
-	_ = api.HandlerWithOptions(strictHandler, api.StdHTTPServerOptions{
+	_ = authbasicapi.HandlerWithOptions(strictHandler, authbasicapi.StdHTTPServerOptions{
 		BaseRouter: opts.Mux,
-		Middlewares: []api.MiddlewareFunc{
+		Middlewares: []authbasicapi.MiddlewareFunc{
 			oas.ValidationMiddleware(spec),
 			func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
