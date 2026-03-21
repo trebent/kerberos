@@ -1,4 +1,4 @@
-package adminapi
+package admin
 
 import (
 	"context"
@@ -14,15 +14,15 @@ import (
 	"github.com/trebent/kerberos/internal/db/sqlite"
 )
 
-func TestAdminSessionMiddleware(t *testing.T) {
-	ssi := NewSSI(&Opts{
+func TestSessionMiddleware(t *testing.T) {
+	ssi := newSSI(&ssiOpts{
 		DB:           sqlite.New(&sqlite.Opts{DSN: "test.db"}),
 		ClientID:     "admin",
 		ClientSecret: "secret",
 	})
 	impl := ssi.(*impl)
 	impl.superSessions.Store("session", time.Now().Add(1*time.Hour))
-	mw := AdminSessionMiddleware(ssi)
+	mw := SessionMiddleware(ssi)
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)

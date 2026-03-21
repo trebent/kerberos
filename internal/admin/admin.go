@@ -9,9 +9,8 @@ import (
 	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
-	adminapi "github.com/trebent/kerberos/internal/admin/api"
 	adminext "github.com/trebent/kerberos/internal/admin/extensions"
-	adminapigen "github.com/trebent/kerberos/internal/api/admin"
+	adminapi "github.com/trebent/kerberos/internal/api/admin"
 	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/db"
@@ -29,13 +28,13 @@ type (
 		Cfg *config.AdminConfig
 	}
 	Admin struct {
-		SessionMiddleware adminapigen.StrictMiddlewareFunc
+		SessionMiddleware adminapi.StrictMiddlewareFunc
 
-		ssi adminapi.SSI
+		ssi withExtensions
 	}
 )
 
-//go:embed dbschema/schema.sql
+//go:embed db/schema.sql
 var dbschemaBytes []byte
 
 const (
@@ -58,28 +57,28 @@ func New(opts *Opts) *Admin {
 		panic(fmt.Errorf("failed to load admin authentication OAS: %w", err))
 	}
 
-	ssi := adminapi.NewSSI(&adminapi.Opts{
+	ssi := newSSI(&ssiOpts{
 		DB:           opts.DB,
 		ClientID:     opts.Cfg.SuperUser.ClientID,
 		ClientSecret: opts.Cfg.SuperUser.ClientSecret,
 	})
 
-	adminSessionMiddleware := adminapi.AdminSessionMiddleware(ssi)
-	strictHandler := adminapigen.NewStrictHandlerWithOptions(
+	adminSessionMiddleware := SessionMiddleware(ssi)
+	strictHandler := adminapi.NewStrictHandlerWithOptions(
 		ssi,
-		[]adminapigen.StrictMiddlewareFunc{
-			adminapi.RequireSessionMiddleware(),
+		[]adminapi.StrictMiddlewareFunc{
+			RequireSessionMiddleware(),
 			adminSessionMiddleware,
 		},
-		adminapigen.StrictHTTPServerOptions{
+		adminapi.StrictHTTPServerOptions{
 			RequestErrorHandlerFunc:  apierror.RequestErrorHandler,
 			ResponseErrorHandlerFunc: apierror.ResponseErrorHandler,
 		},
 	)
 
-	_ = adminapigen.HandlerWithOptions(strictHandler, adminapigen.StdHTTPServerOptions{
+	_ = adminapi.HandlerWithOptions(strictHandler, adminapi.StdHTTPServerOptions{
 		BaseRouter: opts.Mux,
-		Middlewares: []adminapigen.MiddlewareFunc{
+		Middlewares: []adminapi.MiddlewareFunc{
 			oas.ValidationMiddleware(spec),
 			func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

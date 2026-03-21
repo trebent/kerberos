@@ -1,4 +1,4 @@
-package adminapi
+package admin
 
 import (
 	"bytes"
@@ -17,7 +17,7 @@ import (
 )
 
 type (
-	SSI interface {
+	withExtensions interface {
 		adminapi.StrictServerInterface
 
 		// Extensions.
@@ -27,7 +27,7 @@ type (
 		// SetOASBackend sets the OAS backend for the SSI, allowing it to serve OAS data to the admin API.
 		SetOASBackend(adminext.OASBackend)
 	}
-	Opts struct {
+	ssiOpts struct {
 		DB db.SQLClient
 
 		ClientID     string
@@ -58,7 +58,7 @@ const (
 )
 
 var (
-	_ SSI = (*impl)(nil)
+	_ withExtensions = (*impl)(nil)
 
 	errSuperUserRateLimited = errors.New("rate limiter does not permit action")
 )
@@ -67,7 +67,7 @@ func makeGenAPIError(msg string) adminapi.APIErrorResponse {
 	return adminapi.APIErrorResponse{Errors: []string{msg}}
 }
 
-func NewSSI(opts *Opts) SSI {
+func newSSI(opts *ssiOpts) withExtensions {
 	i := &impl{
 		db: opts.DB,
 
