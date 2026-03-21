@@ -36,3 +36,12 @@ jobs:
         run: |
           gh pr review --approve "$PR_URL"
           gh pr merge --auto -s "$PR_URL"
+
+      - name: Approve major version updates
+        if: steps.metadata.outputs.update-type == 'version-update:semver-major'
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh pr review --approve "$PR_URL"
+          gh pr comment --body "This is a major version update. Please review the changes and merge when ready." "$PR_URL"

@@ -7,12 +7,12 @@ updates:
     schedule:
       interval: "daily"
     groups:
-      go-version-updates:
+      go-minor/patch-version-updates:
         applies-to: version-updates
         update-types:
           - "minor"
           - "patch"
-      go-security-updates:
+      go-minor/patch-security-updates:
         applies-to: security-updates
         update-types:
           - "minor"
@@ -25,12 +25,12 @@ updates:
     schedule:
       interval: "daily"
     groups:
-      docker-version-updates:
+      docker-minor/patch-version-updates:
         applies-to: version-updates
         update-types:
           - "minor"
           - "patch"
-      docker-security-updates:
+      docker-minor/patch-security-updates:
         applies-to: security-updates
         update-types:
           - "minor"
@@ -45,12 +45,12 @@ updates:
     schedule:
       interval: "daily"
     groups:
-      action-version-updates:
+      action-minor/patch-version-updates:
         applies-to: version-updates
         update-types:
           - "minor"
           - "patch"
-      action-security-updates:
+      action-minor/patch-security-updates:
         applies-to: security-updates
         update-types:
           - "minor"
