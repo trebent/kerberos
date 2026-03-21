@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"slices"
 
+	adminapi "github.com/trebent/kerberos/internal/api/admin"
 	"github.com/trebent/kerberos/internal/composer"
 )
 
@@ -81,8 +82,8 @@ func (c *custom) Next(next composer.FlowComponent) {
 }
 
 // GetMeta implements [composer.FlowComponent].
-func (c *custom) GetMeta() []*composer.FlowMeta {
-	return append([]*composer.FlowMeta{
+func (c *custom) GetMeta() []adminapi.FlowMeta {
+	return append([]adminapi.FlowMeta{
 		{
 			Name: "custom",
 			Data: map[string]any{"component_count": len(c.all)},

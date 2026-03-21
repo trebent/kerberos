@@ -10,9 +10,9 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 	adminapi "github.com/trebent/kerberos/internal/admin/api"
+	adminext "github.com/trebent/kerberos/internal/admin/extensions"
 	adminapigen "github.com/trebent/kerberos/internal/api/admin"
 	apierror "github.com/trebent/kerberos/internal/api/error"
-	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/kerberos/internal/oas"
@@ -96,8 +96,12 @@ func New(opts *Opts) *Admin {
 	}
 }
 
-func (a *Admin) SetComposer(c composer.Composer) {
-	a.ssi.SetComposer(c)
+func (a *Admin) SetFlowFetcher(ff adminext.FlowFetcher) {
+	a.ssi.SetFlowFetcher(ff)
+}
+
+func (a *Admin) SetOASBackend(backend adminext.OASBackend) {
+	a.ssi.SetOASBackend(backend)
 }
 
 func applySchemas(db db.SQLClient) {

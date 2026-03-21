@@ -182,6 +182,9 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 			Cfg: cfg.OASConfig,
 		})
 		customFlowComponents = append(customFlowComponents, oasValidator)
+
+		// Register the OAS validator with the admin component so that it can serve OAS to the admin API.
+		admin.SetOASBackend(oasValidator)
 	}
 
 	custom := custom.NewComponent(customFlowComponents...)
@@ -197,7 +200,8 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		Forwarder:     forwarder,
 	})
 
-	admin.SetComposer(composer)
+	// Register the flow fetcher with the admin component so that it can serve flow metadata to the admin API.
+	admin.SetFlowFetcher(composer)
 
 	zerologr.Info("Starting server")
 	mux.Handle("/gw/", composer)

@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/go-logr/logr"
+	adminapi "github.com/trebent/kerberos/internal/api/admin"
 	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/config"
@@ -56,8 +57,8 @@ func (f *forwarder) Next(_ composer.FlowComponent) {
 }
 
 // GetMeta implements [composer.FlowComponent].
-func (f *forwarder) GetMeta() []*composer.FlowMeta {
-	return []*composer.FlowMeta{
+func (f *forwarder) GetMeta() []adminapi.FlowMeta {
+	return []adminapi.FlowMeta{
 		{
 			Name: "forwarder",
 			Data: map[string]any{},

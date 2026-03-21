@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	adminapi "github.com/trebent/kerberos/internal/api/admin"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/env"
@@ -166,8 +167,8 @@ func (o *obs) Next(next composer.FlowComponent) {
 }
 
 // GetMeta implements [composer.FlowComponent].
-func (o *obs) GetMeta() []*composer.FlowMeta {
-	return append([]*composer.FlowMeta{
+func (o *obs) GetMeta() []adminapi.FlowMeta {
+	return append([]adminapi.FlowMeta{
 		{
 			Name: "observability",
 			Data: map[string]any{"enabled": o.cfg.Enabled},

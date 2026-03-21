@@ -6,6 +6,9 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-logr/logr"
+	adminext "github.com/trebent/kerberos/internal/admin/extensions"
+	adminapi "github.com/trebent/kerberos/internal/api/admin"
+	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/composer/custom"
 	"github.com/trebent/kerberos/internal/config"
@@ -13,6 +16,11 @@ import (
 )
 
 type (
+	Validator interface {
+		composer.FlowComponent
+		custom.Ordered
+		adminext.OASBackend
+	}
 	validator struct {
 		next composer.FlowComponent
 		// Map of backend name to OAS validator handler.
@@ -25,11 +33,12 @@ type (
 )
 
 var (
-	_ composer.FlowComponent = &validator{}
-	_ custom.Ordered         = &validator{}
+	_ composer.FlowComponent = (*validator)(nil)
+	_ custom.Ordered         = (*validator)(nil)
+	_ adminext.OASBackend    = (*validator)(nil)
 )
 
-func NewComponent(opts *Opts) composer.FlowComponent {
+func NewComponent(opts *Opts) Validator {
 	// Prevent schema error details from being included in validation errors.
 	//nolint:reassign // yolo
 	openapi3.SchemaErrorDetailsDisabled = true
@@ -54,8 +63,8 @@ func (v *validator) Next(next composer.FlowComponent) {
 }
 
 // GetMeta implements [composer.FlowComponent].
-func (v *validator) GetMeta() []*composer.FlowMeta {
-	return append([]*composer.FlowMeta{
+func (v *validator) GetMeta() []adminapi.FlowMeta {
+	return append([]adminapi.FlowMeta{
 		{
 			Name: "oas-validator",
 			Data: map[string]any{
@@ -111,4 +120,18 @@ func (v *validator) register(m *config.OASBackendMapping) error {
 	v.validators[m.Backend] = ValidationMiddleware(spec)
 
 	return nil
+}
+
+func (v *validator) GetOAS(backendName string) ([]byte, error) {
+	for _, mapping := range v.cfg.Mappings {
+		if mapping.Backend == backendName {
+			specBytes, err := os.ReadFile(mapping.Specification)
+			if err != nil {
+				return nil, err
+			}
+			return specBytes, nil
+		}
+	}
+
+	return nil, apierror.APIErrNotFound
 }

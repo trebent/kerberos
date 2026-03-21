@@ -8,6 +8,7 @@ import (
 	"regexp"
 
 	"github.com/go-logr/logr"
+	adminapi "github.com/trebent/kerberos/internal/api/admin"
 	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/config"
@@ -66,8 +67,8 @@ func (r *router) Next(next composer.FlowComponent) {
 }
 
 // GetMeta implements [composer.FlowComponent].
-func (r *router) GetMeta() []*composer.FlowMeta {
-	return append([]*composer.FlowMeta{
+func (r *router) GetMeta() []adminapi.FlowMeta {
+	return append([]adminapi.FlowMeta{
 		{
 			Name: "router",
 			Data: map[string]any{

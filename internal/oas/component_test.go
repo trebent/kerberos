@@ -3,12 +3,15 @@ package oas
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"testing"
 
+	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/config"
 )
@@ -123,6 +126,42 @@ func TestComponentWithoutBodyValidation(t *testing.T) {
 		},
 		Body: io.NopCloser(bytes.NewReader([]byte(`{"not-exist": "123"}`))),
 	}, mux, http.StatusOK)
+}
+
+func TestComponentGetOAS(t *testing.T) {
+	opts := &Opts{
+		Cfg: &config.OASConfig{
+			Mappings: []*config.OASBackendMapping{
+				{
+					Backend:       "test-backend",
+					Specification: "testspecs/test.yaml",
+					Options:       &config.OASBackendMappingOpts{},
+				},
+			},
+			Order: 1,
+		},
+	}
+
+	c := NewComponent(opts)
+
+	data, err := c.GetOAS("test-backend")
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	expectedBytes, err := os.ReadFile("testspecs/test.yaml")
+	if err != nil {
+		t.Fatalf("Failed to read expected OAS file: %v", err)
+	}
+
+	if !bytes.Equal(data, expectedBytes) {
+		t.Fatal("Expected OAS bytes do not match actual bytes")
+	}
+
+	_, err = c.GetOAS("non-existent-backend")
+	if !errors.Is(err, apierror.APIErrNotFound) {
+		t.Fatal("Expected error for non-existent backend, got nil")
+	}
 }
 
 func executeRequest(t *testing.T, req *http.Request, handler http.Handler, expectedStatus int) {

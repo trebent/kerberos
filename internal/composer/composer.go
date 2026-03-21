@@ -2,6 +2,9 @@ package composer
 
 import (
 	"net/http"
+
+	adminext "github.com/trebent/kerberos/internal/admin/extensions"
+	adminapi "github.com/trebent/kerberos/internal/api/admin"
 )
 
 type (
@@ -9,9 +12,8 @@ type (
 	Composer interface {
 		http.Handler
 
-		// GetFlowMeta returns metadata for all FlowComponents in the chain, starting from
-		// the first component and traversing to the last.
-		GetFlowMeta() []*FlowMeta
+		// GetFlow implements the admin extension for flow inspection.
+		GetFlow() []adminapi.FlowMeta
 	}
 	Opts struct {
 		Observability FlowComponent
@@ -27,7 +29,10 @@ type (
 	}
 )
 
-var _ Composer = (*impl)(nil)
+var (
+	_ Composer             = (*impl)(nil)
+	_ adminext.FlowFetcher = (*impl)(nil)
+)
 
 func New(opts *Opts) Composer {
 	opts.Observability.Next(opts.Router)
@@ -46,7 +51,7 @@ func (c *impl) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c.Observability.ServeHTTP(w, req)
 }
 
-// GetFlowMeta returns metadata for the entire FlowComponent chain.
-func (c *impl) GetFlowMeta() []*FlowMeta {
+// GetFlow returns metadata for the entire FlowComponent chain.
+func (c *impl) GetFlow() []adminapi.FlowMeta {
 	return c.Observability.GetMeta()
 }

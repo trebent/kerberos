@@ -11,6 +11,7 @@ import (
 	_ "embed"
 
 	"github.com/go-logr/logr"
+	adminapi "github.com/trebent/kerberos/internal/api/admin"
 	basicapigen "github.com/trebent/kerberos/internal/api/auth/basic"
 	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/auth/method"
@@ -91,8 +92,8 @@ func (a *authorizer) Next(next composer.FlowComponent) {
 }
 
 // GetMeta implements [composer.FlowComponent].
-func (a *authorizer) GetMeta() []*composer.FlowMeta {
-	return append([]*composer.FlowMeta{
+func (a *authorizer) GetMeta() []adminapi.FlowMeta {
+	return append([]adminapi.FlowMeta{
 		{
 			Name: "authorizer",
 			Data: map[string]any{composer.MetaKeyOrder: a.cfg.Order},
