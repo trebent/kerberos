@@ -53,7 +53,7 @@
                   },
                   "paths": {
                     "type": "object",
-                    "description": "Path-specific authorization rules for the backend.",
+                    "description": "Path-specific authorization rules for the backend, a user that is a member of *either* group is permitted access to the path. Path-specific groups take precedence over global group configurations.",
                     "additionalProperties": {
                       "type": "array",
                       "items": {
