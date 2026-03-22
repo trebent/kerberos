@@ -1,5 +1,5 @@
 //nolint:gocognit // ?
-package basicapi
+package basic
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	adminapi "github.com/trebent/kerberos/internal/admin/api"
+	"github.com/trebent/kerberos/internal/admin"
 	authbasicapi "github.com/trebent/kerberos/internal/api/auth/basic"
 	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/zerologr"
@@ -49,7 +49,7 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 				return f(ctx, w, r, request)
 			}
 
-			if adminapi.IsSuperUserContext(ctx) {
+			if admin.IsSuperUserContext(ctx) {
 				zerologr.V(20).Info("Permitting super user access")
 				return f(ctx, w, r, request)
 			}

@@ -3,6 +3,7 @@ package composer
 import (
 	"net/http"
 
+	adminapi "github.com/trebent/kerberos/internal/api/admin"
 	"github.com/trebent/zerologr"
 )
 
@@ -11,10 +12,10 @@ type (
 		http.Handler
 
 		Next(FlowComponent)
-		GetMeta() []*FlowMeta
+		GetMeta() []adminapi.FlowMeta
 	}
 
-	// FlowMeta holds metadata about a FlowComponent and links to the next component's metadata.
+	// FlowMeta holds metadata about a FlowComponent.
 	FlowMeta struct {
 		// Name is the name of the FlowComponent.
 		Name string `json:"name"`
@@ -59,15 +60,20 @@ func (d *Dummy) Order() int {
 	return d.O
 }
 
-func (d *Dummy) GetMeta() []*FlowMeta {
-	meta := &FlowMeta{
+func (d *Dummy) GetMeta() []adminapi.FlowMeta {
+	fmd := adminapi.FlowMeta_Data{}
+	if err := fmd.FromNoFlowMetaData(adminapi.NoFlowMetaData{}); err != nil {
+		panic(err)
+	}
+
+	meta := adminapi.FlowMeta{
 		Name: "dummy",
-		Data: map[string]any{},
+		Data: fmd,
 	}
 	if d.next != nil {
-		return append([]*FlowMeta{meta}, d.next.GetMeta()...)
+		return append([]adminapi.FlowMeta{meta}, d.next.GetMeta()...)
 	}
-	return []*FlowMeta{meta}
+	return []adminapi.FlowMeta{meta}
 }
 
 func (d *Dummy) defaultHandler(w http.ResponseWriter, req *http.Request) {

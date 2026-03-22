@@ -12,6 +12,10 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"gopkg.in/yaml.v2"
+
+	"github.com/oapi-codegen/runtime"
 )
 
 const (
@@ -25,9 +29,72 @@ type APIErrorResponse struct {
 
 // FlowMeta defines model for FlowMeta.
 type FlowMeta struct {
-	Data map[string]interface{} `json:"data"`
-	Name string                 `json:"name"`
+	Data FlowMeta_Data `json:"data"`
+	Name string        `json:"name"`
 }
+
+// FlowMeta_Data defines model for FlowMeta.Data.
+type FlowMeta_Data struct {
+	union json.RawMessage
+}
+
+// FlowMetaDataAuth defines model for FlowMetaDataAuth.
+type FlowMetaDataAuth struct {
+	Methods *FlowMetaDataAuthMethods `json:"methods,omitempty"`
+	Scheme  *FlowMetaDataAuthScheme  `json:"scheme,omitempty"`
+}
+
+// FlowMetaDataAuthMethodBasic defines model for FlowMetaDataAuthMethodBasic.
+type FlowMetaDataAuthMethodBasic = map[string]interface{}
+
+// FlowMetaDataAuthMethods defines model for FlowMetaDataAuthMethods.
+type FlowMetaDataAuthMethods struct {
+	Basic *FlowMetaDataAuthMethodBasic `json:"basic,omitempty"`
+}
+
+// FlowMetaDataAuthScheme defines model for FlowMetaDataAuthScheme.
+type FlowMetaDataAuthScheme struct {
+	Mappings *[]FlowMetaDataAuthSchemeMapping `json:"mappings,omitempty"`
+}
+
+// FlowMetaDataAuthSchemeMapping defines model for FlowMetaDataAuthSchemeMapping.
+type FlowMetaDataAuthSchemeMapping struct {
+	Authorization *FlowMetaDataAuthSchemeMappingAuthorization `json:"authorization,omitempty"`
+	Backend       string                                      `json:"backend"`
+	Exempt        *[]string                                   `json:"exempt,omitempty"`
+	Method        string                                      `json:"method"`
+}
+
+// FlowMetaDataAuthSchemeMappingAuthorization defines model for FlowMetaDataAuthSchemeMappingAuthorization.
+type FlowMetaDataAuthSchemeMappingAuthorization struct {
+	Groups *[]string            `json:"groups,omitempty"`
+	Paths  *map[string][]string `json:"paths,omitempty"`
+}
+
+// FlowMetaDataOAS defines model for FlowMetaDataOAS.
+type FlowMetaDataOAS struct {
+	Backends *[]string `json:"backends,omitempty"`
+}
+
+// FlowMetaDataObservability defines model for FlowMetaDataObservability.
+type FlowMetaDataObservability struct {
+	Enabled bool `json:"enabled"`
+}
+
+// FlowMetaDataRouter defines model for FlowMetaDataRouter.
+type FlowMetaDataRouter struct {
+	Backends *[]FlowMetaDataRouterBackend `json:"backends,omitempty"`
+}
+
+// FlowMetaDataRouterBackend defines model for FlowMetaDataRouterBackend.
+type FlowMetaDataRouterBackend struct {
+	Host string `json:"host"`
+	Name string `json:"name"`
+	Port int    `json:"port"`
+}
+
+// NoFlowMetaData No metadata for the flow component.
+type NoFlowMetaData = map[string]interface{}
 
 // LoginSuperuserJSONBody defines parameters for LoginSuperuser.
 type LoginSuperuserJSONBody struct {
@@ -37,6 +104,146 @@ type LoginSuperuserJSONBody struct {
 
 // LoginSuperuserJSONRequestBody defines body for LoginSuperuser for application/json ContentType.
 type LoginSuperuserJSONRequestBody LoginSuperuserJSONBody
+
+// AsFlowMetaDataObservability returns the union data inside the FlowMeta_Data as a FlowMetaDataObservability
+func (t FlowMeta_Data) AsFlowMetaDataObservability() (FlowMetaDataObservability, error) {
+	var body FlowMetaDataObservability
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromFlowMetaDataObservability overwrites any union data inside the FlowMeta_Data as the provided FlowMetaDataObservability
+func (t *FlowMeta_Data) FromFlowMetaDataObservability(v FlowMetaDataObservability) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeFlowMetaDataObservability performs a merge with any union data inside the FlowMeta_Data, using the provided FlowMetaDataObservability
+func (t *FlowMeta_Data) MergeFlowMetaDataObservability(v FlowMetaDataObservability) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsFlowMetaDataRouter returns the union data inside the FlowMeta_Data as a FlowMetaDataRouter
+func (t FlowMeta_Data) AsFlowMetaDataRouter() (FlowMetaDataRouter, error) {
+	var body FlowMetaDataRouter
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromFlowMetaDataRouter overwrites any union data inside the FlowMeta_Data as the provided FlowMetaDataRouter
+func (t *FlowMeta_Data) FromFlowMetaDataRouter(v FlowMetaDataRouter) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeFlowMetaDataRouter performs a merge with any union data inside the FlowMeta_Data, using the provided FlowMetaDataRouter
+func (t *FlowMeta_Data) MergeFlowMetaDataRouter(v FlowMetaDataRouter) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsFlowMetaDataAuth returns the union data inside the FlowMeta_Data as a FlowMetaDataAuth
+func (t FlowMeta_Data) AsFlowMetaDataAuth() (FlowMetaDataAuth, error) {
+	var body FlowMetaDataAuth
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromFlowMetaDataAuth overwrites any union data inside the FlowMeta_Data as the provided FlowMetaDataAuth
+func (t *FlowMeta_Data) FromFlowMetaDataAuth(v FlowMetaDataAuth) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeFlowMetaDataAuth performs a merge with any union data inside the FlowMeta_Data, using the provided FlowMetaDataAuth
+func (t *FlowMeta_Data) MergeFlowMetaDataAuth(v FlowMetaDataAuth) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsFlowMetaDataOAS returns the union data inside the FlowMeta_Data as a FlowMetaDataOAS
+func (t FlowMeta_Data) AsFlowMetaDataOAS() (FlowMetaDataOAS, error) {
+	var body FlowMetaDataOAS
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromFlowMetaDataOAS overwrites any union data inside the FlowMeta_Data as the provided FlowMetaDataOAS
+func (t *FlowMeta_Data) FromFlowMetaDataOAS(v FlowMetaDataOAS) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeFlowMetaDataOAS performs a merge with any union data inside the FlowMeta_Data, using the provided FlowMetaDataOAS
+func (t *FlowMeta_Data) MergeFlowMetaDataOAS(v FlowMetaDataOAS) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsNoFlowMetaData returns the union data inside the FlowMeta_Data as a NoFlowMetaData
+func (t FlowMeta_Data) AsNoFlowMetaData() (NoFlowMetaData, error) {
+	var body NoFlowMetaData
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromNoFlowMetaData overwrites any union data inside the FlowMeta_Data as the provided NoFlowMetaData
+func (t *FlowMeta_Data) FromNoFlowMetaData(v NoFlowMetaData) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeNoFlowMetaData performs a merge with any union data inside the FlowMeta_Data, using the provided NoFlowMetaData
+func (t *FlowMeta_Data) MergeNoFlowMetaData(v NoFlowMetaData) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t FlowMeta_Data) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *FlowMeta_Data) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -114,6 +321,9 @@ type ClientInterface interface {
 	// GetFlow request
 	GetFlow(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetBackendOAS request
+	GetBackendOAS(ctx context.Context, backend string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// LoginSuperuserWithBody request with any body
 	LoginSuperuserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -125,6 +335,18 @@ type ClientInterface interface {
 
 func (c *Client) GetFlow(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetFlowRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetBackendOAS(ctx context.Context, backend string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetBackendOASRequest(c.Server, backend)
 	if err != nil {
 		return nil, err
 	}
@@ -181,6 +403,40 @@ func NewGetFlowRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/api/admin/flow")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetBackendOASRequest generates requests for GetBackendOAS
+func NewGetBackendOASRequest(server string, backend string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "backend", backend, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/admin/oas/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -311,6 +567,9 @@ type ClientWithResponsesInterface interface {
 	// GetFlowWithResponse request
 	GetFlowWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetFlowResponse, error)
 
+	// GetBackendOASWithResponse request
+	GetBackendOASWithResponse(ctx context.Context, backend string, reqEditors ...RequestEditorFn) (*GetBackendOASResponse, error)
+
 	// LoginSuperuserWithBodyWithResponse request with any body
 	LoginSuperuserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginSuperuserResponse, error)
 
@@ -337,6 +596,30 @@ func (r GetFlowResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetFlowResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetBackendOASResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	YAML200      *map[string]interface{}
+	JSON404      *APIErrorResponse
+	JSON500      *APIErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetBackendOASResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetBackendOASResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -399,6 +682,15 @@ func (c *ClientWithResponses) GetFlowWithResponse(ctx context.Context, reqEditor
 	return ParseGetFlowResponse(rsp)
 }
 
+// GetBackendOASWithResponse request returning *GetBackendOASResponse
+func (c *ClientWithResponses) GetBackendOASWithResponse(ctx context.Context, backend string, reqEditors ...RequestEditorFn) (*GetBackendOASResponse, error) {
+	rsp, err := c.GetBackendOAS(ctx, backend, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetBackendOASResponse(rsp)
+}
+
 // LoginSuperuserWithBodyWithResponse request with arbitrary body returning *LoginSuperuserResponse
 func (c *ClientWithResponses) LoginSuperuserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginSuperuserResponse, error) {
 	rsp, err := c.LoginSuperuserWithBody(ctx, contentType, body, reqEditors...)
@@ -452,6 +744,46 @@ func ParseGetFlowResponse(rsp *http.Response) (*GetFlowResponse, error) {
 			return nil, err
 		}
 		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetBackendOASResponse parses an HTTP response from a GetBackendOASWithResponse call
+func ParseGetBackendOASResponse(rsp *http.Response) (*GetBackendOASResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetBackendOASResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "yaml") && rsp.StatusCode == 200:
+		var dest map[string]interface{}
+		if err := yaml.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.YAML200 = &dest
 
 	}
 

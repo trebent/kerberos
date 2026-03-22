@@ -1,28 +1,33 @@
-package adminapi
+package admin
 
 import (
+	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	adminext "github.com/trebent/kerberos/internal/admin/extensions"
 	adminapi "github.com/trebent/kerberos/internal/api/admin"
-	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/zerologr"
 	"golang.org/x/time/rate"
 )
 
 type (
-	SSI interface {
+	withExtensions interface {
 		adminapi.StrictServerInterface
 
-		SetComposer(composer.Composer)
+		// Extensions.
+
+		// SetFlowFetcher sets the flow fetcher for the SSI, allowing it to serve flow metadata to the admin API.
+		SetFlowFetcher(adminext.FlowFetcher)
+		// SetOASBackend sets the OAS backend for the SSI, allowing it to serve OAS data to the admin API.
+		SetOASBackend(adminext.OASBackend)
 	}
-	Opts struct {
+	ssiOpts struct {
 		DB db.SQLClient
 
 		ClientID     string
@@ -39,10 +44,8 @@ type (
 		clientID     string
 		clientSecret string
 
-		composer composer.Composer
-	}
-	flowMetaResponse struct {
-		FlowMeta []*composer.FlowMeta
+		flowFetcher adminext.FlowFetcher
+		oasBackend  adminext.OASBackend
 	}
 )
 
@@ -55,27 +58,16 @@ const (
 )
 
 var (
-	_ SSI                            = (*impl)(nil)
-	_ adminapi.GetFlowResponseObject = (*flowMetaResponse)(nil)
+	_ withExtensions = (*impl)(nil)
 
 	errSuperUserRateLimited = errors.New("rate limiter does not permit action")
 )
-
-func (fmr *flowMetaResponse) VisitGetFlowResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(fmr.FlowMeta); err != nil {
-		return err
-	}
-
-	w.WriteHeader(http.StatusOK)
-	return nil
-}
 
 func makeGenAPIError(msg string) adminapi.APIErrorResponse {
 	return adminapi.APIErrorResponse{Errors: []string{msg}}
 }
 
-func NewSSI(opts *Opts) SSI {
+func newSSI(opts *ssiOpts) withExtensions {
 	i := &impl{
 		db: opts.DB,
 
@@ -104,8 +96,12 @@ func NewSSI(opts *Opts) SSI {
 	return i
 }
 
-func (i *impl) SetComposer(c composer.Composer) {
-	i.composer = c
+func (i *impl) SetFlowFetcher(ff adminext.FlowFetcher) {
+	i.flowFetcher = ff
+}
+
+func (i *impl) SetOASBackend(ob adminext.OASBackend) {
+	i.oasBackend = ob
 }
 
 // LoginSuperuser implements [StrictServerInterface].
@@ -150,5 +146,21 @@ func (i *impl) GetFlow(
 	_ context.Context,
 	_ adminapi.GetFlowRequestObject,
 ) (adminapi.GetFlowResponseObject, error) {
-	return &flowMetaResponse{FlowMeta: i.composer.GetFlowMeta()}, nil
+	return adminapi.GetFlow200JSONResponse(i.flowFetcher.GetFlow()), nil
+}
+
+// GetBackendOAS implements [adminapi.StrictServerInterface].
+func (i *impl) GetBackendOAS(
+	_ context.Context,
+	request adminapi.GetBackendOASRequestObject,
+) (adminapi.GetBackendOASResponseObject, error) {
+	oasData, err := i.oasBackend.GetOAS(request.Backend)
+	if err != nil {
+		return nil, err
+	}
+
+	return adminapi.GetBackendOAS200ApplicationyamlResponse{
+		Body:          bytes.NewReader(oasData),
+		ContentLength: int64(len(oasData)),
+	}, nil
 }

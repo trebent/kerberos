@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
+
+	adminapi "github.com/trebent/kerberos/internal/api/admin"
 )
 
 type testFlow struct {
@@ -28,17 +30,17 @@ func (t *testFlow) Next(next FlowComponent) {
 }
 
 // GetMeta implements [FlowComponent].
-func (t *testFlow) GetMeta() []*FlowMeta {
-	meta := &FlowMeta{
+func (t *testFlow) GetMeta() []adminapi.FlowMeta {
+	meta := &adminapi.FlowMeta{
 		Name: t.name,
-		Data: map[string]any{},
+		Data: adminapi.FlowMeta_Data{},
 	}
 
 	if t.next != nil {
-		return append([]*FlowMeta{meta}, t.next.GetMeta()...)
+		return append([]adminapi.FlowMeta{*meta}, t.next.GetMeta()...)
 	}
 
-	return []*FlowMeta{meta}
+	return []adminapi.FlowMeta{*meta}
 }
 
 // ServeHTTP implements [FlowComponent].
@@ -54,7 +56,7 @@ func (t *testFlow) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 var _ FlowComponent = (*testFlow)(nil)
 
-func TestComposerGetFlowMeta(t *testing.T) {
+func TestComposerGetFlow(t *testing.T) {
 	one := newTestFlow("obs", t)
 	two := newTestFlow("router", t)
 	three := newTestFlow("composable", t)
@@ -67,25 +69,16 @@ func TestComposerGetFlowMeta(t *testing.T) {
 		Forwarder:     four,
 	})
 
-	meta := c.GetFlowMeta()
+	meta := c.GetFlow()
 
 	if meta[0].Name != "obs" {
 		t.Fatalf("expected first meta name 'obs', got %q", meta[0].Name)
 	}
-	if meta[1] == nil {
-		t.Fatal("expected meta[1] to be set")
-	}
 	if meta[1].Name != "router" {
 		t.Fatalf("expected second meta name 'router', got %q", meta[1].Name)
 	}
-	if meta[2] == nil {
-		t.Fatal("expected meta[2] to be set")
-	}
 	if meta[2].Name != "composable" {
 		t.Fatalf("expected third meta name 'composable', got %q", meta[2].Name)
-	}
-	if meta[3] == nil {
-		t.Fatal("expected meta[3] to be set")
 	}
 	if meta[3].Name != "forwarder" {
 		t.Fatalf("expected fourth meta name 'forwarder', got %q", meta[3].Name)

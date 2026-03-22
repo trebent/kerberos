@@ -75,48 +75,62 @@ func TestAdminGetFlow(t *testing.T) {
 			if i != 0 {
 				t.Error("observability component should have index 0")
 			}
+			_, err := component.Data.AsFlowMetaDataObservability()
+			if err != nil {
+				t.Fatalf("Failed to parse observability component data: %v", err)
+			}
 		case "router":
 			if i != 1 {
 				t.Error("router component should have index 1")
 			}
-			v := component.Data["backends"]
-			dv := v.([]any)
-			if len(dv) != 2 {
-				t.Errorf("router component should have 2 backends, but got %v", len(dv))
-			}
-		case "custom":
-			if i != 2 {
-				t.Error("custom component should have index 2")
-			}
-			v := component.Data["component_count"]
-			count := v.(float64)
-			if count != 2 {
-				t.Errorf("custom component should have component_count 2, but got %v", count)
+			_, err := component.Data.AsFlowMetaDataRouter()
+			if err != nil {
+				t.Fatalf("Failed to parse router component data: %v", err)
 			}
 		case "authorizer":
-			if i != 3 {
-				t.Error("authorizer component should have index 3")
+			if i != 2 {
+				t.Error("authorizer component should have index 2")
 			}
-			v := component.Data["order"]
-			order := v.(float64)
-			if order != 1 {
-				t.Errorf("authorizer component should have order 1, but got %v", order)
+			_, err := component.Data.AsFlowMetaDataAuth()
+			if err != nil {
+				t.Fatalf("Failed to parse authorizer component data: %v", err)
 			}
 		case "oas-validator":
-			if i != 4 {
-				t.Error("oas-validator component should have index 4")
+			if i != 3 {
+				t.Error("oas-validator component should have index 3")
 			}
-			v := component.Data["order"]
-			order := v.(float64)
-			if order != 100 {
-				t.Errorf("oas-validator component should have order 100, but got %v", order)
+			_, err := component.Data.AsFlowMetaDataOAS()
+			if err != nil {
+				t.Fatalf("Failed to parse oas-validator component data: %v", err)
 			}
 		case "forwarder":
-			if i != 5 {
-				t.Error("forwarder component should have index 5")
+			if i != 4 {
+				t.Error("forwarder component should have index 4")
+			}
+			_, err := component.Data.AsNoFlowMetaData()
+			if err != nil {
+				t.Fatalf("Failed to parse forwarder component data: %v", err)
 			}
 		default:
 			t.Errorf("Unexpected flow component name: %s", component.Name)
 		}
 	}
+}
+
+func TestAdminGetBackendOAS(t *testing.T) {
+	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
+		t.Context(),
+		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
+	)
+	checkErr(err, t)
+	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
+	superSession := extractSession(superLoginResp.HTTPResponse, t)
+
+	getBackendOASResp, err := adminClient.GetBackendOASWithResponse(
+		t.Context(),
+		"echo",
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getBackendOASResp.StatusCode(), http.StatusOK, t)
 }

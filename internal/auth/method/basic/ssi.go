@@ -1,4 +1,4 @@
-package basicapi
+package basic
 
 import (
 	"context"
@@ -71,7 +71,7 @@ func makeGenAPIError(msg string) authbasicapi.APIErrorResponse {
 	return authbasicapi.APIErrorResponse{Errors: []string{msg}}
 }
 
-func NewSSI(db db.SQLClient) authbasicapi.StrictServerInterface {
+func newSSI(db db.SQLClient) authbasicapi.StrictServerInterface {
 	return &impl{db}
 }
 
