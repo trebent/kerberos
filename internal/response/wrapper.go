@@ -5,7 +5,6 @@ import (
 	"context"
 	"io"
 	"net/http"
-	"sync"
 
 	"github.com/trebent/zerologr"
 	"go.opentelemetry.io/otel/codes"
@@ -18,7 +17,6 @@ type (
 	}
 	Wrapper struct {
 		responseWriter http.ResponseWriter
-		lock           *sync.Mutex
 
 		requestContext context.Context
 
@@ -54,11 +52,7 @@ func (bw *BodyWrapper) NumBytes() int64 {
 }
 
 func NewResponseWrapper(responseWriter http.ResponseWriter) http.ResponseWriter {
-	return &Wrapper{lock: &sync.Mutex{}, responseWriter: responseWriter}
-}
-
-func (r *Wrapper) RealResponseWriter() http.ResponseWriter {
-	return r.responseWriter
+	return &Wrapper{responseWriter: responseWriter}
 }
 
 func (r *Wrapper) SetRequestContext(ctx context.Context) {
@@ -87,17 +81,11 @@ func (r *Wrapper) Write(p []byte) (int, error) {
 func (r *Wrapper) WriteHeader(statusCode int) {
 	zerologr.V(100).Info("WriteHeader", "status_code", statusCode)
 
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
 	if !r.wroteHeader {
 		r.wroteHeader = true
 		r.statusCode = statusCode
-	} else {
-		return
+		r.responseWriter.WriteHeader(statusCode)
 	}
-
-	r.responseWriter.WriteHeader(statusCode)
 }
 
 func (r *Wrapper) Flush() {
