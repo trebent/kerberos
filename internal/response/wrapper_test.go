@@ -21,6 +21,19 @@ func TestWriteHeader(t *testing.T) {
 	}
 }
 
+func TestWrite(t *testing.T) {
+	wrapper := &Wrapper{
+		responseWriter: httptest.NewRecorder(),
+	}
+
+	wrapper.Write([]byte("OK"))
+	wrapper.WriteHeader(http.StatusInternalServerError)
+
+	if wrapper.StatusCode() != http.StatusOK {
+		t.Errorf("Expected status code %d, got %d", http.StatusOK, wrapper.StatusCode())
+	}
+}
+
 func TestBodyWrapper(t *testing.T) {
 	readCloser := NewBodyWrapper(io.NopCloser(bytes.NewReader([]byte("12345"))))
 	bwrapper := readCloser.(*BodyWrapper)
