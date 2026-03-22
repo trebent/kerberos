@@ -8,19 +8,12 @@ import (
 )
 
 func TestAdminLoginSuperuser(t *testing.T) {
-	t.Log("Logging the superuser in")
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
+	superEditor := loginSuperuser(t)
 
 	t.Log("Logging the superuser out")
 	superLogoutResp, err := adminClient.LogoutSuperuserWithResponse(
 		t.Context(),
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(superLogoutResp.StatusCode(), http.StatusNoContent, t)
@@ -45,24 +38,21 @@ func TestAdminLoginSuperuserFailure(t *testing.T) {
 }
 
 func TestAdminOASFailure(t *testing.T) {
-	badSuperLoginResp, err := adminClient.LoginSuperuserWithResponse(t.Context(), adminapi.LoginSuperuserJSONRequestBody{})
+	badSuperLoginResp, err := adminClient.LoginSuperuserWithResponse(
+		t.Context(),
+		adminapi.LoginSuperuserJSONRequestBody{},
+	)
 	checkErr(err, t)
 	verifyStatusCode(badSuperLoginResp.StatusCode(), http.StatusBadRequest, t)
 	verifyAdminAPIErrorResponse(badSuperLoginResp.JSON400, t)
 }
 
 func TestAdminGetFlow(t *testing.T) {
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
+	superEditor := loginSuperuser(t)
 
 	getFlowResp, err := adminClient.GetFlowWithResponse(
 		t.Context(),
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getFlowResp.StatusCode(), http.StatusOK, t)
@@ -118,19 +108,25 @@ func TestAdminGetFlow(t *testing.T) {
 }
 
 func TestAdminGetBackendOAS(t *testing.T) {
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
+	superEditor := loginSuperuser(t)
 
 	getBackendOASResp, err := adminClient.GetBackendOASWithResponse(
 		t.Context(),
 		"echo",
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getBackendOASResp.StatusCode(), http.StatusOK, t)
+}
+
+func TestAdminGetBackendOASNotFound(t *testing.T) {
+	superEditor := loginSuperuser(t)
+
+	getBackendOASResp, err := adminClient.GetBackendOASWithResponse(
+		t.Context(),
+		"non-existent-backend",
+		adminapi.RequestEditorFn(superEditor),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getBackendOASResp.StatusCode(), http.StatusNotFound, t)
 }

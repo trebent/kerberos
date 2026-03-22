@@ -146,6 +146,7 @@ func (i *impl) GetFlow(
 	_ context.Context,
 	_ adminapi.GetFlowRequestObject,
 ) (adminapi.GetFlowResponseObject, error) {
+	// No need to nil-check flowFetcher since KRB won't be able to start without it.
 	return adminapi.GetFlow200JSONResponse(i.flowFetcher.GetFlow()), nil
 }
 
@@ -154,6 +155,11 @@ func (i *impl) GetBackendOAS(
 	_ context.Context,
 	request adminapi.GetBackendOASRequestObject,
 ) (adminapi.GetBackendOASResponseObject, error) {
+	// Must nil-check OAS backend since it's an optional extension and not required for KRB to start.
+	if i.oasBackend == nil {
+		return adminapi.GetBackendOAS404JSONResponse(makeGenAPIError("not configured")), nil
+	}
+
 	oasData, err := i.oasBackend.GetOAS(request.Backend)
 	if err != nil {
 		return nil, err
