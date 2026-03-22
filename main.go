@@ -137,6 +137,7 @@ func setupConfig() *config.RootConfig {
 // startServer starts the HTTP server and listens for incoming requests.
 // It returns an error if the server fails to start and when stopping. If
 // the server is stopped, it returns http.ErrServerClosed.
+// nolint: funlen // welp
 func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	mux := http.NewServeMux()
 	db := sqlite.New(
