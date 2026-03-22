@@ -11,7 +11,6 @@ import (
 	adminapi "github.com/trebent/kerberos/internal/api/admin"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/config"
-	"github.com/trebent/kerberos/internal/env"
 	"github.com/trebent/kerberos/internal/response"
 	"github.com/trebent/zerologr"
 	"go.opentelemetry.io/otel"
@@ -37,6 +36,8 @@ type (
 	}
 	Opts struct {
 		Cfg *config.ObservabilityConfig
+
+		Version string
 	}
 )
 
@@ -96,7 +97,7 @@ func NewComponent(opts *Opts) composer.FlowComponent {
 
 	meter := otel.GetMeterProvider().Meter(
 		"github.com/trebent/kerberos",
-		metric.WithInstrumentationVersion(env.Version.Value()),
+		metric.WithInstrumentationVersion(opts.Version),
 	)
 
 	requestCountCounter, err := meter.Int64Counter(
