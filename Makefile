@@ -1,6 +1,8 @@
 GRAFANA_PORT ?= 3000
 PROM_PORT ?= 9090
 KERBEROS_PORT ?= 30000
+SUPERUSER_CLIENT_ID ?= admin
+SUPERUSER_CLIENT_SECRET ?= secret
 KERBEROS_METRICS_PORT ?= 9464
 ECHO_PORT ?= 15000
 ECHO_METRICS_PORT ?= 9463
@@ -241,9 +243,6 @@ echo-docker-logs:
 # TEST
 #
 
-test-login-superuser:
-	curl -X POST -H "Content-Type: application/json" -i localhost:$(KERBEROS_PORT)/api/admin/superuser/login --data '{"clientId": "admin", "clientSecret": "secret"}'
-
 test-echo:
 	$(call cecho,Sending a test request to echo...,$(BOLD_YELLOW))
 	curl -X GET -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
@@ -251,6 +250,14 @@ test-echo:
 test-protected-echo:
 	$(call cecho,Sending a test request to protected-echo...,$(BOLD_YELLOW))
 	curl -X GET -i localhost:$(KERBEROS_PORT)/gw/backend/protected-echo/hi
+
+get-flow:
+	$(call cecho,Fetching flow from Kerberos admin API...,$(BOLD_YELLOW))
+	@SESSION=$$(curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_PORT)/api/admin/superuser/login \
+		-H "Content-Type: application/json" \
+		-d '{"clientId":"$(SUPERUSER_CLIENT_ID)","clientSecret":"$(SUPERUSER_CLIENT_SECRET)"}' \
+		| grep -i '^x-krb-session:' | tr -d '\r' | awk '{print $$2}'); \
+	curl -s -H "x-krb-session: $$SESSION" localhost:$(KERBEROS_PORT)/api/admin/flow | jq .
 
 test-echo-methods:
 	$(call cecho,Generating test HTTP requests for the echo backend...,$(BOLD_YELLOW))
