@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-logr/logr"
 	adminapi "github.com/trebent/kerberos/internal/api/admin"
-	basicapigen "github.com/trebent/kerberos/internal/api/auth/basic"
+	authbasicapi "github.com/trebent/kerberos/internal/api/auth/basic"
 	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/auth/method"
 	"github.com/trebent/kerberos/internal/auth/method/basic"
@@ -36,7 +36,7 @@ type (
 		OASDir string
 
 		// To verify administrator callers, adds context into call flows to be able to determine if the caller is an admin user.
-		AdminSessionMiddleware basicapigen.StrictMiddlewareFunc
+		AdminSessionMiddleware authbasicapi.StrictMiddlewareFunc
 	}
 	authorizer struct {
 		next composer.FlowComponent
@@ -93,10 +93,47 @@ func (a *authorizer) Next(next composer.FlowComponent) {
 
 // GetMeta implements [composer.FlowComponent].
 func (a *authorizer) GetMeta() []adminapi.FlowMeta {
+	fmd := adminapi.FlowMeta_Data{}
+	if err := fmd.FromFlowMetaDataAuth(adminapi.FlowMetaDataAuth{
+		Methods: &adminapi.FlowMetaDataAuthMethods{
+			Basic: func() *adminapi.FlowMetaDataAuthMethodBasic {
+				if a.cfg.Methods.Basic == nil {
+					return nil
+				}
+				return &adminapi.FlowMetaDataAuthMethodBasic{}
+			}(),
+			// Future auth methods would be added here.
+		},
+		Scheme: &adminapi.FlowMetaDataAuthScheme{
+			Mappings: func() *[]adminapi.FlowMetaDataAuthSchemeMapping {
+				var mappings []adminapi.FlowMetaDataAuthSchemeMapping
+				for _, mapping := range a.cfg.Scheme.Mappings {
+					mappings = append(mappings, adminapi.FlowMetaDataAuthSchemeMapping{
+						Backend: mapping.Backend,
+						Method:  mapping.Method,
+						Exempt:  &mapping.Exempt,
+						Authorization: func() *adminapi.FlowMetaDataAuthSchemeMappingAuthorization {
+							if mapping.Authorization == nil {
+								return nil
+							}
+							return &adminapi.FlowMetaDataAuthSchemeMappingAuthorization{
+								Groups: &mapping.Authorization.Groups,
+								Paths:  &mapping.Authorization.Paths,
+							}
+						}(),
+					})
+				}
+				return &mappings
+			}(),
+		},
+	}); err != nil {
+		panic(err)
+	}
+
 	return append([]adminapi.FlowMeta{
 		{
 			Name: "authorizer",
-			Data: map[string]any{composer.MetaKeyOrder: a.cfg.Order},
+			Data: fmd,
 		},
 	}, a.next.GetMeta()...)
 }

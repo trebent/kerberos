@@ -68,12 +68,27 @@ func (r *router) Next(next composer.FlowComponent) {
 
 // GetMeta implements [composer.FlowComponent].
 func (r *router) GetMeta() []adminapi.FlowMeta {
+	fmd := adminapi.FlowMeta_Data{}
+	if err := fmd.FromFlowMetaDataRouter(adminapi.FlowMetaDataRouter{
+		Backends: func() *[]adminapi.FlowMetaDataRouterBackend {
+			var backends []adminapi.FlowMetaDataRouterBackend
+			for _, backend := range r.cfg.Backends {
+				backends = append(backends, adminapi.FlowMetaDataRouterBackend{
+					Name: backend.Name,
+					Host: backend.Host,
+					Port: backend.Port,
+				})
+			}
+			return &backends
+		}(),
+	}); err != nil {
+		panic(err)
+	}
+
 	return append([]adminapi.FlowMeta{
 		{
 			Name: "router",
-			Data: map[string]any{
-				"backends": r.cfg.Backends,
-			},
+			Data: fmd,
 		},
 	}, r.next.GetMeta()...)
 }

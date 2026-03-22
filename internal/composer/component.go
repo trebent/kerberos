@@ -61,9 +61,14 @@ func (d *Dummy) Order() int {
 }
 
 func (d *Dummy) GetMeta() []adminapi.FlowMeta {
+	fmd := adminapi.FlowMeta_Data{}
+	if err := fmd.FromNoFlowMetaData(adminapi.NoFlowMetaData{}); err != nil {
+		panic(err)
+	}
+
 	meta := adminapi.FlowMeta{
 		Name: "dummy",
-		Data: map[string]any{},
+		Data: fmd,
 	}
 	if d.next != nil {
 		return append([]adminapi.FlowMeta{meta}, d.next.GetMeta()...)

@@ -58,10 +58,15 @@ func (f *forwarder) Next(_ composer.FlowComponent) {
 
 // GetMeta implements [composer.FlowComponent].
 func (f *forwarder) GetMeta() []adminapi.FlowMeta {
+	fmd := adminapi.FlowMeta_Data{}
+	if err := fmd.FromNoFlowMetaData(adminapi.NoFlowMetaData{}); err != nil {
+		panic(err)
+	}
+
 	return []adminapi.FlowMeta{
 		{
 			Name: "forwarder",
-			Data: map[string]any{},
+			Data: fmd,
 		},
 	}
 }

@@ -14,13 +14,117 @@ components:
           type: string
         data:
           type: object
-          additionalProperties: true
+          anyOf:
+            - $ref: "#/components/schemas/FlowMetaDataObservability"
+            - $ref: "#/components/schemas/FlowMetaDataRouter"
+            - $ref: "#/components/schemas/FlowMetaDataAuth"
+            - $ref: "#/components/schemas/FlowMetaDataOAS"
+            - $ref: "#/components/schemas/NoFlowMetaData"
       required:
         - name
         - data
       additionalProperties: false
+    FlowMetaDataObservability:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+      required:
+        - enabled
+      additionalProperties: false
+    FlowMetaDataRouter:
+      type: object
+      additionalProperties: false
+      properties:
+        backends:
+          type: array
+          items:
+            $ref: "#/components/schemas/FlowMetaDataRouterBackend"
+    FlowMetaDataRouterBackend:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        host:
+          type: string
+        port:
+          type: integer
+      required:
+        - name
+        - host
+        - port
+    FlowMetaDataAuth:
+      type: object
+      additionalProperties: false
+      properties:
+        methods:
+          $ref: "#/components/schemas/FlowMetaDataAuthMethods"
+        scheme:
+          $ref: "#/components/schemas/FlowMetaDataAuthScheme"
+    FlowMetaDataAuthMethods:
+      type: object
+      additionalProperties: false
+      properties:
+        basic:
+          $ref: "#/components/schemas/FlowMetaDataAuthMethodBasic"
+    FlowMetaDataAuthMethodBasic:
+      type: object
+      additionalProperties: false
+    FlowMetaDataAuthScheme:
+      type: object
+      additionalProperties: false
+      properties:
+        mappings:
+          type: array
+          items:
+            $ref: "#/components/schemas/FlowMetaDataAuthSchemeMapping"
+    FlowMetaDataAuthSchemeMapping:
+      type: object
+      additionalProperties: false
+      properties:
+        backend:
+          type: string
+        method:
+          type: string
+        exempt:
+          type: array
+          items:
+            type: string
+        authorization:
+          $ref: "#/components/schemas/FlowMetaDataAuthSchemeMappingAuthorization"
+      required:
+        - backend
+        - method
+    FlowMetaDataAuthSchemeMappingAuthorization:
+      type: object
+      additionalProperties: false
+      properties:
+        groups:
+          type: array
+          items:
+            type: string
+        paths:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+    FlowMetaDataOAS:
+      type: object
+      additionalProperties: false
+      properties:
+        backends:
+          type: array
+          items:
+            type: string
+    NoFlowMetaData:
+      type: object
+      description: No metadata for the flow component.
+      additionalProperties: false
     APIErrorResponse:
       type: object
+      additionalProperties: false
       properties:
         errors:
           type: array
@@ -29,7 +133,6 @@ components:
           minItems: 1
       required:
         - errors
-      additionalProperties: false
   headers:
     sessionid:
       required: true

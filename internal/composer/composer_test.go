@@ -33,7 +33,7 @@ func (t *testFlow) Next(next FlowComponent) {
 func (t *testFlow) GetMeta() []adminapi.FlowMeta {
 	meta := &adminapi.FlowMeta{
 		Name: t.name,
-		Data: map[string]any{},
+		Data: adminapi.FlowMeta_Data{},
 	}
 
 	if t.next != nil {

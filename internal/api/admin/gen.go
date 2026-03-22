@@ -34,9 +34,72 @@ type APIErrorResponse struct {
 
 // FlowMeta defines model for FlowMeta.
 type FlowMeta struct {
-	Data map[string]interface{} `json:"data"`
-	Name string                 `json:"name"`
+	Data FlowMeta_Data `json:"data"`
+	Name string        `json:"name"`
 }
+
+// FlowMeta_Data defines model for FlowMeta.Data.
+type FlowMeta_Data struct {
+	union json.RawMessage
+}
+
+// FlowMetaDataAuth defines model for FlowMetaDataAuth.
+type FlowMetaDataAuth struct {
+	Methods *FlowMetaDataAuthMethods `json:"methods,omitempty"`
+	Scheme  *FlowMetaDataAuthScheme  `json:"scheme,omitempty"`
+}
+
+// FlowMetaDataAuthMethodBasic defines model for FlowMetaDataAuthMethodBasic.
+type FlowMetaDataAuthMethodBasic = map[string]interface{}
+
+// FlowMetaDataAuthMethods defines model for FlowMetaDataAuthMethods.
+type FlowMetaDataAuthMethods struct {
+	Basic *FlowMetaDataAuthMethodBasic `json:"basic,omitempty"`
+}
+
+// FlowMetaDataAuthScheme defines model for FlowMetaDataAuthScheme.
+type FlowMetaDataAuthScheme struct {
+	Mappings *[]FlowMetaDataAuthSchemeMapping `json:"mappings,omitempty"`
+}
+
+// FlowMetaDataAuthSchemeMapping defines model for FlowMetaDataAuthSchemeMapping.
+type FlowMetaDataAuthSchemeMapping struct {
+	Authorization *FlowMetaDataAuthSchemeMappingAuthorization `json:"authorization,omitempty"`
+	Backend       string                                      `json:"backend"`
+	Exempt        *[]string                                   `json:"exempt,omitempty"`
+	Method        string                                      `json:"method"`
+}
+
+// FlowMetaDataAuthSchemeMappingAuthorization defines model for FlowMetaDataAuthSchemeMappingAuthorization.
+type FlowMetaDataAuthSchemeMappingAuthorization struct {
+	Groups *[]string            `json:"groups,omitempty"`
+	Paths  *map[string][]string `json:"paths,omitempty"`
+}
+
+// FlowMetaDataOAS defines model for FlowMetaDataOAS.
+type FlowMetaDataOAS struct {
+	Backends *[]string `json:"backends,omitempty"`
+}
+
+// FlowMetaDataObservability defines model for FlowMetaDataObservability.
+type FlowMetaDataObservability struct {
+	Enabled bool `json:"enabled"`
+}
+
+// FlowMetaDataRouter defines model for FlowMetaDataRouter.
+type FlowMetaDataRouter struct {
+	Backends *[]FlowMetaDataRouterBackend `json:"backends,omitempty"`
+}
+
+// FlowMetaDataRouterBackend defines model for FlowMetaDataRouterBackend.
+type FlowMetaDataRouterBackend struct {
+	Host string `json:"host"`
+	Name string `json:"name"`
+	Port int    `json:"port"`
+}
+
+// NoFlowMetaData No metadata for the flow component.
+type NoFlowMetaData = map[string]interface{}
 
 // LoginSuperuserJSONBody defines parameters for LoginSuperuser.
 type LoginSuperuserJSONBody struct {
@@ -46,6 +109,146 @@ type LoginSuperuserJSONBody struct {
 
 // LoginSuperuserJSONRequestBody defines body for LoginSuperuser for application/json ContentType.
 type LoginSuperuserJSONRequestBody LoginSuperuserJSONBody
+
+// AsFlowMetaDataObservability returns the union data inside the FlowMeta_Data as a FlowMetaDataObservability
+func (t FlowMeta_Data) AsFlowMetaDataObservability() (FlowMetaDataObservability, error) {
+	var body FlowMetaDataObservability
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromFlowMetaDataObservability overwrites any union data inside the FlowMeta_Data as the provided FlowMetaDataObservability
+func (t *FlowMeta_Data) FromFlowMetaDataObservability(v FlowMetaDataObservability) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeFlowMetaDataObservability performs a merge with any union data inside the FlowMeta_Data, using the provided FlowMetaDataObservability
+func (t *FlowMeta_Data) MergeFlowMetaDataObservability(v FlowMetaDataObservability) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsFlowMetaDataRouter returns the union data inside the FlowMeta_Data as a FlowMetaDataRouter
+func (t FlowMeta_Data) AsFlowMetaDataRouter() (FlowMetaDataRouter, error) {
+	var body FlowMetaDataRouter
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromFlowMetaDataRouter overwrites any union data inside the FlowMeta_Data as the provided FlowMetaDataRouter
+func (t *FlowMeta_Data) FromFlowMetaDataRouter(v FlowMetaDataRouter) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeFlowMetaDataRouter performs a merge with any union data inside the FlowMeta_Data, using the provided FlowMetaDataRouter
+func (t *FlowMeta_Data) MergeFlowMetaDataRouter(v FlowMetaDataRouter) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsFlowMetaDataAuth returns the union data inside the FlowMeta_Data as a FlowMetaDataAuth
+func (t FlowMeta_Data) AsFlowMetaDataAuth() (FlowMetaDataAuth, error) {
+	var body FlowMetaDataAuth
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromFlowMetaDataAuth overwrites any union data inside the FlowMeta_Data as the provided FlowMetaDataAuth
+func (t *FlowMeta_Data) FromFlowMetaDataAuth(v FlowMetaDataAuth) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeFlowMetaDataAuth performs a merge with any union data inside the FlowMeta_Data, using the provided FlowMetaDataAuth
+func (t *FlowMeta_Data) MergeFlowMetaDataAuth(v FlowMetaDataAuth) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsFlowMetaDataOAS returns the union data inside the FlowMeta_Data as a FlowMetaDataOAS
+func (t FlowMeta_Data) AsFlowMetaDataOAS() (FlowMetaDataOAS, error) {
+	var body FlowMetaDataOAS
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromFlowMetaDataOAS overwrites any union data inside the FlowMeta_Data as the provided FlowMetaDataOAS
+func (t *FlowMeta_Data) FromFlowMetaDataOAS(v FlowMetaDataOAS) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeFlowMetaDataOAS performs a merge with any union data inside the FlowMeta_Data, using the provided FlowMetaDataOAS
+func (t *FlowMeta_Data) MergeFlowMetaDataOAS(v FlowMetaDataOAS) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsNoFlowMetaData returns the union data inside the FlowMeta_Data as a NoFlowMetaData
+func (t FlowMeta_Data) AsNoFlowMetaData() (NoFlowMetaData, error) {
+	var body NoFlowMetaData
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromNoFlowMetaData overwrites any union data inside the FlowMeta_Data as the provided NoFlowMetaData
+func (t *FlowMeta_Data) FromNoFlowMetaData(v NoFlowMetaData) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeNoFlowMetaData performs a merge with any union data inside the FlowMeta_Data, using the provided NoFlowMetaData
+func (t *FlowMeta_Data) MergeNoFlowMetaData(v NoFlowMetaData) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t FlowMeta_Data) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *FlowMeta_Data) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -590,19 +793,24 @@ func (sh *strictHandler) LogoutSuperuser(w http.ResponseWriter, r *http.Request)
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

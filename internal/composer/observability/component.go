@@ -29,7 +29,7 @@ type (
 
 		logger                   logr.Logger
 		spanOpts                 []trace.SpanStartOption
-		requestCountCounter      metric.Int64Counter
+		requestCounter           metric.Int64Counter
 		requestSizeHistogram     metric.Int64Histogram
 		requestDurationHistogram metric.Float64Histogram
 		responseCounter          metric.Int64Counter
@@ -43,7 +43,7 @@ type (
 const (
 	tracerName = "krb"
 
-	requestCountCounterName      = "request.count"
+	requestCounterName           = "request.count"
 	requestSizeHistogramName     = "request.size"
 	requestDurationHistogramName = "request.duration"
 
@@ -100,11 +100,11 @@ func NewComponent(opts *Opts) composer.FlowComponent {
 	)
 
 	requestCountCounter, err := meter.Int64Counter(
-		requestCountCounterName,
+		requestCounterName,
 		metric.WithDescription("Measures the number of HTTP requests."),
 	)
 	must(err)
-	o.requestCountCounter = requestCountCounter
+	o.requestCounter = requestCountCounter
 
 	requestSizeHistogram, err := meter.Int64Histogram(
 		requestSizeHistogramName,
@@ -168,10 +168,17 @@ func (o *obs) Next(next composer.FlowComponent) {
 
 // GetMeta implements [composer.FlowComponent].
 func (o *obs) GetMeta() []adminapi.FlowMeta {
+	fmd := adminapi.FlowMeta_Data{}
+	if err := fmd.FromFlowMetaDataObservability(
+		adminapi.FlowMetaDataObservability{Enabled: o.cfg.Enabled},
+	); err != nil {
+		panic(err)
+	}
+
 	return append([]adminapi.FlowMeta{
 		{
 			Name: "observability",
-			Data: map[string]any{"enabled": o.cfg.Enabled},
+			Data: fmd,
 		},
 	}, o.next.GetMeta()...)
 }
@@ -222,7 +229,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	krbMetricMeta := metric.WithAttributes(krbAttributes...)
 
 	// Request
-	o.requestCountCounter.Add(ctx, 1, requestMeta, krbMetricMeta)
+	o.requestCounter.Add(ctx, 1, requestMeta, krbMetricMeta)
 	o.requestSizeHistogram.Record(ctx, bw.NumBytes(), requestMeta, krbMetricMeta)
 	o.requestDurationHistogram.Record(
 		ctx,

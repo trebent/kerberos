@@ -64,19 +64,23 @@ func (v *validator) Next(next composer.FlowComponent) {
 
 // GetMeta implements [composer.FlowComponent].
 func (v *validator) GetMeta() []adminapi.FlowMeta {
+	fmd := adminapi.FlowMeta_Data{}
+	if err := fmd.FromFlowMetaDataOAS(adminapi.FlowMetaDataOAS{
+		Backends: func() *[]string {
+			backends := make([]string, 0, len(v.validators))
+			for backend := range v.validators {
+				backends = append(backends, backend)
+			}
+			return &backends
+		}(),
+	}); err != nil {
+		panic(err)
+	}
+
 	return append([]adminapi.FlowMeta{
 		{
 			Name: "oas-validator",
-			Data: map[string]any{
-				"backends": func() []string {
-					backends := make([]string, 0, len(v.validators))
-					for backend := range v.validators {
-						backends = append(backends, backend)
-					}
-					return backends
-				}(),
-				composer.MetaKeyOrder: v.cfg.Order,
-			},
+			Data: fmd,
 		},
 	}, v.next.GetMeta()...)
 }

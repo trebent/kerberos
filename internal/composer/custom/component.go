@@ -83,10 +83,7 @@ func (c *custom) Next(next composer.FlowComponent) {
 
 // GetMeta implements [composer.FlowComponent].
 func (c *custom) GetMeta() []adminapi.FlowMeta {
-	return append([]adminapi.FlowMeta{
-		{
-			Name: "custom",
-			Data: map[string]any{"component_count": len(c.all)},
-		},
-	}, c.first.GetMeta()...)
+	// Skip adding custom component metadata for now, since it's not actually manipulating requests
+	// in any way, other than forwarding the call to the first component according to its order.
+	return c.first.GetMeta()
 }
