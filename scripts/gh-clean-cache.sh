@@ -1,5 +1,7 @@
 #! /bin/bash
 
+# Run this several times if the cache is full of stuff.
+
 set -euo pipefail
 
 REPO="trebent/kerberos"
