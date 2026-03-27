@@ -35,13 +35,13 @@ jobs:
       - name: Set up Golang
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
-          go-version-file: go.mod
+          go-version-file: tools/go.mod
 
       - name: Run vulnerability scan
         continue-on-error: true
         run: make vulncheck-sarif
 
-      - name: Upload linting SARIF
+      - name: Upload vulnerability SARIF
         uses: github/codeql-action/upload-sarif@38697555549f1db7851b81482ff19f1fa5c4fedc # v4.34.1
         with:
           sarif_file: build/govulncheck-report.sarif
