@@ -7,6 +7,53 @@ info:
     The Kerberos administration API allows administrators manage a Kerberos deployment.
 components:
   schemas:
+    ToggleDebugForBackendRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        debug:
+          type: boolean
+        durationSeconds:
+          type: integer
+          minimum: 60
+          maximum: 3600
+          default: 300
+          description: Duration in seconds to keep the backend in debug mode. If not provided, the backend will be kept in debug mode until debug is disabled, or for a maximum of 1 hour. Minimum is 1 minute, defaults to 5 minutes.
+      required:
+        - debug
+    DebugForBackendResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        sessionId:
+          type: string
+          description: The ID for the debug session.
+        sessionStartedAt:
+          type: string
+          format: date-time
+          description: The time when the debug session started.
+        sessionExpiresAt:
+          type: string
+          format: date-time
+          description: The time when the debug session expires.
+        flowRuns:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              traceId:
+                type: string
+                description: The ID for the flow run.
+              startedAt:
+                type: string
+                format: date-time
+                description: The time when the flow started.
+              endedAt:
+                type: string
+                format: date-time
+                description: The time when the flow finished.
+          description: The debug traces for the backend.
     FlowMeta:
       type: object
       properties:
@@ -252,6 +299,77 @@ paths:
                 type: object
                 additionalProperties: true
           description: Got the backend OAS successfully.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Backend not found.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+
+  /api/admin/debug/{backend}:
+    put:
+      operationId: ToggleDebugSessionForBackend
+      parameters:
+        - name: backend
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ToggleDebugSessionForBackendRequest"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+          description: Toggled the backend debug session successfully.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Backend not found.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+    get:
+      operationId: GetDebugSessionForBackend
+      parameters:
+        - name: backend
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  debug:
+                    type: boolean
+                  expiresAt:
+                    type: string
+                    format: date-time
+                required:
+                  - debug
+          description: Got the backend debug session status successfully.
         "404":
           content:
             application/json:
