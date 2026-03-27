@@ -35,7 +35,9 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           gh pr review --approve "$PR_URL"
-          gh pr merge --auto -s "$PR_URL"
+          if [ "$(gh pr view "$PR_URL" --json autoMergeRequest --jq '.autoMergeRequest')" = "null" ]; then
+            gh pr merge --auto -s "$PR_URL"
+          fi
 
       - name: Approve major version updates
         if: steps.metadata.outputs.update-type == 'version-update:semver-major'
