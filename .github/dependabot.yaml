@@ -3,6 +3,7 @@ updates:
   - package-ecosystem: "gomod"
     directories:
       - "/"
+      - "/tools"
       - "/test/integration"
     schedule:
       interval: "daily"
