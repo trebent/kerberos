@@ -49,7 +49,7 @@ jobs:
           push: ${{ inputs.push }}
           build-args: |
             VERSION=${{ inputs.version }}
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ghcr.io/${{ github.repository }}:${{ inputs.version }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=kerberos
           cache-to: type=gha,scope=kerberos,mode=max
@@ -84,7 +84,7 @@ jobs:
           push: ${{ inputs.push }}
           build-args: |
             VERSION=${{ inputs.version }}
-          tags: ${{ inputs.version }}
+          tags: ghcr.io/${{ github.repository }}/echo:${{ inputs.version }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=echo
           cache-to: type=gha,scope=echo,mode=max
