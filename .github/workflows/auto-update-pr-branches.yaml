@@ -1,6 +1,6 @@
 name: Auto-update PR branches
 
-run-name: Auto-update PR branchs on push to main
+run-name: Auto-update PR branches on push to main
 
 on:
   push:

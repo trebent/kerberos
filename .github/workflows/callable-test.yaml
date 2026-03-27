@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
   unit-test:
@@ -41,7 +42,7 @@ jobs:
   integration-test:
     if: ${{ inputs.integration == true }}
     env:
-      VERSION: ${{ inputs.VERSION }}
+      VERSION: ${{ inputs.version }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
