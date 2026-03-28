@@ -58,7 +58,9 @@ func NewComponent(opts *Opts) composer.FlowComponent {
 			"port", backend.Port,
 		)
 	}
-	return &router{cfg: opts.Cfg}
+	return &router{
+		cfg: opts.Cfg,
+	}
 }
 
 // Next implements [composer.FlowComponent].

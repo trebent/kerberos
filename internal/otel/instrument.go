@@ -105,7 +105,14 @@ func newTracerProvider(ctx context.Context, res *resource.Resource) (*trace.Trac
 		return nil, err
 	}
 
-	return trace.NewTracerProvider(trace.WithBatcher(traceExporter), trace.WithResource(res)), nil
+	// NOTE: make sure to configure a sampler in production. The default is AlwaysSample unless otherwise stated by the parent span.
+	// There are appropriate for development and testing, but can lead to high overhead in production.
+	// OTEL_TRACES_SAMPLER=parentbased_traceidratio
+	// OTEL_TRACES_SAMPLER_ARG=0.1
+	return trace.NewTracerProvider(
+		trace.WithBatcher(traceExporter),
+		trace.WithResource(res),
+	), nil
 }
 
 func newMeterProvider(ctx context.Context, res *resource.Resource) (*metric.MeterProvider, error) {
@@ -114,5 +121,8 @@ func newMeterProvider(ctx context.Context, res *resource.Resource) (*metric.Mete
 		return nil, err
 	}
 
-	return metric.NewMeterProvider(metric.WithReader(reader), metric.WithResource(res)), nil
+	return metric.NewMeterProvider(
+		metric.WithReader(reader),
+		metric.WithResource(res),
+	), nil
 }

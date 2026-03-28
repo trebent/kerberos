@@ -16,6 +16,10 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
       - OTEL_EXPORTER_PROMETHEUS_HOST=kerberos
       - OTEL_EXPORTER_PROMETHEUS_PORT=${KERBEROS_METRICS_PORT}
+      # Use to test sampling in production. The default is AlwaysSample unless otherwise stated by the parent span.
+      # There are appropriate for development and testing, but can lead to high overhead in production.
+      # - OTEL_TRACES_SAMPLER=parentbased_traceidratio
+      # - OTEL_TRACES_SAMPLER_ARG=0.1
       - LOG_TO_CONSOLE=1
       - LOG_VERBOSITY=${LOG_VERBOSITY:-20}
       - PORT=${KERBEROS_PORT}
