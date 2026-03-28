@@ -9,7 +9,6 @@
     ]
   },
   "observability": {
-    "enabled": false,
-    "runtimeMetrics": false
+    "enabled": false
   }
 }

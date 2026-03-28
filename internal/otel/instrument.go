@@ -21,6 +21,7 @@ func Instrument(
 	ctx context.Context,
 	serviceName,
 	serviceVersion string,
+	runtimeMetrics bool,
 ) (func(context.Context) error, error) {
 	var shutdownFuncs []func(context.Context) error
 
@@ -81,10 +82,11 @@ func Instrument(
 		go.processor.limit      {thread}      The number of OS threads that can execute user-level Go code simultaneously.
 		go.config.gogc          %             Heap size target percentage configured by the user, otherwise 100.
 	*/
-	err = runtime.Start()
-	if err != nil {
-		handleErr(err)
-		return shutdown, err
+	if runtimeMetrics {
+		if err = runtime.Start(); err != nil {
+			handleErr(err)
+			return shutdown, err
+		}
 	}
 
 	return shutdown, err

@@ -16,10 +16,10 @@ func Instrument(
 	serviceName,
 	serviceVersion string,
 ) (func(context.Context) error, error) {
-	if !cfg.Enabled || !cfg.RuntimeMetrics {
-		zerologr.Info("Observability runtime metrics are disabled")
+	if !cfg.Enabled {
+		zerologr.Info("Observability is disabled, skipping instrumentation")
 		return func(context.Context) error { return nil }, nil
 	}
 
-	return otel.Instrument(ctx, serviceName, serviceVersion)
+	return otel.Instrument(ctx, serviceName, serviceVersion, cfg.RuntimeMetrics)
 }

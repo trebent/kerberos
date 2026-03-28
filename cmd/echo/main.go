@@ -79,7 +79,7 @@ func main() {
 	signalCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	shutdown, err := intotel.Instrument(signalCtx, "echo", "0.1.0")
+	shutdown, err := intotel.Instrument(signalCtx, "echo", "0.1.0", true)
 	if err != nil {
 		zerologr.Error(err, "Failed to initialize OpenTelemetry")
 		os.Exit(1)
