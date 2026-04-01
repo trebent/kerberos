@@ -139,6 +139,7 @@ func setupConfig() *config.RootConfig {
 // the server is stopped, it returns http.ErrServerClosed.
 // nolint: funlen // welp
 func startServer(ctx context.Context, cfg *config.RootConfig) error {
+	adminMux := http.NewServeMux()
 	mux := http.NewServeMux()
 	db := sqlite.New(
 		&sqlite.Opts{DSN: filepath.Join(internalenv.DBDirectory.Value(), sqlite.DBName)},
@@ -149,7 +150,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	zerologr.Info("Loading admin")
 	admin := admin.New(
 		&admin.Opts{
-			Mux:    mux,
+			Mux:    adminMux,
 			DB:     db,
 			OASDir: internalenv.OASDirectory.Value(),
 			Cfg:    cfg.AdminConfig,
@@ -172,7 +173,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		zerologr.Info("Loading auth")
 		authorizer := auth.NewComponent(&auth.Opts{
 			Cfg:                    cfg.AuthConfig,
-			Mux:                    mux,
+			Mux:                    adminMux,
 			DB:                     db,
 			OASDir:                 internalenv.OASDirectory.Value(),
 			AdminSessionMiddleware: admin.SessionMiddleware,
@@ -209,16 +210,23 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 
 	zerologr.Info("Starting server")
 	mux.Handle("/gw/", composer)
-	server := http.Server{
+	gwServer := http.Server{
 		Addr:         fmt.Sprintf(":%d", internalenv.Port.Value()),
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
 		Handler:      mux,
 	}
+	adminServer := http.Server{
+		Addr:         fmt.Sprintf(":%d", internalenv.AdminPort.Value()),
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
+		Handler:      adminMux,
+	}
 
 	errChan := make(chan error, 1)
 	go func() {
-		errChan <- server.ListenAndServe()
+		errChan <- gwServer.ListenAndServe()
+		errChan <- adminServer.ListenAndServe()
 	}()
 
 	var (
@@ -235,9 +243,13 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		)
 		defer timeoutCancel()
 
-		shutdownErr = server.Shutdown(timeoutCtx)
+		shutdownErr = gwServer.Shutdown(timeoutCtx)
 		if shutdownErr != nil {
 			zerologr.Error(shutdownErr, "Server shutdown error")
+		}
+		shutdownErr = adminServer.Shutdown(timeoutCtx)
+		if shutdownErr != nil {
+			zerologr.Error(shutdownErr, "Admin server shutdown error")
 		}
 		srvErr = <-errChan
 	case srvErr = <-errChan:

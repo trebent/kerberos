@@ -70,6 +70,12 @@ var (
 		Value:    30000, // nolint: mnd
 		Validate: validatePort,
 	})
+	AdminPort = envparser.Register(&envparser.Opts[int]{
+		Name:     "ADMIN_PORT",
+		Desc:     "Port for the Kerberos admin server.",
+		Value:    30001, // nolint: mnd
+		Validate: validatePort,
+	})
 	ReadTimeoutSeconds = envparser.Register(&envparser.Opts[int]{
 		Name:     "READ_TIMEOUT_SECONDS",
 		Desc:     "Read timeout in seconds.",
