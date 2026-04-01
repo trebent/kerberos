@@ -223,9 +223,12 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		Handler:      adminMux,
 	}
 
-	errChan := make(chan error, 1)
+	errChan := make(chan error, 2)
 	go func() {
 		errChan <- gwServer.ListenAndServe()
+	}()
+
+	go func() {
 		errChan <- adminServer.ListenAndServe()
 	}()
 
@@ -252,6 +255,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 			zerologr.Error(shutdownErr, "Admin server shutdown error")
 		}
 		srvErr = <-errChan
+		_ = <-errChan
 	case srvErr = <-errChan:
 		zerologr.Error(srvErr, "Server start error")
 	}
