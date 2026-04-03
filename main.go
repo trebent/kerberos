@@ -101,7 +101,7 @@ func main() {
 		startLogger.Error(err, "Kerberos HTTP server failed")
 		os.Exit(1)
 	}
-	startLogger.Info("Kerberos API GW server stopped")
+	startLogger.Info("Kerberos stopped")
 }
 
 // setupConfig sets up the configuration map and registers all necessary
@@ -223,17 +223,19 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		Handler:      adminMux,
 	}
 
-	errChan := make(chan error, 2)
+	gwErrChan := make(chan error, 1)
 	go func() {
-		errChan <- gwServer.ListenAndServe()
+		gwErrChan <- gwServer.ListenAndServe()
 	}()
 
+	adminErrChan := make(chan error, 1)
 	go func() {
-		errChan <- adminServer.ListenAndServe()
+		adminErrChan <- adminServer.ListenAndServe()
 	}()
 
 	var (
-		srvErr      error
+		adminSrvErr error
+		gwSrvErr    error
 		shutdownErr error
 	)
 	select {
@@ -254,11 +256,13 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		if shutdownErr != nil {
 			zerologr.Error(shutdownErr, "Admin server shutdown error")
 		}
-		srvErr = <-errChan
-		_ = <-errChan
-	case srvErr = <-errChan:
-		zerologr.Error(srvErr, "Server start error")
+		adminSrvErr = <-adminErrChan
+		gwSrvErr = <-gwErrChan
+	case adminErr := <-adminErrChan:
+		zerologr.Error(adminErr, "Admin server start error")
+	case gwErr := <-gwErrChan:
+		zerologr.Error(gwErr, "GW server start error")
 	}
 
-	return errors.Join(srvErr, shutdownErr)
+	return errors.Join(adminSrvErr, gwSrvErr, shutdownErr)
 }
