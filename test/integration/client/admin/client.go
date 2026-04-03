@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v2"
 
@@ -22,18 +23,89 @@ const (
 	SessionidScopes = "sessionid.Scopes"
 )
 
+// Defines values for DebugSessionOperationFlowTransitionsResultOutcome.
+const (
+	Failure DebugSessionOperationFlowTransitionsResultOutcome = "failure"
+	Success DebugSessionOperationFlowTransitionsResultOutcome = "success"
+)
+
+// Valid indicates whether the value is a known member of the DebugSessionOperationFlowTransitionsResultOutcome enum.
+func (e DebugSessionOperationFlowTransitionsResultOutcome) Valid() bool {
+	switch e {
+	case Failure:
+		return true
+	case Success:
+		return true
+	default:
+		return false
+	}
+}
+
 // APIErrorResponse defines model for APIErrorResponse.
 type APIErrorResponse struct {
 	Errors []string `json:"errors"`
 }
 
-// FlowMeta defines model for FlowMeta.
-type FlowMeta struct {
-	Data FlowMeta_Data `json:"data"`
-	Name string        `json:"name"`
+// DebugSession defines model for DebugSession.
+type DebugSession struct {
+	// SessionExpiresAt The time when the debug session expires.
+	SessionExpiresAt time.Time `json:"sessionExpiresAt"`
+
+	// SessionId The ID for the debug session.
+	SessionId string `json:"sessionId"`
+
+	// SessionStartedAt The time when the debug session started.
+	SessionStartedAt time.Time `json:"sessionStartedAt"`
+
+	// SessionStoppedAt The time when the debug session was stopped. Null if the session is still active.
+	SessionStoppedAt *time.Time `json:"sessionStoppedAt,omitempty"`
 }
 
-// FlowMeta_Data defines model for FlowMeta.Data.
+// DebugSessionOperation defines model for DebugSessionOperation.
+type DebugSessionOperation struct {
+	// FlowTransitions The flow transitions that occurred during this operation, in chronological order.
+	FlowTransitions *[]struct {
+		// Component The flow component that the transition corresponds to.
+		Component *string `json:"component,omitempty"`
+		Result    *struct {
+			// Cause The cause of the flow transition result, if applicable.
+			Cause   *string                                           `json:"cause,omitempty"`
+			Outcome DebugSessionOperationFlowTransitionsResultOutcome `json:"outcome"`
+		} `json:"result,omitempty"`
+
+		// StartedAt The time when the flow transition started.
+		StartedAt *time.Time `json:"startedAt,omitempty"`
+
+		// StoppedAt The time when the flow transition stopped. Null if the transition is still active.
+		StoppedAt *time.Time `json:"stoppedAt,omitempty"`
+	} `json:"flowTransitions,omitempty"`
+
+	// Method The HTTP method of the operation.
+	Method string `json:"method"`
+
+	// StartedAt The time when the operation was started.
+	StartedAt time.Time `json:"startedAt"`
+
+	// StoppedAt The time when the operation was stopped. Null if the operation is still active.
+	StoppedAt time.Time `json:"stoppedAt"`
+
+	// Url The full URL of the request.
+	Url string `json:"url"`
+}
+
+// DebugSessionOperationFlowTransitionsResultOutcome defines model for DebugSessionOperation.FlowTransitions.Result.Outcome.
+type DebugSessionOperationFlowTransitionsResultOutcome string
+
+// FlowMeta defines model for FlowMeta.
+type FlowMeta struct {
+	// Data The metadata for the flow component. The structure of the metadata depends on the flow component.
+	Data FlowMeta_Data `json:"data"`
+
+	// Name The name of the flow component, e.g. "observability", "router", "auth", or "oas".
+	Name string `json:"name"`
+}
+
+// FlowMeta_Data The metadata for the flow component. The structure of the metadata depends on the flow component.
 type FlowMeta_Data struct {
 	union json.RawMessage
 }
@@ -96,11 +168,32 @@ type FlowMetaDataRouterBackend struct {
 // NoFlowMetaData No metadata for the flow component.
 type NoFlowMetaData = map[string]interface{}
 
+// StartDebugSessionRequest defines model for StartDebugSessionRequest.
+type StartDebugSessionRequest struct {
+	// DurationSeconds Duration in seconds to keep the backend in debug mode. If not provided, the backend will be kept in debug mode until debug is disabled, or for a maximum of 1 hour. Minimum is 1 minute, defaults to 5 minutes.
+	DurationSeconds *int `json:"durationSeconds,omitempty"`
+}
+
+// StartDebugSessionResponse defines model for StartDebugSessionResponse.
+type StartDebugSessionResponse = DebugSession
+
+// ExtendDebugSessionJSONBody defines parameters for ExtendDebugSession.
+type ExtendDebugSessionJSONBody struct {
+	// AdditionalDurationSeconds Additional duration in seconds to keep the backend in debug mode. Total duration cannot exceed 1 hour.
+	AdditionalDurationSeconds int `json:"additionalDurationSeconds"`
+}
+
 // LoginSuperuserJSONBody defines parameters for LoginSuperuser.
 type LoginSuperuserJSONBody struct {
 	ClientId     string `json:"clientId"`
 	ClientSecret string `json:"clientSecret"`
 }
+
+// StartDebugSessionJSONRequestBody defines body for StartDebugSession for application/json ContentType.
+type StartDebugSessionJSONRequestBody = StartDebugSessionRequest
+
+// ExtendDebugSessionJSONRequestBody defines body for ExtendDebugSession for application/json ContentType.
+type ExtendDebugSessionJSONRequestBody ExtendDebugSessionJSONBody
 
 // LoginSuperuserJSONRequestBody defines body for LoginSuperuser for application/json ContentType.
 type LoginSuperuserJSONRequestBody LoginSuperuserJSONBody
@@ -318,6 +411,28 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// ListDebugSessions request
+	ListDebugSessions(ctx context.Context, backend string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StartDebugSessionWithBody request with any body
+	StartDebugSessionWithBody(ctx context.Context, backend string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	StartDebugSession(ctx context.Context, backend string, body StartDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StopDebugSession request
+	StopDebugSession(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetDebugSession request
+	GetDebugSession(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ExtendDebugSessionWithBody request with any body
+	ExtendDebugSessionWithBody(ctx context.Context, backend string, sessionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	ExtendDebugSession(ctx context.Context, backend string, sessionId string, body ExtendDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListDebugSessionOperations request
+	ListDebugSessionOperations(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetFlow request
 	GetFlow(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -331,6 +446,102 @@ type ClientInterface interface {
 
 	// LogoutSuperuser request
 	LogoutSuperuser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) ListDebugSessions(ctx context.Context, backend string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListDebugSessionsRequest(c.Server, backend)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) StartDebugSessionWithBody(ctx context.Context, backend string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStartDebugSessionRequestWithBody(c.Server, backend, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) StartDebugSession(ctx context.Context, backend string, body StartDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStartDebugSessionRequest(c.Server, backend, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) StopDebugSession(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStopDebugSessionRequest(c.Server, backend, sessionId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetDebugSession(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDebugSessionRequest(c.Server, backend, sessionId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ExtendDebugSessionWithBody(ctx context.Context, backend string, sessionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewExtendDebugSessionRequestWithBody(c.Server, backend, sessionId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ExtendDebugSession(ctx context.Context, backend string, sessionId string, body ExtendDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewExtendDebugSessionRequest(c.Server, backend, sessionId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListDebugSessionOperations(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListDebugSessionOperationsRequest(c.Server, backend, sessionId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) GetFlow(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -391,6 +602,264 @@ func (c *Client) LogoutSuperuser(ctx context.Context, reqEditors ...RequestEdito
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewListDebugSessionsRequest generates requests for ListDebugSessions
+func NewListDebugSessionsRequest(server string, backend string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "backend", backend, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/admin/debug/%s/sessions", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewStartDebugSessionRequest calls the generic StartDebugSession builder with application/json body
+func NewStartDebugSessionRequest(server string, backend string, body StartDebugSessionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStartDebugSessionRequestWithBody(server, backend, "application/json", bodyReader)
+}
+
+// NewStartDebugSessionRequestWithBody generates requests for StartDebugSession with any type of body
+func NewStartDebugSessionRequestWithBody(server string, backend string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "backend", backend, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/admin/debug/%s/sessions", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewStopDebugSessionRequest generates requests for StopDebugSession
+func NewStopDebugSessionRequest(server string, backend string, sessionId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "backend", backend, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/admin/debug/%s/sessions/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetDebugSessionRequest generates requests for GetDebugSession
+func NewGetDebugSessionRequest(server string, backend string, sessionId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "backend", backend, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/admin/debug/%s/sessions/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewExtendDebugSessionRequest calls the generic ExtendDebugSession builder with application/json body
+func NewExtendDebugSessionRequest(server string, backend string, sessionId string, body ExtendDebugSessionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewExtendDebugSessionRequestWithBody(server, backend, sessionId, "application/json", bodyReader)
+}
+
+// NewExtendDebugSessionRequestWithBody generates requests for ExtendDebugSession with any type of body
+func NewExtendDebugSessionRequestWithBody(server string, backend string, sessionId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "backend", backend, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/admin/debug/%s/sessions/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListDebugSessionOperationsRequest generates requests for ListDebugSessionOperations
+func NewListDebugSessionOperationsRequest(server string, backend string, sessionId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "backend", backend, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/admin/debug/%s/sessions/%s/operations", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewGetFlowRequest generates requests for GetFlow
@@ -564,6 +1033,28 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// ListDebugSessionsWithResponse request
+	ListDebugSessionsWithResponse(ctx context.Context, backend string, reqEditors ...RequestEditorFn) (*ListDebugSessionsResponse, error)
+
+	// StartDebugSessionWithBodyWithResponse request with any body
+	StartDebugSessionWithBodyWithResponse(ctx context.Context, backend string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StartDebugSessionResponse, error)
+
+	StartDebugSessionWithResponse(ctx context.Context, backend string, body StartDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*StartDebugSessionResponse, error)
+
+	// StopDebugSessionWithResponse request
+	StopDebugSessionWithResponse(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*StopDebugSessionResponse, error)
+
+	// GetDebugSessionWithResponse request
+	GetDebugSessionWithResponse(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*GetDebugSessionResponse, error)
+
+	// ExtendDebugSessionWithBodyWithResponse request with any body
+	ExtendDebugSessionWithBodyWithResponse(ctx context.Context, backend string, sessionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ExtendDebugSessionResponse, error)
+
+	ExtendDebugSessionWithResponse(ctx context.Context, backend string, sessionId string, body ExtendDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*ExtendDebugSessionResponse, error)
+
+	// ListDebugSessionOperationsWithResponse request
+	ListDebugSessionOperationsWithResponse(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*ListDebugSessionOperationsResponse, error)
+
 	// GetFlowWithResponse request
 	GetFlowWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetFlowResponse, error)
 
@@ -577,6 +1068,151 @@ type ClientWithResponsesInterface interface {
 
 	// LogoutSuperuserWithResponse request
 	LogoutSuperuserWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*LogoutSuperuserResponse, error)
+}
+
+type ListDebugSessionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]DebugSession
+	JSON404      *APIErrorResponse
+	JSON500      *APIErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r ListDebugSessionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListDebugSessionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type StartDebugSessionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *StartDebugSessionResponse
+	JSON404      *APIErrorResponse
+	JSON409      *APIErrorResponse
+	JSON500      *APIErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r StartDebugSessionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StartDebugSessionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type StopDebugSessionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON404      *APIErrorResponse
+	JSON500      *APIErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r StopDebugSessionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StopDebugSessionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetDebugSessionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DebugSession
+	JSON404      *APIErrorResponse
+	JSON500      *APIErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDebugSessionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDebugSessionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ExtendDebugSessionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DebugSession
+	JSON404      *APIErrorResponse
+	JSON409      *APIErrorResponse
+	JSON500      *APIErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r ExtendDebugSessionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ExtendDebugSessionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListDebugSessionOperationsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]DebugSessionOperation
+	JSON404      *APIErrorResponse
+	JSON500      *APIErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r ListDebugSessionOperationsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListDebugSessionOperationsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type GetFlowResponse struct {
@@ -673,6 +1309,76 @@ func (r LogoutSuperuserResponse) StatusCode() int {
 	return 0
 }
 
+// ListDebugSessionsWithResponse request returning *ListDebugSessionsResponse
+func (c *ClientWithResponses) ListDebugSessionsWithResponse(ctx context.Context, backend string, reqEditors ...RequestEditorFn) (*ListDebugSessionsResponse, error) {
+	rsp, err := c.ListDebugSessions(ctx, backend, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListDebugSessionsResponse(rsp)
+}
+
+// StartDebugSessionWithBodyWithResponse request with arbitrary body returning *StartDebugSessionResponse
+func (c *ClientWithResponses) StartDebugSessionWithBodyWithResponse(ctx context.Context, backend string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StartDebugSessionResponse, error) {
+	rsp, err := c.StartDebugSessionWithBody(ctx, backend, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStartDebugSessionResponse(rsp)
+}
+
+func (c *ClientWithResponses) StartDebugSessionWithResponse(ctx context.Context, backend string, body StartDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*StartDebugSessionResponse, error) {
+	rsp, err := c.StartDebugSession(ctx, backend, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStartDebugSessionResponse(rsp)
+}
+
+// StopDebugSessionWithResponse request returning *StopDebugSessionResponse
+func (c *ClientWithResponses) StopDebugSessionWithResponse(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*StopDebugSessionResponse, error) {
+	rsp, err := c.StopDebugSession(ctx, backend, sessionId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStopDebugSessionResponse(rsp)
+}
+
+// GetDebugSessionWithResponse request returning *GetDebugSessionResponse
+func (c *ClientWithResponses) GetDebugSessionWithResponse(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*GetDebugSessionResponse, error) {
+	rsp, err := c.GetDebugSession(ctx, backend, sessionId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDebugSessionResponse(rsp)
+}
+
+// ExtendDebugSessionWithBodyWithResponse request with arbitrary body returning *ExtendDebugSessionResponse
+func (c *ClientWithResponses) ExtendDebugSessionWithBodyWithResponse(ctx context.Context, backend string, sessionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ExtendDebugSessionResponse, error) {
+	rsp, err := c.ExtendDebugSessionWithBody(ctx, backend, sessionId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseExtendDebugSessionResponse(rsp)
+}
+
+func (c *ClientWithResponses) ExtendDebugSessionWithResponse(ctx context.Context, backend string, sessionId string, body ExtendDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*ExtendDebugSessionResponse, error) {
+	rsp, err := c.ExtendDebugSession(ctx, backend, sessionId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseExtendDebugSessionResponse(rsp)
+}
+
+// ListDebugSessionOperationsWithResponse request returning *ListDebugSessionOperationsResponse
+func (c *ClientWithResponses) ListDebugSessionOperationsWithResponse(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*ListDebugSessionOperationsResponse, error) {
+	rsp, err := c.ListDebugSessionOperations(ctx, backend, sessionId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListDebugSessionOperationsResponse(rsp)
+}
+
 // GetFlowWithResponse request returning *GetFlowResponse
 func (c *ClientWithResponses) GetFlowWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetFlowResponse, error) {
 	rsp, err := c.GetFlow(ctx, reqEditors...)
@@ -715,6 +1421,253 @@ func (c *ClientWithResponses) LogoutSuperuserWithResponse(ctx context.Context, r
 		return nil, err
 	}
 	return ParseLogoutSuperuserResponse(rsp)
+}
+
+// ParseListDebugSessionsResponse parses an HTTP response from a ListDebugSessionsWithResponse call
+func ParseListDebugSessionsResponse(rsp *http.Response) (*ListDebugSessionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListDebugSessionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []DebugSession
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseStartDebugSessionResponse parses an HTTP response from a StartDebugSessionWithResponse call
+func ParseStartDebugSessionResponse(rsp *http.Response) (*StartDebugSessionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StartDebugSessionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest StartDebugSessionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseStopDebugSessionResponse parses an HTTP response from a StopDebugSessionWithResponse call
+func ParseStopDebugSessionResponse(rsp *http.Response) (*StopDebugSessionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StopDebugSessionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetDebugSessionResponse parses an HTTP response from a GetDebugSessionWithResponse call
+func ParseGetDebugSessionResponse(rsp *http.Response) (*GetDebugSessionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDebugSessionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DebugSession
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseExtendDebugSessionResponse parses an HTTP response from a ExtendDebugSessionWithResponse call
+func ParseExtendDebugSessionResponse(rsp *http.Response) (*ExtendDebugSessionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ExtendDebugSessionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DebugSession
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListDebugSessionOperationsResponse parses an HTTP response from a ListDebugSessionOperationsWithResponse call
+func ParseListDebugSessionOperationsResponse(rsp *http.Response) (*ListDebugSessionOperationsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListDebugSessionOperationsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []DebugSessionOperation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParseGetFlowResponse parses an HTTP response from a GetFlowWithResponse call

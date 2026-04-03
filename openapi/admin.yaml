@@ -7,21 +7,19 @@ info:
     The Kerberos administration API allows administrators manage a Kerberos deployment.
 components:
   schemas:
-    ToggleDebugForBackendRequest:
+    StartDebugSessionRequest:
       type: object
       additionalProperties: false
       properties:
-        debug:
-          type: boolean
         durationSeconds:
           type: integer
           minimum: 60
           maximum: 3600
           default: 300
           description: Duration in seconds to keep the backend in debug mode. If not provided, the backend will be kept in debug mode until debug is disabled, or for a maximum of 1 hour. Minimum is 1 minute, defaults to 5 minutes.
-      required:
-        - debug
-    DebugForBackendResponse:
+    StartDebugSessionResponse:
+      $ref: "#/components/schemas/DebugSession"
+    DebugSession:
       type: object
       additionalProperties: false
       properties:
@@ -36,31 +34,76 @@ components:
           type: string
           format: date-time
           description: The time when the debug session expires.
-        flowRuns:
+        sessionStoppedAt:
+          type: string
+          format: date-time
+          description: The time when the debug session was stopped. Null if the session is still active.
+      required:
+        - sessionId
+        - sessionStartedAt
+        - sessionExpiresAt
+    DebugSessionOperation:
+      type: object
+      additionalProperties: false
+      properties:
+        startedAt:
+          type: string
+          format: date-time
+          description: The time when the operation was started.
+        stoppedAt:
+          type: string
+          format: date-time
+          description: The time when the operation was stopped. Null if the operation is still active.
+        url:
+          type: string
+          description: The full URL of the request.
+        method:
+          type: string
+          description: The HTTP method of the operation.
+        flowTransitions:
           type: array
           items:
             type: object
             additionalProperties: false
             properties:
-              traceId:
+              component:
                 type: string
-                description: The ID for the flow run.
+                description: The flow component that the transition corresponds to.
               startedAt:
                 type: string
                 format: date-time
-                description: The time when the flow started.
-              endedAt:
+                description: The time when the flow transition started.
+              stoppedAt:
                 type: string
                 format: date-time
-                description: The time when the flow finished.
-          description: The debug traces for the backend.
+                description: The time when the flow transition stopped. Null if the transition is still active.
+              result:
+                type: object
+                properties:
+                  outcome:
+                    type: string
+                    enum: [success, failure]
+                  cause:
+                    type: string
+                    description: The cause of the flow transition result, if applicable.
+                required:
+                  - outcome
+          description: The flow transitions that occurred during this operation, in chronological order.
+      required:
+        - startedAt
+        - stoppedAt
+        - url
+        - method
+        - backend
     FlowMeta:
       type: object
       properties:
         name:
           type: string
+          description: The name of the flow component, e.g. "observability", "router", "auth", or "oas".
         data:
           type: object
+          description: The metadata for the flow component. The structure of the metadata depends on the flow component.
           anyOf:
             - $ref: "#/components/schemas/FlowMetaDataObservability"
             - $ref: "#/components/schemas/FlowMetaDataRouter"
@@ -312,9 +355,9 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
 
-  /api/admin/debug/{backend}:
-    put:
-      operationId: ToggleDebugSessionForBackend
+  /api/admin/debug/{backend}/sessions:
+    post:
+      operationId: StartDebugSession
       parameters:
         - name: backend
           in: path
@@ -326,15 +369,49 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ToggleDebugSessionForBackendRequest"
+              $ref: "#/components/schemas/StartDebugSessionRequest"
       responses:
         "200":
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: true
-          description: Toggled the backend debug session successfully.
+                $ref: "#/components/schemas/StartDebugSessionResponse"
+          description: Started the backend debug session successfully.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Backend not found.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Backend is already in debug mode.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+    get:
+      operationId: ListDebugSessions
+      parameters:
+        - name: backend
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DebugSession"
+          description: Got all debug sessions successfully.
         "404":
           content:
             application/json:
@@ -347,10 +424,17 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
+
+  /api/admin/debug/{backend}/sessions/{sessionId}:
     get:
-      operationId: GetDebugSessionForBackend
+      operationId: GetDebugSession
       parameters:
         - name: backend
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sessionId
           in: path
           required: true
           schema:
@@ -360,22 +444,130 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  debug:
-                    type: boolean
-                  expiresAt:
-                    type: string
-                    format: date-time
-                required:
-                  - debug
-          description: Got the backend debug session status successfully.
+                $ref: "#/components/schemas/DebugSession"
+          description: Got the debug session successfully.
         "404":
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
-          description: Backend not found.
+          description: Backend or debug session not found.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+    put:
+      operationId: ExtendDebugSession
+      parameters:
+        - name: backend
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                additionalDurationSeconds:
+                  type: integer
+                  minimum: 1
+                  description: Additional duration in seconds to keep the backend in debug mode. Total duration cannot exceed 1 hour.
+              required:
+                - additionalDurationSeconds
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DebugSession"
+          description: Extended the backend debug session successfully.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Backend or debug session not found.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Backend is not in debug mode.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+    delete:
+      operationId: StopDebugSession
+      parameters:
+        - name: backend
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Stopped the backend debug session successfully.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Backend or debug session not found.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+
+  /api/admin/debug/{backend}/sessions/{sessionId}/operations:
+    get:
+      operationId: ListDebugSessionOperations
+      parameters:
+        - name: backend
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DebugSessionOperation"
+          description: Got all debug session operations successfully.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Backend or debug session not found.
         "500":
           content:
             application/json:
