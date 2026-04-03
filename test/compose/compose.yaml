@@ -6,9 +6,10 @@ services:
     build:
       context: ../..
       dockerfile: ./Dockerfile
-    
+
     ports:
       - ${KERBEROS_PORT}:${KERBEROS_PORT}
+      - ${KERBEROS_ADMIN_PORT}:${KERBEROS_ADMIN_PORT}
       - ${KERBEROS_METRICS_PORT}:${KERBEROS_METRICS_PORT}
     environment:
       - OTEL_METRICS_EXPORTER=prometheus
@@ -29,7 +30,7 @@ services:
       - ../config:/config:ro
       - ../oas:/oas:ro
       - ../../openapi:/krb-oas:ro
-  
+
   echo:
     image: "ghcr.io/trebent/kerberos/echo:${VERSION}"
     pull_policy: if_not_present

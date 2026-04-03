@@ -1,6 +1,7 @@
 GRAFANA_PORT ?= 3000
 PROM_PORT ?= 9090
 KERBEROS_PORT ?= 30000
+KERBEROS_ADMIN_PORT ?= 30001
 SUPERUSER_CLIENT_ID ?= admin
 SUPERUSER_CLIENT_SECRET ?= secret
 KERBEROS_METRICS_PORT ?= 9464
@@ -44,9 +45,9 @@ codegen:
 unittest:
 	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
-	@go test -v ./... -coverprofile=build/coverage.out -timeout 20s -failfast
-	@go tool cover -html=build/coverage.out -o build/coverage.html
-	@go tool cover -func=build/coverage.out
+	@go test -v ./... -timeout 20s -failfast
+	# @go tool cover -html=build/coverage.out -o build/coverage.html
+	# @go tool cover -func=build/coverage.out
 
 coverage:
 	@go tool cover -func=build/coverage.out | awk 'END {print $$3}'
@@ -105,8 +106,10 @@ docker-run: image docker-stop docker-rm
 	$(call cecho,Running Kerberos Docker container...,$(BOLD_YELLOW))
 	docker run -d \
 		-p $(KERBEROS_PORT):$(KERBEROS_PORT) \
+		-p $(KERBEROS_ADMIN_PORT):$(KERBEROS_ADMIN_PORT) \
 		-p $(KERBEROS_METRICS_PORT):$(KERBEROS_METRICS_PORT) \
 		-e PORT=$(KERBEROS_PORT) \
+		-e ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
 		-e OTEL_METRICS_EXPORTER=prometheus \
 		-e OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
 		-e LOG_TO_CONSOLE=true \
@@ -123,8 +126,10 @@ docker-run-unprotected: image docker-stop docker-rm
 	$(call cecho,Running Kerberos Docker container...,$(BOLD_YELLOW))
 	docker run -d \
 		-p $(KERBEROS_PORT):$(KERBEROS_PORT) \
+		-p $(KERBEROS_ADMIN_PORT):$(KERBEROS_ADMIN_PORT) \
 		-p $(KERBEROS_METRICS_PORT):$(KERBEROS_METRICS_PORT) \
 		-e PORT=$(KERBEROS_PORT) \
+		-e ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
 		-e OTEL_METRICS_EXPORTER=prometheus \
 		-e OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
 		-e LOG_TO_CONSOLE=true \
@@ -152,6 +157,7 @@ compose:
 	$(call cecho,Composing Kerberos test environment...,$(BOLD_YELLOW))
 	@VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
+		KERBEROS_ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
 		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
 		LOG_VERBOSITY=$(LOG_VERBOSITY) \
 		PROM_PORT=$(PROM_PORT) \
@@ -163,6 +169,7 @@ compose:
 compose-logs:
 	@VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
+		KERBEROS_ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
 		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
 		PROM_PORT=$(PROM_PORT) \
 		GRAFANA_PORT=$(GRAFANA_PORT) \
@@ -173,6 +180,7 @@ compose-logs:
 compose-logs-f:
 	@VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
+		KERBEROS_ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
 		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
 		PROM_PORT=$(PROM_PORT) \
 		GRAFANA_PORT=$(GRAFANA_PORT) \
@@ -183,6 +191,7 @@ compose-logs-f:
 compose-ps:
 	@VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
+		KERBEROS_ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
 		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
 		PROM_PORT=$(PROM_PORT) \
 		GRAFANA_PORT=$(GRAFANA_PORT) \
@@ -194,6 +203,7 @@ compose-down:
 	$(call cecho,Tearing down Kerberos test environment...,$(BOLD_YELLOW))
 	@VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
+		KERBEROS_ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
 		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
 		PROM_PORT=$(PROM_PORT) \
 		GRAFANA_PORT=$(GRAFANA_PORT) \
@@ -253,19 +263,19 @@ test-protected-echo:
 
 get-flow:
 	$(call cecho,Fetching flow from Kerberos admin API...,$(BOLD_YELLOW))
-	@SESSION=$$(curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_PORT)/api/admin/superuser/login \
+	@SESSION=$$(curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/admin/superuser/login \
 		-H "Content-Type: application/json" \
 		-d '{"clientId":"$(SUPERUSER_CLIENT_ID)","clientSecret":"$(SUPERUSER_CLIENT_SECRET)"}' \
 		| grep -i '^x-krb-session:' | tr -d '\r' | awk '{print $$2}'); \
-	curl -s -H "x-krb-session: $$SESSION" localhost:$(KERBEROS_PORT)/api/admin/flow | jq .
+	curl -s -H "x-krb-session: $$SESSION" localhost:$(KERBEROS_ADMIN_PORT)/api/admin/flow | jq .
 
 get-oas-backend:
 	$(call cecho,Fetching OAS backend from Kerberos admin API...,$(BOLD_YELLOW))
-	@SESSION=$$(curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_PORT)/api/admin/superuser/login \
+	@SESSION=$$(curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/admin/superuser/login \
 		-H "Content-Type: application/json" \
 		-d '{"clientId":"$(SUPERUSER_CLIENT_ID)","clientSecret":"$(SUPERUSER_CLIENT_SECRET)"}' \
 		| grep -i '^x-krb-session:' | tr -d '\r' | awk '{print $$2}'); \
-	curl -s -H "x-krb-session: $$SESSION" localhost:$(KERBEROS_PORT)/api/admin/oas/echo
+	curl -s -H "x-krb-session: $$SESSION" localhost:$(KERBEROS_ADMIN_PORT)/api/admin/oas/echo
 
 test-echo-methods:
 	$(call cecho,Generating test HTTP requests for the echo backend...,$(BOLD_YELLOW))
