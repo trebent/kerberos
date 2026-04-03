@@ -5,10 +5,12 @@
   "properties": {
     "enabled": {
       "type": "boolean",
+      "description": "Whether to enable observability for all incoming requests and outgoing responses.",
       "default": true
     },
     "runtimeMetrics": {
       "type": "boolean",
+      "description": "Whether to enable runtime metrics collection.",
       "default": true
     }
   },

@@ -58,4 +58,13 @@ func TestRouter(t *testing.T) {
 	if recorder.Code != http.StatusNoContent {
 		t.Fatalf("expected status code %d, got %d", http.StatusNoContent, recorder.Code)
 	}
+
+	req = httptest.NewRequest(http.MethodGet, "/gw/backenddddd/backend1/some/path", nil)
+	recorder = httptest.NewRecorder()
+	wrapped = response.NewResponseWrapper(recorder)
+	router.ServeHTTP(wrapped, req)
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected status code %d, got %d", http.StatusBadRequest, recorder.Code)
+	}
 }

@@ -10,6 +10,8 @@
 .golangci-lint.yaml
 coverage*
 *.sarif
+tools/
+scripts/
 
 # Docs
 docs/

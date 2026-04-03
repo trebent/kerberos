@@ -8,3 +8,6 @@ scrape_configs:
   - job_name: echo
     static_configs:
       - targets: ["echo:9463"]
+  - job_name: protected-echo
+    static_configs:
+      - targets: ["protected-echo:9463"]

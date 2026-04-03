@@ -31,10 +31,10 @@ var (
 	client = &http.Client{Timeout: 4 * time.Second}
 
 	basicAuthClient, _ = authbasicapi.NewClientWithResponses(
-		fmt.Sprintf("http://%s:%d", getHost(), getPort()),
+		fmt.Sprintf("http://%s:%d", getHost(), getAdminPort()),
 	)
 	adminClient, _ = adminapi.NewClientWithResponses(
-		fmt.Sprintf("http://%s:%d", getHost(), getPort()),
+		fmt.Sprintf("http://%s:%d", getHost(), getAdminPort()),
 	)
 
 	alwaysOrgID        = 0
@@ -84,6 +84,7 @@ const (
 
 	defaultHost              = "localhost"
 	defaultKerberosPort      = 30000
+	defaultAdminPort         = 30001
 	defaultMetricsPort       = 9464
 	defaultJaegerReadAPIPort = 16685
 )
@@ -226,6 +227,20 @@ func requestEditorSessionID(sessionID string) RequestEditorFn {
 	return func(ctx context.Context, req *http.Request) error {
 		req.Header.Set("x-krb-session", sessionID)
 		return nil
+	}
+}
+
+func getAdminPort() int {
+	val, found := os.LookupEnv("KRB_FT_ADMIN_PORT")
+	if !found {
+		return defaultAdminPort
+	}
+
+	decoded, err := strconv.Atoi(val)
+	if err != nil {
+		return defaultAdminPort
+	} else {
+		return decoded
 	}
 }
 
