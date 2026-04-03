@@ -24,6 +24,7 @@ jobs:
 
       - name: Dependabot metadata
         id: metadata
+        continue-on-error: true
         uses: dependabot/fetch-metadata@21025c705c08248db411dc16f3619e6b5f9ea21a # v2.5.0
         with:
           github-token: "${{ steps.app-token.outputs.token }}"
@@ -39,7 +40,18 @@ jobs:
             gh pr merge --auto -s "$PR_URL"
           fi
 
-      - name: Approve major version updates
+      - name: Re-approve after force-update if auto-merge was already configured
+        if: steps.metadata.outcome == 'failure' && github.event.action == 'synchronize'
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          # auto-merge being set means this PR was already approved as a minor/patch update
+          if [ "$(gh pr view "$PR_URL" --json autoMergeRequest --jq '.autoMergeRequest == null')" = "false" ]; then
+            gh pr review --approve "$PR_URL"
+          fi
+
+      - name: Comment on major version updates
         if: steps.metadata.outputs.update-type == 'version-update:semver-major'
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
