@@ -75,6 +75,9 @@ jobs:
         uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6.0.0
         with:
           images: ghcr.io/${{ github.repository }}/echo
+          labels: |
+            org.opencontainers.image.title=echo
+            org.opencontainers.image.description=A simple HTTP echo server that echoes back request body and headers.
 
       - name: Build and push image
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
