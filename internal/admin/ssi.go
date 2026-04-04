@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	adminext "github.com/trebent/kerberos/internal/admin/extensions"
 	adminapi "github.com/trebent/kerberos/internal/api/admin"
+	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/zerologr"
 	"golang.org/x/time/rate"
@@ -169,4 +170,52 @@ func (i *impl) GetBackendOAS(
 		Body:          bytes.NewReader(oasData),
 		ContentLength: int64(len(oasData)),
 	}, nil
+}
+
+// ExtendDebugSession implements [withExtensions].
+func (i *impl) ExtendDebugSession(
+	_ context.Context,
+	_ adminapi.ExtendDebugSessionRequestObject,
+) (adminapi.ExtendDebugSessionResponseObject, error) {
+	return nil, apierror.APIErrNotImplemented
+}
+
+// GetDebugSession implements [withExtensions].
+func (i *impl) GetDebugSession(
+	_ context.Context,
+	_ adminapi.GetDebugSessionRequestObject,
+) (adminapi.GetDebugSessionResponseObject, error) {
+	return nil, apierror.APIErrNotImplemented
+}
+
+// ListDebugSessionOperations implements [withExtensions].
+func (i *impl) ListDebugSessionOperations(
+	_ context.Context,
+	_ adminapi.ListDebugSessionOperationsRequestObject,
+) (adminapi.ListDebugSessionOperationsResponseObject, error) {
+	return nil, apierror.APIErrNotImplemented
+}
+
+// ListDebugSessions implements [withExtensions].
+func (i *impl) ListDebugSessions(
+	_ context.Context,
+	_ adminapi.ListDebugSessionsRequestObject,
+) (adminapi.ListDebugSessionsResponseObject, error) {
+	return nil, apierror.APIErrNotImplemented
+}
+
+// StartDebugSession implements [withExtensions].
+func (i *impl) StartDebugSession(
+	_ context.Context,
+	_ adminapi.StartDebugSessionRequestObject,
+) (adminapi.StartDebugSessionResponseObject, error) {
+	return nil, apierror.APIErrNotImplemented
+}
+
+// StopDebugSession implements [withExtensions].
+func (i *impl) StopDebugSession(
+	_ context.Context,
+	_ adminapi.StopDebugSessionRequestObject,
+) (adminapi.StopDebugSessionResponseObject, error) {
+	return nil, apierror.APIErrNotImplemented
 }

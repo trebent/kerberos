@@ -61,6 +61,11 @@ var (
 		Errors:     []string{http.StatusText(http.StatusTooManyRequests)},
 		StatusCode: http.StatusTooManyRequests,
 	}
+	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
+	APIErrNotImplemented = &Error{
+		Errors:     []string{http.StatusText(http.StatusNotImplemented)},
+		StatusCode: http.StatusNotImplemented,
+	}
 )
 
 func New(statusCode int, message string) *Error {

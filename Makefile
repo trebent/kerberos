@@ -45,12 +45,11 @@ codegen:
 unittest:
 	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
-	@go test -v ./... -timeout 20s -failfast
-	# @go tool cover -html=build/coverage.out -o build/coverage.html
-	# @go tool cover -func=build/coverage.out
+	@go test ./... -timeout 20s -failfast -fullpath -covermode=count -coverprofile=build/coverage.out -coverpkg=./...
 
 coverage:
-	@go tool cover -func=build/coverage.out | awk 'END {print $$3}'
+	@go tool cover -html=build/coverage.out -o build/coverage.html
+	@go tool cover -func=build/coverage.out
 
 integrationtest:
 	$(call cecho,Running integration tests for Kerberos...,$(BOLD_YELLOW))
