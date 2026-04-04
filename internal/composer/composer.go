@@ -11,9 +11,7 @@ type (
 	// Composer is an http.Handler that exposes metadata about its FlowComponent chain.
 	Composer interface {
 		http.Handler
-
-		// GetFlow implements the admin extension for flow inspection.
-		GetFlow() []adminapi.FlowMeta
+		adminext.FlowFetcher
 	}
 	Opts struct {
 		Observability FlowComponent
@@ -30,8 +28,7 @@ type (
 )
 
 var (
-	_ Composer             = (*impl)(nil)
-	_ adminext.FlowFetcher = (*impl)(nil)
+	_ Composer = (*impl)(nil)
 )
 
 func New(opts *Opts) Composer {

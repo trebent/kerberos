@@ -33,9 +33,7 @@ type (
 )
 
 var (
-	_ composer.FlowComponent = (*validator)(nil)
-	_ custom.Ordered         = (*validator)(nil)
-	_ adminext.OASBackend    = (*validator)(nil)
+	_ Validator = (*validator)(nil)
 )
 
 func NewComponent(opts *Opts) Validator {
