@@ -34,6 +34,7 @@ type (
 	Admin struct {
 		SessionMiddleware adminapi.StrictMiddlewareFunc
 
+		mux *http.ServeMux
 		ssi withExtensions
 	}
 )
@@ -110,9 +111,9 @@ func (a *Admin) SetOASBackend(backend adminext.OASBackend) {
 
 // RegisterAPIProvider registers an API provider with the admin API. All adminext.APIProvider implementations must
 // be registered using this method in order for their routes to be served by the admin API.
-func (a *Admin) RegisterAPIProvider(mux *http.ServeMux, apiProvider adminext.APIProvider) error {
+func (a *Admin) RegisterAPIProvider(apiProvider adminext.APIProvider) error {
 	return apiProvider.RegisterRoutes(
-		mux,
+		a.mux,
 		SessionMiddleware(a.ssi),
 	)
 }

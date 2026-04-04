@@ -179,7 +179,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		customFlowComponents = append(customFlowComponents, authorizer)
 
 		// Register the authorizer with the admin component so that it can serve auth metadata to the admin API.
-		if err := admin.RegisterAPIProvider(adminMux, authorizer); err != nil {
+		if err := admin.RegisterAPIProvider(authorizer); err != nil {
 			zerologr.Error(err, "Failed to register auth API provider with admin component")
 			os.Exit(1) // nolint: gocritic
 		}
