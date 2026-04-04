@@ -32,8 +32,6 @@ type (
 		Cfg *config.AdminConfig
 	}
 	Admin struct {
-		SessionMiddleware adminapi.StrictMiddlewareFunc
-
 		mux *http.ServeMux
 		ssi withExtensions
 	}
@@ -92,8 +90,8 @@ func New(opts *Opts) *Admin {
 	})
 
 	return &Admin{
-		SessionMiddleware: adminSessionMiddleware,
-		ssi:               ssi,
+		ssi: ssi,
+		mux: opts.Mux,
 	}
 }
 
