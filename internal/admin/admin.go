@@ -96,14 +96,20 @@ func New(opts *Opts) *Admin {
 	}
 }
 
+// SetFlowFetcher sets the flow fetcher for the admin component. This allows the admin API to serve flow metadata
+// API calls.
 func (a *Admin) SetFlowFetcher(ff adminext.FlowFetcher) {
 	a.ssi.SetFlowFetcher(ff)
 }
 
+// SetOASBackend sets the OAS backend for the admin component. This allows the admin API to serve OAS
+// to clients per backend providing an OAS.
 func (a *Admin) SetOASBackend(backend adminext.OASBackend) {
 	a.ssi.SetOASBackend(backend)
 }
 
+// RegisterAPIProvider registers an API provider with the admin API. All adminext.APIProvider implementations must
+// be registered using this method in order for their routes to be served by the admin API.
 func (a *Admin) RegisterAPIProvider(mux *http.ServeMux, apiProvider adminext.APIProvider) error {
 	return apiProvider.RegisterRoutes(
 		mux,
