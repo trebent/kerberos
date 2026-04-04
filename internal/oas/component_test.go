@@ -11,9 +11,9 @@ import (
 	"os"
 	"testing"
 
-	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/config"
+	apierror "github.com/trebent/kerberos/internal/oapi/error"
 )
 
 // TestComponentWithBodyValidation tests the OAS component with body validation enabled.

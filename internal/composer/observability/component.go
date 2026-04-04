@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	adminapi "github.com/trebent/kerberos/internal/api/admin"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/config"
+	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	"github.com/trebent/kerberos/internal/response"
 	"github.com/trebent/zerologr"
 	"go.opentelemetry.io/otel"

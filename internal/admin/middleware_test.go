@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	adminapi "github.com/trebent/kerberos/internal/api/admin"
-	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/db/sqlite"
+	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
+	apierror "github.com/trebent/kerberos/internal/oapi/error"
 )
 
 func TestSessionMiddleware(t *testing.T) {

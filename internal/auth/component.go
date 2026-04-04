@@ -1,82 +1,71 @@
 package auth
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"path"
-	"time"
-
-	_ "embed"
 
 	"github.com/go-logr/logr"
-	adminapi "github.com/trebent/kerberos/internal/api/admin"
-	authbasicapi "github.com/trebent/kerberos/internal/api/auth/basic"
-	apierror "github.com/trebent/kerberos/internal/api/error"
+	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
+	adminext "github.com/trebent/kerberos/internal/admin/extensions"
 	"github.com/trebent/kerberos/internal/auth/method"
 	"github.com/trebent/kerberos/internal/auth/method/basic"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/composer/custom"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/db"
+	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
+	apierror "github.com/trebent/kerberos/internal/oapi/error"
 	"github.com/trebent/zerologr"
 )
 
 type (
+	Authorizer interface {
+		composer.FlowComponent
+		custom.Ordered
+		adminext.APIProvider
+	}
 	Opts struct {
+		// Auth configuration.
 		Cfg *config.AuthConfig
 
-		// The Mux to register the basic authentication API with, if enabled.
-		Mux *http.ServeMux
-
-		DB db.SQLClient
+		// SQL client.
+		SQLClient db.SQLClient
 
 		// Directory where OAS for the auth APIs can be found.
 		OASDir string
-
-		// To verify administrator callers, adds context into call flows to be able to determine if the caller is an admin user.
-		AdminSessionMiddleware authbasicapi.StrictMiddlewareFunc
 	}
 	authorizer struct {
 		next composer.FlowComponent
 
 		cfg   *config.AuthConfig
-		basic method.Method
+		basic basic.Basic
 		db    db.SQLClient
 	}
 )
 
 var (
-	_ composer.FlowComponent = (*authorizer)(nil)
-	_ custom.Ordered         = (*authorizer)(nil)
-
-	//go:embed dbschema/schema.sql
-	dbschemaBytes []byte
+	_ Authorizer = (*authorizer)(nil)
 
 	errExempted           = errors.New("path is exempted from auth")
 	errNoMethod           = errors.New("no authentication method defined")
 	errUnrecognizedMethod = errors.New("unrecognized authentication method")
 )
 
-const schemaApplyTimeout = 10 * time.Second
-
-func NewComponent(opts *Opts) composer.FlowComponent {
+func NewComponent(opts *Opts) Authorizer {
 	authorizer := &authorizer{
 		cfg: opts.Cfg,
-		db:  opts.DB,
+		db:  opts.SQLClient,
 	}
-	authorizer.applySchemas()
 
 	if opts.Cfg.Methods.Basic != nil {
 		zerologr.Info("Basic authentication enabled")
 		// If basic auth, create the method.
 		authorizer.basic = basic.New(&basic.Opts{
-			Mux:                    opts.Mux,
-			DB:                     opts.DB,
-			OASDir:                 opts.OASDir,
-			AuthZConfig:            makeAuthZMap(opts.Cfg.Scheme.Mappings),
-			AdminSessionMiddleware: opts.AdminSessionMiddleware,
+			SQLClient:   opts.SQLClient,
+			OASDir:      opts.OASDir,
+			AuthZConfig: makeAuthZMap(opts.Cfg.Scheme.Mappings),
 		})
 	}
 
@@ -180,6 +169,19 @@ func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	a.next.ServeHTTP(w, req)
 }
 
+func (a *authorizer) RegisterRoutes(
+	mux *http.ServeMux,
+	middleware ...strictnethttp.StrictHTTPMiddlewareFunc,
+) error {
+	if a.basic != nil {
+		if err := a.basic.RegisterRoutes(mux, middleware...); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // findMethod attempts to find the method which protects the input backend, if any.
 func (a *authorizer) findMethod(backend string, req *http.Request) (method.Method, error) {
 	for _, mapping := range a.cfg.Scheme.Mappings {
@@ -205,14 +207,6 @@ func (a *authorizer) findMethod(backend string, req *http.Request) (method.Metho
 	}
 
 	return nil, errNoMethod
-}
-
-func (a *authorizer) applySchemas() {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), schemaApplyTimeout)
-	defer cancel()
-	if _, err := a.db.Exec(timeoutCtx, string(dbschemaBytes)); err != nil {
-		panic(err)
-	}
 }
 
 func makeAuthZMap(mappings []*config.AuthMapping) map[string]*config.AuthZ {
