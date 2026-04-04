@@ -150,10 +150,10 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	zerologr.Info("Loading admin")
 	admin := admin.New(
 		&admin.Opts{
-			Mux:    adminMux,
-			DB:     db,
-			OASDir: internalenv.OASDirectory.Value(),
-			Cfg:    cfg.AdminConfig,
+			Cfg:       cfg.AdminConfig,
+			Mux:       adminMux,
+			SQLClient: db,
+			OASDir:    internalenv.OASDirectory.Value(),
 		},
 	)
 
@@ -172,13 +172,17 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	if cfg.AuthEnabled() {
 		zerologr.Info("Loading auth")
 		authorizer := auth.NewComponent(&auth.Opts{
-			Cfg:                    cfg.AuthConfig,
-			Mux:                    adminMux,
-			DB:                     db,
-			OASDir:                 internalenv.OASDirectory.Value(),
-			AdminSessionMiddleware: admin.SessionMiddleware,
+			Cfg:       cfg.AuthConfig,
+			SQLClient: db,
+			OASDir:    internalenv.OASDirectory.Value(),
 		})
 		customFlowComponents = append(customFlowComponents, authorizer)
+
+		// Register the authorizer with the admin component so that it can serve auth metadata to the admin API.
+		if err := admin.RegisterAPIProvider(adminMux, authorizer); err != nil {
+			zerologr.Error(err, "Failed to register auth API provider with admin component")
+			os.Exit(1) // nolint: gocritic
+		}
 	}
 
 	if cfg.OASEnabled() {

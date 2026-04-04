@@ -3,6 +3,7 @@ package adminext
 import (
 	"net/http"
 
+	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 )
 
@@ -22,6 +23,9 @@ type (
 	APIProvider interface {
 		// RegisterRoutes allows the extension to register its own HTTP handlers on the provided ServeMux.
 		// The extension should use a unique path prefix to avoid conflicts with other extensions.
-		RegisterRoutes(mux *http.ServeMux)
+		RegisterRoutes(
+			mux *http.ServeMux,
+			middleware ...strictnethttp.StrictHTTPMiddlewareFunc,
+		) error
 	}
 )

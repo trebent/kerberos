@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	adminext "github.com/trebent/kerberos/internal/admin/extensions"
@@ -20,11 +19,16 @@ import (
 
 type (
 	Opts struct {
+		// Mux is the HTTP ServeMux on which the admin API will be registered.
 		Mux *http.ServeMux
-		DB  db.SQLClient
 
+		// SQLClient for the admin API to use.
+		SQLClient db.SQLClient
+
+		// Directory where OAS for the admin API can be found.
 		OASDir string
 
+		// Admin configuration.
 		Cfg *config.AdminConfig
 	}
 	Admin struct {
@@ -37,15 +41,12 @@ type (
 //go:embed db/schema.sql
 var dbschemaBytes []byte
 
-const (
-	authAdminSpecification = "admin.yaml"
-	schemaApplyTimeout     = 10 * time.Second
-)
+const authAdminSpecification = "admin.yaml"
 
 // Runs the administration API.
 func New(opts *Opts) *Admin {
 	zerologr.Info("Setting up administration API")
-	applySchemas(opts.DB)
+	applySchemas(opts.SQLClient)
 
 	data, err := os.ReadFile(fmt.Sprintf("%s/%s", opts.OASDir, authAdminSpecification))
 	if err != nil {
@@ -58,7 +59,7 @@ func New(opts *Opts) *Admin {
 	}
 
 	ssi := newSSI(&ssiOpts{
-		DB:           opts.DB,
+		DB:           opts.SQLClient,
 		ClientID:     opts.Cfg.SuperUser.ClientID,
 		ClientSecret: opts.Cfg.SuperUser.ClientSecret,
 	})
@@ -103,10 +104,17 @@ func (a *Admin) SetOASBackend(backend adminext.OASBackend) {
 	a.ssi.SetOASBackend(backend)
 }
 
-func applySchemas(db db.SQLClient) {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), schemaApplyTimeout)
+func (a *Admin) RegisterAPIProvider(mux *http.ServeMux, apiProvider adminext.APIProvider) error {
+	return apiProvider.RegisterRoutes(
+		mux,
+		SessionMiddleware(a.ssi),
+	)
+}
+
+func applySchemas(sqlClient db.SQLClient) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), db.SchemaApplyTimeout)
 	defer cancel()
-	if _, err := db.Exec(timeoutCtx, string(dbschemaBytes)); err != nil {
+	if _, err := sqlClient.Exec(timeoutCtx, string(dbschemaBytes)); err != nil {
 		panic(err)
 	}
 }
