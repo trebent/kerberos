@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"slices"
 
-	adminapi "github.com/trebent/kerberos/internal/api/admin"
 	"github.com/trebent/kerberos/internal/composer"
+	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 )
 
 type (

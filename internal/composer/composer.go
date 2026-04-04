@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	adminext "github.com/trebent/kerberos/internal/admin/extensions"
-	adminapi "github.com/trebent/kerberos/internal/api/admin"
+	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 )
 
 type (

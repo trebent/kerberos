@@ -11,15 +11,15 @@ import (
 	_ "embed"
 
 	"github.com/go-logr/logr"
-	adminapi "github.com/trebent/kerberos/internal/api/admin"
-	authbasicapi "github.com/trebent/kerberos/internal/api/auth/basic"
-	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/auth/method"
 	"github.com/trebent/kerberos/internal/auth/method/basic"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/composer/custom"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/db"
+	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
+	authbasicapi "github.com/trebent/kerberos/internal/oapi/auth/basic"
+	apierror "github.com/trebent/kerberos/internal/oapi/error"
 	"github.com/trebent/zerologr"
 )
 

@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
-	authbasicapi "github.com/trebent/kerberos/internal/api/auth/basic"
-	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/auth/method"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/config"
+	authbasicapi "github.com/trebent/kerberos/internal/oapi/auth/basic"
+	apierror "github.com/trebent/kerberos/internal/oapi/error"
 
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/kerberos/internal/oas"

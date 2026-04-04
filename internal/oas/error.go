@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-logr/logr"
 	nethttpmiddleware "github.com/oapi-codegen/nethttp-middleware"
-	apierror "github.com/trebent/kerberos/internal/api/error"
+	apierror "github.com/trebent/kerberos/internal/oapi/error"
 	"github.com/trebent/zerologr"
 )
 

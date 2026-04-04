@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	adminapi "github.com/trebent/kerberos/internal/api/admin"
+	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 )
 
 type testFlow struct {

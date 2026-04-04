@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/trebent/kerberos/internal/admin"
-	authbasicapi "github.com/trebent/kerberos/internal/api/auth/basic"
-	apierror "github.com/trebent/kerberos/internal/api/error"
+	authbasicapi "github.com/trebent/kerberos/internal/oapi/auth/basic"
+	apierror "github.com/trebent/kerberos/internal/oapi/error"
 	"github.com/trebent/zerologr"
 )
 
