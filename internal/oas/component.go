@@ -32,9 +32,7 @@ type (
 	}
 )
 
-var (
-	_ Validator = (*validator)(nil)
-)
+var _ Validator = (*validator)(nil)
 
 func NewComponent(opts *Opts) Validator {
 	// Prevent schema error details from being included in validation errors.

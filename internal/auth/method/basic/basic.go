@@ -222,6 +222,7 @@ func (a *basic) Authorized(req *http.Request) error {
 	return apierror.APIErrForbidden
 }
 
+// RegisterRoutes registers the API routes for the basic auth method.
 func (a *basic) RegisterRoutes(
 	mux *http.ServeMux,
 	middleware ...authbasicapi.StrictMiddlewareFunc,

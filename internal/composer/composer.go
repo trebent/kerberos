@@ -27,9 +27,7 @@ type (
 	}
 )
 
-var (
-	_ Composer = (*impl)(nil)
-)
+var _ Composer = (*impl)(nil)
 
 func New(opts *Opts) Composer {
 	opts.Observability.Next(opts.Router)
