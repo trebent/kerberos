@@ -3,7 +3,7 @@ package composer
 import (
 	"net/http"
 
-	adminapi "github.com/trebent/kerberos/internal/api/admin"
+	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	"github.com/trebent/zerologr"
 )
 

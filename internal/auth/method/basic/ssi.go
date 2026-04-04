@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	authbasicapi "github.com/trebent/kerberos/internal/api/auth/basic"
-	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/auth/util"
 	"github.com/trebent/kerberos/internal/db"
+	authbasicapi "github.com/trebent/kerberos/internal/oapi/auth/basic"
+	apierror "github.com/trebent/kerberos/internal/oapi/error"
 	"github.com/trebent/zerologr"
 )
 

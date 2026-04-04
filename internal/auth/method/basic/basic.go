@@ -1,6 +1,7 @@
 package basic
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -10,12 +11,15 @@ import (
 	"strconv"
 	"time"
 
+	_ "embed"
+
 	"github.com/getkin/kin-openapi/openapi3"
-	authbasicapi "github.com/trebent/kerberos/internal/api/auth/basic"
-	apierror "github.com/trebent/kerberos/internal/api/error"
+	adminext "github.com/trebent/kerberos/internal/admin/extensions"
 	"github.com/trebent/kerberos/internal/auth/method"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/config"
+	authbasicapi "github.com/trebent/kerberos/internal/oapi/auth/basic"
+	apierror "github.com/trebent/kerberos/internal/oapi/error"
 
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/kerberos/internal/oas"
@@ -23,33 +27,52 @@ import (
 )
 
 type (
+	Basic interface {
+		method.Method
+		adminext.APIProvider
+	}
 	basic struct {
-		db     db.SQLClient
-		oasDir string
-		config map[string]*config.AuthZ
+		config    map[string]*config.AuthZ
+		sqlClient db.SQLClient
+		oasDir    string
 	}
 	Opts struct {
-		AuthZConfig            map[string]*config.AuthZ
-		Mux                    *http.ServeMux
-		DB                     db.SQLClient
-		OASDir                 string
-		AdminSessionMiddleware authbasicapi.StrictMiddlewareFunc
+		AuthZConfig map[string]*config.AuthZ
+		SQLClient   db.SQLClient
+		OASDir      string
 	}
 )
 
 const authBasicSpecification = "auth_basic.yaml"
 
-var _ method.Method = (*basic)(nil)
+var (
+	_ Basic = (*basic)(nil)
+
+	//go:embed dbschema/schema.sql
+	dbschemaBytes []byte
+)
 
 // New will return an authentication method and register API endpoints with the input serve mux.
-func New(opts *Opts) method.Method {
-	b := &basic{
-		db:     opts.DB,
-		oasDir: opts.OASDir,
-		config: opts.AuthZConfig,
+func New(opts *Opts) Basic {
+	if opts.SQLClient == nil {
+		panic("DB client is required for basic auth method")
+	}
+	applySchemas(opts.SQLClient)
+
+	if opts.OASDir == "" {
+		panic("OAS directory is required for basic auth method")
 	}
 
-	b.registerAPI(opts)
+	if opts.AuthZConfig == nil {
+		panic("authorization config is required for basic auth method")
+	}
+
+	b := &basic{
+		sqlClient: opts.SQLClient,
+		oasDir:    opts.OASDir,
+		config:    opts.AuthZConfig,
+	}
+
 	return b
 }
 
@@ -69,7 +92,7 @@ func (a *basic) Authenticated(req *http.Request) error {
 	}
 
 	// Read session info from the DB and compare it to the incoming request.
-	rows, err := a.db.Query(
+	rows, err := a.sqlClient.Query(
 		req.Context(),
 		queryGetSession,
 		sql.NamedArg{Name: "sessionID", Value: sessionID},
@@ -85,7 +108,7 @@ func (a *basic) Authenticated(req *http.Request) error {
 			return apierror.APIErrInternal
 		}
 
-		zerologr.Error(err, "Failed to find a matching session")
+		zerologr.Error(apierror.ErrNoSession, "Failed to find a matching session")
 		return apierror.APIErrNoSession
 	}
 
@@ -155,7 +178,7 @@ func (a *basic) Authorized(req *http.Request) error {
 	}
 
 	// Fetch the user's groups.
-	rows, err := a.db.Query(
+	rows, err := a.sqlClient.Query(
 		req.Context(),
 		queryListUserGroups,
 		sql.NamedArg{Name: "orgID", Value: req.Header.Get("X-Krb-Org")},
@@ -199,24 +222,32 @@ func (a *basic) Authorized(req *http.Request) error {
 	return apierror.APIErrForbidden
 }
 
-func (a *basic) registerAPI(opts *Opts) {
+// RegisterRoutes registers the API routes for the basic auth method.
+func (a *basic) RegisterRoutes(
+	mux *http.ServeMux,
+	middleware ...authbasicapi.StrictMiddlewareFunc,
+) error {
 	data, err := os.ReadFile(fmt.Sprintf("%s/%s", a.oasDir, authBasicSpecification))
 	if err != nil {
-		panic(fmt.Errorf("failed to read basic authentication OAS: %w", err))
+		return fmt.Errorf("failed to read basic authentication OAS: %w", err)
 	}
 
 	spec, err := openapi3.NewLoader().LoadFromData(data)
 	if err != nil {
-		panic(fmt.Errorf("failed to load basic authentication OAS: %w", err))
+		return fmt.Errorf("failed to load basic authentication OAS: %w", err)
 	}
 
-	ssi := newSSI(a.db)
+	ssi := newSSI(a.sqlClient)
+	authMiddleware := make([]authbasicapi.StrictMiddlewareFunc, len(middleware)+1)
+	authMiddleware[0] = AuthMiddleware(ssi)
+
+	for i := range middleware {
+		authMiddleware[i+1] = middleware[i]
+	}
+
 	strictHandler := authbasicapi.NewStrictHandlerWithOptions(
 		ssi,
-		[]authbasicapi.StrictMiddlewareFunc{
-			AuthMiddleware(ssi),
-			opts.AdminSessionMiddleware,
-		},
+		authMiddleware,
 		authbasicapi.StrictHTTPServerOptions{
 			RequestErrorHandlerFunc:  apierror.RequestErrorHandler,
 			ResponseErrorHandlerFunc: apierror.ResponseErrorHandler,
@@ -224,7 +255,7 @@ func (a *basic) registerAPI(opts *Opts) {
 	)
 
 	_ = authbasicapi.HandlerWithOptions(strictHandler, authbasicapi.StdHTTPServerOptions{
-		BaseRouter: opts.Mux,
+		BaseRouter: mux,
 		Middlewares: []authbasicapi.MiddlewareFunc{
 			oas.ValidationMiddleware(spec),
 			func(next http.Handler) http.Handler {
@@ -235,4 +266,14 @@ func (a *basic) registerAPI(opts *Opts) {
 			},
 		},
 	})
+
+	return nil
+}
+
+func applySchemas(sqlClient db.SQLClient) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), db.SchemaApplyTimeout)
+	defer cancel()
+	if _, err := sqlClient.Exec(timeoutCtx, string(dbschemaBytes)); err != nil {
+		panic(err)
+	}
 }

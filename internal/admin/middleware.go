@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
-	adminapigen "github.com/trebent/kerberos/internal/api/admin"
-	apierror "github.com/trebent/kerberos/internal/api/error"
+	adminapigen "github.com/trebent/kerberos/internal/oapi/admin"
+	apierror "github.com/trebent/kerberos/internal/oapi/error"
 	"github.com/trebent/zerologr"
 )
 

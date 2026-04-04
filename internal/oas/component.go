@@ -7,11 +7,11 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-logr/logr"
 	adminext "github.com/trebent/kerberos/internal/admin/extensions"
-	adminapi "github.com/trebent/kerberos/internal/api/admin"
-	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/composer/custom"
 	"github.com/trebent/kerberos/internal/config"
+	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
+	apierror "github.com/trebent/kerberos/internal/oapi/error"
 	"github.com/trebent/zerologr"
 )
 
@@ -32,11 +32,7 @@ type (
 	}
 )
 
-var (
-	_ composer.FlowComponent = (*validator)(nil)
-	_ custom.Ordered         = (*validator)(nil)
-	_ adminext.OASBackend    = (*validator)(nil)
-)
+var _ Validator = (*validator)(nil)
 
 func NewComponent(opts *Opts) Validator {
 	// Prevent schema error details from being included in validation errors.

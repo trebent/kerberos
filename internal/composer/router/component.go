@@ -8,10 +8,10 @@ import (
 	"regexp"
 
 	"github.com/go-logr/logr"
-	adminapi "github.com/trebent/kerberos/internal/api/admin"
-	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/config"
+	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
+	apierror "github.com/trebent/kerberos/internal/oapi/error"
 	"github.com/trebent/kerberos/internal/response"
 	"github.com/trebent/zerologr"
 )

@@ -31,6 +31,9 @@ default: lint vulncheck go-build
 clean:
 	@rm -rf build/
 
+version:
+	$(call cecho,Kerberos version: $(VERSION),$(BOLD_BLUE))
+
 lint:
 	$(call cecho,Running linter for Kerberos...,$(BOLD_YELLOW))
 	@golangci-lint run --fix

@@ -10,9 +10,9 @@ import (
 
 	"github.com/google/uuid"
 	adminext "github.com/trebent/kerberos/internal/admin/extensions"
-	adminapi "github.com/trebent/kerberos/internal/api/admin"
-	apierror "github.com/trebent/kerberos/internal/api/error"
 	"github.com/trebent/kerberos/internal/db"
+	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
+	apierror "github.com/trebent/kerberos/internal/oapi/error"
 	"github.com/trebent/zerologr"
 	"golang.org/x/time/rate"
 )

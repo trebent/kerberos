@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 )
 
 type (
@@ -29,3 +30,5 @@ type (
 
 // Failed unique constraint, conflict.
 var ErrUnique = errors.New("unique constraint failed")
+
+const SchemaApplyTimeout = 5 * time.Second
