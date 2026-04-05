@@ -17,12 +17,21 @@ func TestAdminLoginSuperuser(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(superLogoutResp.StatusCode(), http.StatusNoContent, t)
+
+	t.Log("Running a GET flow request with the old session to verify it is invalidated")
+	// Verify the old session is truly invalidated by attempting to access a protected endpoint with it.
+	getFlowResp, err := adminClient.GetFlowWithResponse(
+		t.Context(),
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getFlowResp.StatusCode(), http.StatusUnauthorized, t)
 }
 
 func TestAdminLoginSuperuserFailure(t *testing.T) {
 	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: "client-id", ClientSecret: "not-correct"},
+		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: "not-correct"},
 	)
 	checkErr(err, t)
 	verifyStatusCode(superLoginResp.StatusCode(), http.StatusUnauthorized, t)

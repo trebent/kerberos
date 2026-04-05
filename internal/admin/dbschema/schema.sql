@@ -10,6 +10,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS admin_group_name ON admin_groups(name);
 CREATE TABLE IF NOT EXISTS admin_users (
   id INTEGER PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
+  superuser BOOLEAN DEFAULT FALSE NOT NULL,
   salt VARCHAR(100) NOT NULL,
   hashed_password VARCHAR(100) NOT NULL,
   created TEXT NOT NULL DEFAULT current_timestamp,

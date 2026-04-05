@@ -1,6 +1,8 @@
 // nolint
 // echo is a simple HTTP server that echoes back the request
-// body and headers. It is used for testing purposes.
+// body and headers. It is used to probe how Kerberos enriches requests prior to dispatch.
+// echo will respond with what headers and request body was supplied to it, making it useful
+// for debugging traces and any other headers that Kerberos may have added to the request.
 package main
 
 import (
@@ -24,6 +26,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// response is the structure of the JSON response that will be sent back to the client from echo.
 type response struct {
 	Method  string              `json:"method"`
 	URL     string              `json:"url"`
@@ -31,7 +34,25 @@ type response struct {
 	Body    json.RawMessage     `json:"body,omitempty"`
 }
 
-var _ io.Writer = &response{}
+var (
+	_ io.Writer = &response{}
+
+	verbosity = envparser.Register(&envparser.Opts[int]{
+		Name:  "LOG_VERBOSITY",
+		Desc:  "Sets the logging verbosity level.",
+		Value: defaultLogVerbosity,
+	})
+	version = envparser.Register(&envparser.Opts[string]{
+		Name:  "VERSION",
+		Desc:  "Sets the application version.",
+		Value: "unset",
+	})
+	port = envparser.Register(&envparser.Opts[int]{
+		Name:  "PORT",
+		Desc:  "Port to listen on.",
+		Value: defaultPort,
+	})
+)
 
 const (
 	tracerName          = "echo"
@@ -46,22 +67,6 @@ func (r *response) Write(p []byte) (n int, err error) {
 }
 
 func main() {
-	verbosity := envparser.Register(&envparser.Opts[int]{
-		Name:  "LOG_VERBOSITY",
-		Desc:  "Sets the logging verbosity level.",
-		Value: defaultLogVerbosity,
-	})
-	version := envparser.Register(&envparser.Opts[string]{
-		Name:  "VERSION",
-		Desc:  "Sets the application version.",
-		Value: "unset",
-	})
-	port := envparser.Register(&envparser.Opts[int]{
-		Name:  "PORT",
-		Desc:  "Port to listen on.",
-		Value: defaultPort,
-	})
-
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
 		fmt.Fprintf(flag.CommandLine.Output(), "An echo HTTP server that echoes back request body and headers.\n\n")
@@ -79,7 +84,7 @@ func main() {
 	signalCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	shutdown, err := intotel.Instrument(signalCtx, "echo", "0.1.0", true)
+	shutdown, err := intotel.Instrument(signalCtx, "echo", version.Value(), true)
 	if err != nil {
 		zerologr.Error(err, "Failed to initialize OpenTelemetry")
 		os.Exit(1)

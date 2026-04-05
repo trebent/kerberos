@@ -9,27 +9,28 @@ import (
 	"testing"
 	"time"
 
+	"github.com/trebent/kerberos/internal/admin/model"
 	"github.com/trebent/kerberos/internal/db/sqlite"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
 )
 
-func TestSessionMiddleware(t *testing.T) {
+func TestAdminSessionMiddleware(t *testing.T) {
+	sqlClient := sqlite.New(&sqlite.Opts{DSN: "test.db"})
+	applySchemas(sqlClient)
 	ssi := newSSI(&ssiOpts{
-		DB:           sqlite.New(&sqlite.Opts{DSN: "test.db"}),
-		ClientID:     "admin",
-		ClientSecret: "secret",
-	})
-	impl := ssi.(*impl)
-	impl.superSessions.Store("session", time.Now().Add(1*time.Hour))
+		SQLClient:    sqlClient,
+		ClientID:     "dummy-client-id",
+		ClientSecret: "dummy-client-secret",
+	}).(*impl)
+
 	mw := SessionMiddleware(ssi)
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	handler := mw(func(ctx context.Context, w http.ResponseWriter, r *http.Request, req any) (any, error) {
-		sessionID := SessionIDFromContext(ctx)
-		if sessionID != "session" {
-			t.Fatalf("Expected session ID %s, got %s", "session", sessionID)
+		if !ContextSessionValid(ctx) {
+			t.Fatalf("Expected valid session")
 		}
 
 		if !IsSuperUserContext(ctx) {
@@ -40,9 +41,25 @@ func TestSessionMiddleware(t *testing.T) {
 		return nil, nil
 	}, "")
 
+	// Force login to create a session.
+	response, err := ssi.LoginSuperuser(t.Context(), adminapi.LoginSuperuserRequestObject{
+		Body: &adminapi.LoginSuperuserJSONRequestBody{
+			ClientId:     "dummy-client-id",
+			ClientSecret: "dummy-client-secret",
+		},
+	})
+	if err != nil {
+		t.Fatalf("Failed to login superuser: %v", err)
+	}
+
+	decodedResponse, ok := response.(adminapi.LoginSuperuser204Response)
+	if !ok {
+		t.Fatalf("Expected LoginSuperuser204Response, got %T", response)
+	}
+
 	headers := http.Header{}
-	headers.Add("x-krb-session", "session")
-	_, err := handler(
+	headers.Add("x-krb-session", decodedResponse.Headers.XKrbSession)
+	_, err = handler(
 		t.Context(),
 		httptest.NewRecorder(),
 		&http.Request{
@@ -57,7 +74,7 @@ func TestSessionMiddleware(t *testing.T) {
 	}
 }
 
-func TestRequireSessionMiddleware(t *testing.T) {
+func TestAdminRequireSessionMiddleware(t *testing.T) {
 	mw := RequireSessionMiddleware()
 
 	handler := mw(func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
@@ -65,7 +82,9 @@ func TestRequireSessionMiddleware(t *testing.T) {
 	}, "operation")
 
 	enrichedContext := context.Background()
-	enrichedContext = context.WithValue(enrichedContext, adminContextSession, "session")
+	enrichedContext = context.WithValue(
+		enrichedContext, adminContextSession, &model.Session{UserID: 1, SessionID: "123", Expires: time.Now().Add(time.Hour).UnixMilli()},
+	)
 	_, err := handler(enrichedContext, httptest.NewRecorder(), &http.Request{}, adminapi.LoginSuperuserRequestObject{})
 
 	if err != nil {

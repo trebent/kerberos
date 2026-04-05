@@ -5,6 +5,7 @@ import (
 
 	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
+	apierror "github.com/trebent/kerberos/internal/oapi/error"
 )
 
 type (
@@ -18,6 +19,9 @@ type (
 		// GetOAS returns the OpenAPI Specification for the specified backend.
 		GetOAS(backendName string) ([]byte, error)
 	}
+	// DummyOASBackend is a no-op OAS backend that always returns not found. This is used by default
+	// when admin is instantiated without an OAS backend, to avoid nil checks.
+	DummyOASBackend struct{}
 
 	// APIProvider is implemented by any extension that wants to expose additional admin API endpoints.
 	APIProvider interface {
@@ -29,3 +33,9 @@ type (
 		) error
 	}
 )
+
+var _ OASBackend = (*DummyOASBackend)(nil)
+
+func (d *DummyOASBackend) GetOAS(_ string) ([]byte, error) {
+	return nil, apierror.APIErrNotFound
+}

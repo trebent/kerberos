@@ -6,7 +6,6 @@ services:
     build:
       context: ../..
       dockerfile: ./Dockerfile
-
     ports:
       - ${KERBEROS_PORT}:${KERBEROS_PORT}
       - ${KERBEROS_ADMIN_PORT}:${KERBEROS_ADMIN_PORT}
