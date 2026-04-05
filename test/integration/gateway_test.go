@@ -135,3 +135,47 @@ func TestGWBackendFormat(t *testing.T) {
 
 	_ = verifyGWResponse(response, http.StatusBadRequest, t)
 }
+
+// Validate happy path TRACE forwarding to a backend service.
+func TestGWTrace(t *testing.T) {
+	t.Parallel()
+
+	urlSegment := "/hi"
+	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", getPort(), urlSegment)
+
+	response := trace(url, t)
+	decodedResponse := verifyGWResponse(response, http.StatusOK, t)
+
+	if decodedResponse.Method != http.MethodTrace {
+		t.Errorf("unexpected method in response: got %s, want %s", decodedResponse.Method, http.MethodTrace)
+	}
+}
+
+// Validate happy path HEAD forwarding to a backend service.
+func TestGWHead(t *testing.T) {
+	t.Parallel()
+
+	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo/hi", getPort())
+
+	response := head(url, t)
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d, want %d", response.StatusCode, http.StatusOK)
+	}
+}
+
+// Validate happy path OPTIONS forwarding to a backend service.
+func TestGWOptions(t *testing.T) {
+	t.Parallel()
+
+	urlSegment := "/hi"
+	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", getPort(), urlSegment)
+
+	response := options(url, t)
+	decodedResponse := verifyGWResponse(response, http.StatusOK, t)
+
+	if decodedResponse.Method != http.MethodOptions {
+		t.Errorf("unexpected method in response: got %s, want %s", decodedResponse.Method, http.MethodOptions)
+	}
+}
