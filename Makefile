@@ -169,6 +169,14 @@ compose:
 		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
 		docker compose -f test/compose/compose.yaml up -d --force-recreate
 
+compose-wait:
+	$(call cecho,Waiting for Kerberos to be ready...,$(BOLD_YELLOW))
+	@until [ "$$(curl -s -o /dev/null -w '%{http_code}' localhost:$(KERBEROS_ADMIN_PORT)/api/admin/flow)" = "401" ]; do \
+		echo "Waiting for Kerberos admin API..."; \
+		sleep 1; \
+	done; \
+	echo "Kerberos is ready!"
+
 compose-logs:
 	@VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \

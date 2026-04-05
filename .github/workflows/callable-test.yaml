@@ -57,6 +57,10 @@ jobs:
       - name: Run test environment
         run: make compose
 
+      - name: Wait for Kerberos to be ready
+        timeout-minutes: 2
+        run: make compose-wait
+
       - name: Run integration tests
         run: make integrationtest
 
