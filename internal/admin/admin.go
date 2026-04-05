@@ -58,7 +58,7 @@ func New(opts *Opts) *Admin {
 	}
 
 	ssi := newSSI(&ssiOpts{
-		DB:           opts.SQLClient,
+		SQLClient:    opts.SQLClient,
 		ClientID:     opts.Cfg.SuperUser.ClientID,
 		ClientSecret: opts.Cfg.SuperUser.ClientSecret,
 	})

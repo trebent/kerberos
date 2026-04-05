@@ -16,7 +16,7 @@ import (
 
 func TestSessionMiddleware(t *testing.T) {
 	ssi := newSSI(&ssiOpts{
-		DB:           sqlite.New(&sqlite.Opts{DSN: "test.db"}),
+		SQLClient:    sqlite.New(&sqlite.Opts{DSN: "test.db"}),
 		ClientID:     "admin",
 		ClientSecret: "secret",
 	})

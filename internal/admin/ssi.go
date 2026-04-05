@@ -28,13 +28,13 @@ type (
 		SetOASBackend(adminext.OASBackend)
 	}
 	ssiOpts struct {
-		DB db.SQLClient
+		SQLClient db.SQLClient
 
 		ClientID     string
 		ClientSecret string
 	}
 	impl struct {
-		db db.SQLClient
+		sqlClient db.SQLClient
 
 		sessionCleaner *time.Ticker
 
@@ -69,7 +69,7 @@ func makeGenAPIError(msg string) adminapi.APIErrorResponse {
 
 func newSSI(opts *ssiOpts) withExtensions {
 	i := &impl{
-		db: opts.DB,
+		sqlClient: opts.SQLClient,
 
 		sessionCleaner: time.NewTicker(superSessionCleanerInterval),
 
@@ -78,6 +78,8 @@ func newSSI(opts *ssiOpts) withExtensions {
 
 		clientID:     opts.ClientID,
 		clientSecret: opts.ClientSecret,
+
+		oasBackend: &adminext.DummyOASBackend{},
 	}
 
 	go func(im *impl) {

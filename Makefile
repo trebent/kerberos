@@ -26,7 +26,7 @@ define cecho
 	@echo -e "${2}${1}${RESET}"
 endef
 
-default: lint vulncheck go-build
+default: lint vulncheck go-build unittest
 
 clean:
 	@rm -rf build/
