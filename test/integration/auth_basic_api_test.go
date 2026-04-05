@@ -191,6 +191,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	checkErr(err, t)
 	verifyStatusCode(getUserResp.StatusCode(), http.StatusForbidden, t)
 
+	// Create a group in org1 with session1, then try to access it with session2 which belongs to org2 - should fail.
 	createGroup1Resp, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
 		createOrg1.JSON201.Id,

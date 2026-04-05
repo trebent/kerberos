@@ -3,7 +3,6 @@ package basic
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
@@ -66,41 +65,16 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 				return nil, apierror.APIErrNoSession
 			}
 
-			rows, err := apiImpl.db.Query(
-				ctx,
-				queryGetSession,
-				sql.NamedArg{Name: "sessionID", Value: sessionID},
-			)
-			if err != nil {
-				zerologr.Error(err, "Failed to query session")
-				return nil, apierror.APIErrInternal
-			}
-
-			if !rows.Next() {
-				if err := rows.Err(); err != nil {
-					zerologr.Error(err, "Failed to load next row")
-					return nil, apierror.APIErrInternal
-				}
-
+			session, err := dbGetSessionRow(ctx, apiImpl.db, sessionID)
+			if errors.Is(err, errNoSession) {
 				zerologr.Error(apierror.APIErrNoSession, "Failed to find a matching session")
 				return nil, apierror.APIErrNoSession
 			}
-
-			var (
-				sessionUserID int64
-				sessionOrgID  int64
-				administrator bool
-				expires       int64
-			)
-			err = rows.Scan(&sessionUserID, &sessionOrgID, &administrator, &expires)
-			//nolint:sqlclosecheck // won't help here
-			_ = rows.Close()
 			if err != nil {
-				zerologr.Error(err, "Failed to scan row")
 				return nil, apierror.APIErrInternal
 			}
 
-			if time.Now().UnixMilli() > expires {
+			if time.Now().UnixMilli() > session.Expires {
 				zerologr.Error(apierror.ErrNoSession, "Session expired")
 				return nil, apierror.APIErrNoSession
 			}
@@ -114,21 +88,21 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 			case "Logout":
 				zerologr.V(20).Info("Validating auth for logout path")
 				validation = make([]error, 1)
-				validation[0] = orgValidator(sessionOrgID, r)
+				validation[0] = orgValidator(session.OrgID, r)
 			case
 				"CreateUser",
 				"ListUsers":
 				zerologr.V(20).Info("Validating auth for user paths")
 				validation = make([]error, 2)
-				validation[0] = orgValidator(sessionOrgID, r)
-				validation[1] = administratorValidator(administrator)
+				validation[0] = orgValidator(session.OrgID, r)
+				validation[1] = administratorValidator(session.Administrator)
 			case "GetUser":
 				zerologr.V(20).Info("Validating auth for GET user path")
 				validation = make([]error, 2)
-				validation[0] = orgValidator(sessionOrgID, r)
+				validation[0] = orgValidator(session.OrgID, r)
 				validation[1] = or(
-					administratorValidator(administrator),
-					ownerUserValidator(sessionUserID, r),
+					administratorValidator(session.Administrator),
+					ownerUserValidator(session.UserID, r),
 				)
 			case
 				"UpdateUser",
@@ -137,38 +111,38 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 				"ChangePassword":
 				zerologr.V(20).Info("Validating auth for user owned paths")
 				validation = make([]error, 2)
-				validation[0] = orgValidator(sessionOrgID, r)
+				validation[0] = orgValidator(session.OrgID, r)
 				validation[1] = or(
-					administratorValidator(administrator),
-					ownerUserValidator(sessionUserID, r),
+					administratorValidator(session.Administrator),
+					ownerUserValidator(session.UserID, r),
 				)
 			case "UpdateUserGroups":
 				zerologr.V(20).Info("Validating auth for update user membership paths")
 				validation = make([]error, 2)
-				validation[0] = orgValidator(sessionOrgID, r)
-				validation[1] = administratorValidator(administrator)
+				validation[0] = orgValidator(session.OrgID, r)
+				validation[1] = administratorValidator(session.Administrator)
 			case
 				"GetOrganisation",
 				"DeleteOrganisation":
 				zerologr.V(20).Info("Validating auth for specific org paths")
 				validation = make([]error, 2)
-				validation[0] = orgValidator(sessionOrgID, r)
-				validation[1] = administratorValidator(administrator)
+				validation[0] = orgValidator(session.OrgID, r)
+				validation[1] = administratorValidator(session.Administrator)
 			case
 				"CreateGroup",
 				"ListGroups":
 				zerologr.V(20).Info("Validating auth for group paths")
 				validation = make([]error, 2)
-				validation[0] = orgValidator(sessionOrgID, r)
-				validation[1] = administratorValidator(administrator)
+				validation[0] = orgValidator(session.OrgID, r)
+				validation[1] = administratorValidator(session.Administrator)
 			case
 				"UpdateGroup",
 				"GetGroup",
 				"DeleteGroup":
 				zerologr.V(20).Info("Validating auth for specific group paths")
 				validation = make([]error, 2)
-				validation[0] = orgValidator(sessionOrgID, r)
-				validation[1] = administratorValidator(administrator)
+				validation[0] = orgValidator(session.OrgID, r)
+				validation[1] = administratorValidator(session.Administrator)
 			default:
 				validation = make([]error, 1)
 				validation[0] = apierror.New(
@@ -182,7 +156,7 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 				return nil, err
 			}
 
-			ctx = withUser(ctx, sessionUserID)
+			ctx = withUser(ctx, session.UserID)
 			return f(ctx, w, r, request)
 		}
 	}

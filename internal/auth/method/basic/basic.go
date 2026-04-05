@@ -2,7 +2,7 @@ package basic
 
 import (
 	"context"
-	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -92,47 +92,22 @@ func (a *basic) Authenticated(req *http.Request) error {
 	}
 
 	// Read session info from the DB and compare it to the incoming request.
-	rows, err := a.sqlClient.Query(
-		req.Context(),
-		queryGetSession,
-		sql.NamedArg{Name: "sessionID", Value: sessionID},
-	)
-	if err != nil {
-		zerologr.Error(err, "Failed to query session")
-		return apierror.APIErrInternal
-	}
-
-	if !rows.Next() {
-		if err := rows.Err(); err != nil {
-			zerologr.Error(err, "Failed to load next row")
-			return apierror.APIErrInternal
-		}
-
+	session, err := dbGetSessionRow(req.Context(), a.sqlClient, sessionID)
+	if errors.Is(err, errNoSession) {
 		zerologr.Error(apierror.ErrNoSession, "Failed to find a matching session")
 		return apierror.APIErrNoSession
 	}
-
-	var (
-		sessionUserID int64
-		sessionOrgID  int64
-		administrator bool
-		expires       int64
-	)
-	err = rows.Scan(&sessionUserID, &sessionOrgID, &administrator, &expires)
-	//nolint:sqlclosecheck // won't help here
-	_ = rows.Close()
 	if err != nil {
-		zerologr.Error(err, "Failed to scan row")
 		return apierror.APIErrInternal
 	}
 
-	if time.Now().UnixMilli() > expires {
+	if time.Now().UnixMilli() > session.Expires {
 		zerologr.Error(apierror.ErrNoSession, "Session expired")
 		return apierror.APIErrNoSession
 	}
 
-	req.Header.Set("X-Krb-Org", strconv.Itoa(int(sessionOrgID)))
-	req.Header.Set("X-Krb-User", strconv.Itoa(int(sessionUserID)))
+	req.Header.Set("X-Krb-Org", strconv.Itoa(int(session.OrgID)))
+	req.Header.Set("X-Krb-User", strconv.Itoa(int(session.UserID)))
 
 	return nil
 }
@@ -178,38 +153,24 @@ func (a *basic) Authorized(req *http.Request) error {
 	}
 
 	// Fetch the user's groups.
-	rows, err := a.sqlClient.Query(
-		req.Context(),
-		queryListUserGroups,
-		sql.NamedArg{Name: "orgID", Value: req.Header.Get("X-Krb-Org")},
-		sql.NamedArg{Name: "userID", Value: req.Header.Get("X-Krb-User")},
-	)
+	orgID, err := strconv.ParseInt(req.Header.Get("X-Krb-Org"), 10, 64)
 	if err != nil {
-		zerologr.Error(err, "Failed to query user groups")
+		zerologr.Error(err, "Failed to parse org ID header")
 		return apierror.APIErrInternal
 	}
-	// Fine to defer since we're iterating, not just doing one scan.
-	defer rows.Close()
+	userID, err := strconv.ParseInt(req.Header.Get("X-Krb-User"), 10, 64)
+	if err != nil {
+		zerologr.Error(err, "Failed to parse user ID header")
+		return apierror.APIErrInternal
+	}
 
-	userGroups := make([]string, 0)
-	for {
-		if !rows.Next() {
-			if err := rows.Err(); err != nil {
-				zerologr.Error(err, "Failed to scan next row")
-				return apierror.APIErrInternal
-			}
+	userGroups, err := dbGetUserGroupNames(req.Context(), a.sqlClient, orgID, userID)
+	if err != nil {
+		return apierror.APIErrInternal
+	}
 
-			break
-		}
-
-		groupName := ""
-		if err = rows.Scan(&groupName); err != nil {
-			zerologr.Error(err, "Failed to scan row")
-			return apierror.APIErrInternal
-		}
-
-		userGroups = append(userGroups, groupName)
-		req.Header.Add("X-Krb-Groups", groupName)
+	for _, g := range userGroups {
+		req.Header.Add("X-Krb-Groups", g)
 	}
 
 	for _, usergroup := range userGroups {
