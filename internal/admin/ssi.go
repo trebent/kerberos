@@ -219,6 +219,8 @@ func (i *impl) StopDebugSession(
 	_ adminapi.StopDebugSessionRequestObject,
 ) (adminapi.StopDebugSessionResponseObject, error) {
 	return nil, apierror.APIErrNotImplemented
+}
+
 // bootstrapSuperuser checks if a super user exists and if not, creates one with the provided credentials.
 // This is to allow bootstrapping of the first super user. Subsequent calls to this function will not have any effect.
 // This is to prevent re-provisioning of the super-user, potentially allowing an attacker to reset powerful credentials.
