@@ -1,4 +1,4 @@
-package util
+package password
 
 import (
 	"crypto/rand"
@@ -11,9 +11,9 @@ import (
 
 const saltBytes = 32
 
-// MakePassword creates a random password if the input password is "". It will return the input/generated
+// Make creates a random password if the input password is "". It will return the input/generated
 // password, the salt, and the hashed version of the password.
-func MakePassword(password string) (string, string, string) {
+func Make(password string) (string, string, string) {
 	if password == "" {
 		password = uuid.NewString()
 	}
@@ -38,8 +38,8 @@ func MakePassword(password string) (string, string, string) {
 	return password, hex.EncodeToString(salt), hex.EncodeToString(hash)
 }
 
-// PasswordMatch verifies if the input cleartext password matches the salt and hashed password.
-func PasswordMatch(salt, hashedPassword, clearTextPassword string) bool {
+// Match verifies if the input cleartext password matches the salt and hashed password.
+func Match(salt, hashedPassword, clearTextPassword string) bool {
 	decodedSalt, _ := hex.DecodeString(salt)
 	hashedPasswordBytes, _ := hex.DecodeString(hashedPassword)
 	return bcrypt.CompareHashAndPassword(

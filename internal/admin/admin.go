@@ -32,29 +32,33 @@ type (
 		Cfg *config.AdminConfig
 	}
 	Admin struct {
+		// Mux is the HTTP ServeMux on which the admin API is registered.
 		mux *http.ServeMux
+
+		// StrictServerInterface of the admin API. Used to manufacture middleware to late-registered
+		// API providers.
 		ssi withExtensions
 	}
 )
 
-//go:embed db/schema.sql
+//go:embed dbschema/schema.sql
 var dbschemaBytes []byte
 
-const authAdminSpecification = "admin.yaml"
+const adminSpecification = "admin.yaml"
 
 // Runs the administration API.
 func New(opts *Opts) *Admin {
 	zerologr.Info("Setting up administration API")
 	applySchemas(opts.SQLClient)
 
-	data, err := os.ReadFile(fmt.Sprintf("%s/%s", opts.OASDir, authAdminSpecification))
+	data, err := os.ReadFile(fmt.Sprintf("%s/%s", opts.OASDir, adminSpecification))
 	if err != nil {
-		panic(fmt.Errorf("failed to read admin authentication OAS: %w", err))
+		panic(fmt.Errorf("failed to read admin OAS: %w", err))
 	}
 
 	spec, err := openapi3.NewLoader().LoadFromData(data)
 	if err != nil {
-		panic(fmt.Errorf("failed to load admin authentication OAS: %w", err))
+		panic(fmt.Errorf("failed to load admin OAS: %w", err))
 	}
 
 	ssi := newSSI(&ssiOpts{

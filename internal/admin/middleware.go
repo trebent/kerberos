@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
+	"github.com/trebent/kerberos/internal/admin/model"
 	adminapigen "github.com/trebent/kerberos/internal/oapi/admin"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
 	"github.com/trebent/zerologr"
@@ -41,28 +42,27 @@ func SessionMiddleware(
 		) (any, error) {
 			zerologr.V(20).Info("Running admin session middleware")
 
-			session := r.Header.Get("X-Krb-Session")
+			sessionID := r.Header.Get("X-Krb-Session")
 
 			// No session at all to verify.
-			if session == "" {
+			if sessionID == "" {
 				return f(ctx, w, r, request)
 			}
 
-			sessionExpiry, ok := apiImpl.superSessions.Load(session)
+			session, err := apiImpl.querySession(sessionID)
 			// Not found among super sessions, just continue. Remember this middleware does NOT enforce
 			// auth, it only populates metadata.
-			if !ok {
+			if err != nil {
 				return f(ctx, w, r, request)
 			}
 
-			// TODO: This session needs to be set also for other admin users when support for those has
-			// been implemented. It's set here not to confuse a non-admin session ID with admin ones,
-			// since there is only a super user check right now.
+			if time.Now().UnixMilli() > session.Expires {
+				return f(ctx, w, r, request)
+			}
 
-			tsessionExpiry, _ := sessionExpiry.(time.Time)
-			if time.Now().Before(tsessionExpiry) {
+			ctx = context.WithValue(ctx, adminContextSession, session)
+			if session.IsSuper {
 				ctx = context.WithValue(ctx, adminContextIsSuperUser, true)
-				ctx = context.WithValue(ctx, adminContextSession, session)
 			}
 
 			return f(ctx, w, r, request)
@@ -97,18 +97,14 @@ func RequireSessionMiddleware() adminapigen.StrictMiddlewareFunc {
 	}
 }
 
-func SessionIDFromContext(ctx context.Context) string {
-	val := ctx.Value(adminContextSession)
-	if sval, ok := val.(string); ok {
-		return sval
-	}
-
-	return ""
-}
-
 func ContextSessionValid(ctx context.Context) bool {
 	val := ctx.Value(adminContextSession)
-	return val != nil
+	if session, ok := val.(*model.Session); ok {
+		return time.Now().UnixMilli() <= session.Expires
+	}
+
+	// No session found in context, invalid.
+	return false
 }
 
 func IsSuperUserContext(ctx context.Context) bool {

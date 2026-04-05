@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/trebent/kerberos/internal/auth/util"
 	"github.com/trebent/kerberos/internal/db"
 	authbasicapi "github.com/trebent/kerberos/internal/oapi/auth/basic"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
+	"github.com/trebent/kerberos/internal/util/password"
 	"github.com/trebent/zerologr"
 )
 
@@ -111,7 +111,7 @@ func (i *impl) Login(
 		return authbasicapi.Login500JSONResponse(GenErrInternal), nil
 	}
 
-	if !util.PasswordMatch(salt, storedHashed, req.Body.Password) {
+	if !password.Match(salt, storedHashed, req.Body.Password) {
 		zerologr.Info("User login failed due to password mismatch")
 		return authbasicapi.Login401JSONResponse(makeGenAPIError("Login failed.")), nil
 	}
@@ -194,14 +194,14 @@ func (i *impl) ChangePassword(
 		return authbasicapi.ChangePassword500JSONResponse(GenErrInternal), nil
 	}
 
-	if !util.PasswordMatch(salt, hashedPassword, req.Body.OldPassword) {
+	if !password.Match(salt, hashedPassword, req.Body.OldPassword) {
 		zerologr.Error(err, "Mismatched old password")
 		return authbasicapi.ChangePassword401JSONResponse(
 			makeGenAPIError("Failed to change user password."),
 		), nil
 	}
 
-	_, newSalt, newHashedPassword := util.MakePassword(req.Body.Password)
+	_, newSalt, newHashedPassword := password.Make(req.Body.Password)
 	_, err = i.db.Exec(
 		ctx,
 		queryUpdateUserPassword,
@@ -274,7 +274,7 @@ func (i *impl) CreateOrganisation(
 	// Create an admin user for the organisation.
 	adminUsername := fmt.Sprintf("%s-%s", "admin", req.Body.Name)
 
-	adminPassword, salt, hashedAdminPassword := util.MakePassword("")
+	adminPassword, salt, hashedAdminPassword := password.Make("")
 	res, err = tx.Exec(
 		ctx,
 		queryCreateUser,
@@ -310,7 +310,7 @@ func (i *impl) CreateUser(
 	ctx context.Context,
 	req authbasicapi.CreateUserRequestObject,
 ) (authbasicapi.CreateUserResponseObject, error) {
-	_, salt, hashedPassword := util.MakePassword(req.Body.Password)
+	_, salt, hashedPassword := password.Make(req.Body.Password)
 	res, err := i.db.Exec(
 		ctx,
 		queryCreateUser,
