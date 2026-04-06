@@ -467,3 +467,192 @@ func TestUserChangePasswordOASValidation(t *testing.T) {
 	checkErr(err, t)
 	verifyStatusCode(shortNewPwResp.StatusCode(), http.StatusBadRequest, t)
 }
+
+// TestUserNoSession verifies that every user-scoped endpoint returns 401 with a populated
+// error body when called without a session header.
+func TestUserNoSession(t *testing.T) {
+	// CreateUser — no session.
+	createResp, err := basicAuthClient.CreateUserWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
+	)
+	checkErr(err, t)
+	verifyStatusCode(createResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(createResp.JSON401, t)
+
+	// ListUsers — no session.
+	listResp, err := basicAuthClient.ListUsersWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+	)
+	checkErr(err, t)
+	verifyStatusCode(listResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(listResp.JSON401, t)
+
+	// GetUser — no session.
+	getResp, err := basicAuthClient.GetUserWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.Userid(alwaysUserID),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(getResp.JSON401, t)
+
+	// UpdateUser — no session.
+	updateResp, err := basicAuthClient.UpdateUserWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.Userid(alwaysUserID),
+		authbasicapi.UpdateUserJSONRequestBody{Id: int64(alwaysUserID), Name: username()},
+	)
+	checkErr(err, t)
+	verifyStatusCode(updateResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(updateResp.JSON401, t)
+
+	// DeleteUser — no session.
+	deleteResp, err := basicAuthClient.DeleteUserWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.Userid(alwaysUserID),
+	)
+	checkErr(err, t)
+	verifyStatusCode(deleteResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(deleteResp.JSON401, t)
+
+	// UpdateUserGroups — no session.
+	updateGroupsResp, err := basicAuthClient.UpdateUserGroupsWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.Userid(alwaysUserID),
+		authbasicapi.UpdateUserGroupsJSONRequestBody([]string{}),
+	)
+	checkErr(err, t)
+	verifyStatusCode(updateGroupsResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(updateGroupsResp.JSON401, t)
+
+	// GetUserGroups — no session.
+	getGroupsResp, err := basicAuthClient.GetUserGroupsWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.Userid(alwaysUserID),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getGroupsResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(getGroupsResp.JSON401, t)
+
+	// ChangePassword — no session.
+	changePwResp, err := basicAuthClient.ChangePasswordWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.Userid(alwaysUserID),
+		authbasicapi.ChangePasswordJSONRequestBody{OldPassword: "validoldpassword", Password: "validnewpassword"},
+	)
+	checkErr(err, t)
+	verifyStatusCode(changePwResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(changePwResp.JSON401, t)
+}
+
+// TestUserDeleteNotFound verifies that attempting to delete an already-deleted user
+// returns 404 (no body defined in spec).
+func TestUserDeleteNotFound(t *testing.T) {
+	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
+		t.Context(),
+		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
+	)
+	checkErr(err, t)
+	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
+	superSession := extractSession(superLoginResp.HTTPResponse, t)
+
+	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
+		t.Context(),
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
+	orgID := createOrgResp.JSON201.Id
+
+	createUserResp, err := basicAuthClient.CreateUserWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
+	userID := createUserResp.JSON201.Id
+
+	// First delete succeeds.
+	deleteResp, err := basicAuthClient.DeleteUserWithResponse(
+		t.Context(),
+		orgID,
+		userID,
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
+
+	// Second delete must return 404 (no body defined in spec).
+	deleteAgainResp, err := basicAuthClient.DeleteUserWithResponse(
+		t.Context(),
+		orgID,
+		userID,
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(deleteAgainResp.StatusCode(), http.StatusNotFound, t)
+}
+
+// TestUserUpdateNotFound verifies that attempting to update a deleted user returns 404
+// (no body defined in spec).
+func TestUserUpdateNotFound(t *testing.T) {
+	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
+		t.Context(),
+		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
+	)
+	checkErr(err, t)
+	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
+	superSession := extractSession(superLoginResp.HTTPResponse, t)
+
+	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
+		t.Context(),
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
+	orgID := createOrgResp.JSON201.Id
+
+	createUserResp, err := basicAuthClient.CreateUserWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
+	userID := createUserResp.JSON201.Id
+
+	// Delete the user first.
+	deleteResp, err := basicAuthClient.DeleteUserWithResponse(
+		t.Context(),
+		orgID,
+		userID,
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
+
+	// Update the deleted user must return 404 (no body defined in spec).
+	updateResp, err := basicAuthClient.UpdateUserWithResponse(
+		t.Context(),
+		orgID,
+		userID,
+		authbasicapi.UpdateUserJSONRequestBody{Id: userID, Name: username()},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(updateResp.StatusCode(), http.StatusNotFound, t)
+}
