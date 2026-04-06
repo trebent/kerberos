@@ -53,7 +53,7 @@ var (
 	errUnrecognizedMethod = errors.New("unrecognized authentication method")
 )
 
-func NewComponent(opts *Opts) Authorizer {
+func NewComponent(opts *Opts) (Authorizer, error) {
 	authorizer := &authorizer{
 		cfg: opts.Cfg,
 		db:  opts.SQLClient,
@@ -62,14 +62,18 @@ func NewComponent(opts *Opts) Authorizer {
 	if opts.Cfg.Methods.Basic != nil {
 		zerologr.Info("Basic authentication enabled")
 		// If basic auth, create the method.
-		authorizer.basic = basic.New(&basic.Opts{
+		b, err := basic.New(&basic.Opts{
 			SQLClient:   opts.SQLClient,
 			OASDir:      opts.OASDir,
 			AuthZConfig: makeAuthZMap(opts.Cfg.Scheme.Mappings),
 		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create basic auth method: %w", err)
+		}
+		authorizer.basic = b
 	}
 
-	return authorizer
+	return authorizer, nil
 }
 
 func (a *authorizer) Order() int {

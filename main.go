@@ -148,7 +148,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	// Even though the admin configuration is optional, it's always available. The admin initialisation
 	// output is used to configure and prepare other internal components for administration.
 	zerologr.Info("Loading admin")
-	admin := admin.New(
+	admin, err := admin.New(
 		&admin.Opts{
 			Cfg:       cfg.AdminConfig,
 			Mux:       adminMux,
@@ -156,6 +156,9 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 			OASDir:    internalenv.OASDirectory.Value(),
 		},
 	)
+	if err != nil {
+		return fmt.Errorf("failed to initialize admin: %w", err)
+	}
 
 	zerologr.Info("Loading observability")
 	observability := obs.NewComponent(&obs.Opts{
@@ -171,11 +174,14 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 
 	if cfg.AuthEnabled() {
 		zerologr.Info("Loading auth")
-		authorizer := auth.NewComponent(&auth.Opts{
+		authorizer, err := auth.NewComponent(&auth.Opts{
 			Cfg:       cfg.AuthConfig,
 			SQLClient: db,
 			OASDir:    internalenv.OASDirectory.Value(),
 		})
+		if err != nil {
+			return fmt.Errorf("failed to initialize auth: %w", err)
+		}
 		customFlowComponents = append(customFlowComponents, authorizer)
 
 		// Register the authorizer with the admin component so that it can serve auth metadata to the admin API.

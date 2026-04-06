@@ -53,18 +53,21 @@ var (
 )
 
 // New will return an authentication method and register API endpoints with the input serve mux.
-func New(opts *Opts) Basic {
+func New(opts *Opts) (Basic, error) {
 	if opts.SQLClient == nil {
-		panic("DB client is required for basic auth method")
+		return nil, errors.New("DB client is required for basic auth method")
 	}
-	applySchemas(opts.SQLClient)
+
+	if err := applySchemas(opts.SQLClient); err != nil {
+		return nil, fmt.Errorf("failed to apply basic auth DB schema: %w", err)
+	}
 
 	if opts.OASDir == "" {
-		panic("OAS directory is required for basic auth method")
+		return nil, errors.New("OAS directory is required for basic auth method")
 	}
 
 	if opts.AuthZConfig == nil {
-		panic("authorization config is required for basic auth method")
+		return nil, errors.New("authorization config is required for basic auth method")
 	}
 
 	b := &basic{
@@ -73,7 +76,7 @@ func New(opts *Opts) Basic {
 		config:    opts.AuthZConfig,
 	}
 
-	return b
+	return b, nil
 }
 
 func (a *basic) Authenticated(req *http.Request) error {
@@ -231,10 +234,11 @@ func (a *basic) RegisterRoutes(
 	return nil
 }
 
-func applySchemas(sqlClient db.SQLClient) {
+func applySchemas(sqlClient db.SQLClient) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), db.SchemaApplyTimeout)
 	defer cancel()
 	if _, err := sqlClient.Exec(timeoutCtx, string(dbschemaBytes)); err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
