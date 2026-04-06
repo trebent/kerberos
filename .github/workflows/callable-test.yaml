@@ -15,6 +15,7 @@ on:
         default: false
 
 permissions:
+  checks: write
   contents: read
   packages: read
 
@@ -33,61 +34,23 @@ jobs:
       - name: Run unit tests with coverage
         run: |
           mkdir -p build
-          go test -json -coverprofile=build/coverage.out -covermode=atomic ./... -timeout 20s -failfast | tee build/unit-test-output.json
+          go test -v -json -coverprofile=build/coverage.out -covermode=atomic ./... -timeout 20s -failfast | tee build/unit-test-output.json
 
-      - name: Generate unit test summary
+      - name: Publish unit test results
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        if: always()
+        with:
+          name: Unit Tests
+          path: build/unit-test-output.json
+          reporter: golang-json
+          fail-on-error: 'false'
+
+      - name: Generate coverage report
         if: always()
         run: |
-          PASSED=$(jq -rs '[.[] | select(.Action == "pass" and .Test != null)] | length' build/unit-test-output.json 2>/dev/null || echo "0")
-          FAILED=$(jq -rs '[.[] | select(.Action == "fail" and .Test != null)] | length' build/unit-test-output.json 2>/dev/null || echo "0")
-          SKIPPED=$(jq -rs '[.[] | select(.Action == "skip" and .Test != null)] | length' build/unit-test-output.json 2>/dev/null || echo "0")
-          TOTAL=$((PASSED + FAILED + SKIPPED))
-
-          {
-            echo "## Unit Test Results"
-            echo ""
-            echo "| Total | ✅ Passed | ❌ Failed | ⏭️ Skipped |"
-            echo "|-------|-----------|-----------|-----------|"
-            echo "| $TOTAL | $PASSED | $FAILED | $SKIPPED |"
-          } >> "$GITHUB_STEP_SUMMARY"
-
           if [ -f build/coverage.out ]; then
             go tool cover -html=build/coverage.out -o build/coverage.html
-            COVERAGE=$(go tool cover -func=build/coverage.out | grep "^total:" | awk '{print $NF}')
-            {
-              echo ""
-              echo "### Code Coverage: $COVERAGE"
-              echo ""
-              echo "| Package | Coverage |"
-              echo "|---------|----------|"
-              awk 'NR>1 {
-                split($1, a, ":")
-                pkg = a[1]
-                sub(/\/[^\/]+\.go$/, "", pkg)
-                stmts = $2
-                hit = ($3 > 0) ? $2 : 0
-                total[pkg] += stmts
-                covered[pkg] += hit
-              }
-              END {
-                for (pkg in total) {
-                  if (total[pkg] > 0)
-                    printf "| %s | %.1f%% |\n", pkg, 100.0 * covered[pkg] / total[pkg]
-                }
-              }' build/coverage.out | sort
-              echo "| **Total** | **$COVERAGE** |"
-              echo ""
-              echo "> 📄 A detailed HTML coverage report is available as a workflow artifact."
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-          if [ "$FAILED" -gt "0" ]; then
-            {
-              echo ""
-              echo "### ❌ Failed Tests"
-              echo ""
-              jq -rs '.[] | select(.Action == "fail" and .Test != null) | "- `\(.Package)/\(.Test)`"' build/unit-test-output.json
-            } >> "$GITHUB_STEP_SUMMARY"
+            echo "### Code Coverage: $(go tool cover -func=build/coverage.out | awk '/^total:/{print $NF}')" >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Upload coverage report
@@ -122,32 +85,16 @@ jobs:
       - name: Run integration tests
         run: |
           mkdir -p build
-          cd test/integration && go test -json ./... -count=1 -failfast | tee ../../build/integration-test-output.json
+          cd test/integration && go test -v -json ./... -count=1 -failfast | tee "$GITHUB_WORKSPACE/build/integration-test-output.json"
 
-      - name: Generate integration test summary
+      - name: Publish integration test results
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
         if: always()
-        run: |
-          PASSED=$(jq -rs '[.[] | select(.Action == "pass" and .Test != null)] | length' build/integration-test-output.json 2>/dev/null || echo "0")
-          FAILED=$(jq -rs '[.[] | select(.Action == "fail" and .Test != null)] | length' build/integration-test-output.json 2>/dev/null || echo "0")
-          SKIPPED=$(jq -rs '[.[] | select(.Action == "skip" and .Test != null)] | length' build/integration-test-output.json 2>/dev/null || echo "0")
-          TOTAL=$((PASSED + FAILED + SKIPPED))
-
-          {
-            echo "## Integration Test Results"
-            echo ""
-            echo "| Total | ✅ Passed | ❌ Failed | ⏭️ Skipped |"
-            echo "|-------|-----------|-----------|-----------|"
-            echo "| $TOTAL | $PASSED | $FAILED | $SKIPPED |"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-          if [ "$FAILED" -gt "0" ]; then
-            {
-              echo ""
-              echo "### ❌ Failed Tests"
-              echo ""
-              jq -rs '.[] | select(.Action == "fail" and .Test != null) | "- `\(.Package)/\(.Test)`"' build/integration-test-output.json
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
+        with:
+          name: Integration Tests
+          path: build/integration-test-output.json
+          reporter: golang-json
+          fail-on-error: 'false'
 
       - name: Output logs if tests fail
         if: failure()
