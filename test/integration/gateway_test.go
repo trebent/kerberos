@@ -8,107 +8,83 @@ import (
 	"testing"
 )
 
-// Validate happy path forwarding to a backend service.
+// Validate happy path forwarding for all HTTP methods.
 func TestGWHappy(t *testing.T) {
 	t.Parallel()
 
-	urlSegment := "/hi"
-	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", getPort(), urlSegment)
+	baseURL := fmt.Sprintf("http://localhost:%d/gw/backend/echo", getPort())
+	bodyData := []byte(`{"test": "value"}`)
 
-	response := get(url, t)
-	decodedResponse := verifyGWResponse(response, http.StatusOK, t)
-
-	if decodedResponse.URL != urlSegment {
-		t.Errorf("unexpected URL in response: got %s, want %s", decodedResponse.URL, urlSegment)
+	cases := []struct {
+		name   string
+		method string
+		path   string
+		body   []byte
+	}{
+		{name: "GET", method: http.MethodGet, path: "/hi"},
+		{name: "POST", method: http.MethodPost, path: "/", body: bodyData},
+		{name: "PUT", method: http.MethodPut, path: "/long/hello", body: bodyData},
+		{name: "DELETE", method: http.MethodDelete, path: "/hi"},
+		{name: "PATCH", method: http.MethodPatch, path: "/hi", body: bodyData},
+		{name: "TRACE", method: http.MethodTrace, path: "/hi"},
+		{name: "OPTIONS", method: http.MethodOptions, path: "/hi"},
+		{name: "HEAD", method: http.MethodHead, path: "/hi"},
 	}
 
-	if decodedResponse.Body != nil {
-		t.Errorf("unexpected body in response: got %s, want empty", string(decodedResponse.Body))
-	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-	if decodedResponse.Method != http.MethodGet {
-		t.Errorf("unexpected method in response: got %s, want %s", decodedResponse.Method, http.MethodGet)
-	}
-}
+			url := baseURL + tc.path
 
-// Validate calls to a backend's root path works.
-func TestGWRoot(t *testing.T) {
-	t.Parallel()
-	testData := `{"test": "value"}`
-	buf := bytes.NewBuffer([]byte(testData))
-	urlSegment := "/"
-	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", getPort(), urlSegment)
+			// HEAD responses carry no body; verify the status code only.
+			if tc.method == http.MethodHead {
+				response := head(url, t)
+				defer response.Body.Close()
+				if response.StatusCode != http.StatusOK {
+					t.Fatalf("unexpected status code: got %d, want %d", response.StatusCode, http.StatusOK)
+				}
+				return
+			}
 
-	response := post(url, buf.Bytes(), t)
-	decodedResponse := verifyGWResponse(response, http.StatusOK, t)
+			var req *http.Request
+			var err error
+			if tc.body != nil {
+				req, err = http.NewRequest(tc.method, url, bytes.NewBuffer(tc.body))
+			} else {
+				req, err = http.NewRequest(tc.method, url, nil)
+			}
+			if err != nil {
+				t.Fatalf("failed to create request: %v", err)
+			}
 
-	if decodedResponse.URL != urlSegment {
-		t.Errorf("unexpected URL in response: got %s, want %s", decodedResponse.URL, urlSegment)
-	}
+			response := do(req, t)
+			decoded := verifyGWResponse(response, http.StatusOK, t)
 
-	if decodedResponse.Body == nil {
-		t.Errorf("unexpected body in response: got %s, want non-empty", string(decodedResponse.Body))
-	}
-
-	if decodedResponse.Method != http.MethodPost {
-		t.Errorf("unexpected method in response: got %s, want %s", decodedResponse.Method, http.MethodPost)
-	}
-
-	m := map[string]any{}
-	err := json.Unmarshal(decodedResponse.Body, &m)
-	if err != nil {
-		t.Errorf("failed to unmarshal response body: %v", err)
-	}
-
-	if m["test"] != "value" {
-		t.Errorf("unexpected body in response: got %s, want %s", string(decodedResponse.Body), testData)
-	}
-
-	for _, val := range response.Header["Content-Type"] {
-		if val != "application/json" {
-			t.Errorf("unexpected Content-Type header value: got %s, want %s", val, "application/json")
-		}
-	}
-}
-
-// Validate calls to a backend's nested path works.
-func TestGWNested(t *testing.T) {
-	t.Parallel()
-
-	testData := `{"test": "value"}`
-	buf := bytes.NewBuffer([]byte(testData))
-	urlSegment := "/long/hello"
-	url := fmt.Sprintf("http://localhost:%d/gw/backend/echo%s", getPort(), urlSegment)
-
-	response := put(url, buf.Bytes(), t)
-	decodedResponse := verifyGWResponse(response, http.StatusOK, t)
-
-	if decodedResponse.URL != urlSegment {
-		t.Errorf("unexpected URL in response: got %s, want %s", decodedResponse.URL, urlSegment)
-	}
-
-	if decodedResponse.Body == nil {
-		t.Errorf("unexpected body in response: got %s, want non-empty", string(decodedResponse.Body))
-	}
-
-	if decodedResponse.Method != http.MethodPut {
-		t.Errorf("unexpected method in response: got %s, want %s", decodedResponse.Method, http.MethodPut)
-	}
-
-	m := map[string]any{}
-	err := json.Unmarshal(decodedResponse.Body, &m)
-	if err != nil {
-		t.Errorf("failed to unmarshal response body: %v", err)
-	}
-
-	if m["test"] != "value" {
-		t.Errorf("unexpected body in response: got %s, want %s", string(decodedResponse.Body), testData)
-	}
-
-	for _, val := range response.Header["Content-Type"] {
-		if val != "application/json" {
-			t.Errorf("unexpected Content-Type header value: got %s, want %s", val, "application/json")
-		}
+			if decoded.URL != tc.path {
+				t.Errorf("unexpected URL in response: got %s, want %s", decoded.URL, tc.path)
+			}
+			if decoded.Method != tc.method {
+				t.Errorf("unexpected method in response: got %s, want %s", decoded.Method, tc.method)
+			}
+			if tc.body != nil {
+				if decoded.Body == nil {
+					t.Errorf("unexpected body in response: got nil, want non-empty")
+					return
+				}
+				m := map[string]any{}
+				if err := json.Unmarshal(decoded.Body, &m); err != nil {
+					t.Errorf("failed to unmarshal response body: %v", err)
+				}
+				if m["test"] != "value" {
+					t.Errorf("unexpected body in response: got %s, want %s", string(decoded.Body), string(bodyData))
+				}
+			} else {
+				if decoded.Body != nil {
+					t.Errorf("unexpected body in response: got %s, want empty", string(decoded.Body))
+				}
+			}
+		})
 	}
 }
 

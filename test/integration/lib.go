@@ -139,6 +139,36 @@ func patch(url string, body []byte, t *testing.T, headers ...http.Header) *http.
 	return do(req, t, headers...)
 }
 
+func trace(url string, t *testing.T, headers ...http.Header) *http.Response {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodTrace, url, nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+
+	return do(req, t, headers...)
+}
+
+func head(url string, t *testing.T, headers ...http.Header) *http.Response {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodHead, url, nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+
+	return do(req, t, headers...)
+}
+
+func options(url string, t *testing.T, headers ...http.Header) *http.Response {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodOptions, url, nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+
+	return do(req, t, headers...)
+}
+
 func do(req *http.Request, t *testing.T, headers ...http.Header) *http.Response {
 	t.Helper()
 	for _, headers := range headers {
