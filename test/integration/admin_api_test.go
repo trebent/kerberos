@@ -42,15 +42,7 @@ func TestAdminLoginSuperuserFailure(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(superLoginResp.StatusCode(), http.StatusUnauthorized, t)
-
-	// The generated client already parsed the response, so check the JSON401 response directly
-	if superLoginResp.JSON401 != nil {
-		if len(superLoginResp.JSON401.Errors) == 0 {
-			t.Fatalf("Expected errors in response body, but got empty errors array")
-		}
-	} else {
-		t.Fatalf("Expected JSON401 response but got nil")
-	}
+	verifyAdminAPIErrorResponse(superLoginResp.JSON401, t)
 }
 
 func TestAdminOASFailure(t *testing.T) {
@@ -124,6 +116,25 @@ func TestAdminGetFlow(t *testing.T) {
 			t.Errorf("Unexpected flow component name: %s", component.Name)
 		}
 	}
+}
+
+func TestAdminGetBackendOASNotFound(t *testing.T) {
+	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
+		t.Context(),
+		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
+	)
+	checkErr(err, t)
+	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
+	superSession := extractSession(superLoginResp.HTTPResponse, t)
+
+	resp, err := adminClient.GetBackendOASWithResponse(
+		t.Context(),
+		"nonexistent-backend",
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(resp.StatusCode(), http.StatusNotFound, t)
+	verifyAdminAPIErrorResponse(resp.JSON404, t)
 }
 
 func TestAdminGetBackendOAS(t *testing.T) {

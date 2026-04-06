@@ -369,3 +369,160 @@ func TestGroupUpdateOASValidation(t *testing.T) {
 	verifyStatusCode(updateResp.StatusCode(), http.StatusBadRequest, t)
 	verifyAuthBasicAPIErrorResponse(updateResp.JSON400, t)
 }
+
+// TestGroupNoSession verifies that every group-scoped endpoint returns 401 with a
+// populated error body when called without a session header.
+func TestGroupNoSession(t *testing.T) {
+	// CreateGroup — no session.
+	createResp, err := basicAuthClient.CreateGroupWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.CreateGroupJSONRequestBody{Name: groupName()},
+	)
+	checkErr(err, t)
+	verifyStatusCode(createResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(createResp.JSON401, t)
+
+	// ListGroups — no session.
+	listResp, err := basicAuthClient.ListGroupsWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+	)
+	checkErr(err, t)
+	verifyStatusCode(listResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(listResp.JSON401, t)
+
+	// GetGroup — no session.
+	getResp, err := basicAuthClient.GetGroupWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.Groupid(alwaysGroupStaffID),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(getResp.JSON401, t)
+
+	// UpdateGroup — no session.
+	updateResp, err := basicAuthClient.UpdateGroupWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.Groupid(alwaysGroupStaffID),
+		authbasicapi.UpdateGroupJSONRequestBody{Id: int64(alwaysGroupStaffID), Name: groupName()},
+	)
+	checkErr(err, t)
+	verifyStatusCode(updateResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(updateResp.JSON401, t)
+
+	// DeleteGroup — no session.
+	deleteResp, err := basicAuthClient.DeleteGroupWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.Groupid(alwaysGroupStaffID),
+	)
+	checkErr(err, t)
+	verifyStatusCode(deleteResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(deleteResp.JSON401, t)
+}
+
+// TestGroupDeleteNotFound verifies that attempting to delete an already-deleted group
+// returns 404 (no body defined in spec).
+func TestGroupDeleteNotFound(t *testing.T) {
+	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
+		t.Context(),
+		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
+	)
+	checkErr(err, t)
+	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
+	superSession := extractSession(superLoginResp.HTTPResponse, t)
+
+	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
+		t.Context(),
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
+	orgID := createOrgResp.JSON201.Id
+
+	createGroupResp, err := basicAuthClient.CreateGroupWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.CreateGroupJSONRequestBody{Name: groupName()},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createGroupResp.StatusCode(), http.StatusCreated, t)
+	groupID := createGroupResp.JSON201.Id
+
+	// First delete succeeds.
+	deleteResp, err := basicAuthClient.DeleteGroupWithResponse(
+		t.Context(),
+		orgID,
+		groupID,
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
+
+	// Second delete must return 404 (no body defined in spec).
+	deleteAgainResp, err := basicAuthClient.DeleteGroupWithResponse(
+		t.Context(),
+		orgID,
+		groupID,
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(deleteAgainResp.StatusCode(), http.StatusNotFound, t)
+}
+
+// TestGroupUpdateNotFound verifies that attempting to update a deleted group returns 404
+// (no body defined in spec).
+func TestGroupUpdateNotFound(t *testing.T) {
+	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
+		t.Context(),
+		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
+	)
+	checkErr(err, t)
+	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
+	superSession := extractSession(superLoginResp.HTTPResponse, t)
+
+	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
+		t.Context(),
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
+	orgID := createOrgResp.JSON201.Id
+
+	createGroupResp, err := basicAuthClient.CreateGroupWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.CreateGroupJSONRequestBody{Name: groupName()},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createGroupResp.StatusCode(), http.StatusCreated, t)
+	groupID := createGroupResp.JSON201.Id
+
+	// Delete the group first.
+	deleteResp, err := basicAuthClient.DeleteGroupWithResponse(
+		t.Context(),
+		orgID,
+		groupID,
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
+
+	// Update the deleted group must return 404 (no body defined in spec).
+	updateResp, err := basicAuthClient.UpdateGroupWithResponse(
+		t.Context(),
+		orgID,
+		groupID,
+		authbasicapi.UpdateGroupJSONRequestBody{Id: groupID, Name: groupName()},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(updateResp.StatusCode(), http.StatusNotFound, t)
+}

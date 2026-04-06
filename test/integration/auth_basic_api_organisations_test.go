@@ -401,6 +401,7 @@ func TestOrganisationLoginInvalidCredentials(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(loginResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(loginResp.JSON401, t)
 }
 
 // TestOrganisationLoginOASValidation verifies that login requests with credentials that
@@ -476,4 +477,162 @@ func TestOrganisationLogout(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(getUserAfterLogoutResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(getUserAfterLogoutResp.JSON401, t)
+}
+
+// TestOrganisationNoSession verifies that every organisation-scoped endpoint returns 401
+// with a populated error body when called without a session header.
+func TestOrganisationNoSession(t *testing.T) {
+	// CreateOrganisation — no session.
+	createResp, err := basicAuthClient.CreateOrganisationWithResponse(
+		t.Context(),
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+	)
+	checkErr(err, t)
+	verifyStatusCode(createResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(createResp.JSON401, t)
+
+	// ListOrganisations — no session.
+	listResp, err := basicAuthClient.ListOrganisationsWithResponse(t.Context())
+	checkErr(err, t)
+	verifyStatusCode(listResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(listResp.JSON401, t)
+
+	// GetOrganisation — no session.
+	getResp, err := basicAuthClient.GetOrganisationWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(getResp.JSON401, t)
+
+	// UpdateOrganisation — no session.
+	updateResp, err := basicAuthClient.UpdateOrganisationWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.UpdateOrganisationJSONRequestBody{Id: int64(alwaysOrgID), Name: orgName()},
+	)
+	checkErr(err, t)
+	verifyStatusCode(updateResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(updateResp.JSON401, t)
+
+	// DeleteOrganisation — no session.
+	deleteResp, err := basicAuthClient.DeleteOrganisationWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+	)
+	checkErr(err, t)
+	verifyStatusCode(deleteResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(deleteResp.JSON401, t)
+
+	// Logout — no session.
+	logoutResp, err := basicAuthClient.LogoutWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+	)
+	checkErr(err, t)
+	verifyStatusCode(logoutResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(logoutResp.JSON401, t)
+}
+
+// TestOrganisationCrossOrgForbidden verifies that GetOrganisation and DeleteOrganisation
+// return 403 with a populated error body when called with a session from a different
+// organisation.
+func TestOrganisationCrossOrgForbidden(t *testing.T) {
+	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
+		t.Context(),
+		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
+	)
+	checkErr(err, t)
+	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
+	superSession := extractSession(superLoginResp.HTTPResponse, t)
+
+	// Create two organisations; each login produces a session scoped to that org.
+	createOrg1, err := basicAuthClient.CreateOrganisationWithResponse(
+		t.Context(),
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createOrg1.StatusCode(), http.StatusCreated, t)
+
+	createOrg2, err := basicAuthClient.CreateOrganisationWithResponse(
+		t.Context(),
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createOrg2.StatusCode(), http.StatusCreated, t)
+
+	loginOrg2, err := basicAuthClient.LoginWithResponse(
+		t.Context(),
+		createOrg2.JSON201.Id,
+		authbasicapi.LoginJSONRequestBody{
+			Username: createOrg2.JSON201.AdminUsername,
+			Password: createOrg2.JSON201.AdminPassword,
+		},
+	)
+	checkErr(err, t)
+	verifyStatusCode(loginOrg2.StatusCode(), http.StatusNoContent, t)
+	session2 := extractSession(loginOrg2.HTTPResponse, t)
+
+	// GetOrganisation for org1 using org2 session — must be 403.
+	getOrg1Resp, err := basicAuthClient.GetOrganisationWithResponse(
+		t.Context(),
+		createOrg1.JSON201.Id,
+		authbasicapi.RequestEditorFn(requestEditorSessionID(session2)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getOrg1Resp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(getOrg1Resp.JSON403, t)
+
+	// DeleteOrganisation for org1 using org2 session — must be 403.
+	deleteOrg1Resp, err := basicAuthClient.DeleteOrganisationWithResponse(
+		t.Context(),
+		createOrg1.JSON201.Id,
+		authbasicapi.RequestEditorFn(requestEditorSessionID(session2)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(deleteOrg1Resp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(deleteOrg1Resp.JSON403, t)
+}
+
+// TestOrganisationDeleteNotFound verifies that attempting to delete an already-deleted
+// organisation returns 404.
+func TestOrganisationDeleteNotFound(t *testing.T) {
+	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
+		t.Context(),
+		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
+	)
+	checkErr(err, t)
+	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
+	superSession := extractSession(superLoginResp.HTTPResponse, t)
+
+	createResp, err := basicAuthClient.CreateOrganisationWithResponse(
+		t.Context(),
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+	orgID := createResp.JSON201.Id
+
+	// First delete succeeds.
+	deleteResp, err := basicAuthClient.DeleteOrganisationWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
+
+	// Second delete must return 404 (no body defined in spec).
+	deleteAgainResp, err := basicAuthClient.DeleteOrganisationWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(deleteAgainResp.StatusCode(), http.StatusNotFound, t)
 }
