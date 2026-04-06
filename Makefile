@@ -48,19 +48,20 @@ codegen:
 unittest:
 	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
-	@go test -v ./... -timeout 20s -failfast
+	@go test -v ./... -timeout 20s -failfast -coverprofile=build/coverage.out -covermode=atomic
 
 unittest-json:
 	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
-	@go test -v -json -coverprofile=$(CURDIR)/build/coverage.out -covermode=atomic ./... -timeout 20s -failfast > $(CURDIR)/build/unit-test-output.json
+	@go test -v -json -coverprofile=build/coverage.out -covermode=atomic ./... -timeout 20s -failfast > build/unit-test-output.json
 
 coverage-report:
 	$(call cecho,Generating coverage report for Kerberos...,$(BOLD_YELLOW))
-	@go tool cover -html=$(CURDIR)/build/coverage.out -o $(CURDIR)/build/coverage.html
-	@echo "### Code Coverage: $$(go tool cover -func=$(CURDIR)/build/coverage.out | awk '/^total:/{print $$3}')"
+	@go tool cover -html=build/coverage.out -o build/coverage.html
+	@echo "### Code Coverage: $$(go tool cover -func=build/coverage.out | awk '/^total:/{print $$3}')"
 
 coverage:
+	@go tool cover -html=build/coverage.out -o build/coverage.html
 	@go tool cover -func=build/coverage.out | awk 'END {print $$3}'
 
 integrationtest:
@@ -70,7 +71,7 @@ integrationtest:
 integrationtest-json:
 	$(call cecho,Running integration tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
-	@cd test/integration && go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/integration-test-output.json
+	@cd test/integration && go test -v -json ./... -count=1 -failfast > build/integration-test-output.json
 
 vulncheck:
 	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
