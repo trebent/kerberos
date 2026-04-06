@@ -30,10 +30,54 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Run tests
-        run: make unittest
+      - name: Run unit tests with coverage
+        run: |
+          mkdir -p build
+          go test -json -coverprofile=build/coverage.out -covermode=atomic ./... -timeout 20s -failfast | tee build/unit-test-output.json
+
+      - name: Generate unit test summary
+        if: always()
+        run: |
+          PASSED=$(jq -rs '[.[] | select(.Action == "pass" and .Test != null)] | length' build/unit-test-output.json 2>/dev/null || echo "0")
+          FAILED=$(jq -rs '[.[] | select(.Action == "fail" and .Test != null)] | length' build/unit-test-output.json 2>/dev/null || echo "0")
+          SKIPPED=$(jq -rs '[.[] | select(.Action == "skip" and .Test != null)] | length' build/unit-test-output.json 2>/dev/null || echo "0")
+          TOTAL=$((PASSED + FAILED + SKIPPED))
+
+          {
+            echo "## Unit Test Results"
+            echo ""
+            echo "| Total | ✅ Passed | ❌ Failed | ⏭️ Skipped |"
+            echo "|-------|-----------|-----------|-----------|"
+            echo "| $TOTAL | $PASSED | $FAILED | $SKIPPED |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -f build/coverage.out ]; then
+            go tool cover -html=build/coverage.out -o build/coverage.html
+            COVERAGE=$(go tool cover -func=build/coverage.out | grep "^total:" | awk '{print $NF}')
+            {
+              echo ""
+              echo "### Code Coverage: $COVERAGE"
+              echo ""
+              echo "| Package | Coverage |"
+              echo "|---------|----------|"
+              jq -rs '.[] | select(.Action == "output" and .Test == null and (.Output | test("^ok\\s"))) | "| \(.Package) | \(.Output | scan("[0-9]+\\.[0-9]+%")) |"' build/unit-test-output.json
+              echo "| **Total** | **$COVERAGE** |"
+              echo ""
+              echo "> 📄 A detailed HTML coverage report is available as a workflow artifact."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ "$FAILED" -gt "0" ]; then
+            {
+              echo ""
+              echo "### ❌ Failed Tests"
+              echo ""
+              jq -rs '.[] | select(.Action == "fail" and .Test != null) | "- `\(.Package)/\(.Test)`"' build/unit-test-output.json
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Upload coverage report
+        if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: go-coverage-report-${{ github.sha }}
@@ -62,7 +106,34 @@ jobs:
         run: make compose-wait
 
       - name: Run integration tests
-        run: make integrationtest
+        run: |
+          mkdir -p build
+          cd test/integration && go test -json ./... -count=1 -failfast | tee ../../build/integration-test-output.json
+
+      - name: Generate integration test summary
+        if: always()
+        run: |
+          PASSED=$(jq -rs '[.[] | select(.Action == "pass" and .Test != null)] | length' build/integration-test-output.json 2>/dev/null || echo "0")
+          FAILED=$(jq -rs '[.[] | select(.Action == "fail" and .Test != null)] | length' build/integration-test-output.json 2>/dev/null || echo "0")
+          SKIPPED=$(jq -rs '[.[] | select(.Action == "skip" and .Test != null)] | length' build/integration-test-output.json 2>/dev/null || echo "0")
+          TOTAL=$((PASSED + FAILED + SKIPPED))
+
+          {
+            echo "## Integration Test Results"
+            echo ""
+            echo "| Total | ✅ Passed | ❌ Failed | ⏭️ Skipped |"
+            echo "|-------|-----------|-----------|-----------|"
+            echo "| $TOTAL | $PASSED | $FAILED | $SKIPPED |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$FAILED" -gt "0" ]; then
+            {
+              echo ""
+              echo "### ❌ Failed Tests"
+              echo ""
+              jq -rs '.[] | select(.Action == "fail" and .Test != null) | "- `\(.Package)/\(.Test)`"' build/integration-test-output.json
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Output logs if tests fail
         if: failure()

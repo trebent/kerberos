@@ -49,8 +49,6 @@ unittest:
 	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
 	@go test -v ./... -timeout 20s -failfast
-	# @go tool cover -html=build/coverage.out -o build/coverage.html
-	# @go tool cover -func=build/coverage.out
 
 coverage:
 	@go tool cover -func=build/coverage.out | awk 'END {print $$3}'
