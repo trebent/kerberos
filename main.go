@@ -71,7 +71,11 @@ func main() {
 		WithValues(string(semconv.ServiceNameKey), serviceName, string(semconv.ServiceVersionKey), internalenv.Version.Value()).
 		WithName("krb"),
 	)
-	cfg := setupConfig()
+	cfg, err := setupConfig()
+	if err != nil {
+		zerologr.Error(err, "Failed to set up configuration")
+		os.Exit(1)
+	}
 
 	startLogger := zerologr.WithName("start")
 	startLogger.Info("Starting Kerberos API GW server", "port", internalenv.Port.Value())
@@ -106,16 +110,15 @@ func main() {
 
 // setupConfig sets up the configuration map and registers all necessary
 // configurations. It returns the configuration map after calling Parse().
-func setupConfig() *config.RootConfig {
+func setupConfig() (*config.RootConfig, error) {
 	zerologr.Info("Setting up configuration...")
-	cfg := config.New()
 
-	zerologr.Info("Loading configuration data")
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		zerologr.Error(err, "Failed to read configuration file")
-		os.Exit(1) // nolint: gocritic
+		return nil, err
 	}
+
+	cfg := config.New()
 	cfg.Load(data)
 
 	zerologr.Info("Configuration data loaded")
@@ -125,13 +128,12 @@ func setupConfig() *config.RootConfig {
 	// Parse configurations.
 	//nolint: govet
 	if err := cfg.Parse(); err != nil {
-		zerologr.Error(err, "Failed to parse configurations")
-		os.Exit(1) // nolint: gocritic
+		return nil, err
 	}
 
 	zerologr.Info("Configuration parsed successfully")
 
-	return cfg
+	return cfg, nil
 }
 
 // startServer starts the HTTP server and listens for incoming requests.
@@ -186,8 +188,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 
 		// Register the authorizer with the admin component so that it can serve auth metadata to the admin API.
 		if err := admin.RegisterAPIProvider(authorizer); err != nil {
-			zerologr.Error(err, "Failed to register auth API provider with admin component")
-			os.Exit(1) // nolint: gocritic
+			return fmt.Errorf("failed to register auth API provider with admin component: %w", err)
 		}
 	}
 
