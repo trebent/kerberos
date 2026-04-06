@@ -196,7 +196,7 @@ func (o *obs) spanStartOpts(req *http.Request) []trace.SpanStartOption {
 func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// Check request trace context
 	ctx := otel.GetTextMapPropagator().Extract(req.Context(), propagation.HeaderCarrier(req.Header))
-	ctx, span := tracer.Start(ctx, req.Method, o.spanOpts...)
+	ctx, span := tracer.Start(ctx, req.Method, o.spanStartOpts(req)...)
 	defer span.End() // Stop the span after EVERYTHING is done
 
 	rLogger := o.logger.WithValues("path", req.URL.Path, "method", req.Method)
