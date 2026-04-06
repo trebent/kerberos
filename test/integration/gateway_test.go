@@ -16,10 +16,10 @@ func TestGWHappy(t *testing.T) {
 	bodyData := []byte(`{"test": "value"}`)
 
 	cases := []struct {
-		name    string
-		method  string
-		path    string
-		body    []byte
+		name   string
+		method string
+		path   string
+		body   []byte
 	}{
 		{name: "GET", method: http.MethodGet, path: "/hi"},
 		{name: "POST", method: http.MethodPost, path: "/", body: bodyData},
@@ -47,11 +47,13 @@ func TestGWHappy(t *testing.T) {
 				return
 			}
 
-			var buf *bytes.Buffer
+			var req *http.Request
+			var err error
 			if tc.body != nil {
-				buf = bytes.NewBuffer(tc.body)
+				req, err = http.NewRequest(tc.method, url, bytes.NewBuffer(tc.body))
+			} else {
+				req, err = http.NewRequest(tc.method, url, nil)
 			}
-			req, err := http.NewRequest(tc.method, url, buf)
 			if err != nil {
 				t.Fatalf("failed to create request: %v", err)
 			}

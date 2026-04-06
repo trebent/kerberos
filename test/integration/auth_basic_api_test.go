@@ -766,13 +766,14 @@ func TestAuthBasicAPILogout(t *testing.T) {
 	session := extractSession(loginResp.HTTPResponse, t)
 
 	// Verify the session is valid by accessing a protected endpoint.
-	getOrgResp, err := basicAuthClient.GetOrganisationWithResponse(
+	getUserResp, err := basicAuthClient.GetUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.Userid(alwaysUserID),
 		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
 	)
 	checkErr(err, t)
-	verifyStatusCode(getOrgResp.StatusCode(), http.StatusOK, t)
+	verifyStatusCode(getUserResp.StatusCode(), http.StatusOK, t)
 
 	logoutResp, err := basicAuthClient.LogoutWithResponse(
 		t.Context(),
@@ -783,13 +784,14 @@ func TestAuthBasicAPILogout(t *testing.T) {
 	verifyStatusCode(logoutResp.StatusCode(), http.StatusNoContent, t)
 
 	// Verify the old session is truly invalidated.
-	getOrgAfterLogoutResp, err := basicAuthClient.GetOrganisationWithResponse(
+	getUserAfterLogoutResp, err := basicAuthClient.GetUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.Userid(alwaysUserID),
 		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
 	)
 	checkErr(err, t)
-	verifyStatusCode(getOrgAfterLogoutResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyStatusCode(getUserAfterLogoutResp.StatusCode(), http.StatusUnauthorized, t)
 }
 
 // Validate that a user can change their password and the old password is thereafter rejected.
