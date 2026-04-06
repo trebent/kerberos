@@ -46,9 +46,7 @@ jobs:
       - name: Generate coverage report
         if: always()
         run: |
-          if [ -f build/coverage.out ]; then
-            make coverage-report | grep "^Coverage:" | awk '{print "### Code Coverage: " $2}' >> "$GITHUB_STEP_SUMMARY"
-          fi
+          [ -f build/coverage.out ] && make coverage-report | grep "^### Code Coverage:" >> "$GITHUB_STEP_SUMMARY" || true
 
       - name: Upload coverage report
         if: always()

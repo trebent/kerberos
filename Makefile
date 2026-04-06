@@ -53,12 +53,12 @@ unittest:
 unittest-json:
 	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
-	@go test -v -json -coverprofile=build/coverage.out -covermode=atomic ./... -timeout 20s -failfast > build/unit-test-output.json
+	@go test -v -json -coverprofile=$(CURDIR)/build/coverage.out -covermode=atomic ./... -timeout 20s -failfast > $(CURDIR)/build/unit-test-output.json
 
 coverage-report:
 	$(call cecho,Generating coverage report for Kerberos...,$(BOLD_YELLOW))
-	@go tool cover -html=build/coverage.out -o build/coverage.html
-	@go tool cover -func=build/coverage.out | awk '/^total:/{print "Coverage: " $$3}'
+	@go tool cover -html=$(CURDIR)/build/coverage.out -o $(CURDIR)/build/coverage.html
+	@echo "### Code Coverage: $$(go tool cover -func=$(CURDIR)/build/coverage.out | awk '/^total:/{print $$3}')"
 
 coverage:
 	@go tool cover -func=build/coverage.out | awk 'END {print $$3}'
