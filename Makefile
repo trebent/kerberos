@@ -71,7 +71,7 @@ integrationtest:
 integrationtest-json:
 	$(call cecho,Running integration tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
-	@cd test/integration && go test -v -json ./... -count=1 -failfast > build/integration-test-output.json
+	@cd test/integration && go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/integration-test-output.json
 
 vulncheck:
 	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
