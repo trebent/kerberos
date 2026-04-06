@@ -53,7 +53,7 @@ unittest:
 unittest-json:
 	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
-	@go test -v -json -coverprofile=build/coverage.out -covermode=atomic ./... -timeout 20s -failfast | tee build/unit-test-output.json
+	@go test -v -json -coverprofile=build/coverage.out -covermode=atomic ./... -timeout 20s -failfast > build/unit-test-output.json
 
 coverage-report:
 	$(call cecho,Generating coverage report for Kerberos...,$(BOLD_YELLOW))
@@ -70,7 +70,7 @@ integrationtest:
 integrationtest-json:
 	$(call cecho,Running integration tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
-	@cd test/integration && go test -v -json ./... -count=1 -failfast | tee $(CURDIR)/build/integration-test-output.json
+	@cd test/integration && go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/integration-test-output.json
 
 vulncheck:
 	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
