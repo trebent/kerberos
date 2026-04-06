@@ -12,8 +12,8 @@ services:
       - ${KERBEROS_METRICS_PORT}:${KERBEROS_METRICS_PORT}
     environment:
       - OTEL_METRICS_EXPORTER=prometheus
-      - OTEL_TRACES_EXPORTER=otlp
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
       - OTEL_EXPORTER_PROMETHEUS_HOST=kerberos
       - OTEL_EXPORTER_PROMETHEUS_PORT=${KERBEROS_METRICS_PORT}
       # Use to test sampling in production. The default is AlwaysSample unless otherwise stated by the parent span.
@@ -42,9 +42,8 @@ services:
     environment:
       - PORT=${ECHO_PORT}
       - OTEL_METRICS_EXPORTER=prometheus
-      - OTEL_TRACES_EXPORTER=otlp
-      - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
       - OTEL_EXPORTER_PROMETHEUS_HOST=echo
       - OTEL_EXPORTER_PROMETHEUS_PORT=${ECHO_METRICS_PORT}
 
@@ -57,9 +56,8 @@ services:
     environment:
       - PORT=${ECHO_PORT}
       - OTEL_METRICS_EXPORTER=prometheus
-      - OTEL_TRACES_EXPORTER=otlp
-      - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
       - OTEL_EXPORTER_PROMETHEUS_HOST=protected-echo
       - OTEL_EXPORTER_PROMETHEUS_PORT=${ECHO_METRICS_PORT}
 

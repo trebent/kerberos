@@ -184,13 +184,18 @@ func (o *obs) GetMeta() []adminapi.FlowMeta {
 	}, o.next.GetMeta()...)
 }
 
+func (o *obs) spanStartOpts(req *http.Request) []trace.SpanStartOption {
+	opts := make([]trace.SpanStartOption, len(o.spanOpts)+1)
+	copy(opts, o.spanOpts)
+	opts[len(opts)-1] = trace.WithAttributes(semconv.HTTPMethod(req.Method))
+
+	return opts
+}
+
 // ServeHTTP implements [types.FlowComponent].
 func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// Check request trace context
 	ctx := otel.GetTextMapPropagator().Extract(req.Context(), propagation.HeaderCarrier(req.Header))
-
-	// Start a span here to include ALL operations of KRB
-	// TODO: add more to the span name?
 	ctx, span := tracer.Start(ctx, req.Method, o.spanOpts...)
 	defer span.End() // Stop the span after EVERYTHING is done
 

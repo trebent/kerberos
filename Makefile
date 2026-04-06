@@ -78,28 +78,15 @@ go-build:
 
 run:
 	$(call cecho,Running Kerberos...,$(BOLD_YELLOW))
-	OTEL_METRICS_EXPORTER=prometheus \
-		OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
+	mkdir -p build
+	PORT=$(KERBEROS_PORT) \
+		ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
 		LOG_TO_CONSOLE=true \
 		LOG_VERBOSITY=$(LOG_VERBOSITY) \
 		DB_DIRECTORY=$(PWD)/build \
 		OAS_DIRECTORY=$(PWD)/openapi \
 		VERSION=$(VERSION) \
 		go run . --config ./test/config/local.json
-
-run-unprotected:
-	$(call cecho,Running Kerberos...,$(BOLD_YELLOW))
-	OTEL_METRICS_EXPORTER=prometheus \
-		OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
-		LOG_TO_CONSOLE=true \
-		LOG_VERBOSITY=$(LOG_VERBOSITY) \
-		ROUTE_JSON_FILE=./test/config/router-echo.json \
-		OBS_JSON_FILE=./test/config/obs-disabled.json \
-		OAS_JSON_FILE=./test/config/oas-echo.json \
-		DB_DIRECTORY=$(PWD)/build \
-		OAS_DIRECTORY=$(PWD)/openapi \
-		VERSION=$(VERSION) \
-		go run .
 
 image:
 	$(call cecho,Building Kerberos Docker image...,$(BOLD_YELLOW))
@@ -113,8 +100,6 @@ docker-run: image docker-stop docker-rm
 		-p $(KERBEROS_METRICS_PORT):$(KERBEROS_METRICS_PORT) \
 		-e PORT=$(KERBEROS_PORT) \
 		-e ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
-		-e OTEL_METRICS_EXPORTER=prometheus \
-		-e OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
 		-e LOG_TO_CONSOLE=true \
 		-e LOG_VERBOSITY=$(LOG_VERBOSITY) \
 		-e OAS_DIRECTORY=/krb-oas \
@@ -124,28 +109,6 @@ docker-run: image docker-stop docker-rm
 		--name kerberos \
 		ghcr.io/trebent/kerberos:$(VERSION) \
 		--config /config/docker.json
-
-docker-run-unprotected: image docker-stop docker-rm
-	$(call cecho,Running Kerberos Docker container...,$(BOLD_YELLOW))
-	docker run -d \
-		-p $(KERBEROS_PORT):$(KERBEROS_PORT) \
-		-p $(KERBEROS_ADMIN_PORT):$(KERBEROS_ADMIN_PORT) \
-		-p $(KERBEROS_METRICS_PORT):$(KERBEROS_METRICS_PORT) \
-		-e PORT=$(KERBEROS_PORT) \
-		-e ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
-		-e OTEL_METRICS_EXPORTER=prometheus \
-		-e OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
-		-e LOG_TO_CONSOLE=true \
-		-e LOG_VERBOSITY=$(LOG_VERBOSITY) \
-		-e ROUTE_JSON_FILE=/config/router-echo.json \
-		-e OBS_JSON_FILE=/config/obs-disabled.json \
-		-e OAS_JSON_FILE=/config/oas-docker.json \
-		-e OAS_DIRECTORY=$(PWD)/krb-oas \
-		-v $(PWD)/test/config:/config:ro \
-		-v $(PWD)/test/oas:/oas:ro \
-		-v $(PWD)/openapi:/krb-oas:ro \
-		--name kerberos \
-		ghcr.io/trebent/kerberos:$(VERSION)
 
 docker-stop:
 	@docker stop kerberos || true
@@ -228,9 +191,7 @@ echo-build:
 
 echo-run:
 	$(call cecho,Running echo...,$(BOLD_YELLOW))
-	@OTEL_METRICS_EXPORTER=prometheus \
-		OTEL_EXPORTER_PROMETHEUS_PORT=$(ECHO_METRICS_PORT) \
-		VERSION=$(VERSION) \
+	VERSION=$(VERSION) \
 		go run ./cmd/echo
 
 echo-image:
@@ -245,8 +206,6 @@ echo-docker-run: echo-image echo-docker-stop echo-docker-rm
 	@docker run -d \
 		-p $(ECHO_PORT):$(ECHO_PORT) \
 		-p $(ECHO_METRICS_PORT):$(ECHO_METRICS_PORT) \
-		-e OTEL_METRICS_EXPORTER=prometheus \
-		-e OTEL_EXPORTER_PROMETHEUS_PORT=$(ECHO_METRICS_PORT) \
 		-e VERSION=$(VERSION) \
 		--name echo \
 		ghcr.io/trebent/kerberos/echo:$(VERSION)
