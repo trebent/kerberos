@@ -60,7 +60,21 @@ jobs:
               echo ""
               echo "| Package | Coverage |"
               echo "|---------|----------|"
-              jq -rs '.[] | select(.Action == "output" and .Test == null and (.Output | test("^ok\\s"))) | "| \(.Package) | \(.Output | scan("[0-9]+\\.[0-9]+%")) |"' build/unit-test-output.json
+              awk 'NR>1 {
+                split($1, a, ":")
+                pkg = a[1]
+                sub(/\/[^\/]+\.go$/, "", pkg)
+                stmts = $2
+                hit = ($3 > 0) ? $2 : 0
+                total[pkg] += stmts
+                covered[pkg] += hit
+              }
+              END {
+                for (pkg in total) {
+                  if (total[pkg] > 0)
+                    printf "| %s | %.1f%% |\n", pkg, 100.0 * covered[pkg] / total[pkg]
+                }
+              }' build/coverage.out | sort
               echo "| **Total** | **$COVERAGE** |"
               echo ""
               echo "> 📄 A detailed HTML coverage report is available as a workflow artifact."
