@@ -35,6 +35,34 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EchoResponse"
+    options:
+      summary: Root endpoint OPTIONS.
+      operationId: rootOptions
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
+    trace:
+      summary: Root endpoint TRACE.
+      operationId: rootTrace
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
+    head:
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
     get:
       summary: Root endpoint GET.
       operationId: rootGet
@@ -96,6 +124,34 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EchoResponse"
+    options:
+      summary: Root endpoint OPTIONS.
+      operationId: rootOptions
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
+    trace:
+      summary: Root endpoint TRACE.
+      operationId: rootTrace
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
+    head:
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
     get:
       summary: Say hi to echo GET.
       operationId: sayHiGet
@@ -138,6 +194,34 @@ paths:
                 $ref: "#/components/schemas/EchoResponse"
 
   /long/hello:
+    options:
+      summary: Root endpoint OPTIONS.
+      operationId: rootOptions
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
+    trace:
+      summary: Root endpoint TRACE.
+      operationId: rootTrace
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
+    head:
+      responses:
+        "200":
+          description: Echo response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EchoResponse"
     get:
       summary: Long hello endpoint GET.
       operationId: longHelloGet
