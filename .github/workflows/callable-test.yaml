@@ -32,9 +32,7 @@ jobs:
           go-version-file: go.mod
 
       - name: Run unit tests with coverage
-        run: |
-          mkdir -p build
-          go test -v -json -coverprofile=build/coverage.out -covermode=atomic ./... -timeout 20s -failfast | tee build/unit-test-output.json
+        run: make unittest-json
 
       - name: Publish unit test results
         uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
@@ -49,8 +47,7 @@ jobs:
         if: always()
         run: |
           if [ -f build/coverage.out ]; then
-            go tool cover -html=build/coverage.out -o build/coverage.html
-            echo "### Code Coverage: $(go tool cover -func=build/coverage.out | awk '/^total:/{print $NF}')" >> "$GITHUB_STEP_SUMMARY"
+            make coverage-report | grep "^Coverage:" | awk '{print "### Code Coverage: " $2}' >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Upload coverage report
@@ -83,9 +80,7 @@ jobs:
         run: make compose-wait
 
       - name: Run integration tests
-        run: |
-          mkdir -p build
-          cd test/integration && go test -v -json ./... -count=1 -failfast | tee "$GITHUB_WORKSPACE/build/integration-test-output.json"
+        run: make integrationtest-json
 
       - name: Publish integration test results
         uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
