@@ -554,8 +554,7 @@ func TestUserNoSession(t *testing.T) {
 	verifyAuthBasicAPIErrorResponse(changePwResp.JSON401, t)
 }
 
-// TestUserDeleteNotFound verifies that attempting to delete an already-deleted user
-// returns 404 (no body defined in spec).
+// TestUserDeleteNotFound verifies deleting an already-deleted user.
 func TestUserDeleteNotFound(t *testing.T) {
 	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
@@ -602,7 +601,7 @@ func TestUserDeleteNotFound(t *testing.T) {
 		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
-	verifyStatusCode(deleteAgainResp.StatusCode(), http.StatusNotFound, t)
+	verifyStatusCode(deleteAgainResp.StatusCode(), http.StatusNoContent, t)
 }
 
 // TestUserUpdateNotFound verifies that attempting to update a deleted user returns 404

@@ -424,8 +424,7 @@ func TestGroupNoSession(t *testing.T) {
 	verifyAuthBasicAPIErrorResponse(deleteResp.JSON401, t)
 }
 
-// TestGroupDeleteNotFound verifies that attempting to delete an already-deleted group
-// returns 404 (no body defined in spec).
+// TestGroupDeleteNotFound verifies deleting an already-deleted group.
 func TestGroupDeleteNotFound(t *testing.T) {
 	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
@@ -472,7 +471,7 @@ func TestGroupDeleteNotFound(t *testing.T) {
 		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
-	verifyStatusCode(deleteAgainResp.StatusCode(), http.StatusNotFound, t)
+	verifyStatusCode(deleteAgainResp.StatusCode(), http.StatusNoContent, t)
 }
 
 // TestGroupUpdateNotFound verifies that attempting to update a deleted group returns 404

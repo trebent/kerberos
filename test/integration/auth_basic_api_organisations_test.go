@@ -598,8 +598,7 @@ func TestOrganisationCrossOrgForbidden(t *testing.T) {
 	verifyAuthBasicAPIErrorResponse(deleteOrg1Resp.JSON403, t)
 }
 
-// TestOrganisationDeleteNotFound verifies that attempting to delete an already-deleted
-// organisation returns 404.
+// TestOrganisationDeleteNotFound verifies deleting an already-deleted organisation.
 func TestOrganisationDeleteNotFound(t *testing.T) {
 	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
@@ -634,5 +633,5 @@ func TestOrganisationDeleteNotFound(t *testing.T) {
 		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
-	verifyStatusCode(deleteAgainResp.StatusCode(), http.StatusNotFound, t)
+	verifyStatusCode(deleteAgainResp.StatusCode(), http.StatusNoContent, t)
 }
