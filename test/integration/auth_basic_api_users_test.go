@@ -429,6 +429,7 @@ func TestUserChangePassword(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(oldLoginResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(oldLoginResp.JSON401, t)
 }
 
 // TestUserChangePasswordOASValidation verifies that the OAS validator rejects change-password
