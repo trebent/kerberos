@@ -15,6 +15,7 @@ on:
         default: false
 
 permissions:
+  checks: write
   contents: read
   packages: read
 
@@ -30,10 +31,27 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Run tests
-        run: make unittest
+      - name: Run unit tests with coverage
+        run: make unittest-json
+
+      - name: Publish unit test results
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        if: always()
+        with:
+          name: Unit Tests
+          path: build/unit-test-output.json
+          reporter: golang-json
+          fail-on-error: 'false'
+
+      - name: Generate coverage report
+        if: always()
+        run: |
+          if [ -f build/coverage.out ]; then
+            make coverage-report | grep "^### Code Coverage:" >> "$GITHUB_STEP_SUMMARY" || true
+          fi
 
       - name: Upload coverage report
+        if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: go-coverage-report-${{ github.sha }}
@@ -62,7 +80,16 @@ jobs:
         run: make compose-wait
 
       - name: Run integration tests
-        run: make integrationtest
+        run: make integrationtest-json
+
+      - name: Publish integration test results
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        if: always()
+        with:
+          name: Integration Tests
+          path: build/integration-test-output.json
+          reporter: golang-json
+          fail-on-error: 'false'
 
       - name: Output logs if tests fail
         if: failure()
