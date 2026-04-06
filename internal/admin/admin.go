@@ -47,18 +47,21 @@ var dbschemaBytes []byte
 const adminSpecification = "admin.yaml"
 
 // Runs the administration API.
-func New(opts *Opts) *Admin {
+func New(opts *Opts) (*Admin, error) {
 	zerologr.Info("Setting up administration API")
-	applySchemas(opts.SQLClient)
+
+	if err := applySchemas(opts.SQLClient); err != nil {
+		return nil, fmt.Errorf("failed to apply admin DB schema: %w", err)
+	}
 
 	data, err := os.ReadFile(fmt.Sprintf("%s/%s", opts.OASDir, adminSpecification))
 	if err != nil {
-		panic(fmt.Errorf("failed to read admin OAS: %w", err))
+		return nil, fmt.Errorf("failed to read admin OAS: %w", err)
 	}
 
 	spec, err := openapi3.NewLoader().LoadFromData(data)
 	if err != nil {
-		panic(fmt.Errorf("failed to load admin OAS: %w", err))
+		return nil, fmt.Errorf("failed to load admin OAS: %w", err)
 	}
 
 	ssi := newSSI(&ssiOpts{
@@ -96,7 +99,7 @@ func New(opts *Opts) *Admin {
 	return &Admin{
 		ssi: ssi,
 		mux: opts.Mux,
-	}
+	}, nil
 }
 
 // SetFlowFetcher sets the flow fetcher for the admin component. This allows the admin API to serve flow metadata
@@ -120,10 +123,11 @@ func (a *Admin) RegisterAPIProvider(apiProvider adminext.APIProvider) error {
 	)
 }
 
-func applySchemas(sqlClient db.SQLClient) {
+func applySchemas(sqlClient db.SQLClient) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), db.SchemaApplyTimeout)
 	defer cancel()
 	if _, err := sqlClient.Exec(timeoutCtx, string(dbschemaBytes)); err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }

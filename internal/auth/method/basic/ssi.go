@@ -328,6 +328,10 @@ func (i *impl) UpdateGroup(
 	ctx context.Context,
 	req authbasicapi.UpdateGroupRequestObject,
 ) (authbasicapi.UpdateGroupResponseObject, error) {
+	if _, err := i.dbGetGroup(ctx, req.OrgID, req.GroupID); errors.Is(err, errNoGroup) {
+		return authbasicapi.UpdateGroup404Response{}, nil
+	}
+
 	if err := i.dbUpdateGroup(ctx, req.OrgID, req.GroupID, req.Body.Name); err != nil {
 		if errors.Is(err, db.ErrUnique) {
 			return authbasicapi.UpdateGroup409JSONResponse(GenErrConflict), nil
@@ -344,6 +348,10 @@ func (i *impl) UpdateOrganisation(
 	ctx context.Context,
 	req authbasicapi.UpdateOrganisationRequestObject,
 ) (authbasicapi.UpdateOrganisationResponseObject, error) {
+	if _, err := i.dbGetOrg(ctx, req.OrgID); errors.Is(err, errNoOrg) {
+		return authbasicapi.UpdateOrganisation404Response{}, nil
+	}
+
 	if err := i.dbUpdateOrg(ctx, req.OrgID, req.Body.Name); err != nil {
 		if errors.Is(err, db.ErrUnique) {
 			return authbasicapi.UpdateOrganisation409JSONResponse(GenErrConflict), nil
@@ -360,6 +368,10 @@ func (i *impl) UpdateUser(
 	ctx context.Context,
 	req authbasicapi.UpdateUserRequestObject,
 ) (authbasicapi.UpdateUserResponseObject, error) {
+	if _, err := i.dbGetUser(ctx, req.OrgID, req.UserID); errors.Is(err, errNoUser) {
+		return authbasicapi.UpdateUser404Response{}, nil
+	}
+
 	if err := i.dbUpdateUser(ctx, req.OrgID, req.UserID, req.Body.Name); err != nil {
 		if errors.Is(err, db.ErrUnique) {
 			return authbasicapi.UpdateUser409JSONResponse(GenErrConflict), nil

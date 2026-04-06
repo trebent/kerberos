@@ -1583,6 +1583,7 @@ type ListOrganisationsResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *[]Organisation
 	JSON401      *APIErrorResponse
+	JSON403      *APIErrorResponse
 	JSON500      *APIErrorResponse
 }
 
@@ -1614,6 +1615,7 @@ type CreateOrganisationResponse struct {
 	}
 	JSON400 *APIErrorResponse
 	JSON401 *APIErrorResponse
+	JSON403 *APIErrorResponse
 	JSON409 *APIErrorResponse
 	JSON500 *APIErrorResponse
 }
@@ -2368,6 +2370,13 @@ func ParseListOrganisationsResponse(rsp *http.Response) (*ListOrganisationsRespo
 		}
 		response.JSON401 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -2420,6 +2429,13 @@ func ParseCreateOrganisationResponse(rsp *http.Response) (*CreateOrganisationRes
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
 		var dest APIErrorResponse

@@ -178,6 +178,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Failed to create the organisation.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to create the organisation.
         "409":
           content:
             application/json:
@@ -202,6 +208,12 @@ paths:
                   $ref: "#/components/schemas/Organisation"
           description: Listed all organisations.
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to get the organisation.
+        "403":
           content:
             application/json:
               schema:
@@ -250,14 +262,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Failed to update the organisation.
+        "404":
+          description: Organisation does not exist.
         "409":
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Conflict.
-        "404":
-          description: Organisation does not exist.
         "500":
           content:
             application/json:
@@ -310,8 +322,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Failed to delete the organisation.
-        "404":
-          description: Organisation does not exist.
         "500":
           content:
             application/json:
@@ -565,8 +575,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Failed to delete the user.
-        "404":
-          description: User does not exist.
         "500":
           content:
             application/json:
@@ -867,8 +875,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Failed to delete the group.
-        "404":
-          description: Group does not exist.
         "500":
           content:
             application/json:

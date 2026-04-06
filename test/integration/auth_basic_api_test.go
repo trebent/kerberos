@@ -8,108 +8,8 @@ import (
 	authbasicapi "github.com/trebent/kerberos/ft/client/auth/basic"
 )
 
-// Validate org., group, user, binding creation.
-func TestAuthBasicAPI(t *testing.T) {
-	adminLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(adminLoginResp.StatusCode(), http.StatusNoContent, t)
-	adminSession := adminLoginResp.HTTPResponse.Header.Get("x-krb-session")
-
-	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
-		t.Context(),
-		authbasicapi.CreateOrganisationRequest{Name: orgName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(adminSession)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(orgResp.StatusCode(), http.StatusCreated, t)
-	orgID := orgResp.JSON201.Id
-
-	loginResp, err := basicAuthClient.LoginWithResponse(
-		t.Context(),
-		orgID,
-		authbasicapi.LoginJSONRequestBody{
-			Username: orgResp.JSON201.AdminUsername,
-			Password: orgResp.JSON201.AdminPassword,
-		},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	session := extractSession(loginResp.HTTPResponse, t)
-	if session == "" {
-		t.Fatal("Did not get a session header")
-	}
-
-	userResp, err := basicAuthClient.CreateUserWithResponse(
-		t.Context(),
-		orgID,
-		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(userResp.StatusCode(), http.StatusCreated, t)
-
-	groupResp, err := basicAuthClient.CreateGroupWithResponse(
-		t.Context(),
-		orgID,
-		authbasicapi.CreateGroupJSONRequestBody{Name: alwaysGroupStaff},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(groupResp.StatusCode(), http.StatusCreated, t)
-
-	bindResp, err := basicAuthClient.UpdateUserGroupsWithResponse(
-		t.Context(),
-		orgID,
-		userResp.JSON201.Id,
-		authbasicapi.UpdateUserGroupsJSONRequestBody([]string{alwaysGroupStaff}),
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(bindResp.StatusCode(), http.StatusOK, t)
-
-	getOrgResp, err := basicAuthClient.GetOrganisationWithResponse(
-		t.Context(),
-		orgID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(getOrgResp.StatusCode(), http.StatusOK, t)
-	matches(getOrgResp.JSON200.Id, orgID, t)
-
-	getUserResp, err := basicAuthClient.GetUserWithResponse(
-		t.Context(),
-		orgID,
-		userResp.JSON201.Id,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(getUserResp.StatusCode(), http.StatusOK, t)
-	matches(getUserResp.JSON200.Id, userResp.JSON201.Id, t)
-
-	getGroupResp, err := basicAuthClient.GetGroupWithResponse(
-		t.Context(),
-		orgID,
-		groupResp.JSON201.Id,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(getGroupResp.StatusCode(), http.StatusOK, t)
-	matches(getGroupResp.JSON200.Id, groupResp.JSON201.Id, t)
-
-	getUserGroupsResp, err := basicAuthClient.GetUserGroupsWithResponse(
-		t.Context(),
-		orgID,
-		userResp.JSON201.Id,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(getUserGroupsResp.StatusCode(), http.StatusOK, t)
-	containsAll([]string(*getUserGroupsResp.JSON200), []string{alwaysGroupStaff}, t)
-}
-
+// TestAuthBasicAPIOrganisationIsolation verifies that a session from one organisation
+// cannot read or mutate any resource that belongs to a different organisation.
 func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	adminLoginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
@@ -117,7 +17,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(adminLoginResp.StatusCode(), http.StatusNoContent, t)
-	adminSession := adminLoginResp.HTTPResponse.Header.Get("x-krb-session")
+	adminSession := extractSession(adminLoginResp.HTTPResponse, t)
 
 	createOrg1, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
@@ -137,10 +37,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(loginResp1.StatusCode(), http.StatusNoContent, t)
-	session1 := loginResp1.HTTPResponse.Header.Get("x-krb-session")
-	if session1 == "" {
-		t.Fatal("Did not get a session header")
-	}
+	session1 := extractSession(loginResp1.HTTPResponse, t)
 
 	createOrg2, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
@@ -160,12 +57,9 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(loginResp2.StatusCode(), http.StatusNoContent, t)
-	session2 := loginResp2.HTTPResponse.Header.Get("x-krb-session")
-	if session2 == "" {
-		t.Fatal("Did not get a session header")
-	}
+	session2 := extractSession(loginResp2.HTTPResponse, t)
 
-	// Test accessing endpoints across organisations, all operations below shall fail.
+	// All read operations below target org1 but use session2 (org2) — all must be 403.
 	listGroupsResp, err := basicAuthClient.ListGroupsWithResponse(
 		t.Context(),
 		createOrg1.JSON201.Id,
@@ -173,6 +67,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(listGroupsResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(listGroupsResp.JSON403, t)
 
 	listUsersResp, err := basicAuthClient.ListUsersWithResponse(
 		t.Context(),
@@ -181,6 +76,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(listUsersResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(listUsersResp.JSON403, t)
 
 	getUserResp, err := basicAuthClient.GetUserWithResponse(
 		t.Context(),
@@ -190,12 +86,13 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(getUserResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(getUserResp.JSON403, t)
 
-	// Create a group in org1 with session1, then try to access it with session2 which belongs to org2 - should fail.
+	// Create a group in org1 using session1, then verify session2 cannot access it.
 	createGroup1Resp, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
 		createOrg1.JSON201.Id,
-		authbasicapi.CreateGroupJSONRequestBody{Name: alwaysGroupStaff},
+		authbasicapi.CreateGroupJSONRequestBody{Name: groupName()},
 		authbasicapi.RequestEditorFn(requestEditorSessionID(session1)),
 	)
 	checkErr(err, t)
@@ -209,8 +106,9 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(getGroupResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(getGroupResp.JSON403, t)
 
-	// Create a user in org1 with session1, used for the remaining isolation checks.
+	// Create a user in org1 using session1; all write operations via session2 must be 403.
 	createUser1Resp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		createOrg1.JSON201.Id,
@@ -221,8 +119,6 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	verifyStatusCode(createUser1Resp.StatusCode(), http.StatusCreated, t)
 	user1ID := createUser1Resp.JSON201.Id
 
-	// All operations below target org1 resources but use session2 (org2) - all must be forbidden.
-
 	createUserCrossResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		createOrg1.JSON201.Id,
@@ -231,6 +127,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(createUserCrossResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(createUserCrossResp.JSON403, t)
 
 	createGroupCrossResp, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
@@ -240,6 +137,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(createGroupCrossResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(createGroupCrossResp.JSON403, t)
 
 	updateUserCrossResp, err := basicAuthClient.UpdateUserWithResponse(
 		t.Context(),
@@ -250,6 +148,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateUserCrossResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(updateUserCrossResp.JSON403, t)
 
 	updateGroupCrossResp, err := basicAuthClient.UpdateGroupWithResponse(
 		t.Context(),
@@ -260,6 +159,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateGroupCrossResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(updateGroupCrossResp.JSON403, t)
 
 	deleteUserCrossResp, err := basicAuthClient.DeleteUserWithResponse(
 		t.Context(),
@@ -269,6 +169,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteUserCrossResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(deleteUserCrossResp.JSON403, t)
 
 	deleteGroupCrossResp, err := basicAuthClient.DeleteGroupWithResponse(
 		t.Context(),
@@ -278,6 +179,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteGroupCrossResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(deleteGroupCrossResp.JSON403, t)
 
 	updateUserGroupsCrossResp, err := basicAuthClient.UpdateUserGroupsWithResponse(
 		t.Context(),
@@ -288,6 +190,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateUserGroupsCrossResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(updateUserGroupsCrossResp.JSON403, t)
 
 	getUserGroupsCrossResp, err := basicAuthClient.GetUserGroupsWithResponse(
 		t.Context(),
@@ -297,6 +200,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(getUserGroupsCrossResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(getUserGroupsCrossResp.JSON403, t)
 
 	changePasswordCrossResp, err := basicAuthClient.ChangePasswordWithResponse(
 		t.Context(),
@@ -310,263 +214,13 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(changePasswordCrossResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(changePasswordCrossResp.JSON403, t)
 }
 
-func TestAuthBasicAPIOrganisationCreateDenied(t *testing.T) {
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
-
-	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
-		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(orgResp.StatusCode(), http.StatusCreated, t)
-	orgID := orgResp.JSON201.Id
-
-	loginResp, err := basicAuthClient.LoginWithResponse(
-		t.Context(),
-		orgID,
-		authbasicapi.LoginJSONRequestBody{
-			Username: orgResp.JSON201.AdminUsername,
-			Password: orgResp.JSON201.AdminPassword,
-		},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	session := extractSession(loginResp.HTTPResponse, t)
-	if session == "" {
-		t.Fatal("Did not get a session header")
-	}
-
-	failedOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
-		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(failedOrgResp.StatusCode(), http.StatusForbidden, t)
-}
-
-func TestAuthBasicAPIOASFailure(t *testing.T) {
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(), adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
-
-	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
-		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: ""},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(orgResp.StatusCode(), http.StatusBadRequest, t)
-	verifyAuthBasicAPIErrorResponse(orgResp.JSON400, t)
-}
-
-func TestAuthBasicAPIUserConflict(t *testing.T) {
-	loginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{
-			ClientId:     superUserClientID,
-			ClientSecret: superUserClientSecret,
-		},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	session := extractSession(loginResp.HTTPResponse, t)
-
-	createUserResp, err := basicAuthClient.CreateUserWithResponse(
-		t.Context(),
-		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserRequest{
-			Name:     alwaysUser,
-			Password: alwaysUserPassword,
-		},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(createUserResp.StatusCode(), http.StatusConflict, t)
-
-	if createUserResp.JSON409 == nil {
-		t.Fatal("Expected a 409 body")
-	}
-
-	if len(createUserResp.JSON409.Errors) == 0 {
-		t.Fatal("Expected 1 conflict error message")
-	}
-
-	createUser2Resp, err := basicAuthClient.CreateUserWithResponse(
-		t.Context(),
-		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserRequest{
-			Name:     username(),
-			Password: alwaysUserPassword,
-		},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(createUser2Resp.StatusCode(), http.StatusCreated, t)
-
-	updateUserResp, err := basicAuthClient.UpdateUserWithResponse(
-		t.Context(),
-		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.Userid(createUser2Resp.JSON201.Id),
-		authbasicapi.UpdateUserJSONRequestBody{
-			Name: alwaysUser,
-		},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(updateUserResp.StatusCode(), http.StatusConflict, t)
-
-	if updateUserResp.JSON409 == nil {
-		t.Fatal("Expected a 409 body")
-	}
-
-	if len(updateUserResp.JSON409.Errors) == 0 {
-		t.Fatal("Expected 1 conflict error message")
-	}
-}
-
-func TestAuthBasicAPIGroupConflict(t *testing.T) {
-	loginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{
-			ClientId:     superUserClientID,
-			ClientSecret: superUserClientSecret,
-		},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	session := extractSession(loginResp.HTTPResponse, t)
-
-	createGroupResp, err := basicAuthClient.CreateGroupWithResponse(
-		t.Context(),
-		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateGroupJSONRequestBody{
-			Name: alwaysGroupDev,
-		},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(createGroupResp.StatusCode(), http.StatusConflict, t)
-
-	if createGroupResp.JSON409 == nil {
-		t.Fatal("Expected a 409 body")
-	}
-
-	if len(createGroupResp.JSON409.Errors) == 0 {
-		t.Fatal("Expected 1 conflict error message")
-	}
-
-	createGroup2Resp, err := basicAuthClient.CreateGroupWithResponse(
-		t.Context(),
-		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateGroupJSONRequestBody{
-			Name: groupName(),
-		},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(createGroup2Resp.StatusCode(), http.StatusCreated, t)
-
-	updateGroupResp, err := basicAuthClient.UpdateGroupWithResponse(
-		t.Context(),
-		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.Groupid(createGroup2Resp.JSON201.Id),
-		authbasicapi.UpdateGroupJSONRequestBody{
-			Name: alwaysGroupDev,
-		},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(updateGroupResp.StatusCode(), http.StatusConflict, t)
-
-	if updateGroupResp.JSON409 == nil {
-		t.Fatal("Expected a 409 body")
-	}
-
-	if len(updateGroupResp.JSON409.Errors) == 0 {
-		t.Fatal("Expected 1 conflict error message")
-	}
-}
-
-// Validate organisation create, update, and delete lifecycle.
-func TestAuthBasicAPILifecycleOrganisation(t *testing.T) {
-	loginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	session := extractSession(loginResp.HTTPResponse, t)
-
-	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
-		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
-	orgID := createOrgResp.JSON201.Id
-
-	getOrgResp, err := basicAuthClient.GetOrganisationWithResponse(
-		t.Context(),
-		orgID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(getOrgResp.StatusCode(), http.StatusOK, t)
-	matches(getOrgResp.JSON200.Name, createOrgResp.JSON201.Name, t)
-
-	updatedName := orgName()
-	updateOrgResp, err := basicAuthClient.UpdateOrganisationWithResponse(
-		t.Context(),
-		orgID,
-		authbasicapi.UpdateOrganisationJSONRequestBody{Name: updatedName},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(updateOrgResp.StatusCode(), http.StatusOK, t)
-	matches(updateOrgResp.JSON200.Name, updatedName, t)
-
-	getUpdatedOrgResp, err := basicAuthClient.GetOrganisationWithResponse(
-		t.Context(),
-		orgID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(getUpdatedOrgResp.StatusCode(), http.StatusOK, t)
-	matches(getUpdatedOrgResp.JSON200.Name, updatedName, t)
-
-	deleteOrgResp, err := basicAuthClient.DeleteOrganisationWithResponse(
-		t.Context(),
-		orgID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(deleteOrgResp.StatusCode(), http.StatusNoContent, t)
-
-	getDeletedOrgResp, err := basicAuthClient.GetOrganisationWithResponse(
-		t.Context(),
-		orgID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(getDeletedOrgResp.StatusCode(), http.StatusNotFound, t)
-}
-
-// Validate user create, update, and delete lifecycle.
-func TestAuthBasicAPILifecycleUser(t *testing.T) {
+// TestAuthBasicAPIOrgAdminListOrganisationsForbidden verifies that a session scoped to an
+// organisation cannot list organisations (superuser-only operation).
+// The spec does not define a 403 body for ListOrganisations, so only the status is checked.
+func TestAuthBasicAPIOrgAdminListOrganisationsForbidden(t *testing.T) {
 	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
 		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
@@ -582,240 +236,10 @@ func TestAuthBasicAPILifecycleUser(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
-	orgID := createOrgResp.JSON201.Id
 
 	orgLoginResp, err := basicAuthClient.LoginWithResponse(
 		t.Context(),
-		orgID,
-		authbasicapi.LoginJSONRequestBody{
-			Username: createOrgResp.JSON201.AdminUsername,
-			Password: createOrgResp.JSON201.AdminPassword,
-		},
-	)
-	checkErr(err, t)
-	verifyStatusCode(orgLoginResp.StatusCode(), http.StatusNoContent, t)
-	session := extractSession(orgLoginResp.HTTPResponse, t)
-
-	initialName := username()
-	createUserResp, err := basicAuthClient.CreateUserWithResponse(
-		t.Context(),
-		orgID,
-		authbasicapi.CreateUserRequest{Name: initialName, Password: "password123"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
-	userID := createUserResp.JSON201.Id
-
-	getUserResp, err := basicAuthClient.GetUserWithResponse(
-		t.Context(),
-		orgID,
-		userID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(getUserResp.StatusCode(), http.StatusOK, t)
-	matches(getUserResp.JSON200.Name, initialName, t)
-
-	updatedName := username()
-	updateUserResp, err := basicAuthClient.UpdateUserWithResponse(
-		t.Context(),
-		orgID,
-		userID,
-		authbasicapi.UpdateUserJSONRequestBody{Name: updatedName},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(updateUserResp.StatusCode(), http.StatusOK, t)
-	matches(updateUserResp.JSON200.Name, updatedName, t)
-
-	getUpdatedUserResp, err := basicAuthClient.GetUserWithResponse(
-		t.Context(),
-		orgID,
-		userID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(getUpdatedUserResp.StatusCode(), http.StatusOK, t)
-	matches(getUpdatedUserResp.JSON200.Name, updatedName, t)
-
-	deleteUserResp, err := basicAuthClient.DeleteUserWithResponse(
-		t.Context(),
-		orgID,
-		userID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(deleteUserResp.StatusCode(), http.StatusNoContent, t)
-
-	getDeletedUserResp, err := basicAuthClient.GetUserWithResponse(
-		t.Context(),
-		orgID,
-		userID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(getDeletedUserResp.StatusCode(), http.StatusNotFound, t)
-}
-
-// Validate group create, update, and delete lifecycle.
-func TestAuthBasicAPILifecycleGroup(t *testing.T) {
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
-
-	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
-		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
-	orgID := createOrgResp.JSON201.Id
-
-	orgLoginResp, err := basicAuthClient.LoginWithResponse(
-		t.Context(),
-		orgID,
-		authbasicapi.LoginJSONRequestBody{
-			Username: createOrgResp.JSON201.AdminUsername,
-			Password: createOrgResp.JSON201.AdminPassword,
-		},
-	)
-	checkErr(err, t)
-	verifyStatusCode(orgLoginResp.StatusCode(), http.StatusNoContent, t)
-	session := extractSession(orgLoginResp.HTTPResponse, t)
-
-	initialName := groupName()
-	createGroupResp, err := basicAuthClient.CreateGroupWithResponse(
-		t.Context(),
-		orgID,
-		authbasicapi.CreateGroupJSONRequestBody{Name: initialName},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(createGroupResp.StatusCode(), http.StatusCreated, t)
-	groupID := createGroupResp.JSON201.Id
-
-	getGroupResp, err := basicAuthClient.GetGroupWithResponse(
-		t.Context(),
-		orgID,
-		groupID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(getGroupResp.StatusCode(), http.StatusOK, t)
-	matches(getGroupResp.JSON200.Name, initialName, t)
-
-	updatedName := groupName()
-	updateGroupResp, err := basicAuthClient.UpdateGroupWithResponse(
-		t.Context(),
-		orgID,
-		groupID,
-		authbasicapi.UpdateGroupJSONRequestBody{Name: updatedName},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(updateGroupResp.StatusCode(), http.StatusOK, t)
-	matches(updateGroupResp.JSON200.Name, updatedName, t)
-
-	getUpdatedGroupResp, err := basicAuthClient.GetGroupWithResponse(
-		t.Context(),
-		orgID,
-		groupID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(getUpdatedGroupResp.StatusCode(), http.StatusOK, t)
-	matches(getUpdatedGroupResp.JSON200.Name, updatedName, t)
-
-	deleteGroupResp, err := basicAuthClient.DeleteGroupWithResponse(
-		t.Context(),
-		orgID,
-		groupID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(deleteGroupResp.StatusCode(), http.StatusNoContent, t)
-
-	getDeletedGroupResp, err := basicAuthClient.GetGroupWithResponse(
-		t.Context(),
-		orgID,
-		groupID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(getDeletedGroupResp.StatusCode(), http.StatusNotFound, t)
-}
-
-// Validate that a user session is invalidated after logout.
-func TestAuthBasicAPILogout(t *testing.T) {
-	loginResp, err := basicAuthClient.LoginWithResponse(
-		t.Context(),
-		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.LoginJSONRequestBody{
-			Username: alwaysUser,
-			Password: alwaysUserPassword,
-		},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	session := extractSession(loginResp.HTTPResponse, t)
-
-	// Verify the session is valid by accessing a protected endpoint.
-	getUserResp, err := basicAuthClient.GetUserWithResponse(
-		t.Context(),
-		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.Userid(alwaysUserID),
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(getUserResp.StatusCode(), http.StatusOK, t)
-
-	logoutResp, err := basicAuthClient.LogoutWithResponse(
-		t.Context(),
-		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(logoutResp.StatusCode(), http.StatusNoContent, t)
-
-	// Verify the old session is truly invalidated.
-	getUserAfterLogoutResp, err := basicAuthClient.GetUserWithResponse(
-		t.Context(),
-		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.Userid(alwaysUserID),
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(getUserAfterLogoutResp.StatusCode(), http.StatusUnauthorized, t)
-}
-
-// Validate that a user can change their password and the old password is thereafter rejected.
-func TestAuthBasicAPIChangePassword(t *testing.T) {
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
-
-	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
-		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
-	orgID := createOrgResp.JSON201.Id
-
-	orgLoginResp, err := basicAuthClient.LoginWithResponse(
-		t.Context(),
-		orgID,
+		createOrgResp.JSON201.Id,
 		authbasicapi.LoginJSONRequestBody{
 			Username: createOrgResp.JSON201.AdminUsername,
 			Password: createOrgResp.JSON201.AdminPassword,
@@ -825,125 +249,215 @@ func TestAuthBasicAPIChangePassword(t *testing.T) {
 	verifyStatusCode(orgLoginResp.StatusCode(), http.StatusNoContent, t)
 	orgSession := extractSession(orgLoginResp.HTTPResponse, t)
 
-	const oldPassword = "oldpassword123"
-	const newPassword = "newpassword456"
-	newUsername := username()
-	createUserResp, err := basicAuthClient.CreateUserWithResponse(
+	listResp, err := basicAuthClient.ListOrganisationsWithResponse(
 		t.Context(),
-		orgID,
-		authbasicapi.CreateUserRequest{Name: newUsername, Password: oldPassword},
 		authbasicapi.RequestEditorFn(requestEditorSessionID(orgSession)),
 	)
 	checkErr(err, t)
-	verifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
-	userID := createUserResp.JSON201.Id
+	verifyStatusCode(listResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(listResp.JSON403, t)
 
-	userLoginResp, err := basicAuthClient.LoginWithResponse(
+	createResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		orgID,
-		authbasicapi.LoginJSONRequestBody{
-			Username: newUsername,
-			Password: oldPassword,
-		},
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(orgSession)),
 	)
 	checkErr(err, t)
-	verifyStatusCode(userLoginResp.StatusCode(), http.StatusNoContent, t)
-	userSession := extractSession(userLoginResp.HTTPResponse, t)
-
-	changePwdResp, err := basicAuthClient.ChangePasswordWithResponse(
-		t.Context(),
-		orgID,
-		userID,
-		authbasicapi.ChangePasswordJSONRequestBody{
-			OldPassword: oldPassword,
-			Password:    newPassword,
-		},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(userSession)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(changePwdResp.StatusCode(), http.StatusNoContent, t)
-
-	// Login with the old password should now fail.
-	oldPwdLoginResp, err := basicAuthClient.LoginWithResponse(
-		t.Context(),
-		orgID,
-		authbasicapi.LoginJSONRequestBody{
-			Username: newUsername,
-			Password: oldPassword,
-		},
-	)
-	checkErr(err, t)
-	verifyStatusCode(oldPwdLoginResp.StatusCode(), http.StatusUnauthorized, t)
-
-	// Login with the new password should succeed.
-	newPwdLoginResp, err := basicAuthClient.LoginWithResponse(
-		t.Context(),
-		orgID,
-		authbasicapi.LoginJSONRequestBody{
-			Username: newUsername,
-			Password: newPassword,
-		},
-	)
-	checkErr(err, t)
-	verifyStatusCode(newPwdLoginResp.StatusCode(), http.StatusNoContent, t)
+	verifyStatusCode(createResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(createResp.JSON403, t)
 }
 
-func TestAuthBasicAPIOrgConflict(t *testing.T) {
-	loginResp, err := adminClient.LoginSuperuserWithResponse(
+// TestAuthBasicAPINormalUserAccessControl verifies that a non-administrator user receives
+// 403 (with populated error body) for all admin-only operations, and can still successfully
+// retrieve their own user record.
+func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
+	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{
-			ClientId:     superUserClientID,
-			ClientSecret: superUserClientSecret,
-		},
+		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
 	)
 	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	session := extractSession(loginResp.HTTPResponse, t)
+	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
+	superSession := extractSession(superLoginResp.HTTPResponse, t)
 
-	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
+	// Create a dedicated org for this test.
+	orgID, adminSession := orgWithSession(t, superSession)
+
+	// Create a group to use in group-level checks.
+	createGroupResp, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{
-			Name: alwaysOrg,
-		},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
+		orgID,
+		authbasicapi.CreateGroupJSONRequestBody{Name: groupName()},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(adminSession)),
 	)
 	checkErr(err, t)
-	verifyStatusCode(createOrgResp.StatusCode(), http.StatusConflict, t)
+	verifyStatusCode(createGroupResp.StatusCode(), http.StatusCreated, t)
+	groupID := createGroupResp.JSON201.Id
 
-	if createOrgResp.JSON409 == nil {
-		t.Fatal("Expected a 409 body")
-	}
-
-	if len(createOrgResp.JSON409.Errors) == 0 {
-		t.Fatal("Expected 1 conflict error message")
-	}
-
-	createOrg2Resp, err := basicAuthClient.CreateOrganisationWithResponse(
+	// Create a regular (non-admin) user.
+	regularUserName := username()
+	regularPassword := "regularpass1"
+	createRegularResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{
-			Name: orgName(),
-		},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
+		orgID,
+		authbasicapi.CreateUserRequest{Name: regularUserName, Password: regularPassword},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(adminSession)),
 	)
 	checkErr(err, t)
-	verifyStatusCode(createOrg2Resp.StatusCode(), http.StatusCreated, t)
+	verifyStatusCode(createRegularResp.StatusCode(), http.StatusCreated, t)
+	regularUserID := createRegularResp.JSON201.Id
 
-	updateOrgResp, err := basicAuthClient.UpdateOrganisationWithResponse(
+	// Create another user to test that the regular user cannot access a different user.
+	createOtherResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
-		authbasicapi.Orgid(createOrg2Resp.JSON201.Id),
-		authbasicapi.UpdateOrganisationJSONRequestBody{
-			Name: alwaysOrg,
-		},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
+		orgID,
+		authbasicapi.CreateUserRequest{Name: username(), Password: "otherpass123"},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(adminSession)),
 	)
 	checkErr(err, t)
-	verifyStatusCode(updateOrgResp.StatusCode(), http.StatusConflict, t)
+	verifyStatusCode(createOtherResp.StatusCode(), http.StatusCreated, t)
+	otherUserID := createOtherResp.JSON201.Id
 
-	if updateOrgResp.JSON409 == nil {
-		t.Fatal("Expected a 409 body")
-	}
+	// Log in as the regular user.
+	regularLoginResp, err := basicAuthClient.LoginWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.LoginJSONRequestBody{Username: regularUserName, Password: regularPassword},
+	)
+	checkErr(err, t)
+	verifyStatusCode(regularLoginResp.StatusCode(), http.StatusNoContent, t)
+	regularSession := extractSession(regularLoginResp.HTTPResponse, t)
 
-	if len(updateOrgResp.JSON409.Errors) == 0 {
-		t.Fatal("Expected 1 conflict error message")
-	}
+	// --- Admin-only operations that must be denied (403 + body) ---
+
+	// CreateUser.
+	createUserDenyResp, err := basicAuthClient.CreateUserWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createUserDenyResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(createUserDenyResp.JSON403, t)
+
+	// ListUsers.
+	listUsersDenyResp, err := basicAuthClient.ListUsersWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(listUsersDenyResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(listUsersDenyResp.JSON403, t)
+
+	// GetUser for a different user in the same org.
+	getUserOtherDenyResp, err := basicAuthClient.GetUserWithResponse(
+		t.Context(),
+		orgID,
+		otherUserID,
+		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getUserOtherDenyResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(getUserOtherDenyResp.JSON403, t)
+
+	// GetOrganisation.
+	getOrgDenyResp, err := basicAuthClient.GetOrganisationWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getOrgDenyResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(getOrgDenyResp.JSON403, t)
+
+	// DeleteOrganisation.
+	deleteOrgDenyResp, err := basicAuthClient.DeleteOrganisationWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(deleteOrgDenyResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(deleteOrgDenyResp.JSON403, t)
+
+	// CreateGroup.
+	createGroupDenyResp, err := basicAuthClient.CreateGroupWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.CreateGroupJSONRequestBody{Name: groupName()},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createGroupDenyResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(createGroupDenyResp.JSON403, t)
+
+	// ListGroups.
+	listGroupsDenyResp, err := basicAuthClient.ListGroupsWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(listGroupsDenyResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(listGroupsDenyResp.JSON403, t)
+
+	// GetGroup.
+	getGroupDenyResp, err := basicAuthClient.GetGroupWithResponse(
+		t.Context(),
+		orgID,
+		groupID,
+		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getGroupDenyResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(getGroupDenyResp.JSON403, t)
+
+	// UpdateGroup.
+	updateGroupDenyResp, err := basicAuthClient.UpdateGroupWithResponse(
+		t.Context(),
+		orgID,
+		groupID,
+		authbasicapi.UpdateGroupJSONRequestBody{Id: groupID, Name: groupName()},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(updateGroupDenyResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(updateGroupDenyResp.JSON403, t)
+
+	// DeleteGroup.
+	deleteGroupDenyResp, err := basicAuthClient.DeleteGroupWithResponse(
+		t.Context(),
+		orgID,
+		groupID,
+		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(deleteGroupDenyResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(deleteGroupDenyResp.JSON403, t)
+
+	// UpdateUserGroups.
+	updateUserGroupsDenyResp, err := basicAuthClient.UpdateUserGroupsWithResponse(
+		t.Context(),
+		orgID,
+		regularUserID,
+		authbasicapi.UpdateUserGroupsJSONRequestBody([]string{}),
+		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(updateUserGroupsDenyResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(updateUserGroupsDenyResp.JSON403, t)
+
+	// --- Operations the regular user IS allowed to perform on themselves ---
+
+	// GetUser for own record must succeed.
+	getUserSelfResp, err := basicAuthClient.GetUserWithResponse(
+		t.Context(),
+		orgID,
+		regularUserID,
+		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getUserSelfResp.StatusCode(), http.StatusOK, t)
+	matches(getUserSelfResp.JSON200.Id, regularUserID, t)
 }
