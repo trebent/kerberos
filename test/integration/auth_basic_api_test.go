@@ -255,6 +255,16 @@ func TestAuthBasicAPIOrgAdminListOrganisationsForbidden(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(listResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(listResp.JSON403, t)
+
+	createResp, err := basicAuthClient.CreateOrganisationWithResponse(
+		t.Context(),
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.RequestEditorFn(requestEditorSessionID(orgSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createResp.StatusCode(), http.StatusForbidden, t)
+	verifyAuthBasicAPIErrorResponse(createResp.JSON403, t)
 }
 
 // TestAuthBasicAPINormalUserAccessControl verifies that a non-administrator user receives

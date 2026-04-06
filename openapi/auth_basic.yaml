@@ -178,6 +178,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Failed to create the organisation.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to create the organisation.
         "409":
           content:
             application/json:
@@ -202,6 +208,12 @@ paths:
                   $ref: "#/components/schemas/Organisation"
           description: Listed all organisations.
         "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to get the organisation.
+        "403":
           content:
             application/json:
               schema:

@@ -21,9 +21,7 @@ var (
 	userContextKey contextKey = "user"
 
 	errMalformedOrgID  = errors.New("malformed organisation ID")
-	errWrongOrgID      = errors.New("organisation ID mismatch")
 	errMalformedUserID = errors.New("malformed user ID")
-	errWrongUserID     = errors.New("user ID mismatch")
 )
 
 //nolint:funlen // welp
@@ -178,7 +176,7 @@ func orgValidator(orgID int64, r *http.Request) error {
 	}
 
 	if parsedOrgID != orgID {
-		return apierror.New(http.StatusForbidden, errWrongOrgID.Error())
+		return apierror.APIErrForbidden
 	}
 
 	return nil
@@ -199,7 +197,7 @@ func ownerUserValidator(userID int64, r *http.Request) error {
 	}
 
 	if parsedUserID != userID {
-		return apierror.New(http.StatusForbidden, errWrongUserID.Error())
+		return apierror.APIErrForbidden
 	}
 
 	return nil
