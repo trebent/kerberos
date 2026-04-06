@@ -334,3 +334,17 @@ func extractSession(resp *http.Response, t *testing.T) string {
 
 	return session
 }
+
+func loginSuperuser(t *testing.T) RequestEditorFn {
+	t.Helper()
+	t.Log("Logging the superuser in")
+	loginResp, err := adminClient.LoginSuperuserWithResponse(
+		context.Background(), adminapi.LoginSuperuserJSONRequestBody{
+			ClientId:     superUserClientID,
+			ClientSecret: superUserClientSecret,
+		},
+	)
+	checkErr(err, t)
+	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
+	return requestEditorSessionID(extractSession(loginResp.HTTPResponse, t))
+}

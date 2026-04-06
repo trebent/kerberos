@@ -148,6 +148,7 @@ func (i *impl) GetFlow(
 	_ context.Context,
 	_ adminapi.GetFlowRequestObject,
 ) (adminapi.GetFlowResponseObject, error) {
+	// No need to nil-check flowFetcher since KRB won't be able to start without it.
 	return adminapi.GetFlow200JSONResponse(i.flowFetcher.GetFlow()), nil
 }
 
@@ -156,6 +157,11 @@ func (i *impl) GetBackendOAS(
 	_ context.Context,
 	request adminapi.GetBackendOASRequestObject,
 ) (adminapi.GetBackendOASResponseObject, error) {
+	// Must nil-check OAS backend since it's an optional extension and not required for KRB to start.
+	if i.oasBackend == nil {
+		return adminapi.GetBackendOAS404JSONResponse(makeGenAPIError("not configured")), nil
+	}
+
 	oasData, err := i.oasBackend.GetOAS(request.Backend)
 	if err != nil {
 		return nil, err
@@ -165,6 +171,54 @@ func (i *impl) GetBackendOAS(
 		Body:          bytes.NewReader(oasData),
 		ContentLength: int64(len(oasData)),
 	}, nil
+}
+
+// ExtendDebugSession implements [withExtensions].
+func (i *impl) ExtendDebugSession(
+	_ context.Context,
+	_ adminapi.ExtendDebugSessionRequestObject,
+) (adminapi.ExtendDebugSessionResponseObject, error) {
+	return nil, apierror.APIErrNotImplemented
+}
+
+// GetDebugSession implements [withExtensions].
+func (i *impl) GetDebugSession(
+	_ context.Context,
+	_ adminapi.GetDebugSessionRequestObject,
+) (adminapi.GetDebugSessionResponseObject, error) {
+	return nil, apierror.APIErrNotImplemented
+}
+
+// ListDebugSessionOperations implements [withExtensions].
+func (i *impl) ListDebugSessionOperations(
+	_ context.Context,
+	_ adminapi.ListDebugSessionOperationsRequestObject,
+) (adminapi.ListDebugSessionOperationsResponseObject, error) {
+	return nil, apierror.APIErrNotImplemented
+}
+
+// ListDebugSessions implements [withExtensions].
+func (i *impl) ListDebugSessions(
+	_ context.Context,
+	_ adminapi.ListDebugSessionsRequestObject,
+) (adminapi.ListDebugSessionsResponseObject, error) {
+	return nil, apierror.APIErrNotImplemented
+}
+
+// StartDebugSession implements [withExtensions].
+func (i *impl) StartDebugSession(
+	_ context.Context,
+	_ adminapi.StartDebugSessionRequestObject,
+) (adminapi.StartDebugSessionResponseObject, error) {
+	return nil, apierror.APIErrNotImplemented
+}
+
+// StopDebugSession implements [withExtensions].
+func (i *impl) StopDebugSession(
+	_ context.Context,
+	_ adminapi.StopDebugSessionRequestObject,
+) (adminapi.StopDebugSessionResponseObject, error) {
+	return nil, apierror.APIErrNotImplemented
 }
 
 // bootstrapSuperuser checks if a super user exists and if not, creates one with the provided credentials.
