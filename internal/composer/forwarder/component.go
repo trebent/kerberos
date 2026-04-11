@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/trebent/kerberos/internal/composer"
@@ -18,11 +19,13 @@ import (
 )
 
 type (
-	// Placeholder options struct for future use, currently empty.
-	Opts      struct{}
+	Opts struct {
+		Backends []*config.RouterBackend
+	}
 	forwarder struct {
 		targetContextKey composer.ContextKey
-		client           *http.Client
+		defaultClient    *http.Client
+		clients          map[string]*http.Client // keyed by RouterBackend.Name
 	}
 )
 
@@ -43,12 +46,24 @@ var (
 	)
 )
 
-func NewComponent(_ *Opts) composer.FlowComponent {
+func NewComponent(opts *Opts) (composer.FlowComponent, error) {
+	clients := make(map[string]*http.Client, len(opts.Backends))
+	for _, b := range opts.Backends {
+		t, err := newTransport(b.Name, b.TLS)
+		if err != nil {
+			return nil, fmt.Errorf("building transport for backend %q: %w", b.Name, err)
+		}
+
+		clients[b.Name] = &http.Client{
+			Transport: t,
+			Timeout:   time.Duration(b.TimeoutMs) * time.Millisecond,
+		}
+	}
 	return &forwarder{
 		targetContextKey: composer.TargetContextKey,
-		// TODO: determine timeouts from input configuration
-		client: &http.Client{},
-	}
+		defaultClient:    &http.Client{},
+		clients:          clients,
+	}, nil
 }
 
 // Next implements [composer.FlowComponent].
@@ -89,12 +104,23 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	client, ok := f.clients[target.Name]
+	if !ok {
+		client = f.defaultClient
+	}
+
+	scheme := "http"
+	if target.TLS != nil {
+		scheme = "https"
+	}
+
 	//nolint:gosec // ignoring SSRF warning since the target is determined by our own routing logic and not user input.
 	forwardRequest, err := http.NewRequestWithContext(
 		req.Context(),
 		req.Method,
 		fmt.Sprintf(
-			"http://%s%s",
+			"%s://%s%s",
+			scheme,
 			net.JoinHostPort(target.Host, strconv.Itoa(target.Port)),
 			req.URL.Path,
 		),
@@ -111,7 +137,7 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 		Inject(req.Context(), propagation.HeaderCarrier(forwardRequest.Header))
 
 	//nolint:gosec // ignoring SSRF warning since the target is determined by our own routing logic and not user input.
-	resp, err := f.client.Do(forwardRequest)
+	resp, err := client.Do(forwardRequest)
 	if err != nil {
 		rLogger.Error(err, "Failed to forward request")
 		apierror.ErrorHandler(wrapped, req, apiErrFailedForwarding)

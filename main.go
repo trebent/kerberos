@@ -206,7 +206,12 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	custom := custom.NewComponent(customFlowComponents...)
 
 	zerologr.Info("Loading forwarder")
-	forwarder := forwarder.NewComponent(&forwarder.Opts{})
+	forwarder, err := forwarder.NewComponent(&forwarder.Opts{
+		Backends: cfg.RouterConfig.Backends,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to initialize forwarder: %w", err)
+	}
 
 	zerologr.Info("Loading composer")
 	composer := composer.New(&composer.Opts{

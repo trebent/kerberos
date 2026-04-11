@@ -20,9 +20,25 @@ type (
 		Backends []*RouterBackend `json:"backends"`
 	}
 	RouterBackend struct {
-		Name string `json:"name"`
-		Host string `json:"host"`
-		Port int    `json:"port"`
+		Name      string      `json:"name"`
+		Host      string      `json:"host"`
+		Port      int         `json:"port"`
+		TimeoutMs int         `json:"timeout,omitempty"`
+		TLS       *BackendTLS `json:"tls,omitempty"`
+	}
+	// BackendTLS holds per-backend TLS settings.
+	// When nil, the forwarder uses plain HTTP for that backend.
+	BackendTLS struct {
+		// RootCAFile is the path to a PEM-encoded CA bundle used to verify the backend's certificate.
+		// When empty, the system certificate pool is used.
+		RootCAFile string `json:"rootCAFile,omitempty"`
+		// ClientCertFile and ClientKeyFile enable mTLS.
+		// Both must be set together.
+		ClientCertFile string `json:"clientCertFile,omitempty"`
+		ClientKeyFile  string `json:"clientKeyFile,omitempty"`
+		// InsecureSkipVerify disables server certificate verification.
+		// Must only be used in non-production environments.
+		InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
 	}
 
 	// ObservabilityConfig holds configuration for observability features.
@@ -81,8 +97,14 @@ func newObservabilityConfig() *ObservabilityConfig {
 	}
 }
 
-func (ac *AuthConfig) postProcess()          {}
-func (rc *RouterConfig) postProcess()        {}
+func (ac *AuthConfig) postProcess() {}
+func (rc *RouterConfig) postProcess() {
+	for _, b := range rc.Backends {
+		if b.TimeoutMs == 0 {
+			b.TimeoutMs = 5000 // default timeout of 5000 milliseconds
+		}
+	}
+}
 func (oc *ObservabilityConfig) postProcess() {}
 func (ac *AdminConfig) postProcess()         {}
 func (oc *OASConfig) postProcess() {

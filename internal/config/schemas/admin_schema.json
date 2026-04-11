@@ -3,6 +3,24 @@
   "$id": "http://trebent.com/kerberos/schemas/admin_schema.json",
   "type": "object",
   "properties": {
+    "api": {
+      "type": "object",
+      "properties": {
+        "tls": {
+          "type": "object",
+          "properties": {
+            "serverCertificate": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "serverCertificate"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "superUser": {
       "type": "object",
       "default": {},
