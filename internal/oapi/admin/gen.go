@@ -98,8 +98,90 @@ type FlowMetaDataRouterBackend struct {
 	Port int    `json:"port"`
 }
 
+// Group defines model for Group.
+type Group struct {
+	Id   int    `json:"id"`
+	Name string `json:"name"`
+}
+
 // NoFlowMetaData No metadata for the flow component.
 type NoFlowMetaData = map[string]interface{}
+
+// User defines model for User.
+type User struct {
+	Groups   *[]Group `json:"groups,omitempty"`
+	Id       int      `json:"id"`
+	Username string   `json:"username"`
+}
+
+// BadRequestError defines model for BadRequestError.
+type BadRequestError = APIErrorResponse
+
+// ForbiddenError defines model for ForbiddenError.
+type ForbiddenError = APIErrorResponse
+
+// InternalError defines model for InternalError.
+type InternalError = APIErrorResponse
+
+// NotFoundError defines model for NotFoundError.
+type NotFoundError = APIErrorResponse
+
+// UnauthorizedError defines model for UnauthorizedError.
+type UnauthorizedError = APIErrorResponse
+
+// ChangePasswordRequest defines model for ChangePasswordRequest.
+type ChangePasswordRequest struct {
+	NewPassword string `json:"newPassword"`
+	OldPassword string `json:"oldPassword"`
+}
+
+// CreateGroupRequest defines model for CreateGroupRequest.
+type CreateGroupRequest struct {
+	Name string `json:"name"`
+}
+
+// CreateUserRequest defines model for CreateUserRequest.
+type CreateUserRequest struct {
+	Password string `json:"password"`
+	Username string `json:"username"`
+}
+
+// LoginUserRequest defines model for LoginUserRequest.
+type LoginUserRequest struct {
+	Password string `json:"password"`
+	Username string `json:"username"`
+}
+
+// UpdateGroupRequest defines model for UpdateGroupRequest.
+type UpdateGroupRequest struct {
+	Name string `json:"name"`
+}
+
+// UpdateUserGroupsRequest defines model for UpdateUserGroupsRequest.
+type UpdateUserGroupsRequest struct {
+	GroupIDs []int `json:"groupIDs"`
+}
+
+// UpdateUserRequest defines model for UpdateUserRequest.
+type UpdateUserRequest struct {
+	Username *string `json:"username,omitempty"`
+}
+
+// CreateGroupJSONBody defines parameters for CreateGroup.
+type CreateGroupJSONBody struct {
+	Name string `json:"name"`
+}
+
+// UpdateGroupJSONBody defines parameters for UpdateGroup.
+type UpdateGroupJSONBody struct {
+	Name string `json:"name"`
+}
+
+// LoginJSONBody defines parameters for Login.
+type LoginJSONBody struct {
+	Password string `json:"password"`
+	Username string `json:"username"`
+}
 
 // LoginSuperuserJSONBody defines parameters for LoginSuperuser.
 type LoginSuperuserJSONBody struct {
@@ -107,8 +189,51 @@ type LoginSuperuserJSONBody struct {
 	ClientSecret string `json:"clientSecret"`
 }
 
+// CreateUserJSONBody defines parameters for CreateUser.
+type CreateUserJSONBody struct {
+	Password string `json:"password"`
+	Username string `json:"username"`
+}
+
+// UpdateUserJSONBody defines parameters for UpdateUser.
+type UpdateUserJSONBody struct {
+	Username *string `json:"username,omitempty"`
+}
+
+// UpdateUserGroupsJSONBody defines parameters for UpdateUserGroups.
+type UpdateUserGroupsJSONBody struct {
+	GroupIDs []int `json:"groupIDs"`
+}
+
+// ChangeUserPasswordJSONBody defines parameters for ChangeUserPassword.
+type ChangeUserPasswordJSONBody struct {
+	NewPassword string `json:"newPassword"`
+	OldPassword string `json:"oldPassword"`
+}
+
+// CreateGroupJSONRequestBody defines body for CreateGroup for application/json ContentType.
+type CreateGroupJSONRequestBody CreateGroupJSONBody
+
+// UpdateGroupJSONRequestBody defines body for UpdateGroup for application/json ContentType.
+type UpdateGroupJSONRequestBody UpdateGroupJSONBody
+
+// LoginJSONRequestBody defines body for Login for application/json ContentType.
+type LoginJSONRequestBody LoginJSONBody
+
 // LoginSuperuserJSONRequestBody defines body for LoginSuperuser for application/json ContentType.
 type LoginSuperuserJSONRequestBody LoginSuperuserJSONBody
+
+// CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
+type CreateUserJSONRequestBody CreateUserJSONBody
+
+// UpdateUserJSONRequestBody defines body for UpdateUser for application/json ContentType.
+type UpdateUserJSONRequestBody UpdateUserJSONBody
+
+// UpdateUserGroupsJSONRequestBody defines body for UpdateUserGroups for application/json ContentType.
+type UpdateUserGroupsJSONRequestBody UpdateUserGroupsJSONBody
+
+// ChangeUserPasswordJSONRequestBody defines body for ChangeUserPassword for application/json ContentType.
+type ChangeUserPasswordJSONRequestBody ChangeUserPasswordJSONBody
 
 // AsFlowMetaDataObservability returns the union data inside the FlowMeta_Data as a FlowMetaDataObservability
 func (t FlowMeta_Data) AsFlowMetaDataObservability() (FlowMetaDataObservability, error) {
@@ -256,6 +381,27 @@ type ServerInterface interface {
 	// (GET /api/admin/flow)
 	GetFlow(w http.ResponseWriter, r *http.Request)
 
+	// (GET /api/admin/groups)
+	GetGroups(w http.ResponseWriter, r *http.Request)
+
+	// (POST /api/admin/groups)
+	CreateGroup(w http.ResponseWriter, r *http.Request)
+
+	// (DELETE /api/admin/groups/{groupID})
+	DeleteGroup(w http.ResponseWriter, r *http.Request, groupID int)
+
+	// (GET /api/admin/groups/{groupID})
+	GetGroup(w http.ResponseWriter, r *http.Request, groupID int)
+
+	// (PUT /api/admin/groups/{groupID})
+	UpdateGroup(w http.ResponseWriter, r *http.Request, groupID int)
+
+	// (POST /api/admin/login)
+	Login(w http.ResponseWriter, r *http.Request)
+
+	// (POST /api/admin/logout)
+	Logout(w http.ResponseWriter, r *http.Request)
+
 	// (GET /api/admin/oas/{backend})
 	GetBackendOAS(w http.ResponseWriter, r *http.Request, backend string)
 
@@ -264,6 +410,27 @@ type ServerInterface interface {
 
 	// (POST /api/admin/superuser/logout)
 	LogoutSuperuser(w http.ResponseWriter, r *http.Request)
+
+	// (GET /api/admin/users)
+	GetUsers(w http.ResponseWriter, r *http.Request)
+
+	// (POST /api/admin/users)
+	CreateUser(w http.ResponseWriter, r *http.Request)
+
+	// (DELETE /api/admin/users/{userID})
+	DeleteUser(w http.ResponseWriter, r *http.Request, userID int)
+
+	// (GET /api/admin/users/{userID})
+	GetUser(w http.ResponseWriter, r *http.Request, userID int)
+
+	// (PUT /api/admin/users/{userID})
+	UpdateUser(w http.ResponseWriter, r *http.Request, userID int)
+
+	// (PUT /api/admin/users/{userID}/groups)
+	UpdateUserGroups(w http.ResponseWriter, r *http.Request, userID int)
+
+	// (PUT /api/admin/users/{userID}/password)
+	ChangeUserPassword(w http.ResponseWriter, r *http.Request, userID int)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -286,6 +453,173 @@ func (siw *ServerInterfaceWrapper) GetFlow(w http.ResponseWriter, r *http.Reques
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetFlow(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetGroups operation middleware
+func (siw *ServerInterfaceWrapper) GetGroups(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetGroups(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateGroup operation middleware
+func (siw *ServerInterfaceWrapper) CreateGroup(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateGroup(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteGroup operation middleware
+func (siw *ServerInterfaceWrapper) DeleteGroup(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "groupID" -------------
+	var groupID int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "groupID", r.PathValue("groupID"), &groupID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "groupID", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteGroup(w, r, groupID)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetGroup operation middleware
+func (siw *ServerInterfaceWrapper) GetGroup(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "groupID" -------------
+	var groupID int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "groupID", r.PathValue("groupID"), &groupID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "groupID", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetGroup(w, r, groupID)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateGroup operation middleware
+func (siw *ServerInterfaceWrapper) UpdateGroup(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "groupID" -------------
+	var groupID int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "groupID", r.PathValue("groupID"), &groupID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "groupID", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateGroup(w, r, groupID)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// Login operation middleware
+func (siw *ServerInterfaceWrapper) Login(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.Login(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// Logout operation middleware
+func (siw *ServerInterfaceWrapper) Logout(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.Logout(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -351,6 +685,201 @@ func (siw *ServerInterfaceWrapper) LogoutSuperuser(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.LogoutSuperuser(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetUsers operation middleware
+func (siw *ServerInterfaceWrapper) GetUsers(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetUsers(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateUser operation middleware
+func (siw *ServerInterfaceWrapper) CreateUser(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateUser(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteUser operation middleware
+func (siw *ServerInterfaceWrapper) DeleteUser(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "userID" -------------
+	var userID int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userID", r.PathValue("userID"), &userID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userID", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteUser(w, r, userID)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetUser operation middleware
+func (siw *ServerInterfaceWrapper) GetUser(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "userID" -------------
+	var userID int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userID", r.PathValue("userID"), &userID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userID", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetUser(w, r, userID)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateUser operation middleware
+func (siw *ServerInterfaceWrapper) UpdateUser(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "userID" -------------
+	var userID int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userID", r.PathValue("userID"), &userID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userID", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateUser(w, r, userID)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateUserGroups operation middleware
+func (siw *ServerInterfaceWrapper) UpdateUserGroups(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "userID" -------------
+	var userID int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userID", r.PathValue("userID"), &userID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userID", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateUserGroups(w, r, userID)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ChangeUserPassword operation middleware
+func (siw *ServerInterfaceWrapper) ChangeUserPassword(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "userID" -------------
+	var userID int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userID", r.PathValue("userID"), &userID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userID", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ChangeUserPassword(w, r, userID)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -481,12 +1010,36 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	}
 
 	m.HandleFunc("GET "+options.BaseURL+"/api/admin/flow", wrapper.GetFlow)
+	m.HandleFunc("GET "+options.BaseURL+"/api/admin/groups", wrapper.GetGroups)
+	m.HandleFunc("POST "+options.BaseURL+"/api/admin/groups", wrapper.CreateGroup)
+	m.HandleFunc("DELETE "+options.BaseURL+"/api/admin/groups/{groupID}", wrapper.DeleteGroup)
+	m.HandleFunc("GET "+options.BaseURL+"/api/admin/groups/{groupID}", wrapper.GetGroup)
+	m.HandleFunc("PUT "+options.BaseURL+"/api/admin/groups/{groupID}", wrapper.UpdateGroup)
+	m.HandleFunc("POST "+options.BaseURL+"/api/admin/login", wrapper.Login)
+	m.HandleFunc("POST "+options.BaseURL+"/api/admin/logout", wrapper.Logout)
 	m.HandleFunc("GET "+options.BaseURL+"/api/admin/oas/{backend}", wrapper.GetBackendOAS)
 	m.HandleFunc("POST "+options.BaseURL+"/api/admin/superuser/login", wrapper.LoginSuperuser)
 	m.HandleFunc("POST "+options.BaseURL+"/api/admin/superuser/logout", wrapper.LogoutSuperuser)
+	m.HandleFunc("GET "+options.BaseURL+"/api/admin/users", wrapper.GetUsers)
+	m.HandleFunc("POST "+options.BaseURL+"/api/admin/users", wrapper.CreateUser)
+	m.HandleFunc("DELETE "+options.BaseURL+"/api/admin/users/{userID}", wrapper.DeleteUser)
+	m.HandleFunc("GET "+options.BaseURL+"/api/admin/users/{userID}", wrapper.GetUser)
+	m.HandleFunc("PUT "+options.BaseURL+"/api/admin/users/{userID}", wrapper.UpdateUser)
+	m.HandleFunc("PUT "+options.BaseURL+"/api/admin/users/{userID}/groups", wrapper.UpdateUserGroups)
+	m.HandleFunc("PUT "+options.BaseURL+"/api/admin/users/{userID}/password", wrapper.ChangeUserPassword)
 
 	return m
 }
+
+type BadRequestErrorJSONResponse APIErrorResponse
+
+type ForbiddenErrorJSONResponse APIErrorResponse
+
+type InternalErrorJSONResponse APIErrorResponse
+
+type NotFoundErrorJSONResponse APIErrorResponse
+
+type UnauthorizedErrorJSONResponse APIErrorResponse
 
 type GetFlowRequestObject struct {
 }
@@ -507,6 +1060,369 @@ func (response GetFlow200JSONResponse) VisitGetFlowResponse(w http.ResponseWrite
 type GetFlow500JSONResponse APIErrorResponse
 
 func (response GetFlow500JSONResponse) VisitGetFlowResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetGroupsRequestObject struct {
+}
+
+type GetGroupsResponseObject interface {
+	VisitGetGroupsResponse(w http.ResponseWriter) error
+}
+
+type GetGroups200JSONResponse []Group
+
+func (response GetGroups200JSONResponse) VisitGetGroupsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetGroups401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+
+func (response GetGroups401JSONResponse) VisitGetGroupsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetGroups403JSONResponse struct{ ForbiddenErrorJSONResponse }
+
+func (response GetGroups403JSONResponse) VisitGetGroupsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetGroups500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response GetGroups500JSONResponse) VisitGetGroupsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateGroupRequestObject struct {
+	Body *CreateGroupJSONRequestBody
+}
+
+type CreateGroupResponseObject interface {
+	VisitCreateGroupResponse(w http.ResponseWriter) error
+}
+
+type CreateGroup201JSONResponse Group
+
+func (response CreateGroup201JSONResponse) VisitCreateGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateGroup400JSONResponse struct{ BadRequestErrorJSONResponse }
+
+func (response CreateGroup400JSONResponse) VisitCreateGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateGroup401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+
+func (response CreateGroup401JSONResponse) VisitCreateGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateGroup403JSONResponse struct{ ForbiddenErrorJSONResponse }
+
+func (response CreateGroup403JSONResponse) VisitCreateGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateGroup500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response CreateGroup500JSONResponse) VisitCreateGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteGroupRequestObject struct {
+	GroupID int `json:"groupID"`
+}
+
+type DeleteGroupResponseObject interface {
+	VisitDeleteGroupResponse(w http.ResponseWriter) error
+}
+
+type DeleteGroup204Response struct {
+}
+
+func (response DeleteGroup204Response) VisitDeleteGroupResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteGroup400JSONResponse struct{ BadRequestErrorJSONResponse }
+
+func (response DeleteGroup400JSONResponse) VisitDeleteGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteGroup401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+
+func (response DeleteGroup401JSONResponse) VisitDeleteGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteGroup403JSONResponse struct{ ForbiddenErrorJSONResponse }
+
+func (response DeleteGroup403JSONResponse) VisitDeleteGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteGroup404JSONResponse struct{ NotFoundErrorJSONResponse }
+
+func (response DeleteGroup404JSONResponse) VisitDeleteGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteGroup500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response DeleteGroup500JSONResponse) VisitDeleteGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetGroupRequestObject struct {
+	GroupID int `json:"groupID"`
+}
+
+type GetGroupResponseObject interface {
+	VisitGetGroupResponse(w http.ResponseWriter) error
+}
+
+type GetGroup200JSONResponse Group
+
+func (response GetGroup200JSONResponse) VisitGetGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetGroup401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+
+func (response GetGroup401JSONResponse) VisitGetGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetGroup403JSONResponse struct{ ForbiddenErrorJSONResponse }
+
+func (response GetGroup403JSONResponse) VisitGetGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetGroup404JSONResponse struct{ NotFoundErrorJSONResponse }
+
+func (response GetGroup404JSONResponse) VisitGetGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetGroup500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response GetGroup500JSONResponse) VisitGetGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateGroupRequestObject struct {
+	GroupID int `json:"groupID"`
+	Body    *UpdateGroupJSONRequestBody
+}
+
+type UpdateGroupResponseObject interface {
+	VisitUpdateGroupResponse(w http.ResponseWriter) error
+}
+
+type UpdateGroup204Response struct {
+}
+
+func (response UpdateGroup204Response) VisitUpdateGroupResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type UpdateGroup400JSONResponse struct{ BadRequestErrorJSONResponse }
+
+func (response UpdateGroup400JSONResponse) VisitUpdateGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateGroup401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+
+func (response UpdateGroup401JSONResponse) VisitUpdateGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateGroup403JSONResponse struct{ ForbiddenErrorJSONResponse }
+
+func (response UpdateGroup403JSONResponse) VisitUpdateGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateGroup404JSONResponse struct{ NotFoundErrorJSONResponse }
+
+func (response UpdateGroup404JSONResponse) VisitUpdateGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateGroup500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response UpdateGroup500JSONResponse) VisitUpdateGroupResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type LoginRequestObject struct {
+	Body *LoginJSONRequestBody
+}
+
+type LoginResponseObject interface {
+	VisitLoginResponse(w http.ResponseWriter) error
+}
+
+type Login204ResponseHeaders struct {
+	XKrbSession string
+}
+
+type Login204Response struct {
+	Headers Login204ResponseHeaders
+}
+
+func (response Login204Response) VisitLoginResponse(w http.ResponseWriter) error {
+	w.Header().Set("x-krb-session", fmt.Sprint(response.Headers.XKrbSession))
+	w.WriteHeader(204)
+	return nil
+}
+
+type Login400JSONResponse struct{ BadRequestErrorJSONResponse }
+
+func (response Login400JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type Login401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+
+func (response Login401JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type Login500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response Login500JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type LogoutRequestObject struct {
+}
+
+type LogoutResponseObject interface {
+	VisitLogoutResponse(w http.ResponseWriter) error
+}
+
+type Logout204Response struct {
+}
+
+func (response Logout204Response) VisitLogoutResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type Logout400JSONResponse struct{ BadRequestErrorJSONResponse }
+
+func (response Logout400JSONResponse) VisitLogoutResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type Logout401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+
+func (response Logout401JSONResponse) VisitLogoutResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type Logout500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response Logout500JSONResponse) VisitLogoutResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
 
@@ -640,11 +1556,436 @@ func (response LogoutSuperuser500JSONResponse) VisitLogoutSuperuserResponse(w ht
 	return json.NewEncoder(w).Encode(response)
 }
 
+type GetUsersRequestObject struct {
+}
+
+type GetUsersResponseObject interface {
+	VisitGetUsersResponse(w http.ResponseWriter) error
+}
+
+type GetUsers200JSONResponse []User
+
+func (response GetUsers200JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetUsers401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+
+func (response GetUsers401JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetUsers403JSONResponse struct{ ForbiddenErrorJSONResponse }
+
+func (response GetUsers403JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetUsers500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response GetUsers500JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateUserRequestObject struct {
+	Body *CreateUserJSONRequestBody
+}
+
+type CreateUserResponseObject interface {
+	VisitCreateUserResponse(w http.ResponseWriter) error
+}
+
+type CreateUser201Response struct {
+}
+
+func (response CreateUser201Response) VisitCreateUserResponse(w http.ResponseWriter) error {
+	w.WriteHeader(201)
+	return nil
+}
+
+type CreateUser400JSONResponse struct{ BadRequestErrorJSONResponse }
+
+func (response CreateUser400JSONResponse) VisitCreateUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateUser401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+
+func (response CreateUser401JSONResponse) VisitCreateUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateUser403JSONResponse struct{ ForbiddenErrorJSONResponse }
+
+func (response CreateUser403JSONResponse) VisitCreateUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateUser500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response CreateUser500JSONResponse) VisitCreateUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteUserRequestObject struct {
+	UserID int `json:"userID"`
+}
+
+type DeleteUserResponseObject interface {
+	VisitDeleteUserResponse(w http.ResponseWriter) error
+}
+
+type DeleteUser204Response struct {
+}
+
+func (response DeleteUser204Response) VisitDeleteUserResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteUser400JSONResponse struct{ BadRequestErrorJSONResponse }
+
+func (response DeleteUser400JSONResponse) VisitDeleteUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteUser401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+
+func (response DeleteUser401JSONResponse) VisitDeleteUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteUser403JSONResponse struct{ ForbiddenErrorJSONResponse }
+
+func (response DeleteUser403JSONResponse) VisitDeleteUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteUser404JSONResponse struct{ NotFoundErrorJSONResponse }
+
+func (response DeleteUser404JSONResponse) VisitDeleteUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteUser500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response DeleteUser500JSONResponse) VisitDeleteUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetUserRequestObject struct {
+	UserID int `json:"userID"`
+}
+
+type GetUserResponseObject interface {
+	VisitGetUserResponse(w http.ResponseWriter) error
+}
+
+type GetUser200JSONResponse User
+
+func (response GetUser200JSONResponse) VisitGetUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetUser400JSONResponse struct{ BadRequestErrorJSONResponse }
+
+func (response GetUser400JSONResponse) VisitGetUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetUser401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+
+func (response GetUser401JSONResponse) VisitGetUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetUser403JSONResponse struct{ ForbiddenErrorJSONResponse }
+
+func (response GetUser403JSONResponse) VisitGetUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetUser404JSONResponse struct{ NotFoundErrorJSONResponse }
+
+func (response GetUser404JSONResponse) VisitGetUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetUser500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response GetUser500JSONResponse) VisitGetUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateUserRequestObject struct {
+	UserID int `json:"userID"`
+	Body   *UpdateUserJSONRequestBody
+}
+
+type UpdateUserResponseObject interface {
+	VisitUpdateUserResponse(w http.ResponseWriter) error
+}
+
+type UpdateUser204Response struct {
+}
+
+func (response UpdateUser204Response) VisitUpdateUserResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type UpdateUser400JSONResponse struct{ BadRequestErrorJSONResponse }
+
+func (response UpdateUser400JSONResponse) VisitUpdateUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateUser401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+
+func (response UpdateUser401JSONResponse) VisitUpdateUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateUser403JSONResponse struct{ ForbiddenErrorJSONResponse }
+
+func (response UpdateUser403JSONResponse) VisitUpdateUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateUser404JSONResponse struct{ NotFoundErrorJSONResponse }
+
+func (response UpdateUser404JSONResponse) VisitUpdateUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateUser500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response UpdateUser500JSONResponse) VisitUpdateUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateUserGroupsRequestObject struct {
+	UserID int `json:"userID"`
+	Body   *UpdateUserGroupsJSONRequestBody
+}
+
+type UpdateUserGroupsResponseObject interface {
+	VisitUpdateUserGroupsResponse(w http.ResponseWriter) error
+}
+
+type UpdateUserGroups204Response struct {
+}
+
+func (response UpdateUserGroups204Response) VisitUpdateUserGroupsResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type UpdateUserGroups400JSONResponse struct{ BadRequestErrorJSONResponse }
+
+func (response UpdateUserGroups400JSONResponse) VisitUpdateUserGroupsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateUserGroups401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+
+func (response UpdateUserGroups401JSONResponse) VisitUpdateUserGroupsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateUserGroups403JSONResponse struct{ ForbiddenErrorJSONResponse }
+
+func (response UpdateUserGroups403JSONResponse) VisitUpdateUserGroupsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateUserGroups404JSONResponse struct{ NotFoundErrorJSONResponse }
+
+func (response UpdateUserGroups404JSONResponse) VisitUpdateUserGroupsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateUserGroups500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response UpdateUserGroups500JSONResponse) VisitUpdateUserGroupsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ChangeUserPasswordRequestObject struct {
+	UserID int `json:"userID"`
+	Body   *ChangeUserPasswordJSONRequestBody
+}
+
+type ChangeUserPasswordResponseObject interface {
+	VisitChangeUserPasswordResponse(w http.ResponseWriter) error
+}
+
+type ChangeUserPassword204Response struct {
+}
+
+func (response ChangeUserPassword204Response) VisitChangeUserPasswordResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type ChangeUserPassword400JSONResponse struct{ BadRequestErrorJSONResponse }
+
+func (response ChangeUserPassword400JSONResponse) VisitChangeUserPasswordResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ChangeUserPassword401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+
+func (response ChangeUserPassword401JSONResponse) VisitChangeUserPasswordResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ChangeUserPassword403JSONResponse struct{ ForbiddenErrorJSONResponse }
+
+func (response ChangeUserPassword403JSONResponse) VisitChangeUserPasswordResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ChangeUserPassword404JSONResponse struct{ NotFoundErrorJSONResponse }
+
+func (response ChangeUserPassword404JSONResponse) VisitChangeUserPasswordResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ChangeUserPassword500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response ChangeUserPassword500JSONResponse) VisitChangeUserPasswordResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
 	// (GET /api/admin/flow)
 	GetFlow(ctx context.Context, request GetFlowRequestObject) (GetFlowResponseObject, error)
+
+	// (GET /api/admin/groups)
+	GetGroups(ctx context.Context, request GetGroupsRequestObject) (GetGroupsResponseObject, error)
+
+	// (POST /api/admin/groups)
+	CreateGroup(ctx context.Context, request CreateGroupRequestObject) (CreateGroupResponseObject, error)
+
+	// (DELETE /api/admin/groups/{groupID})
+	DeleteGroup(ctx context.Context, request DeleteGroupRequestObject) (DeleteGroupResponseObject, error)
+
+	// (GET /api/admin/groups/{groupID})
+	GetGroup(ctx context.Context, request GetGroupRequestObject) (GetGroupResponseObject, error)
+
+	// (PUT /api/admin/groups/{groupID})
+	UpdateGroup(ctx context.Context, request UpdateGroupRequestObject) (UpdateGroupResponseObject, error)
+
+	// (POST /api/admin/login)
+	Login(ctx context.Context, request LoginRequestObject) (LoginResponseObject, error)
+
+	// (POST /api/admin/logout)
+	Logout(ctx context.Context, request LogoutRequestObject) (LogoutResponseObject, error)
 
 	// (GET /api/admin/oas/{backend})
 	GetBackendOAS(ctx context.Context, request GetBackendOASRequestObject) (GetBackendOASResponseObject, error)
@@ -654,6 +1995,27 @@ type StrictServerInterface interface {
 
 	// (POST /api/admin/superuser/logout)
 	LogoutSuperuser(ctx context.Context, request LogoutSuperuserRequestObject) (LogoutSuperuserResponseObject, error)
+
+	// (GET /api/admin/users)
+	GetUsers(ctx context.Context, request GetUsersRequestObject) (GetUsersResponseObject, error)
+
+	// (POST /api/admin/users)
+	CreateUser(ctx context.Context, request CreateUserRequestObject) (CreateUserResponseObject, error)
+
+	// (DELETE /api/admin/users/{userID})
+	DeleteUser(ctx context.Context, request DeleteUserRequestObject) (DeleteUserResponseObject, error)
+
+	// (GET /api/admin/users/{userID})
+	GetUser(ctx context.Context, request GetUserRequestObject) (GetUserResponseObject, error)
+
+	// (PUT /api/admin/users/{userID})
+	UpdateUser(ctx context.Context, request UpdateUserRequestObject) (UpdateUserResponseObject, error)
+
+	// (PUT /api/admin/users/{userID}/groups)
+	UpdateUserGroups(ctx context.Context, request UpdateUserGroupsRequestObject) (UpdateUserGroupsResponseObject, error)
+
+	// (PUT /api/admin/users/{userID}/password)
+	ChangeUserPassword(ctx context.Context, request ChangeUserPasswordRequestObject) (ChangeUserPasswordResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -702,6 +2064,201 @@ func (sh *strictHandler) GetFlow(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetFlowResponseObject); ok {
 		if err := validResponse.VisitGetFlowResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetGroups operation middleware
+func (sh *strictHandler) GetGroups(w http.ResponseWriter, r *http.Request) {
+	var request GetGroupsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetGroups(ctx, request.(GetGroupsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetGroups")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetGroupsResponseObject); ok {
+		if err := validResponse.VisitGetGroupsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateGroup operation middleware
+func (sh *strictHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
+	var request CreateGroupRequestObject
+
+	var body CreateGroupJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateGroup(ctx, request.(CreateGroupRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateGroup")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateGroupResponseObject); ok {
+		if err := validResponse.VisitCreateGroupResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteGroup operation middleware
+func (sh *strictHandler) DeleteGroup(w http.ResponseWriter, r *http.Request, groupID int) {
+	var request DeleteGroupRequestObject
+
+	request.GroupID = groupID
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteGroup(ctx, request.(DeleteGroupRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteGroup")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteGroupResponseObject); ok {
+		if err := validResponse.VisitDeleteGroupResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetGroup operation middleware
+func (sh *strictHandler) GetGroup(w http.ResponseWriter, r *http.Request, groupID int) {
+	var request GetGroupRequestObject
+
+	request.GroupID = groupID
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetGroup(ctx, request.(GetGroupRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetGroup")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetGroupResponseObject); ok {
+		if err := validResponse.VisitGetGroupResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateGroup operation middleware
+func (sh *strictHandler) UpdateGroup(w http.ResponseWriter, r *http.Request, groupID int) {
+	var request UpdateGroupRequestObject
+
+	request.GroupID = groupID
+
+	var body UpdateGroupJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateGroup(ctx, request.(UpdateGroupRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateGroup")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateGroupResponseObject); ok {
+		if err := validResponse.VisitUpdateGroupResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// Login operation middleware
+func (sh *strictHandler) Login(w http.ResponseWriter, r *http.Request) {
+	var request LoginRequestObject
+
+	var body LoginJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.Login(ctx, request.(LoginRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "Login")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(LoginResponseObject); ok {
+		if err := validResponse.VisitLoginResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// Logout operation middleware
+func (sh *strictHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	var request LogoutRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.Logout(ctx, request.(LogoutRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "Logout")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(LogoutResponseObject); ok {
+		if err := validResponse.VisitLogoutResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -790,27 +2347,245 @@ func (sh *strictHandler) LogoutSuperuser(w http.ResponseWriter, r *http.Request)
 	}
 }
 
+// GetUsers operation middleware
+func (sh *strictHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
+	var request GetUsersRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetUsers(ctx, request.(GetUsersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetUsers")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetUsersResponseObject); ok {
+		if err := validResponse.VisitGetUsersResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateUser operation middleware
+func (sh *strictHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	var request CreateUserRequestObject
+
+	var body CreateUserJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateUser(ctx, request.(CreateUserRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateUser")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateUserResponseObject); ok {
+		if err := validResponse.VisitCreateUserResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteUser operation middleware
+func (sh *strictHandler) DeleteUser(w http.ResponseWriter, r *http.Request, userID int) {
+	var request DeleteUserRequestObject
+
+	request.UserID = userID
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteUser(ctx, request.(DeleteUserRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteUser")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteUserResponseObject); ok {
+		if err := validResponse.VisitDeleteUserResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetUser operation middleware
+func (sh *strictHandler) GetUser(w http.ResponseWriter, r *http.Request, userID int) {
+	var request GetUserRequestObject
+
+	request.UserID = userID
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetUser(ctx, request.(GetUserRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetUser")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetUserResponseObject); ok {
+		if err := validResponse.VisitGetUserResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateUser operation middleware
+func (sh *strictHandler) UpdateUser(w http.ResponseWriter, r *http.Request, userID int) {
+	var request UpdateUserRequestObject
+
+	request.UserID = userID
+
+	var body UpdateUserJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateUser(ctx, request.(UpdateUserRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateUser")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateUserResponseObject); ok {
+		if err := validResponse.VisitUpdateUserResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateUserGroups operation middleware
+func (sh *strictHandler) UpdateUserGroups(w http.ResponseWriter, r *http.Request, userID int) {
+	var request UpdateUserGroupsRequestObject
+
+	request.UserID = userID
+
+	var body UpdateUserGroupsJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateUserGroups(ctx, request.(UpdateUserGroupsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateUserGroups")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateUserGroupsResponseObject); ok {
+		if err := validResponse.VisitUpdateUserGroupsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ChangeUserPassword operation middleware
+func (sh *strictHandler) ChangeUserPassword(w http.ResponseWriter, r *http.Request, userID int) {
+	var request ChangeUserPasswordRequestObject
+
+	request.UserID = userID
+
+	var body ChangeUserPasswordJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ChangeUserPassword(ctx, request.(ChangeUserPasswordRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ChangeUserPassword")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ChangeUserPasswordResponseObject); ok {
+		if err := validResponse.VisitChangeUserPasswordResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/8xYzXLbNhB+FQzaIyMprnsob/KkyWhixx6rN1cHiFxRSEAsCoBxWA/fvQMQFEWJloy2",
-	"4/EpjIDd/fbbX/iJZlgqlCCtoekT3QLLQftPA8ZwlDx3/8nBZJory1HSlM5JOCSLDxOaUA1/VVxDTlOr",
-	"K0ioybZQMidnawU0pcZqLgvaNE136E3M7xa/a436HoxCacD9xvKcOzNM3GlUoC0HQ9MNEwYSqvZ+eqLg",
-	"ZP0Xt1CaEXsJLblctIfvk+6Uac1q6rD0wB86bavdNVx/hcw6JR8FPt6AZZH4chZEZH27oenDE/1Zw4am",
-	"9Kdpz/o08DHtjHxglt2uDejvbM0FtzVtkpdL3mNlQUeJzCu7jRK4nS/P3v+C+xK0GaNVshLGkmQYF38r",
-	"ack8FZydK3FBKsFuMfefMYTdBLEuoSFWwbKVct6edak1dsUMz85690JlJpKmdWc8nqQW94scXe6ojIkg",
-	"U4rLYtgI4kNx06qhzUifeCHwTkUcflbZLWr+N2u763/APh9oahK6Ztk3kPloZ4QfUCp7unsOiUhCsZyv",
-	"2c7uTmIVy+H8kJQIQguNlTJxnilmtydqIkbVgaPn0sd109ha9OxGwTqLYjBxIuewZGsB+2mxRhTA5PGM",
-	"DTfPpUOYYv8DLXFz8yrkbTR9Q/E43Fs0djSCz8zHhCrU+xJcWijc0B+fnF5/EBoj/mBUnwM/XAW/ICnB",
-	"MjedyQY1sVsgG4GPZMe3WxCPS8JAVmlu67bojxdO7pS32yjtmKA/3n3T63fhXq+WKf4Z6na75HKDxwvr",
-	"H1sgn0GvQaMhLC+55MZq31vI/G5BmBD4ODhBbUjJJCuAsF40ByWwLp1Xf3oA3AqH4IRu5/530KYFMptc",
-	"TGaOdFQgmeI0pb9MZpNLuteBpkzxqVc0dUz6jgY+3i4WXvEipyn9BNYFzu/f7f7sxS9mM/dPhtKC9GJM",
-	"KcEzLzj9atp22q/oUaUyUhnNYUp8QtungamyDIzZVELUEyf9ayS8U6iO3g8jaBbSgpZMEL/fT9yVJtnn",
-	"GJmZPoXe0ZwiO1S369cuWpqVYP1b6SGkq4tgn6z9DHz582gVFcualWJI1njhtlYPa/DZuAXg5Ha+PA7f",
-	"5ezyVcMXSCcSLdlgJfO3mUSmUqArA3oqsODeugptfZhH1+542d0OyQHGXmFeR7k0nCGZ4CDtwrfOkstr",
-	"kIV7CfVv3n54tFeXkOk2z09eP5goOzMHalaj6TXM++Yoty+PG/U1FgXkPg13lBIuXRPd+9PEcA48E99w",
-	"f9qPFQ/q8pVT54rlJMQ4FND7V7X/kXHhGEUisBgh1kG6+O1VId0zC0Twklt4K+XcLyQ0fVidKm6s7Mnq",
-	"xsoOy/tfpTxW9s00uiE5gz3tYdWsmn8CAAD//wTgz7BEFAAA",
+	"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",
+	"yDkAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

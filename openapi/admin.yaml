@@ -6,7 +6,167 @@ info:
   description: |
     The Kerberos administration API allows administrators manage a Kerberos deployment.
 components:
+  requestBodies:
+    CreateUserRequest:
+      description: Request body for creating a user.
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              username:
+                type: string
+                minLength: 1
+              password:
+                type: string
+                minLength: 1
+            required:
+              - username
+              - password
+    UpdateUserRequest:
+      description: Request body for updating a user.
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              username:
+                type: string
+                minLength: 1
+    ChangePasswordRequest:
+      description: Request body for changing a user's password.
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              oldPassword:
+                type: string
+                minLength: 1
+              newPassword:
+                type: string
+                minLength: 1
+            required:
+              - oldPassword
+              - newPassword
+    UpdateUserGroupsRequest:
+      description: Request body for updating a user's groups.
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              groupIDs:
+                type: array
+                items:
+                  type: integer
+            required:
+              - groupIDs
+    LoginUserRequest:
+      description: Request body for logging a user in.
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              username:
+                type: string
+                minLength: 1
+              password:
+                type: string
+                minLength: 1
+            required:
+              - username
+              - password
+    CreateGroupRequest:
+      description: Request body for creating a group.
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+                minLength: 1
+            required:
+              - name
+    UpdateGroupRequest:
+      description: Request body for updating a group.
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+                minLength: 1
+            required:
+              - name
+  responses:
+    BadRequestError:
+      description: Bad request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIErrorResponse"
+    UnauthorizedError:
+      description: Unauthorized.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIErrorResponse"
+    ForbiddenError:
+      description: Forbidden.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIErrorResponse"
+    NotFoundError:
+      description: Not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIErrorResponse"
+    InternalError:
+      description: Internal error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIErrorResponse"
   schemas:
+    User:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/Group"
+      required:
+        - id
+        - username
+    Group:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      required:
+        - id
+        - name
     FlowMeta:
       type: object
       properties:
@@ -149,7 +309,10 @@ security:
   - sessionid: []
 
 paths:
-  # Log the superuser in.
+  #
+  # Superuser management endpoints.
+  #
+
   /api/admin/superuser/login:
     post:
       security: []
@@ -201,7 +364,6 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
 
-  # Log the superuser out.
   /api/admin/superuser/logout:
     post:
       operationId: LogoutSuperuser
@@ -215,7 +377,308 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
 
+  #
+  # User management endpoints.
+  #
+
+  /api/admin/users:
+    post:
+      operationId: CreateUser
+      requestBody:
+        $ref: "#/components/requestBodies/CreateUserRequest"
+      responses:
+        "201":
+          description: Created the user successfully.
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    get:
+      operationId: GetUsers
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+          description: Got the users successfully.
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/admin/users/{userID}:
+    get:
+      operationId: GetUser
+      parameters:
+        - name: userID
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+          description: Got the user successfully.
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    put:
+      operationId: UpdateUser
+      parameters:
+        - name: userID
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        $ref: "#/components/requestBodies/UpdateUserRequest"
+      responses:
+        "204":
+          description: Updated the user successfully.
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: DeleteUser
+      parameters:
+        - name: userID
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted the user successfully.
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/admin/users/{userID}/password:
+    put:
+      operationId: ChangeUserPassword
+      parameters:
+        - name: userID
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        $ref: "#/components/requestBodies/ChangePasswordRequest"
+      responses:
+        "204":
+          description: Changed the user's password successfully.
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/admin/users/{userID}/groups:
+    put:
+      operationId: UpdateUserGroups
+      parameters:
+        - name: userID
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        $ref: "#/components/requestBodies/UpdateUserGroupsRequest"
+      responses:
+        "204":
+          description: Updated the user's groups successfully.
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/admin/login:
+    post:
+      security: []
+      operationId: Login
+      requestBody:
+        $ref: "#/components/requestBodies/LoginUserRequest"
+      responses:
+        "204":
+          headers:
+            x-krb-session:
+              $ref: "#/components/headers/sessionid"
+          description: Logged the user in.
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/admin/logout:
+    post:
+      operationId: Logout
+      responses:
+        "204":
+          description: Logged the user out successfully.
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/admin/groups:
+    post:
+      operationId: CreateGroup
+      requestBody:
+        $ref: "#/components/requestBodies/CreateGroupRequest"
+      responses:
+        "201":
+          description: Created the group successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Group"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    get:
+      operationId: GetGroups
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Group"
+          description: Got the groups successfully.
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/admin/groups/{groupID}:
+    get:
+      operationId: GetGroup
+      parameters:
+        - name: groupID
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Group"
+          description: Got the group successfully.
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    put:
+      operationId: UpdateGroup
+      parameters:
+        - name: groupID
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        $ref: "#/components/requestBodies/UpdateGroupRequest"
+      responses:
+        "204":
+          description: Updated the group successfully.
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: DeleteGroup
+      parameters:
+        - name: groupID
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted the group successfully.
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  #
   # Flow management endpoints.
+  #
+
   /api/admin/flow:
     get:
       operationId: GetFlow
