@@ -3,14 +3,12 @@
     "router": {
       "backends": [
         {
-          "name": "echo",
+          "name": "test",
           "host": "localhost",
-          "port": 15000
+          "port": 8080
         }
       ]
     }
   },
-  "observability": {
-    "enabled": false
-  }
+  "bad": "bad"
 }

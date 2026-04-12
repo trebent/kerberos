@@ -3,15 +3,24 @@
   "$id": "http://trebent.com/kerberos/schemas/gateway_schema.json",
   "type": "object",
   "properties": {
+    "router": {
+      "$ref": "http://trebent.com/kerberos/schemas/router_schema.json"
+    },
     "tls": {
       "type": "object",
       "properties": {
-        "serverCertificate": {
-          "type": "string"
+        "serverCertFile": {
+          "type": "string",
+          "description": "ServerCertFile is the path to a PEM-encoded server certificate for mTLS."
+        },
+        "serverKeyFile": {
+          "type": "string",
+          "description": "ServerKeyFile is the path to a PEM-encoded server key for mTLS."
         }
       },
       "required": [
-        "serverCertificate"
+        "serverCertFile",
+        "serverKeyFile"
       ],
       "additionalProperties": false
     }

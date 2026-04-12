@@ -1,17 +1,19 @@
 {
-  "router": {
-    "backends": [
-      {
-        "name": "backend1",
-        "host": "${ref:router.backends[1].host}",
-        "port": 8080
-      },
-      {
-        "name": "backend2",
-        "host": "localhost",
-        "port": ${ref:router.backends[0].port}
-      }
-    ]
+  "gateway": {
+    "router": {
+      "backends": [
+        {
+          "name": "backend1",
+          "host": "${ref:gateway.router.backends[1].host}",
+          "port": 8080
+        },
+        {
+          "name": "backend2",
+          "host": "localhost",
+          "port": ${ref:gateway.router.backends[0].port}
+        }
+      ]
+    }
   },
   "auth": {
     "methods": {
@@ -20,7 +22,7 @@
     "scheme": {
       "mappings": [
         {
-          "backend": "${ref:router.backends[0].name}",
+          "backend": "${ref:gateway.router.backends[0].name}",
           "method": "basic",
           "exempt": [
             "/public/*"

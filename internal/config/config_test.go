@@ -11,7 +11,7 @@ func TestConfigBad(t *testing.T) {
 	// 	zerologr.Set(zerologr.New(&zerologr.Opts{V: 0}))
 	// }()
 
-	data, err := os.ReadFile("./testconfig/bad.json")
+	data, err := os.ReadFile("./testconfig/unknown_field.json")
 	if err != nil {
 		t.Fatalf("failed to read test config: %v", err)
 	}
@@ -63,7 +63,7 @@ func TestConfigAdminDefaults(t *testing.T) {
 }
 
 func TestConfigNoRouter(t *testing.T) {
-	data, err := os.ReadFile("./testconfig/testconfig_norouter.json")
+	data, err := os.ReadFile("./testconfig/testconfig_nogw.json")
 	if err != nil {
 		t.Fatalf("failed to read test config: %v", err)
 	}

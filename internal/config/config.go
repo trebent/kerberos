@@ -23,8 +23,8 @@ type (
 		values map[string]any
 		refs   map[string]string
 
+		*GatewayConfig       `json:"gateway"`
 		*ObservabilityConfig `json:"observability"`
-		*RouterConfig        `json:"router"`
 		*AdminConfig         `json:"admin"`
 		*OASConfig           `json:"oas,omitempty"`
 		*AuthConfig          `json:"auth,omitempty"`
@@ -37,6 +37,8 @@ var (
 
 	//go:embed schemas/ordered_schema.json
 	schemaBytesOrdered []byte
+	//go:embed schemas/gateway_schema.json
+	schemaBytesGateway []byte
 	//go:embed schemas/admin_schema.json
 	schemaBytesAdmin []byte
 	//go:embed schemas/auth_schema.json
@@ -384,6 +386,7 @@ func (rc *RootConfig) validateSchema() error {
 	sl.Draft = gojsonschema.Draft7
 	if err := sl.AddSchemas(
 		gojsonschema.NewBytesLoader(schemaBytesOrdered),
+		gojsonschema.NewBytesLoader(schemaBytesGateway),
 		gojsonschema.NewBytesLoader(schemaBytesAdmin),
 		gojsonschema.NewBytesLoader(schemaBytesAuth),
 		gojsonschema.NewBytesLoader(schemaBytesObservability),
@@ -435,7 +438,7 @@ func (rc *RootConfig) postProcess() {
 	if rc.OASConfig != nil {
 		rc.OASConfig.postProcess()
 	}
-	rc.RouterConfig.postProcess()
+	rc.GatewayConfig.postProcess()
 	rc.ObservabilityConfig.postProcess()
 	rc.AdminConfig.postProcess()
 }

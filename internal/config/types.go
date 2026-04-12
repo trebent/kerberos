@@ -15,6 +15,12 @@ type (
 		ValidateBody bool `json:"validateBody"`
 	}
 
+	// GatewayConfig holds configuration for the API gateway.
+	GatewayConfig struct {
+		Router    *RouterConfig    `json:"router"`
+		TLSConfig *ServerTLSConfig `json:"tls,omitempty"`
+	}
+
 	// RouterConfig holds configuration for the request router.
 	RouterConfig struct {
 		Backends []*RouterBackend `json:"backends"`
@@ -73,13 +79,24 @@ type (
 
 	// AdminConfig holds configuration for the admin API.
 	AdminConfig struct {
-		SuperUser *SuperUser `json:"superUser"`
+		SuperUser *SuperUser      `json:"superUser"`
+		APIConfig *AdminAPIConfig `json:"api,omitempty"`
 	}
 	SuperUser struct {
 		ClientID     string `json:"clientId"`
 		ClientSecret string `json:"clientSecret"`
 	}
+	AdminAPIConfig struct {
+		ServerTLSConfig *ServerTLSConfig `json:"tls,omitempty"`
+	}
+
+	ServerTLSConfig struct {
+		CertFile string `json:"serverCertFile"`
+		KeyFile  string `json:"serverKeyFile"`
+	}
 )
+
+const defaultCalloutTimeoutMs = 5000
 
 func newAdminConfig() *AdminConfig {
 	return &AdminConfig{
@@ -98,10 +115,10 @@ func newObservabilityConfig() *ObservabilityConfig {
 }
 
 func (ac *AuthConfig) postProcess() {}
-func (rc *RouterConfig) postProcess() {
-	for _, b := range rc.Backends {
+func (gc *GatewayConfig) postProcess() {
+	for _, b := range gc.Router.Backends {
 		if b.TimeoutMs == 0 {
-			b.TimeoutMs = 5000 // default timeout of 5000 milliseconds
+			b.TimeoutMs = defaultCalloutTimeoutMs
 		}
 	}
 }

@@ -1,17 +1,19 @@
 {
-  "router": {
-    "backends": [
-      {
-        "name": "echo",
-        "host": "localhost",
-        "port": 15000
-      }
-    ]
+  "gateway": {
+    "router": {
+      "backends": [
+        {
+          "name": "echo",
+          "host": "localhost",
+          "port": 15000
+        }
+      ]
+    }
   },
   "oas": {
     "mappings": [
       {
-        "backend": "${ref:router.backends[0].name}",
+        "backend": "${ref:gateway.router.backends[0].name}",
         "specification": "/oas/echo.yaml"
       }
     ],

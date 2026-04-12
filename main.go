@@ -169,7 +169,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	})
 
 	zerologr.Info("Loading router")
-	router := router.NewComponent(&router.Opts{Cfg: cfg.RouterConfig})
+	router := router.NewComponent(&router.Opts{Cfg: cfg.GatewayConfig.Router})
 
 	zerologr.Info("Loading custom")
 	customFlowComponents := make([]composer.FlowComponent, 0)
@@ -207,7 +207,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 
 	zerologr.Info("Loading forwarder")
 	forwarder, err := forwarder.NewComponent(&forwarder.Opts{
-		Backends: cfg.RouterConfig.Backends,
+		Backends: cfg.GatewayConfig.Router.Backends,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to initialize forwarder: %w", err)

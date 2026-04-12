@@ -50,6 +50,26 @@
             "required": [
               "rootCAFile"
             ],
+            "if": {
+              "anyOf": [
+                {
+                  "required": [
+                    "clientCertFile"
+                  ]
+                },
+                {
+                  "required": [
+                    "clientKeyFile"
+                  ]
+                }
+              ]
+            },
+            "then": {
+              "required": [
+                "clientCertFile",
+                "clientKeyFile"
+              ]
+            },
             "additionalProperties": false
           }
         },

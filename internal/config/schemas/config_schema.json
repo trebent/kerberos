@@ -3,6 +3,9 @@
   "$id": "http://trebent.com/kerberos/schemas/config_schema.json",
   "type": "object",
   "properties": {
+    "gateway": {
+      "$ref": "http://trebent.com/kerberos/schemas/gateway_schema.json"
+    },
     "oas": {
       "$ref": "http://trebent.com/kerberos/schemas/oas_schema.json"
     },
@@ -12,15 +15,12 @@
     "admin": {
       "$ref": "http://trebent.com/kerberos/schemas/admin_schema.json"
     },
-    "router": {
-      "$ref": "http://trebent.com/kerberos/schemas/router_schema.json"
-    },
     "observability": {
       "$ref": "http://trebent.com/kerberos/schemas/observability_schema.json"
     }
   },
   "additionalProperties": false,
   "required": [
-    "router"
+    "gateway"
   ]
 }
