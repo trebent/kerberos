@@ -1,3 +1,4 @@
+// nolint:revive // temporary
 package admin
 
 import (
@@ -75,72 +76,114 @@ func (i *impl) LogoutSuperuser(
 }
 
 // ChangeUserPassword implements [withExtensions].
-func (i *impl) ChangeUserPassword(ctx context.Context, request adminapi.ChangeUserPasswordRequestObject) (adminapi.ChangeUserPasswordResponseObject, error) {
+func (i *impl) ChangeUserPassword(
+	ctx context.Context,
+	request adminapi.ChangeUserPasswordRequestObject,
+) (adminapi.ChangeUserPasswordResponseObject, error) {
 	return nil, apierror.APIErrUnimplemented
 }
 
 // CreateGroup implements [withExtensions].
-func (i *impl) CreateGroup(ctx context.Context, request adminapi.CreateGroupRequestObject) (adminapi.CreateGroupResponseObject, error) {
+func (i *impl) CreateGroup(
+	ctx context.Context,
+	request adminapi.CreateGroupRequestObject,
+) (adminapi.CreateGroupResponseObject, error) {
 	return nil, apierror.APIErrUnimplemented
 }
 
 // CreateUser implements [withExtensions].
-func (i *impl) CreateUser(ctx context.Context, request adminapi.CreateUserRequestObject) (adminapi.CreateUserResponseObject, error) {
+func (i *impl) CreateUser(
+	ctx context.Context,
+	request adminapi.CreateUserRequestObject,
+) (adminapi.CreateUserResponseObject, error) {
 	return nil, apierror.APIErrUnimplemented
 }
 
 // DeleteGroup implements [withExtensions].
-func (i *impl) DeleteGroup(ctx context.Context, request adminapi.DeleteGroupRequestObject) (adminapi.DeleteGroupResponseObject, error) {
+func (i *impl) DeleteGroup(
+	ctx context.Context,
+	request adminapi.DeleteGroupRequestObject,
+) (adminapi.DeleteGroupResponseObject, error) {
 	return nil, apierror.APIErrUnimplemented
 }
 
 // DeleteUser implements [withExtensions].
-func (i *impl) DeleteUser(ctx context.Context, request adminapi.DeleteUserRequestObject) (adminapi.DeleteUserResponseObject, error) {
+func (i *impl) DeleteUser(
+	ctx context.Context,
+	request adminapi.DeleteUserRequestObject,
+) (adminapi.DeleteUserResponseObject, error) {
 	return nil, apierror.APIErrUnimplemented
 }
 
 // GetGroup implements [withExtensions].
-func (i *impl) GetGroup(ctx context.Context, request adminapi.GetGroupRequestObject) (adminapi.GetGroupResponseObject, error) {
+func (i *impl) GetGroup(
+	ctx context.Context,
+	request adminapi.GetGroupRequestObject,
+) (adminapi.GetGroupResponseObject, error) {
 	return nil, apierror.APIErrUnimplemented
 }
 
 // GetGroups implements [withExtensions].
-func (i *impl) GetGroups(ctx context.Context, request adminapi.GetGroupsRequestObject) (adminapi.GetGroupsResponseObject, error) {
+func (i *impl) GetGroups(
+	ctx context.Context,
+	request adminapi.GetGroupsRequestObject,
+) (adminapi.GetGroupsResponseObject, error) {
 	return nil, apierror.APIErrUnimplemented
 }
 
 // GetUser implements [withExtensions].
-func (i *impl) GetUser(ctx context.Context, request adminapi.GetUserRequestObject) (adminapi.GetUserResponseObject, error) {
+func (i *impl) GetUser(
+	ctx context.Context,
+	request adminapi.GetUserRequestObject,
+) (adminapi.GetUserResponseObject, error) {
 	return nil, apierror.APIErrUnimplemented
 }
 
 // GetUsers implements [withExtensions].
-func (i *impl) GetUsers(ctx context.Context, request adminapi.GetUsersRequestObject) (adminapi.GetUsersResponseObject, error) {
+func (i *impl) GetUsers(
+	ctx context.Context,
+	request adminapi.GetUsersRequestObject,
+) (adminapi.GetUsersResponseObject, error) {
 	return nil, apierror.APIErrUnimplemented
 }
 
 // Login implements [withExtensions].
-func (i *impl) Login(ctx context.Context, request adminapi.LoginRequestObject) (adminapi.LoginResponseObject, error) {
+func (i *impl) Login(
+	ctx context.Context,
+	request adminapi.LoginRequestObject,
+) (adminapi.LoginResponseObject, error) {
 	return nil, apierror.APIErrUnimplemented
 }
 
 // Logout implements [withExtensions].
-func (i *impl) Logout(ctx context.Context, request adminapi.LogoutRequestObject) (adminapi.LogoutResponseObject, error) {
+func (i *impl) Logout(
+	ctx context.Context,
+	request adminapi.LogoutRequestObject,
+) (adminapi.LogoutResponseObject, error) {
 	return nil, apierror.APIErrUnimplemented
 }
 
 // UpdateGroup implements [withExtensions].
-func (i *impl) UpdateGroup(ctx context.Context, request adminapi.UpdateGroupRequestObject) (adminapi.UpdateGroupResponseObject, error) {
+func (i *impl) UpdateGroup(
+	ctx context.Context,
+	request adminapi.UpdateGroupRequestObject,
+) (adminapi.UpdateGroupResponseObject, error) {
 	return nil, apierror.APIErrUnimplemented
 }
 
 // UpdateUser implements [withExtensions].
-func (i *impl) UpdateUser(ctx context.Context, request adminapi.UpdateUserRequestObject) (adminapi.UpdateUserResponseObject, error) {
+func (i *impl) UpdateUser(
+	ctx context.Context,
+	request adminapi.UpdateUserRequestObject,
+) (adminapi.UpdateUserResponseObject, error) {
 	return nil, apierror.APIErrUnimplemented
 }
 
 // UpdateUserGroups implements [withExtensions].
-func (i *impl) UpdateUserGroups(ctx context.Context, request adminapi.UpdateUserGroupsRequestObject) (adminapi.UpdateUserGroupsResponseObject, error) {
+func (i *impl) UpdateUserGroups(
+	ctx context.Context,
+	request adminapi.UpdateUserGroupsRequestObject,
+) (adminapi.UpdateUserGroupsResponseObject, error) {
 	return nil, apierror.APIErrUnimplemented
 }
 

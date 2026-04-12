@@ -56,6 +56,7 @@ var (
 		Errors:     []string{ErrNoPermission.Error()},
 		StatusCode: http.StatusForbidden,
 	}
+	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
 	APIErrUnimplemented = &Error{
 		Errors:     []string{"unimplemented"},
 		StatusCode: http.StatusNotImplemented,
