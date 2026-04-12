@@ -15,14 +15,36 @@ type (
 		ValidateBody bool `json:"validateBody"`
 	}
 
-	// RouterConfig holds configuration for the request router.
-	RouterConfig struct {
+	// GatewayConfig holds configuration for the API gateway.
+	GatewayConfig struct {
+		Router *Router    `json:"router"`
+		TLS    *ServerTLS `json:"tls,omitempty"`
+	}
+
+	// Router holds configuration for the request router.
+	Router struct {
 		Backends []*RouterBackend `json:"backends"`
 	}
 	RouterBackend struct {
-		Name string `json:"name"`
-		Host string `json:"host"`
-		Port int    `json:"port"`
+		Name      string      `json:"name"`
+		Host      string      `json:"host"`
+		Port      int         `json:"port"`
+		TimeoutMs int         `json:"timeout,omitempty"`
+		TLS       *BackendTLS `json:"tls,omitempty"`
+	}
+	// BackendTLS holds per-backend TLS settings.
+	// When nil, the forwarder uses plain HTTP for that backend.
+	BackendTLS struct {
+		// RootCAFile is the path to a PEM-encoded CA bundle used to verify the backend's certificate.
+		// When empty, the system certificate pool is used.
+		RootCAFile string `json:"rootCAFile,omitempty"`
+		// ClientCertFile and ClientKeyFile enable mTLS.
+		// Both must be set together.
+		ClientCertFile string `json:"clientCertFile,omitempty"`
+		ClientKeyFile  string `json:"clientKeyFile,omitempty"`
+		// InsecureSkipVerify disables server certificate verification.
+		// Must only be used in non-production environments.
+		InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
 	}
 
 	// ObservabilityConfig holds configuration for observability features.
@@ -58,12 +80,23 @@ type (
 	// AdminConfig holds configuration for the admin API.
 	AdminConfig struct {
 		SuperUser *SuperUser `json:"superUser"`
+		API       *AdminAPI  `json:"api,omitempty"`
 	}
 	SuperUser struct {
 		ClientID     string `json:"clientId"`
 		ClientSecret string `json:"clientSecret"`
 	}
+	AdminAPI struct {
+		TLS *ServerTLS `json:"tls,omitempty"`
+	}
+
+	ServerTLS struct {
+		CertFile string `json:"serverCertFile"`
+		KeyFile  string `json:"serverKeyFile"`
+	}
 )
+
+const defaultCalloutTimeoutMs = 5000
 
 func newAdminConfig() *AdminConfig {
 	return &AdminConfig{
@@ -81,8 +114,14 @@ func newObservabilityConfig() *ObservabilityConfig {
 	}
 }
 
-func (ac *AuthConfig) postProcess()          {}
-func (rc *RouterConfig) postProcess()        {}
+func (ac *AuthConfig) postProcess() {}
+func (gc *GatewayConfig) postProcess() {
+	for _, b := range gc.Router.Backends {
+		if b.TimeoutMs == 0 {
+			b.TimeoutMs = defaultCalloutTimeoutMs
+		}
+	}
+}
 func (oc *ObservabilityConfig) postProcess() {}
 func (ac *AdminConfig) postProcess()         {}
 func (oc *OASConfig) postProcess() {

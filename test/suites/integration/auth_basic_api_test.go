@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	adminapi "github.com/trebent/kerberos/ft/client/admin"
-	authbasicapi "github.com/trebent/kerberos/ft/client/auth/basic"
+	adminapi "github.com/trebent/kerberos/test/integration/client/admin"
+	authbasicapi "github.com/trebent/kerberos/test/integration/client/auth/basic"
 )
 
 // TestAuthBasicAPIOrganisationIsolation verifies that a session from one organisation

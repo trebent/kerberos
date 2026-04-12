@@ -139,7 +139,7 @@ func setupConfig() (*config.RootConfig, error) {
 // startServer starts the HTTP server and listens for incoming requests.
 // It returns an error if the server fails to start and when stopping. If
 // the server is stopped, it returns http.ErrServerClosed.
-// nolint: funlen // welp
+// nolint: funlen,gocognit // welp
 func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	adminMux := http.NewServeMux()
 	mux := http.NewServeMux()
@@ -169,7 +169,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	})
 
 	zerologr.Info("Loading router")
-	router := router.NewComponent(&router.Opts{Cfg: cfg.RouterConfig})
+	router := router.NewComponent(&router.Opts{Cfg: cfg.GatewayConfig.Router})
 
 	zerologr.Info("Loading custom")
 	customFlowComponents := make([]composer.FlowComponent, 0)
@@ -206,7 +206,12 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	custom := custom.NewComponent(customFlowComponents...)
 
 	zerologr.Info("Loading forwarder")
-	forwarder := forwarder.NewComponent(&forwarder.Opts{})
+	forwarder, err := forwarder.NewComponent(&forwarder.Opts{
+		Backends: cfg.GatewayConfig.Router.Backends,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to initialize forwarder: %w", err)
+	}
 
 	zerologr.Info("Loading composer")
 	composer := composer.New(&composer.Opts{
@@ -236,11 +241,21 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 
 	gwErrChan := make(chan error, 1)
 	go func() {
-		gwErrChan <- gwServer.ListenAndServe()
+		if tlsCfg := cfg.GatewayConfig.TLS; tlsCfg != nil {
+			gwErrChan <- gwServer.ListenAndServeTLS(tlsCfg.CertFile, tlsCfg.KeyFile)
+		} else {
+			gwErrChan <- gwServer.ListenAndServe()
+		}
 	}()
 
 	adminErrChan := make(chan error, 1)
 	go func() {
+		if cfg.AdminConfig.API != nil {
+			if tlsCfg := cfg.AdminConfig.API.TLS; tlsCfg != nil {
+				adminErrChan <- adminServer.ListenAndServeTLS(tlsCfg.CertFile, tlsCfg.KeyFile)
+				return
+			}
+		}
 		adminErrChan <- adminServer.ListenAndServe()
 	}()
 

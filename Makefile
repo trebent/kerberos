@@ -43,7 +43,7 @@ codegen:
 	@go generate ./...
 	
 	$(call cecho,Running codegen for integration tests...,$(BOLD_YELLOW))
-	@cd test/integration && go generate ./...
+	@cd test/suites/integration && go generate ./...
 
 unittest:
 	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
@@ -66,12 +66,21 @@ coverage:
 
 integrationtest:
 	$(call cecho,Running integration tests for Kerberos...,$(BOLD_YELLOW))
-	@cd test/integration && go test -v ./... -count=1 -failfast
+	@cd test/suites/integration && go test -v ./... -count=1 -failfast
 
 integrationtest-json:
 	$(call cecho,Running integration tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
-	@cd test/integration && go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/integration-test-output.json
+	@cd test/suites/integration && go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/integration-test-output.json
+
+securitytest: compose-security
+	$(call cecho,Running security tests for Kerberos...,$(BOLD_YELLOW))
+	@cd test/suites/security && go test -v ./... -count=1 -failfast
+
+securitytest-json: compose-security
+	$(call cecho,Running security tests for Kerberos...,$(BOLD_YELLOW))
+	@mkdir -p build
+	@cd test/suites/security && go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/security-test-output.json
 
 vulncheck:
 	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
@@ -133,6 +142,10 @@ docker-rm:
 docker-logs:
 	@docker logs kerberos
 
+#
+# Compose integration test environment
+#
+
 compose:
 	$(call cecho,Composing Kerberos test environment...,$(BOLD_YELLOW))
 	@VERSION=$(VERSION) \
@@ -144,7 +157,7 @@ compose:
 		GRAFANA_PORT=$(GRAFANA_PORT) \
 		ECHO_PORT=$(ECHO_PORT) \
 		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
-		docker compose -f test/compose/compose.yaml up -d --force-recreate
+		docker compose -f test/compose/integration/compose.yaml up -d --force-recreate
 
 compose-wait:
 	$(call cecho,Waiting for Kerberos to be ready...,$(BOLD_YELLOW))
@@ -155,49 +168,50 @@ compose-wait:
 	echo "Kerberos is ready!"
 
 compose-logs:
-	@VERSION=$(VERSION) \
-		KERBEROS_PORT=$(KERBEROS_PORT) \
-		KERBEROS_ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
-		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
-		PROM_PORT=$(PROM_PORT) \
-		GRAFANA_PORT=$(GRAFANA_PORT) \
-		ECHO_PORT=$(ECHO_PORT) \
-		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
-		docker compose -f test/compose/compose.yaml logs kerberos echo protected-echo
+	@docker compose -f test/compose/integration/compose.yaml logs kerberos echo protected-echo
 
 compose-logs-f:
-	@VERSION=$(VERSION) \
-		KERBEROS_PORT=$(KERBEROS_PORT) \
-		KERBEROS_ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
-		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
-		PROM_PORT=$(PROM_PORT) \
-		GRAFANA_PORT=$(GRAFANA_PORT) \
-		ECHO_PORT=$(ECHO_PORT) \
-		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
-		docker compose -f test/compose/compose.yaml logs -f kerberos echo protected-echo
+	@docker compose -f test/compose/integration/compose.yaml logs -f kerberos echo protected-echo
 
 compose-ps:
-	@VERSION=$(VERSION) \
-		KERBEROS_PORT=$(KERBEROS_PORT) \
-		KERBEROS_ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
-		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
-		PROM_PORT=$(PROM_PORT) \
-		GRAFANA_PORT=$(GRAFANA_PORT) \
-		ECHO_PORT=$(ECHO_PORT) \
-		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
-		docker compose -f test/compose/compose.yaml ps
+	@docker compose -f test/compose/integration/compose.yaml ps
 
 compose-down:
 	$(call cecho,Tearing down Kerberos test environment...,$(BOLD_YELLOW))
+	@docker compose -f test/compose/integration/compose.yaml down
+
+#
+# Compose security test environment
+#
+
+compose-security:
+	$(call cecho,Composing Kerberos security test environment...,$(BOLD_YELLOW))
 	@VERSION=$(VERSION) \
 		KERBEROS_PORT=$(KERBEROS_PORT) \
 		KERBEROS_ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
-		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
-		PROM_PORT=$(PROM_PORT) \
-		GRAFANA_PORT=$(GRAFANA_PORT) \
+		LOG_VERBOSITY=$(LOG_VERBOSITY) \
 		ECHO_PORT=$(ECHO_PORT) \
 		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
-		docker compose -f test/compose/compose.yaml down
+		docker compose -f test/compose/security/compose.yaml up -d --force-recreate
+	@until [ "$$(curl -s -o /dev/null -w '%{http_code}' --cacert test/certs/ca.crt https://localhost:$(KERBEROS_ADMIN_PORT)/api/admin/flow)" = "401" ]; do \
+		echo "Waiting for Kerberos admin API..."; \
+		sleep 1; \
+	done; \
+	echo "Kerberos is ready!"
+
+compose-security-down:
+	$(call cecho,Tearing down Kerberos security test environment...,$(BOLD_YELLOW))
+	@docker compose -f test/compose/security/compose.yaml down
+
+compose-logs-security:
+	@docker compose -f test/compose/security/compose.yaml logs kerberos echo
+
+compose-logs-security-f:
+	@docker compose -f test/compose/security/compose.yaml logs kerberos echo -f
+
+#
+# echo mgmt.
+#
 
 echo-build:
 	$(call cecho,Building Echo binary...,$(BOLD_YELLOW))

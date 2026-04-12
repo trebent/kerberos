@@ -3,6 +3,30 @@
   "$id": "http://trebent.com/kerberos/schemas/admin_schema.json",
   "type": "object",
   "properties": {
+    "api": {
+      "type": "object",
+      "properties": {
+        "tls": {
+          "type": "object",
+          "properties": {
+            "serverCertFile": {
+              "type": "string",
+              "description": "ServerCertFile is the path to a PEM-encoded server certificate for mTLS."
+            },
+            "serverKeyFile": {
+              "type": "string",
+              "description": "ServerKeyFile is the path to a PEM-encoded server key for mTLS."
+            }
+          },
+          "required": [
+            "serverCertFile",
+            "serverKeyFile"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "superUser": {
       "type": "object",
       "default": {},

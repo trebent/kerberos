@@ -7,6 +7,8 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -52,6 +54,25 @@ var (
 		Desc:  "Port to listen on.",
 		Value: defaultPort,
 	})
+	observabilityEnabled = envparser.Register(&envparser.Opts[bool]{
+		Name:  "OBSERVABILITY_ENABLED",
+		Desc:  "Enables or disables observability features.",
+		Value: true,
+	})
+	tlsCertFile = envparser.Register(&envparser.Opts[string]{
+		Name: "TLS_CERT_FILE",
+		Desc: "Path to the PEM-encoded server certificate file. When set together with TLS_KEY_FILE, the server enables TLS.",
+	})
+	tlsKeyFile = envparser.Register(&envparser.Opts[string]{
+		Name: "TLS_KEY_FILE",
+		Desc: "Path to the PEM-encoded server private key file. When set together with TLS_CERT_FILE, the server enables TLS.",
+	})
+	tlsClientCAFile = envparser.Register(&envparser.Opts[string]{
+		Name: "TLS_CLIENT_CA_FILE",
+		Desc: "Path to a PEM-encoded CA certificate bundle used to verify client certificates (mTLS). Requires TLS_CERT_FILE and TLS_KEY_FILE to be set.",
+	})
+
+	tracer = otel.GetTracerProvider().Tracer(tracerName)
 )
 
 const (
@@ -84,91 +105,137 @@ func main() {
 	signalCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	shutdown, err := intotel.Instrument(signalCtx, "echo", version.Value(), true)
-	if err != nil {
-		zerologr.Error(err, "Failed to initialize OpenTelemetry")
-		os.Exit(1)
+	if observabilityEnabled.Value() {
+		zerologr.Info("Initializing OpenTelemetry instrumentation")
+		shutdown, err := intotel.Instrument(signalCtx, "echo", version.Value(), true)
+		if err != nil {
+			zerologr.Error(err, "Failed to initialize OpenTelemetry")
+			os.Exit(1)
+		}
+		defer shutdown(context.Background())
 	}
-	defer shutdown(context.Background())
 
 	// Create a new HTTP server
 	srv := &http.Server{
-		Addr: fmt.Sprintf(":%d", port.Value()),
+		Addr:      fmt.Sprintf(":%d", port.Value()),
+		TLSConfig: tlsConfig(),
 	}
 
 	// Register the echo handler
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		zerologr.Info(r.Method+" "+r.URL.String(), "size", r.ContentLength)
+	http.HandleFunc("/", handler)
 
-		for key, values := range r.Header {
-			zerologr.Info("Header", key, fmt.Sprintf("%s", values))
-		}
-
-		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
-		span := trace.SpanFromContext(ctx)
-		if span.SpanContext().IsValid() {
-			zerologr.Info("Got valid trace span", "traceID", span.SpanContext().TraceID().String(), "spanID", span.SpanContext().SpanID().String())
-		}
-		tracer := newTracer(otel.GetTracerProvider())
-
-		_, newSpan := tracer.Start(ctx, "echoing", trace.WithSpanKind(trace.SpanKindServer))
-		zerologr.Info("New span", "traceID", newSpan.SpanContext().TraceID().String(), "spanID", newSpan.SpanContext().SpanID().String())
-		defer newSpan.End()
-
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("X-Echo-Server", "true")
-
-		resp := &response{
-			Method:  r.Method,
-			URL:     r.URL.String(),
-			Headers: r.Header,
-		}
-
-		if r.Body != nil && r.Body != http.NoBody {
-			defer r.Body.Close()
-
-			data, err := io.ReadAll(r.Body)
-			if err != nil {
-				http.Error(
-					w,
-					"{\"error\": \"failed to read request body\"}",
-					http.StatusInternalServerError,
-				)
-				return
-			}
-			zerologr.V(20).Info("Read body: "+string(data), "size", len(data))
-
-			resp.Body = data
-		}
-
-		responseBytes, err := json.MarshalIndent(resp, "", "  ")
-		if err != nil {
-			http.Error(
-				w,
-				"{\"error\": \"failed to marshal response\"}",
-				http.StatusInternalServerError,
-			)
-			return
-		}
-
-		zerologr.V(20).Info("Writing response: "+string(responseBytes), "size", len(responseBytes))
-
-		_, _ = w.Write(responseBytes)
-	})
-
+	// Start the server
 	go func() {
-		// Start the server
-		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			zerologr.Error(err, "Server start/stop failed: %v")
+		var err error
+		if tlsCertFile.Value() != "" && tlsKeyFile.Value() != "" {
+			err = srv.ListenAndServeTLS(tlsCertFile.Value(), tlsKeyFile.Value())
+		} else {
+			err = srv.ListenAndServe()
+		}
+
+		if !errors.Is(err, http.ErrServerClosed) {
+			zerologr.Error(err, "Server start/stop failed")
 		}
 	}()
 
-	zerologr.Info("Echo server started", "port", port.Value())
+	zerologr.Info(
+		"Echo server started",
+		"port", port.Value(),
+		"tlsEnabled", tlsCertFile.Value() != "" && tlsKeyFile.Value() != "",
+		"observabilityEnabled", observabilityEnabled.Value(),
+	)
 	<-signalCtx.Done()
 	srv.Shutdown(context.Background())
 	zerologr.Info("Echo gracefully stopped")
 }
 
-func newTracer(provider trace.TracerProvider) trace.Tracer {
-	return provider.Tracer(tracerName)
+// tlsConfig returns a TLS configuration if TLS_CERT_FILE and TLS_KEY_FILE are set, otherwise it returns nil. If TLS_CLIENT_CA_FILE is set, it configures the server for mutual TLS (mTLS) by requiring and verifying client certificates against the provided CA bundle.
+func tlsConfig() *tls.Config {
+	if tlsCertFile.Value() != "" && tlsKeyFile.Value() != "" {
+		zerologr.Info(
+			"TLS enabled",
+			"certFile", tlsCertFile.Value(),
+			"keyFile", tlsKeyFile.Value(),
+		)
+
+		tlsCfg := &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+		if caFile := tlsClientCAFile.Value(); caFile != "" {
+			caPEM, err := os.ReadFile(caFile)
+			if err != nil {
+				zerologr.Error(err, "Failed to read client CA file")
+				os.Exit(1)
+			}
+			caPool := x509.NewCertPool()
+			if !caPool.AppendCertsFromPEM(caPEM) {
+				zerologr.Error(errors.New("no valid certificates found in client CA file"), "Failed to load client CA")
+				os.Exit(1)
+			}
+			tlsCfg.ClientCAs = caPool
+			tlsCfg.ClientAuth = tls.RequireAndVerifyClientCert
+		}
+		return tlsCfg
+	}
+
+	return nil
+}
+
+// handler is the HTTP handler function for the echo server. It reads the request body and headers, and writes them back in the response as JSON.
+func handler(w http.ResponseWriter, r *http.Request) {
+	zerologr.Info(r.Method+" "+r.URL.String(), "size", r.ContentLength)
+
+	for key, values := range r.Header {
+		zerologr.Info("Header", key, fmt.Sprintf("%s", values))
+	}
+
+	ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+	span := trace.SpanFromContext(ctx)
+	if span.SpanContext().IsValid() {
+		zerologr.Info("Got valid trace span", "traceID", span.SpanContext().TraceID().String(), "spanID", span.SpanContext().SpanID().String())
+	}
+
+	_, newSpan := tracer.Start(ctx, "echoing", trace.WithSpanKind(trace.SpanKindServer))
+	zerologr.Info("New span", "traceID", newSpan.SpanContext().TraceID().String(), "spanID", newSpan.SpanContext().SpanID().String())
+	defer newSpan.End()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Echo-Server", "true")
+
+	resp := &response{
+		Method:  r.Method,
+		URL:     r.URL.String(),
+		Headers: r.Header,
+	}
+
+	if r.Body != nil && r.Body != http.NoBody {
+		defer r.Body.Close()
+
+		data, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(
+				w,
+				"{\"error\": \"failed to read request body\"}",
+				http.StatusInternalServerError,
+			)
+			return
+		}
+		zerologr.V(20).Info("Read body: "+string(data), "size", len(data))
+
+		resp.Body = data
+	}
+
+	responseBytes, err := json.MarshalIndent(resp, "", "  ")
+	if err != nil {
+		http.Error(
+			w,
+			"{\"error\": \"failed to marshal response\"}",
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	zerologr.V(20).Info("Writing response: "+string(responseBytes), "size", len(responseBytes))
+
+	_, _ = w.Write(responseBytes)
 }

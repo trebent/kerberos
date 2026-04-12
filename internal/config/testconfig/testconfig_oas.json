@@ -1,12 +1,14 @@
 {
-  "router": {
-    "backends": [
-      {
-        "name": "backend1",
-        "host": "localhost",
-        "port": 8080
-      }
-    ]
+  "gateway": {
+    "router": {
+      "backends": [
+        {
+          "name": "backend1",
+          "host": "localhost",
+          "port": 8080
+        }
+      ]
+    }
   },
   "oas": {
     "mappings": [

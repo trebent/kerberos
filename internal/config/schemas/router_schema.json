@@ -19,6 +19,58 @@
           "port": {
             "type": "integer",
             "description": "The port number of the backend."
+          },
+          "timeout": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 5000,
+            "description": "The request timeout in milliseconds for the backend."
+          },
+          "tls": {
+            "type": "object",
+            "properties": {
+              "rootCAFile": {
+                "type": "string",
+                "description": "RootCAFile is the path to a PEM-encoded CA bundle used to verify the backend's certificate. When empty, the system certificate pool is used."
+              },
+              "clientCertFile": {
+                "type": "string",
+                "description": "ClientCertFile is the path to a PEM-encoded client certificate for mTLS."
+              },
+              "clientKeyFile": {
+                "type": "string",
+                "description": "ClientKeyFile is the path to a PEM-encoded client key for mTLS."
+              },
+              "insecureSkipVerify": {
+                "type": "boolean",
+                "default": false,
+                "description": "InsecureSkipVerify disables server certificate verification. Must only be used in non-production environments."
+              }
+            },
+            "required": [
+              "rootCAFile"
+            ],
+            "if": {
+              "anyOf": [
+                {
+                  "required": [
+                    "clientCertFile"
+                  ]
+                },
+                {
+                  "required": [
+                    "clientKeyFile"
+                  ]
+                }
+              ]
+            },
+            "then": {
+              "required": [
+                "clientCertFile",
+                "clientKeyFile"
+              ]
+            },
+            "additionalProperties": false
           }
         },
         "required": [

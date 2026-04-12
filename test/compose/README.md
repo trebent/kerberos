@@ -1,3 +1,3 @@
-# Observability
+# compose
 
-This directory contains helper files for setting up local observability when testing Kerberos.
+This directory contains composables for validating Kerberos in different settings. There is at least one composable per test directory.

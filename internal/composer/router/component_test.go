@@ -11,7 +11,7 @@ import (
 )
 
 func TestRouter(t *testing.T) {
-	cfg := &config.RouterConfig{
+	cfg := &config.Router{
 		Backends: []*config.RouterBackend{
 			{
 				Name: "backend1",

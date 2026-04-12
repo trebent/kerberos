@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	adminapi "github.com/trebent/kerberos/ft/client/admin"
+	adminapi "github.com/trebent/kerberos/test/integration/client/admin"
 )
 
 func TestAdminLoginSuperuser(t *testing.T) {

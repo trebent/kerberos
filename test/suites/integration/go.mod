@@ -1,4 +1,4 @@
-module github.com/trebent/kerberos/ft
+module github.com/trebent/kerberos/test/integration
 
 go 1.26.1
 
