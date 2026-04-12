@@ -43,7 +43,7 @@ codegen:
 	@go generate ./...
 	
 	$(call cecho,Running codegen for integration tests...,$(BOLD_YELLOW))
-	@cd test/integration && go generate ./...
+	@cd test/suites/integration && go generate ./...
 
 unittest:
 	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
@@ -73,11 +73,11 @@ integrationtest-json:
 	@mkdir -p build
 	@cd test/suites/integration && go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/integration-test-output.json
 
-security-test: compose-security
+securitytest: compose-security
 	$(call cecho,Running security tests for Kerberos...,$(BOLD_YELLOW))
 	@cd test/suites/security && go test -v ./... -count=1 -failfast
 
-security-test-json: compose-security
+securitytest-json: compose-security
 	$(call cecho,Running security tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
 	@cd test/suites/security && go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/security-test-output.json
