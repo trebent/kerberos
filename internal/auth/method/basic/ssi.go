@@ -36,7 +36,7 @@ func (i *impl) Login(
 	ctx context.Context,
 	req authbasicapi.LoginRequestObject,
 ) (authbasicapi.LoginResponseObject, error) {
-	user, err := i.dbLoginLookup(ctx, req.OrgID, req.Body.Username)
+	user, err := dbLoginLookup(ctx, i.db, req.OrgID, req.Body.Username)
 	if errors.Is(err, errNoUser) {
 		return authbasicapi.Login401JSONResponse(makeGenAPIError("Login failed.")), nil
 	}
@@ -52,7 +52,7 @@ func (i *impl) Login(
 	zerologr.V(10).Info("User has logged in successfully", "username", req.Body.Username)
 
 	sessionID := uuid.NewString()
-	if err := i.dbCreateSession(ctx, user.ID, user.OrganisationID, sessionID); err != nil {
+	if err := dbCreateSession(ctx, i.db, user.ID, user.OrganisationID, sessionID); err != nil {
 		zerologr.Error(err, "Failed to create session for user")
 		return authbasicapi.Login500JSONResponse(GenErrInternal), nil
 	}
@@ -70,7 +70,7 @@ func (i *impl) Logout(
 	req authbasicapi.LogoutRequestObject,
 ) (authbasicapi.LogoutResponseObject, error) {
 	userID := userFromContext(ctx)
-	if err := i.dbDeleteUserSessions(ctx, req.OrgID, userID); err != nil {
+	if err := dbDeleteUserSessions(ctx, i.db, req.OrgID, userID); err != nil {
 		zerologr.Error(err, "Failed to delete user sessions")
 		return authbasicapi.Logout500JSONResponse(GenErrInternal), nil
 	}
@@ -83,7 +83,7 @@ func (i *impl) ChangePassword(
 	ctx context.Context,
 	req authbasicapi.ChangePasswordRequestObject,
 ) (authbasicapi.ChangePasswordResponseObject, error) {
-	u, err := i.dbGetUserAuth(ctx, req.OrgID, req.UserID)
+	u, err := dbGetUserAuth(ctx, i.db, req.OrgID, req.UserID)
 	if errors.Is(err, errNoUser) {
 		return authbasicapi.ChangePassword401JSONResponse(
 			makeGenAPIError("Failed to change user password."),
@@ -102,7 +102,7 @@ func (i *impl) ChangePassword(
 	}
 
 	_, newSalt, newHashedPassword := password.Make(req.Body.Password)
-	if err := i.dbUpdateUserPassword(ctx, req.UserID, newSalt, newHashedPassword); err != nil {
+	if err := dbUpdateUserPassword(ctx, i.db, req.UserID, newSalt, newHashedPassword); err != nil {
 		zerologr.Error(err, "Failed to update user password")
 		return authbasicapi.ChangePassword500JSONResponse(GenErrInternal), nil
 	}
@@ -115,7 +115,7 @@ func (i *impl) CreateGroup(
 	ctx context.Context,
 	req authbasicapi.CreateGroupRequestObject,
 ) (authbasicapi.CreateGroupResponseObject, error) {
-	id, err := i.dbCreateGroup(ctx, req.OrgID, req.Body.Name)
+	id, err := dbCreateGroup(ctx, i.db, req.OrgID, req.Body.Name)
 	if err != nil {
 		if errors.Is(err, db.ErrUnique) {
 			return authbasicapi.CreateGroup409JSONResponse(GenErrConflict), nil
@@ -135,8 +135,9 @@ func (i *impl) CreateOrganisation(
 	ctx context.Context,
 	req authbasicapi.CreateOrganisationRequestObject,
 ) (authbasicapi.CreateOrganisationResponseObject, error) {
-	orgID, adminUserID, adminUsername, adminPassword, err := i.dbCreateOrganisation(
+	orgID, adminUserID, adminUsername, adminPassword, err := dbCreateOrganisation(
 		ctx,
+		i.db,
 		req.Body.Name,
 	)
 	if err != nil {
@@ -162,7 +163,7 @@ func (i *impl) CreateUser(
 	req authbasicapi.CreateUserRequestObject,
 ) (authbasicapi.CreateUserResponseObject, error) {
 	_, salt, hashedPassword := password.Make(req.Body.Password)
-	id, err := i.dbCreateUser(ctx, req.Body.Name, salt, hashedPassword, req.OrgID, false)
+	id, err := dbCreateUser(ctx, i.db, req.Body.Name, salt, hashedPassword, req.OrgID)
 	if err != nil {
 		if errors.Is(err, db.ErrUnique) {
 			return authbasicapi.CreateUser409JSONResponse(GenErrConflict), nil
@@ -182,7 +183,7 @@ func (i *impl) DeleteGroup(
 	ctx context.Context,
 	req authbasicapi.DeleteGroupRequestObject,
 ) (authbasicapi.DeleteGroupResponseObject, error) {
-	if err := i.dbDeleteGroup(ctx, req.OrgID, req.GroupID); err != nil {
+	if err := dbDeleteGroup(ctx, i.db, req.OrgID, req.GroupID); err != nil {
 		zerologr.Error(err, "Failed to delete group")
 		return authbasicapi.DeleteGroup500JSONResponse(GenErrInternal), nil
 	}
@@ -195,7 +196,7 @@ func (i *impl) DeleteOrganisation(
 	ctx context.Context,
 	req authbasicapi.DeleteOrganisationRequestObject,
 ) (authbasicapi.DeleteOrganisationResponseObject, error) {
-	if err := i.dbDeleteOrg(ctx, req.OrgID); err != nil {
+	if err := dbDeleteOrg(ctx, i.db, req.OrgID); err != nil {
 		zerologr.Error(err, "Failed to delete organisation")
 		return authbasicapi.DeleteOrganisation500JSONResponse(GenErrInternal), nil
 	}
@@ -208,7 +209,7 @@ func (i *impl) DeleteUser(
 	ctx context.Context,
 	req authbasicapi.DeleteUserRequestObject,
 ) (authbasicapi.DeleteUserResponseObject, error) {
-	if err := i.dbDeleteUser(ctx, req.OrgID, req.UserID); err != nil {
+	if err := dbDeleteUser(ctx, i.db, req.OrgID, req.UserID); err != nil {
 		zerologr.Error(err, "Failed to delete user")
 		return authbasicapi.DeleteUser500JSONResponse(GenErrInternal), nil
 	}
@@ -221,7 +222,7 @@ func (i *impl) GetGroup(
 	ctx context.Context,
 	req authbasicapi.GetGroupRequestObject,
 ) (authbasicapi.GetGroupResponseObject, error) {
-	g, err := i.dbGetGroup(ctx, req.OrgID, req.GroupID)
+	g, err := dbGetGroup(ctx, i.db, req.OrgID, req.GroupID)
 	if errors.Is(err, errNoGroup) {
 		return authbasicapi.GetGroup404Response{}, nil
 	}
@@ -238,7 +239,7 @@ func (i *impl) GetOrganisation(
 	ctx context.Context,
 	req authbasicapi.GetOrganisationRequestObject,
 ) (authbasicapi.GetOrganisationResponseObject, error) {
-	o, err := i.dbGetOrg(ctx, req.OrgID)
+	o, err := dbGetOrg(ctx, i.db, req.OrgID)
 	if errors.Is(err, errNoOrg) {
 		return authbasicapi.GetOrganisation404Response{}, nil
 	}
@@ -255,7 +256,7 @@ func (i *impl) GetUser(
 	ctx context.Context,
 	req authbasicapi.GetUserRequestObject,
 ) (authbasicapi.GetUserResponseObject, error) {
-	u, err := i.dbGetUser(ctx, req.OrgID, req.UserID)
+	u, err := dbGetUser(ctx, i.db, req.OrgID, req.UserID)
 	if errors.Is(err, errNoUser) {
 		return authbasicapi.GetUser404Response{}, nil
 	}
@@ -286,7 +287,7 @@ func (i *impl) ListGroups(
 	ctx context.Context,
 	req authbasicapi.ListGroupsRequestObject,
 ) (authbasicapi.ListGroupsResponseObject, error) {
-	groups, err := i.dbListGroups(ctx, req.OrgID)
+	groups, err := dbListGroups(ctx, i.db, req.OrgID)
 	if err != nil {
 		zerologr.Error(err, "Failed to list groups")
 		return authbasicapi.ListGroups500JSONResponse(GenErrInternal), nil
@@ -300,7 +301,7 @@ func (i *impl) ListOrganisations(
 	ctx context.Context,
 	_ authbasicapi.ListOrganisationsRequestObject,
 ) (authbasicapi.ListOrganisationsResponseObject, error) {
-	orgs, err := i.dbListOrgs(ctx)
+	orgs, err := dbListOrgs(ctx, i.db)
 	if err != nil {
 		zerologr.Error(err, "Failed to list organisations")
 		return authbasicapi.ListOrganisations500JSONResponse(GenErrInternal), nil
@@ -314,7 +315,7 @@ func (i *impl) ListUsers(
 	ctx context.Context,
 	req authbasicapi.ListUsersRequestObject,
 ) (authbasicapi.ListUsersResponseObject, error) {
-	users, err := i.dbListUsers(ctx, req.OrgID)
+	users, err := dbListUsers(ctx, i.db, req.OrgID)
 	if err != nil {
 		zerologr.Error(err, "Failed to list users")
 		return authbasicapi.ListUsers500JSONResponse(GenErrInternal), nil
@@ -328,11 +329,11 @@ func (i *impl) UpdateGroup(
 	ctx context.Context,
 	req authbasicapi.UpdateGroupRequestObject,
 ) (authbasicapi.UpdateGroupResponseObject, error) {
-	if _, err := i.dbGetGroup(ctx, req.OrgID, req.GroupID); errors.Is(err, errNoGroup) {
+	if _, err := dbGetGroup(ctx, i.db, req.OrgID, req.GroupID); errors.Is(err, errNoGroup) {
 		return authbasicapi.UpdateGroup404Response{}, nil
 	}
 
-	if err := i.dbUpdateGroup(ctx, req.OrgID, req.GroupID, req.Body.Name); err != nil {
+	if err := dbUpdateGroup(ctx, i.db, req.OrgID, req.GroupID, req.Body.Name); err != nil {
 		if errors.Is(err, db.ErrUnique) {
 			return authbasicapi.UpdateGroup409JSONResponse(GenErrConflict), nil
 		}
@@ -348,11 +349,11 @@ func (i *impl) UpdateOrganisation(
 	ctx context.Context,
 	req authbasicapi.UpdateOrganisationRequestObject,
 ) (authbasicapi.UpdateOrganisationResponseObject, error) {
-	if _, err := i.dbGetOrg(ctx, req.OrgID); errors.Is(err, errNoOrg) {
+	if _, err := dbGetOrg(ctx, i.db, req.OrgID); errors.Is(err, errNoOrg) {
 		return authbasicapi.UpdateOrganisation404Response{}, nil
 	}
 
-	if err := i.dbUpdateOrg(ctx, req.OrgID, req.Body.Name); err != nil {
+	if err := dbUpdateOrg(ctx, i.db, req.OrgID, req.Body.Name); err != nil {
 		if errors.Is(err, db.ErrUnique) {
 			return authbasicapi.UpdateOrganisation409JSONResponse(GenErrConflict), nil
 		}
@@ -368,11 +369,11 @@ func (i *impl) UpdateUser(
 	ctx context.Context,
 	req authbasicapi.UpdateUserRequestObject,
 ) (authbasicapi.UpdateUserResponseObject, error) {
-	if _, err := i.dbGetUser(ctx, req.OrgID, req.UserID); errors.Is(err, errNoUser) {
+	if _, err := dbGetUser(ctx, i.db, req.OrgID, req.UserID); errors.Is(err, errNoUser) {
 		return authbasicapi.UpdateUser404Response{}, nil
 	}
 
-	if err := i.dbUpdateUser(ctx, req.OrgID, req.UserID, req.Body.Name); err != nil {
+	if err := dbUpdateUser(ctx, i.db, req.OrgID, req.UserID, req.Body.Name); err != nil {
 		if errors.Is(err, db.ErrUnique) {
 			return authbasicapi.UpdateUser409JSONResponse(GenErrConflict), nil
 		}
@@ -388,7 +389,7 @@ func (i *impl) UpdateUserGroups(
 	ctx context.Context,
 	req authbasicapi.UpdateUserGroupsRequestObject,
 ) (authbasicapi.UpdateUserGroupsResponseObject, error) {
-	if err := i.dbUpdateUserGroupBindings(ctx, req.OrgID, req.UserID, *req.Body); err != nil {
+	if err := dbUpdateUserGroupBindings(ctx, i.db, req.OrgID, req.UserID, *req.Body); err != nil {
 		zerologr.Error(err, "Failed to update user groups")
 		return authbasicapi.UpdateUserGroups500JSONResponse(GenErrInternal), nil
 	}

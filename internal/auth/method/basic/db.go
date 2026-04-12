@@ -130,10 +130,15 @@ func dbGetUserGroupNames(
 	return groups, nil
 }
 
-// --- impl methods: Sessions ---
+// --- Sessions ---
 
-func (i *impl) dbCreateSession(ctx context.Context, userID, orgID int64, sessionID string) error {
-	_, err := i.db.Exec(
+func dbCreateSession(
+	ctx context.Context,
+	client db.SQLClient,
+	userID, orgID int64,
+	sessionID string,
+) error {
+	_, err := client.Exec(
 		ctx,
 		insertSession,
 		sql.NamedArg{Name: "userID", Value: userID},
@@ -147,8 +152,8 @@ func (i *impl) dbCreateSession(ctx context.Context, userID, orgID int64, session
 	return err
 }
 
-func (i *impl) dbDeleteUserSessions(ctx context.Context, orgID, userID int64) error {
-	_, err := i.db.Exec(
+func dbDeleteUserSessions(ctx context.Context, client db.SQLClient, orgID, userID int64) error {
+	_, err := client.Exec(
 		ctx,
 		deleteUserSessions,
 		sql.NamedArg{Name: "orgID", Value: orgID},
@@ -160,16 +165,17 @@ func (i *impl) dbDeleteUserSessions(ctx context.Context, orgID, userID int64) er
 	return err
 }
 
-// --- impl methods: Users ---
+// --- Users ---
 
 // dbLoginLookup looks up a user by organisation and username for authentication.
 // Returns (nil, errNoUser) when no matching user exists.
-func (i *impl) dbLoginLookup(
+func dbLoginLookup(
 	ctx context.Context,
+	client db.SQLClient,
 	orgID int64,
 	username string,
 ) (*models.LoginUser, error) {
-	rows, err := i.db.Query(
+	rows, err := client.Query(
 		ctx,
 		selectLoginUser,
 		sql.NamedArg{Name: "orgID", Value: orgID},
@@ -206,8 +212,12 @@ func (i *impl) dbLoginLookup(
 
 // dbGetUser returns a user by ID within an organisation.
 // Returns (nil, errNoUser) when no matching user exists.
-func (i *impl) dbGetUser(ctx context.Context, orgID, userID int64) (*authbasicapi.User, error) {
-	rows, err := i.db.Query(
+func dbGetUser(
+	ctx context.Context,
+	client db.SQLClient,
+	orgID, userID int64,
+) (*authbasicapi.User, error) {
+	rows, err := client.Query(
 		ctx,
 		selectUser,
 		sql.NamedArg{Name: "orgID", Value: orgID},
@@ -238,8 +248,12 @@ func (i *impl) dbGetUser(ctx context.Context, orgID, userID int64) (*authbasicap
 
 // dbGetUserAuth returns the authentication credentials for a user by ID within an organisation.
 // Returns (nil, errNoUser) when no matching user exists.
-func (i *impl) dbGetUserAuth(ctx context.Context, orgID, userID int64) (*models.UserAuth, error) {
-	rows, err := i.db.Query(
+func dbGetUserAuth(
+	ctx context.Context,
+	client db.SQLClient,
+	orgID, userID int64,
+) (*models.UserAuth, error) {
+	rows, err := client.Query(
 		ctx,
 		selectUserAuth,
 		sql.NamedArg{Name: "orgID", Value: orgID},
@@ -268,8 +282,12 @@ func (i *impl) dbGetUserAuth(ctx context.Context, orgID, userID int64) (*models.
 	return r, nil
 }
 
-func (i *impl) dbListUsers(ctx context.Context, orgID int64) ([]authbasicapi.User, error) {
-	rows, err := i.db.Query(
+func dbListUsers(
+	ctx context.Context,
+	client db.SQLClient,
+	orgID int64,
+) ([]authbasicapi.User, error) {
+	rows, err := client.Query(
 		ctx,
 		selectUsers,
 		sql.NamedArg{Name: "orgID", Value: orgID},
@@ -297,20 +315,20 @@ func (i *impl) dbListUsers(ctx context.Context, orgID int64) ([]authbasicapi.Use
 	return users, nil
 }
 
-func (i *impl) dbCreateUser(
+func dbCreateUser(
 	ctx context.Context,
+	client db.SQLClient,
 	name, salt, hashedPassword string,
 	orgID int64,
-	isAdmin bool,
 ) (int64, error) {
-	res, err := i.db.Exec(
+	res, err := client.Exec(
 		ctx,
 		insertUser,
 		sql.NamedArg{Name: "name", Value: name},
 		sql.NamedArg{Name: "salt", Value: salt},
 		sql.NamedArg{Name: "hashedPassword", Value: hashedPassword},
 		sql.NamedArg{Name: "orgID", Value: orgID},
-		sql.NamedArg{Name: "isAdmin", Value: isAdmin},
+		sql.NamedArg{Name: "isAdmin", Value: false},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to insert user")
@@ -321,8 +339,13 @@ func (i *impl) dbCreateUser(
 	return id, nil
 }
 
-func (i *impl) dbUpdateUser(ctx context.Context, orgID, userID int64, name string) error {
-	_, err := i.db.Exec(
+func dbUpdateUser(
+	ctx context.Context,
+	client db.SQLClient,
+	orgID, userID int64,
+	name string,
+) error {
+	_, err := client.Exec(
 		ctx,
 		updateUser,
 		sql.NamedArg{Name: "name", Value: name},
@@ -335,8 +358,8 @@ func (i *impl) dbUpdateUser(ctx context.Context, orgID, userID int64, name strin
 	return err
 }
 
-func (i *impl) dbDeleteUser(ctx context.Context, orgID, userID int64) error {
-	_, err := i.db.Exec(
+func dbDeleteUser(ctx context.Context, client db.SQLClient, orgID, userID int64) error {
+	_, err := client.Exec(
 		ctx,
 		deleteUser,
 		sql.NamedArg{Name: "orgID", Value: orgID},
@@ -348,12 +371,13 @@ func (i *impl) dbDeleteUser(ctx context.Context, orgID, userID int64) error {
 	return err
 }
 
-func (i *impl) dbUpdateUserPassword(
+func dbUpdateUserPassword(
 	ctx context.Context,
+	client db.SQLClient,
 	userID int64,
 	salt, hashedPassword string,
 ) error {
-	_, err := i.db.Exec(
+	_, err := client.Exec(
 		ctx,
 		updateUserPassword,
 		sql.NamedArg{Name: "salt", Value: salt},
@@ -366,12 +390,16 @@ func (i *impl) dbUpdateUserPassword(
 	return err
 }
 
-// --- impl methods: Organisations ---
+// --- Organisations ---
 
 // dbGetOrg returns an organisation by ID.
 // Returns (nil, errNoOrg) when no matching organisation exists.
-func (i *impl) dbGetOrg(ctx context.Context, orgID int64) (*authbasicapi.Organisation, error) {
-	rows, err := i.db.Query(
+func dbGetOrg(
+	ctx context.Context,
+	client db.SQLClient,
+	orgID int64,
+) (*authbasicapi.Organisation, error) {
+	rows, err := client.Query(
 		ctx,
 		selectOrg,
 		sql.NamedArg{Name: "orgID", Value: orgID},
@@ -399,8 +427,8 @@ func (i *impl) dbGetOrg(ctx context.Context, orgID int64) (*authbasicapi.Organis
 	return &o, nil
 }
 
-func (i *impl) dbListOrgs(ctx context.Context) ([]authbasicapi.Organisation, error) {
-	rows, err := i.db.Query(ctx, selectOrgs)
+func dbListOrgs(ctx context.Context, client db.SQLClient) ([]authbasicapi.Organisation, error) {
+	rows, err := client.Query(ctx, selectOrgs)
 	if err != nil {
 		zerologr.Error(err, "Failed to query organisations")
 		return nil, err
@@ -424,8 +452,8 @@ func (i *impl) dbListOrgs(ctx context.Context) ([]authbasicapi.Organisation, err
 	return orgs, nil
 }
 
-func (i *impl) dbUpdateOrg(ctx context.Context, orgID int64, name string) error {
-	_, err := i.db.Exec(
+func dbUpdateOrg(ctx context.Context, client db.SQLClient, orgID int64, name string) error {
+	_, err := client.Exec(
 		ctx,
 		updateOrg,
 		sql.NamedArg{Name: "name", Value: name},
@@ -437,8 +465,8 @@ func (i *impl) dbUpdateOrg(ctx context.Context, orgID int64, name string) error 
 	return err
 }
 
-func (i *impl) dbDeleteOrg(ctx context.Context, orgID int64) error {
-	_, err := i.db.Exec(
+func dbDeleteOrg(ctx context.Context, client db.SQLClient, orgID int64) error {
+	_, err := client.Exec(
 		ctx,
 		deleteOrg,
 		sql.NamedArg{Name: "orgID", Value: orgID},
@@ -449,12 +477,16 @@ func (i *impl) dbDeleteOrg(ctx context.Context, orgID int64) error {
 	return err
 }
 
-// --- impl methods: Groups ---
+// --- Groups ---
 
 // dbGetGroup returns a group by ID within an organisation.
 // Returns (nil, errNoGroup) when no matching group exists.
-func (i *impl) dbGetGroup(ctx context.Context, orgID, groupID int64) (*authbasicapi.Group, error) {
-	rows, err := i.db.Query(
+func dbGetGroup(
+	ctx context.Context,
+	client db.SQLClient,
+	orgID, groupID int64,
+) (*authbasicapi.Group, error) {
+	rows, err := client.Query(
 		ctx,
 		selectGroup,
 		sql.NamedArg{Name: "groupID", Value: groupID},
@@ -483,8 +515,12 @@ func (i *impl) dbGetGroup(ctx context.Context, orgID, groupID int64) (*authbasic
 	return &g, nil
 }
 
-func (i *impl) dbListGroups(ctx context.Context, orgID int64) ([]authbasicapi.Group, error) {
-	rows, err := i.db.Query(
+func dbListGroups(
+	ctx context.Context,
+	client db.SQLClient,
+	orgID int64,
+) ([]authbasicapi.Group, error) {
+	rows, err := client.Query(
 		ctx,
 		selectGroups,
 		sql.NamedArg{Name: "orgID", Value: orgID},
@@ -512,8 +548,13 @@ func (i *impl) dbListGroups(ctx context.Context, orgID int64) ([]authbasicapi.Gr
 	return groups, nil
 }
 
-func (i *impl) dbCreateGroup(ctx context.Context, orgID int64, name string) (int64, error) {
-	res, err := i.db.Exec(
+func dbCreateGroup(
+	ctx context.Context,
+	client db.SQLClient,
+	orgID int64,
+	name string,
+) (int64, error) {
+	res, err := client.Exec(
 		ctx,
 		insertGroup,
 		sql.NamedArg{Name: "name", Value: name},
@@ -528,8 +569,13 @@ func (i *impl) dbCreateGroup(ctx context.Context, orgID int64, name string) (int
 	return id, nil
 }
 
-func (i *impl) dbUpdateGroup(ctx context.Context, orgID, groupID int64, name string) error {
-	_, err := i.db.Exec(
+func dbUpdateGroup(
+	ctx context.Context,
+	client db.SQLClient,
+	orgID, groupID int64,
+	name string,
+) error {
+	_, err := client.Exec(
 		ctx,
 		updateGroup,
 		sql.NamedArg{Name: "name", Value: name},
@@ -542,8 +588,8 @@ func (i *impl) dbUpdateGroup(ctx context.Context, orgID, groupID int64, name str
 	return err
 }
 
-func (i *impl) dbDeleteGroup(ctx context.Context, orgID, groupID int64) error {
-	_, err := i.db.Exec(
+func dbDeleteGroup(ctx context.Context, client db.SQLClient, orgID, groupID int64) error {
+	_, err := client.Exec(
 		ctx,
 		deleteGroup,
 		sql.NamedArg{Name: "orgID", Value: orgID},
@@ -555,13 +601,14 @@ func (i *impl) dbDeleteGroup(ctx context.Context, orgID, groupID int64) error {
 	return err
 }
 
-// --- impl methods: Group bindings ---
+// --- Group bindings ---
 
-func (i *impl) dbListGroupBindings(
+func dbListGroupBindings(
 	ctx context.Context,
+	client db.SQLClient,
 	orgID, userID int64,
 ) ([]*models.GroupBinding, error) {
-	rows, err := i.db.Query(
+	rows, err := client.Query(
 		ctx,
 		selectGroupBindings,
 		sql.NamedArg{Name: "orgID", Value: orgID},
@@ -597,11 +644,12 @@ func (i *impl) dbListGroupBindings(
 // If the organisation name is already taken, the returned error wraps db.ErrUnique.
 //
 //nolint:nonamedreturns // welp
-func (i *impl) dbCreateOrganisation(
+func dbCreateOrganisation(
 	ctx context.Context,
+	client db.SQLClient,
 	name string,
 ) (orgID, adminUserID int64, adminUsername, adminPassword string, err error) {
-	tx, err := i.db.Begin(ctx)
+	tx, err := client.Begin(ctx)
 	if err != nil {
 		zerologr.Error(err, "Failed to start transaction")
 		return 0, 0, "", "", err
@@ -633,23 +681,24 @@ func (i *impl) dbCreateOrganisation(
 		zerologr.Error(err, "Failed to create admin user for organisation")
 		return 0, 0, "", "", err
 	}
+	adminUserID, _ = res.LastInsertId()
 
 	if err = tx.Commit(); err != nil {
 		zerologr.Error(err, "Failed to commit organisation creation transaction")
 		return 0, 0, "", "", err
 	}
 
-	adminUserID, _ = res.LastInsertId()
 	return orgID, adminUserID, adminUsername, adminPassword, nil
 }
 
 // dbUpdateUserGroupBindings atomically updates a user's group memberships to match desiredGroups.
-func (i *impl) dbUpdateUserGroupBindings(
+func dbUpdateUserGroupBindings(
 	ctx context.Context,
+	client db.SQLClient,
 	orgID, userID int64,
 	desiredGroups []string,
 ) error {
-	bindings, err := i.dbListGroupBindings(ctx, orgID, userID)
+	bindings, err := dbListGroupBindings(ctx, client, orgID, userID)
 	if err != nil {
 		return err
 	}
@@ -661,7 +710,7 @@ func (i *impl) dbUpdateUserGroupBindings(
 		}
 	}
 
-	tx, err := i.db.Begin(ctx)
+	tx, err := client.Begin(ctx)
 	if err != nil {
 		zerologr.Error(err, "Failed to start transaction")
 		return err

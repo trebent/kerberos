@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/zerologr"
@@ -41,7 +42,18 @@ const (
 )
 
 func New(opts *Opts) db.SQLClient {
-	db, err := sql.Open(driver, opts.DSN)
+	dsn := opts.DSN
+	if dsn == "" {
+		dsn = DBName
+	}
+
+	if strings.Contains(dsn, "?") {
+		dsn += "&_pragma=foreign_keys=on"
+	} else {
+		dsn += "?_pragma=foreign_keys=on"
+	}
+
+	db, err := sql.Open(driver, dsn)
 	if err != nil {
 		panic(err)
 	}
@@ -65,6 +77,7 @@ func (i *impl) Begin(ctx context.Context) (db.Transaction, error) {
 
 	_, err = tx.ExecContext(ctx, queryEnableForeignKeys)
 	if err != nil {
+		_ = tx.Rollback()
 		return nil, wrap(err)
 	}
 
@@ -108,6 +121,9 @@ func wrap(err error) error {
 	switch code {
 	case 2067:
 		return fmt.Errorf("%w: %w", db.ErrUnique, err)
+		// SQLITE OK
+	case 0:
+		return nil
 	default:
 		zerologr.Info("Unrecognized error code", "code", code)
 	}
