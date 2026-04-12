@@ -10,10 +10,8 @@ import (
 )
 
 func TestAdminSSIDummyOASBackend(t *testing.T) {
-	sqlClient := sqlite.New(&sqlite.Opts{DSN: "test.db"})
-	applySchemas(sqlClient)
 	ssi := newSSI(&ssiOpts{
-		SQLClient:    sqlClient,
+		SQLClient:    sqlite.New(&sqlite.Opts{DSN: "test.db"}),
 		ClientID:     "dummy-client-id",
 		ClientSecret: "dummy-client-secret",
 	}).(*impl)
@@ -30,11 +28,8 @@ func TestAdminSSISuperuserBootstrap(t *testing.T) {
 			t.Fatalf("bootstrapSuperuser panicked: %v", r)
 		}
 	}()
-
-	sqlClient := sqlite.New(&sqlite.Opts{DSN: "test.db"})
-	applySchemas(sqlClient)
 	ssi := newSSI(&ssiOpts{
-		SQLClient:    sqlClient,
+		SQLClient:    sqlite.New(&sqlite.Opts{DSN: "test.db"}),
 		ClientID:     "dummy-client-id",
 		ClientSecret: "dummy-client-secret",
 	}).(*impl)
@@ -51,10 +46,8 @@ func TestAdminSSISuperuserBootstrap(t *testing.T) {
 }
 
 func TestAdminSSISuperuser(t *testing.T) {
-	sqlClient := sqlite.New(&sqlite.Opts{DSN: "test.db"})
-	applySchemas(sqlClient)
 	ssi := newSSI(&ssiOpts{
-		SQLClient:    sqlClient,
+		SQLClient:    sqlite.New(&sqlite.Opts{DSN: "test.db"}),
 		ClientID:     "dummy-client-id",
 		ClientSecret: "dummy-client-secret",
 	})
