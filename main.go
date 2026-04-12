@@ -139,7 +139,7 @@ func setupConfig() (*config.RootConfig, error) {
 // startServer starts the HTTP server and listens for incoming requests.
 // It returns an error if the server fails to start and when stopping. If
 // the server is stopped, it returns http.ErrServerClosed.
-// nolint: funlen // welp
+// nolint: funlen,gocognit // welp
 func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	adminMux := http.NewServeMux()
 	mux := http.NewServeMux()
@@ -241,11 +241,21 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 
 	gwErrChan := make(chan error, 1)
 	go func() {
-		gwErrChan <- gwServer.ListenAndServe()
+		if tlsCfg := cfg.GatewayConfig.TLS; tlsCfg != nil {
+			gwErrChan <- gwServer.ListenAndServeTLS(tlsCfg.CertFile, tlsCfg.KeyFile)
+		} else {
+			gwErrChan <- gwServer.ListenAndServe()
+		}
 	}()
 
 	adminErrChan := make(chan error, 1)
 	go func() {
+		if cfg.AdminConfig.API != nil {
+			if tlsCfg := cfg.AdminConfig.API.TLS; tlsCfg != nil {
+				adminErrChan <- adminServer.ListenAndServeTLS(tlsCfg.CertFile, tlsCfg.KeyFile)
+				return
+			}
+		}
 		adminErrChan <- adminServer.ListenAndServe()
 	}()
 

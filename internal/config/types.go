@@ -17,12 +17,12 @@ type (
 
 	// GatewayConfig holds configuration for the API gateway.
 	GatewayConfig struct {
-		Router    *RouterConfig    `json:"router"`
-		TLSConfig *ServerTLSConfig `json:"tls,omitempty"`
+		Router *Router    `json:"router"`
+		TLS    *ServerTLS `json:"tls,omitempty"`
 	}
 
-	// RouterConfig holds configuration for the request router.
-	RouterConfig struct {
+	// Router holds configuration for the request router.
+	Router struct {
 		Backends []*RouterBackend `json:"backends"`
 	}
 	RouterBackend struct {
@@ -79,18 +79,18 @@ type (
 
 	// AdminConfig holds configuration for the admin API.
 	AdminConfig struct {
-		SuperUser *SuperUser      `json:"superUser"`
-		APIConfig *AdminAPIConfig `json:"api,omitempty"`
+		SuperUser *SuperUser `json:"superUser"`
+		API       *AdminAPI  `json:"api,omitempty"`
 	}
 	SuperUser struct {
 		ClientID     string `json:"clientId"`
 		ClientSecret string `json:"clientSecret"`
 	}
-	AdminAPIConfig struct {
-		ServerTLSConfig *ServerTLSConfig `json:"tls,omitempty"`
+	AdminAPI struct {
+		TLS *ServerTLS `json:"tls,omitempty"`
 	}
 
-	ServerTLSConfig struct {
+	ServerTLS struct {
 		CertFile string `json:"serverCertFile"`
 		KeyFile  string `json:"serverKeyFile"`
 	}

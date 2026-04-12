@@ -23,6 +23,7 @@ pages/
 test/
 build/
 *.db
+*_test.go
 
 # Other
 script/

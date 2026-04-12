@@ -1,0 +1,40 @@
+services:
+  kerberos:
+    image: "ghcr.io/trebent/kerberos:${VERSION:-unset}"
+    command: --config /config/security.json
+    pull_policy: if_not_present
+    build:
+      context: ../../..
+      dockerfile: ./Dockerfile
+    ports:
+      - ${KERBEROS_PORT:-30000}:${KERBEROS_PORT:-30000}
+      - ${KERBEROS_ADMIN_PORT:-30001}:${KERBEROS_ADMIN_PORT:-30001}
+    environment:
+      - LOG_TO_CONSOLE=1
+      - LOG_VERBOSITY=${LOG_VERBOSITY:-20}
+      - PORT=${KERBEROS_PORT:-30000}
+      - ADMIN_PORT=${KERBEROS_ADMIN_PORT:-30001}
+      - VERSION=${VERSION:-unset}
+      - OAS_DIRECTORY=/krb-oas
+    volumes:
+      - ../../config:/config:ro
+      - ../../oas:/oas:ro
+      - ../../certs:/certs:ro
+      - ../../../openapi:/krb-oas:ro
+
+  echo:
+    image: "ghcr.io/trebent/kerberos/echo:${VERSION:-unset}"
+    pull_policy: if_not_present
+    build:
+      context: ../../..
+      dockerfile: ./cmd/echo/Dockerfile
+    ports:
+      - ${ECHO_PORT:-15000}:${ECHO_PORT:-15000}
+    environment:
+      - PORT=${ECHO_PORT:-15000}
+      - OBSERVABILITY_ENABLED=false
+      - TLS_CERT_FILE=/certs/client.crt
+      - TLS_KEY_FILE=/certs/client.key
+      - TLS_CLIENT_CA_FILE=/certs/ca.crt
+    volumes:
+      - ../../certs:/certs:ro

@@ -19,10 +19,10 @@ import (
 type (
 	// Opts are the options used to configure the router.
 	Opts struct {
-		Cfg *config.RouterConfig
+		Cfg *config.Router
 	}
 	router struct {
-		cfg  *config.RouterConfig
+		cfg  *config.Router
 		next composer.FlowComponent
 	}
 )

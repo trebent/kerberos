@@ -1,0 +1,43 @@
+{
+  "admin": {
+    "api": {
+      "tls": {
+        "serverCertFile": "/certs/server.crt",
+        "serverKeyFile": "/certs/server.key"
+      }
+    }
+  },
+  "observability": {
+    "enabled": false
+  },
+  "gateway": {
+    "tls": {
+      "serverCertFile": "/certs/server.crt",
+      "serverKeyFile": "/certs/server.key"
+    },
+    "router": {
+      "backends": [
+        {
+          "name": "echo",
+          "host": "echo",
+          "port": 15000,
+          "tls": {
+            "rootCAFile": "/certs/ca.crt",
+            "clientCertFile": "/certs/client.crt",
+            "clientKeyFile": "/certs/client.key",
+            "insecureSkipVerify": false
+          }
+        }
+      ]
+    }
+  },
+  "oas": {
+    "mappings": [
+      {
+        "backend": "${ref:gateway.router.backends[0].name}",
+        "specification": "/oas/echo.yaml"
+      }
+    ],
+    "order": 100
+  }
+}

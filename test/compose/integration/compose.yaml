@@ -1,71 +1,72 @@
 services:
   kerberos:
-    image: "ghcr.io/trebent/kerberos:${VERSION}"
+    image: "ghcr.io/trebent/kerberos:${VERSION:-unset}"
     command: --config /config/integration.json
     pull_policy: if_not_present
     build:
-      context: ../..
+      context: ../../..
       dockerfile: ./Dockerfile
     ports:
-      - ${KERBEROS_PORT}:${KERBEROS_PORT}
-      - ${KERBEROS_ADMIN_PORT}:${KERBEROS_ADMIN_PORT}
-      - ${KERBEROS_METRICS_PORT}:${KERBEROS_METRICS_PORT}
+      - ${KERBEROS_PORT:-30000}:${KERBEROS_PORT:-30000}
+      - ${KERBEROS_ADMIN_PORT:-30001}:${KERBEROS_ADMIN_PORT:-30001}
+      - ${KERBEROS_METRICS_PORT:-9464}:${KERBEROS_METRICS_PORT:-9464}
     environment:
       - OTEL_METRICS_EXPORTER=prometheus
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
       - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
       - OTEL_EXPORTER_PROMETHEUS_HOST=kerberos
-      - OTEL_EXPORTER_PROMETHEUS_PORT=${KERBEROS_METRICS_PORT}
+      - OTEL_EXPORTER_PROMETHEUS_PORT=${KERBEROS_METRICS_PORT:-9464}
       # Use to test sampling in production. The default is AlwaysSample unless otherwise stated by the parent span.
       # There are appropriate for development and testing, but can lead to high overhead in production.
       # - OTEL_TRACES_SAMPLER=parentbased_traceidratio
       # - OTEL_TRACES_SAMPLER_ARG=0.1
       - LOG_TO_CONSOLE=1
       - LOG_VERBOSITY=${LOG_VERBOSITY:-20}
-      - PORT=${KERBEROS_PORT}
-      - VERSION=${VERSION}
+      - PORT=${KERBEROS_PORT:-30000}
+      - ADMIN_PORT=${KERBEROS_ADMIN_PORT:-30001}
+      - VERSION=${VERSION:-unset}
       - OAS_DIRECTORY=/krb-oas
     volumes:
-      - ../config:/config:ro
-      - ../oas:/oas:ro
-      - ../../openapi:/krb-oas:ro
+      - ../../config:/config:ro
+      - ../../oas:/oas:ro
+      - ../../../openapi:/krb-oas:ro
 
   echo:
-    image: "ghcr.io/trebent/kerberos/echo:${VERSION}"
+    image: "ghcr.io/trebent/kerberos/echo:${VERSION:-unset}"
     pull_policy: if_not_present
     build:
-      context: ../..
+      context: ../../..
       dockerfile: ./cmd/echo/Dockerfile
     ports:
-      - ${ECHO_PORT}:${ECHO_PORT}
-      - ${ECHO_METRICS_PORT}:${ECHO_METRICS_PORT}
+      - ${ECHO_PORT:-15000}:${ECHO_PORT:-15000}
+      - ${ECHO_METRICS_PORT:-9463}:${ECHO_METRICS_PORT:-9463}
     environment:
-      - PORT=${ECHO_PORT}
+      - PORT=${ECHO_PORT:-15000}
       - OTEL_METRICS_EXPORTER=prometheus
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
       - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
       - OTEL_EXPORTER_PROMETHEUS_HOST=echo
-      - OTEL_EXPORTER_PROMETHEUS_PORT=${ECHO_METRICS_PORT}
+      - OTEL_EXPORTER_PROMETHEUS_PORT=${ECHO_METRICS_PORT:-9463}
 
   protected-echo:
-    image: "ghcr.io/trebent/kerberos/echo:${VERSION}"
+    image: "ghcr.io/trebent/kerberos/echo:${VERSION:-unset}"
     pull_policy: if_not_present
     build:
-      context: ../..
+      context: ../../..
       dockerfile: ./cmd/echo/Dockerfile
     environment:
-      - PORT=${ECHO_PORT}
+      - PORT=${ECHO_PORT:-15000}
       - OTEL_METRICS_EXPORTER=prometheus
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
       - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
       - OTEL_EXPORTER_PROMETHEUS_HOST=protected-echo
-      - OTEL_EXPORTER_PROMETHEUS_PORT=${ECHO_METRICS_PORT}
+      - OTEL_EXPORTER_PROMETHEUS_PORT=${ECHO_METRICS_PORT:-9463}
 
   prometheus:
     image: "prom/prometheus:v3.3.1"
     pull_policy: if_not_present
     ports:
-      - ${PROM_PORT}:9090
+      - ${PROM_PORT:-9090}:9090
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
 
@@ -73,7 +74,7 @@ services:
     image: "grafana/grafana:12.0.0"
     pull_policy: if_not_present
     ports:
-      - ${GRAFANA_PORT}:3000
+      - ${GRAFANA_PORT:-3000}:3000
     volumes:
       - ./grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/grafana-datasources.yml
       - ./grafana/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/grafana-dashboards.yml
@@ -86,8 +87,8 @@ services:
     image: "jaegertracing/jaeger:2.6.0"
     pull_policy: if_not_present
     ports:
-      - 4317:4317
-      - 16685:16685
-      - 16686:16686
+      - ${JAEGER_OTLP_PORT:-4317}:4317
+      - ${JAEGER_QUERY_PORT:-16685}:16685
+      - ${JAEGER_UI_PORT:-16686}:16686
     environment:
       - COLLECTOR_OTLP_ENABLED=true
