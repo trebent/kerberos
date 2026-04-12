@@ -177,8 +177,13 @@ func TestEchoMTLSNoClientCert(t *testing.T) {
 
 // TestEchoPlainHTTP verifies that echo rejects plain HTTP connections.
 func TestEchoPlainHTTP(t *testing.T) {
-	_, err := plainClient().Get(fmt.Sprintf("http://localhost:%d/hi", echoPort))
-	if err == nil {
-		t.Fatal("expected a transport error when sending plain HTTP to a TLS-only port, got nil")
+	resp, err := plainClient().Get(fmt.Sprintf("http://localhost:%d/hi", echoPort))
+	if err != nil {
+		t.Fatalf("Unexpected error when sending plain HTTP request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("Expected 400 Bad Request when sending plain HTTP to a TLS-only port, got %d", resp.StatusCode)
 	}
 }
