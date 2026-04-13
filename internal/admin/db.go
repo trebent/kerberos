@@ -198,7 +198,11 @@ func dbCreateUser(
 		return 0, err
 	}
 
-	id, _ := res.LastInsertId()
+	id, err := res.LastInsertId()
+	if err != nil {
+		zerologr.Error(err, "Failed to get last insert ID for admin user")
+		return 0, err
+	}
 	return id, nil
 }
 
@@ -377,7 +381,11 @@ func dbCreateGroup(ctx context.Context, client db.SQLClient, name string) (int64
 		return 0, err
 	}
 
-	id, _ := res.LastInsertId()
+	id, err := res.LastInsertId()
+	if err != nil {
+		zerologr.Error(err, "Failed to get last insert ID for admin group")
+		return 0, err
+	}
 	return id, nil
 }
 

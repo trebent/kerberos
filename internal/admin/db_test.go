@@ -247,7 +247,7 @@ func TestDBUsers(t *testing.T) {
 			t.Fatalf("expected salt %q after update, got %q", "newsalt", auth.Salt)
 		}
 		if auth.HashedPassword != "newpassword" {
-			t.Fatal("updated password does not match")
+			t.Fatalf("expected hashed password %q after update, got %q", "newpassword", auth.HashedPassword)
 		}
 	})
 
