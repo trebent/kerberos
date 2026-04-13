@@ -10,16 +10,15 @@ import (
 	"time"
 
 	"github.com/trebent/kerberos/internal/admin/model"
-	"github.com/trebent/kerberos/internal/db/sqlite"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
 )
 
 func TestAdminSessionMiddleware(t *testing.T) {
 	ssi := newSSI(&ssiOpts{
-		SQLClient:    sqlite.New(&sqlite.Opts{DSN: "test.db"}),
-		ClientID:     "dummy-client-id",
-		ClientSecret: "dummy-client-secret",
+		SQLClient:    testClient,
+		ClientID:     testClientID,
+		ClientSecret: testClientSecret,
 	}).(*impl)
 
 	mw := SessionMiddleware(ssi)
@@ -42,8 +41,8 @@ func TestAdminSessionMiddleware(t *testing.T) {
 	// Force login to create a session.
 	response, err := ssi.LoginSuperuser(t.Context(), adminapi.LoginSuperuserRequestObject{
 		Body: &adminapi.LoginSuperuserJSONRequestBody{
-			ClientId:     "dummy-client-id",
-			ClientSecret: "dummy-client-secret",
+			ClientId:     testClientID,
+			ClientSecret: testClientSecret,
 		},
 	})
 	if err != nil {

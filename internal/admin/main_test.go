@@ -4,14 +4,26 @@ import (
 	"os"
 	"testing"
 
+	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/kerberos/internal/db/sqlite"
 )
 
+const (
+	testClientID     = "dummy-client-id"
+	testClientSecret = "dummy-client-secret"
+)
+
+var testClient db.SQLClient
+
 func TestMain(m *testing.M) {
-	sqlClient := sqlite.New(&sqlite.Opts{DSN: "test.db"})
-	if err := applySchemas(sqlClient); err != nil {
+	testClient = sqlite.New(&sqlite.Opts{DSN: "test.db"})
+	if err := applySchemas(testClient); err != nil {
 		panic("failed to apply admin DB schema: " + err.Error())
 	}
+
+	// Bootstrap the superuser so all tests have a consistent superuser.
+	i := &impl{sqlClient: testClient}
+	i.bootstrapSuperuser(testClientID, testClientSecret)
 
 	code := m.Run()
 
