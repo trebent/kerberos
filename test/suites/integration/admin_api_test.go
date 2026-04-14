@@ -154,3 +154,52 @@ func TestAdminGetBackendOAS(t *testing.T) {
 	checkErr(err, t)
 	verifyStatusCode(getBackendOASResp.StatusCode(), http.StatusOK, t)
 }
+
+// TestAdminGetFlowAsAdminUser verifies that a non-superuser admin user can also access the GetFlow endpoint.
+func TestAdminGetFlowAsAdminUser(t *testing.T) {
+	superSession := superLogin(t)
+
+	name := username()
+	const pass = "password123"
+	createResp, err := adminClient.CreateUserWithResponse(
+		t.Context(),
+		adminapi.CreateUserJSONRequestBody{Username: name, Password: pass},
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+
+	adminSession := adminUserLogin(t, name, pass)
+
+	getFlowResp, err := adminClient.GetFlowWithResponse(
+		t.Context(),
+		adminapi.RequestEditorFn(requestEditorSessionID(adminSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getFlowResp.StatusCode(), http.StatusOK, t)
+}
+
+// TestAdminGetBackendOASAsAdminUser verifies that a non-superuser admin user can also access the GetBackendOAS endpoint.
+func TestAdminGetBackendOASAsAdminUser(t *testing.T) {
+	superSession := superLogin(t)
+
+	name := username()
+	const pass = "password123"
+	createResp, err := adminClient.CreateUserWithResponse(
+		t.Context(),
+		adminapi.CreateUserJSONRequestBody{Username: name, Password: pass},
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+
+	adminSession := adminUserLogin(t, name, pass)
+
+	getBackendOASResp, err := adminClient.GetBackendOASWithResponse(
+		t.Context(),
+		"echo",
+		adminapi.RequestEditorFn(requestEditorSessionID(adminSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getBackendOASResp.StatusCode(), http.StatusOK, t)
+}

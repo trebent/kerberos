@@ -381,6 +381,95 @@ func TestDBGroups(t *testing.T) {
 	})
 }
 
+// --- Cascade deletes ---
+
+// TestDBCascadeDeletes verifies that ON DELETE CASCADE behaviour defined in the SQL schema
+// is enforced for all foreign-key relationships in the admin_* tables.
+func TestDBCascadeDeletes(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("delete user cascades sessions", func(t *testing.T) {
+		userID := mustCreateAdminUser(t, uniqueName(t, "cascade-sess-user"))
+		sessionID := uniqueName(t, "cascade-sess")
+		if err := dbCreateSession(ctx, testClient, userID, sessionID); err != nil {
+			t.Fatalf("dbCreateSession error: %v", err)
+		}
+
+		// Verify session exists.
+		if _, err := dbGetSession(ctx, testClient, sessionID); err != nil {
+			t.Fatalf("dbGetSession before delete error: %v", err)
+		}
+
+		// Delete user — should cascade to sessions.
+		if err := dbDeleteUser(ctx, testClient, userID); err != nil {
+			t.Fatalf("dbDeleteUser error: %v", err)
+		}
+
+		_, err := dbGetSession(ctx, testClient, sessionID)
+		if !errors.Is(err, errNoSession) {
+			t.Fatalf("expected errNoSession after user cascade delete, got %v", err)
+		}
+	})
+
+	t.Run("delete user cascades group bindings", func(t *testing.T) {
+		userID := mustCreateAdminUser(t, uniqueName(t, "cascade-bind-user"))
+		groupID := mustCreateAdminGroup(t, uniqueName(t, "cascade-bind-grp-u"))
+		if err := dbUpdateUserGroupBindings(ctx, testClient, userID, []int{int(groupID)}); err != nil {
+			t.Fatalf("dbUpdateUserGroupBindings error: %v", err)
+		}
+
+		bindings, err := dbListGroupBindings(ctx, testClient, userID)
+		if err != nil {
+			t.Fatalf("dbListGroupBindings error: %v", err)
+		}
+		if len(bindings) != 1 {
+			t.Fatalf("expected 1 binding, got %d", len(bindings))
+		}
+
+		// Delete user — should cascade to group bindings.
+		if err := dbDeleteUser(ctx, testClient, userID); err != nil {
+			t.Fatalf("dbDeleteUser error: %v", err)
+		}
+
+		bindings, err = dbListGroupBindings(ctx, testClient, userID)
+		if err != nil {
+			t.Fatalf("dbListGroupBindings after user delete error: %v", err)
+		}
+		if len(bindings) != 0 {
+			t.Fatalf("expected 0 bindings after user cascade delete, got %d", len(bindings))
+		}
+	})
+
+	t.Run("delete group cascades group bindings", func(t *testing.T) {
+		userID := mustCreateAdminUser(t, uniqueName(t, "cascade-grp-user"))
+		groupID := mustCreateAdminGroup(t, uniqueName(t, "cascade-grp"))
+		if err := dbUpdateUserGroupBindings(ctx, testClient, userID, []int{int(groupID)}); err != nil {
+			t.Fatalf("dbUpdateUserGroupBindings error: %v", err)
+		}
+
+		bindings, err := dbListGroupBindings(ctx, testClient, userID)
+		if err != nil {
+			t.Fatalf("dbListGroupBindings error: %v", err)
+		}
+		if len(bindings) != 1 {
+			t.Fatalf("expected 1 binding, got %d", len(bindings))
+		}
+
+		// Delete group — should cascade to group bindings.
+		if err := dbDeleteGroup(ctx, testClient, groupID); err != nil {
+			t.Fatalf("dbDeleteGroup error: %v", err)
+		}
+
+		bindings, err = dbListGroupBindings(ctx, testClient, userID)
+		if err != nil {
+			t.Fatalf("dbListGroupBindings after group delete error: %v", err)
+		}
+		if len(bindings) != 0 {
+			t.Fatalf("expected 0 bindings after group cascade delete, got %d", len(bindings))
+		}
+	})
+}
+
 // --- Group bindings ---
 
 func TestDBGroupBindings(t *testing.T) {
