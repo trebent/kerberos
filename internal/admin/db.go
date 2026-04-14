@@ -17,8 +17,8 @@ import (
 
 const (
 	// Superuser / sessions (existing).
-	querySuperuser      = "SELECT id, name, salt, hashed_password FROM admin_users WHERE superuser = true;"
-	querySession        = "SELECT s.user_id, s.session_id, u.superuser, s.expires FROM admin_sessions s JOIN admin_users u ON s.user_id = u.id WHERE s.session_id = @session_id;"
+	selectSuperuser     = "SELECT id, name, salt, hashed_password FROM admin_users WHERE superuser = true;"
+	selectAdminSession  = "SELECT s.user_id, s.session_id, u.superuser, s.expires FROM admin_sessions s JOIN admin_users u ON s.user_id = u.id WHERE s.session_id = @session_id;"
 	insertSuperuser     = "INSERT INTO admin_users (name, salt, hashed_password, superuser) VALUES(@name, @salt, @hashed_password, true);"
 	insertSession       = "INSERT INTO admin_sessions (session_id, user_id, expires) VALUES (@session_id, @user_id, @expires);"
 	deleteSuperSessions = "DELETE FROM admin_sessions WHERE user_id = (SELECT id FROM admin_users WHERE superuser = true);"
@@ -62,7 +62,7 @@ var (
 // dbGetSuperuser returns the superuser row.
 // Returns (nil, errNoSuperuser) when no superuser exists.
 func dbGetSuperuser(ctx context.Context, client db.SQLClient) (*model.User, error) {
-	rows, err := client.Query(ctx, querySuperuser)
+	rows, err := client.Query(ctx, selectSuperuser)
 	if err != nil {
 		zerologr.Error(err, "Failed to query for superuser during session check")
 		return nil, err
@@ -94,7 +94,7 @@ func dbGetSuperuser(ctx context.Context, client db.SQLClient) (*model.User, erro
 func dbGetSession(ctx context.Context, client db.SQLClient, sessionID string) (*model.Session, error) {
 	rows, err := client.Query(
 		ctx,
-		querySession,
+		selectAdminSession,
 		sql.NamedArg{Name: "session_id", Value: sessionID},
 	)
 	if err != nil {
@@ -283,7 +283,7 @@ func dbUpdateUserPassword(
 
 // dbLoginLookup looks up a non-superuser admin user by username for authentication.
 // Returns (nil, errNoUser) when no matching user exists.
-func dbLoginLookup(ctx context.Context, client db.SQLClient, username string) (*model.LoginUser, error) {
+func dbLoginLookup(ctx context.Context, client db.SQLClient, username string) (*model.SuperuserLoginUser, error) {
 	rows, err := client.Query(
 		ctx,
 		selectAdminLoginUser,
@@ -303,7 +303,7 @@ func dbLoginLookup(ctx context.Context, client db.SQLClient, username string) (*
 		return nil, errNoUser
 	}
 
-	r := &model.LoginUser{}
+	r := &model.SuperuserLoginUser{}
 	if err := rows.Scan(&r.ID, &r.Salt, &r.HashedPassword); err != nil {
 		zerologr.Error(err, "Failed to scan admin login user row")
 		return nil, err

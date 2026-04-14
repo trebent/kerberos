@@ -7,8 +7,8 @@ type (
 		Salt           string
 		HashedPassword string
 	}
-	// LoginUser holds the fields required to authenticate a non-superuser admin user.
-	LoginUser struct {
+	// SuperuserLoginUser holds the fields required to authenticate a superuser.
+	SuperuserLoginUser struct {
 		ID             int64
 		Salt           string
 		HashedPassword string

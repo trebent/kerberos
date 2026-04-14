@@ -361,7 +361,7 @@ func (i *impl) DeleteGroup(
 // This is to prevent re-provisioning of the super-user, potentially allowing an attacker to reset powerful credentials.
 func (i *impl) bootstrapSuperuser(clientID, clientSecret string) {
 	// check if a super user already exists.
-	rows, err := i.sqlClient.Query(context.Background(), querySuperuser)
+	rows, err := i.sqlClient.Query(context.Background(), selectSuperuser)
 	if err != nil {
 		panic(err)
 	}

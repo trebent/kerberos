@@ -50,7 +50,7 @@ func SessionMiddleware(
 			}
 
 			session, err := dbGetSession(ctx, apiImpl.sqlClient, sessionID)
-			// Not found among super sessions, just continue. Remember this middleware does NOT enforce
+			// Not found among sessions, just continue. Remember this middleware does NOT enforce
 			// auth, it only populates metadata.
 			if err != nil {
 				return f(ctx, w, r, request)
