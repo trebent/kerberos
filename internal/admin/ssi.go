@@ -9,6 +9,7 @@ import (
 	adminext "github.com/trebent/kerberos/internal/admin/extensions"
 	"github.com/trebent/kerberos/internal/db"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
+	apierror "github.com/trebent/kerberos/internal/oapi/error"
 )
 
 type (
@@ -49,6 +50,18 @@ var (
 
 func makeGenAPIError(msg string) adminapi.APIErrorResponse {
 	return adminapi.APIErrorResponse{Errors: []string{msg}}
+}
+
+func makeErrInternal() adminapi.InternalErrorJSONResponse {
+	return adminapi.InternalErrorJSONResponse(makeGenAPIError(apierror.APIErrInternal.Error()))
+}
+
+func makeErrNotFound() adminapi.NotFoundErrorJSONResponse {
+	return adminapi.NotFoundErrorJSONResponse(makeGenAPIError(apierror.ErrNotFound.Error()))
+}
+
+func makeErrUnauthorized(msg string) adminapi.UnauthorizedErrorJSONResponse {
+	return adminapi.UnauthorizedErrorJSONResponse(makeGenAPIError(msg))
 }
 
 func newSSI(opts *ssiOpts) withExtensions {
