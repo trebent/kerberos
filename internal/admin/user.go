@@ -84,14 +84,18 @@ func (i *impl) Login(
 	u, err := dbLoginLookup(ctx, i.sqlClient, request.Body.Username)
 	if err != nil {
 		if errors.Is(err, errNoUser) {
-			return adminapi.Login401JSONResponse{UnauthorizedErrorJSONResponse: makeErrUnauthorized("Login failed.")}, nil
+			return adminapi.Login401JSONResponse{
+				UnauthorizedErrorJSONResponse: makeErrUnauthorized("Login failed."),
+			}, nil
 		}
 		zerologr.Error(err, "Failed to look up admin user during login")
 		return adminapi.Login500JSONResponse{InternalErrorJSONResponse: makeErrInternal()}, nil
 	}
 
 	if !password.Match(u.Salt, u.HashedPassword, request.Body.Password) {
-		return adminapi.Login401JSONResponse{UnauthorizedErrorJSONResponse: makeErrUnauthorized("Login failed.")}, nil
+		return adminapi.Login401JSONResponse{
+			UnauthorizedErrorJSONResponse: makeErrUnauthorized("Login failed."),
+		}, nil
 	}
 
 	sessionID := uuid.NewString()
@@ -114,7 +118,9 @@ func (i *impl) Logout(
 ) (adminapi.LogoutResponseObject, error) {
 	session, ok := ctx.Value(adminContextSession).(*model.Session)
 	if !ok || session == nil {
-		return adminapi.Logout401JSONResponse{UnauthorizedErrorJSONResponse: makeErrUnauthorized(apierror.ErrNoSession.Error())}, nil
+		return adminapi.Logout401JSONResponse{
+			UnauthorizedErrorJSONResponse: makeErrUnauthorized(apierror.ErrNoSession.Error()),
+		}, nil
 	}
 
 	if err := dbDeleteSession(ctx, i.sqlClient, session.SessionID); err != nil {
@@ -132,7 +138,13 @@ func (i *impl) CreateUser(
 ) (adminapi.CreateUserResponseObject, error) {
 	_, salt, hashedPassword := password.Make(request.Body.Password)
 
-	if _, err := dbCreateUser(ctx, i.sqlClient, request.Body.Username, salt, hashedPassword); err != nil {
+	if _, err := dbCreateUser(
+		ctx,
+		i.sqlClient,
+		request.Body.Username,
+		salt,
+		hashedPassword,
+	); err != nil {
 		zerologr.Error(err, "Failed to create admin user")
 		return adminapi.CreateUser500JSONResponse{InternalErrorJSONResponse: makeErrInternal()}, nil
 	}
@@ -162,7 +174,9 @@ func (i *impl) GetUser(
 	u, err := dbGetUser(ctx, i.sqlClient, int64(request.UserID))
 	if err != nil {
 		if errors.Is(err, errNoUser) {
-			return adminapi.GetUser404JSONResponse{NotFoundErrorJSONResponse: makeErrNotFound()}, nil
+			return adminapi.GetUser404JSONResponse{
+				NotFoundErrorJSONResponse: makeErrNotFound(),
+			}, nil
 		}
 		zerologr.Error(err, "Failed to get admin user")
 		return adminapi.GetUser500JSONResponse{InternalErrorJSONResponse: makeErrInternal()}, nil
@@ -189,10 +203,19 @@ func (i *impl) UpdateUser(
 	request adminapi.UpdateUserRequestObject,
 ) (adminapi.UpdateUserResponseObject, error) {
 	if request.Body.Username == nil {
-		return adminapi.UpdateUser400JSONResponse{BadRequestErrorJSONResponse: adminapi.BadRequestErrorJSONResponse(makeGenAPIError("username is required"))}, nil
+		return adminapi.UpdateUser400JSONResponse{
+			BadRequestErrorJSONResponse: adminapi.BadRequestErrorJSONResponse(
+				makeGenAPIError("username is required"),
+			),
+		}, nil
 	}
 
-	if err := dbUpdateUser(ctx, i.sqlClient, int64(request.UserID), *request.Body.Username); err != nil {
+	if err := dbUpdateUser(
+		ctx,
+		i.sqlClient,
+		int64(request.UserID),
+		*request.Body.Username,
+	); err != nil {
 		zerologr.Error(err, "Failed to update admin user")
 		return adminapi.UpdateUser500JSONResponse{InternalErrorJSONResponse: makeErrInternal()}, nil
 	}
@@ -207,7 +230,9 @@ func (i *impl) DeleteUser(
 ) (adminapi.DeleteUserResponseObject, error) {
 	if _, err := dbGetUser(ctx, i.sqlClient, int64(request.UserID)); err != nil {
 		if errors.Is(err, errNoUser) {
-			return adminapi.DeleteUser404JSONResponse{NotFoundErrorJSONResponse: makeErrNotFound()}, nil
+			return adminapi.DeleteUser404JSONResponse{
+				NotFoundErrorJSONResponse: makeErrNotFound(),
+			}, nil
 		}
 		zerologr.Error(err, "Failed to check admin user before delete")
 		return adminapi.DeleteUser500JSONResponse{InternalErrorJSONResponse: makeErrInternal()}, nil
@@ -229,20 +254,34 @@ func (i *impl) ChangeUserPassword(
 	auth, err := dbGetUserAuth(ctx, i.sqlClient, int64(request.UserID))
 	if err != nil {
 		if errors.Is(err, errNoUser) {
-			return adminapi.ChangeUserPassword404JSONResponse{NotFoundErrorJSONResponse: makeErrNotFound()}, nil
+			return adminapi.ChangeUserPassword404JSONResponse{
+				NotFoundErrorJSONResponse: makeErrNotFound(),
+			}, nil
 		}
 		zerologr.Error(err, "Failed to get admin user auth for password change")
-		return adminapi.ChangeUserPassword500JSONResponse{InternalErrorJSONResponse: makeErrInternal()}, nil
+		return adminapi.ChangeUserPassword500JSONResponse{
+			InternalErrorJSONResponse: makeErrInternal(),
+		}, nil
 	}
 
 	if !password.Match(auth.Salt, auth.HashedPassword, request.Body.OldPassword) {
-		return adminapi.ChangeUserPassword401JSONResponse{UnauthorizedErrorJSONResponse: makeErrUnauthorized("Old password does not match.")}, nil
+		return adminapi.ChangeUserPassword401JSONResponse{
+			UnauthorizedErrorJSONResponse: makeErrUnauthorized("Old password does not match."),
+		}, nil
 	}
 
 	_, newSalt, newHashed := password.Make(request.Body.NewPassword)
-	if err := dbUpdateUserPassword(ctx, i.sqlClient, int64(request.UserID), newSalt, newHashed); err != nil {
+	if err := dbUpdateUserPassword(
+		ctx,
+		i.sqlClient,
+		int64(request.UserID),
+		newSalt,
+		newHashed,
+	); err != nil {
 		zerologr.Error(err, "Failed to update admin user password")
-		return adminapi.ChangeUserPassword500JSONResponse{InternalErrorJSONResponse: makeErrInternal()}, nil
+		return adminapi.ChangeUserPassword500JSONResponse{
+			InternalErrorJSONResponse: makeErrInternal(),
+		}, nil
 	}
 
 	return adminapi.ChangeUserPassword204Response{}, nil
@@ -255,15 +294,26 @@ func (i *impl) UpdateUserGroups(
 ) (adminapi.UpdateUserGroupsResponseObject, error) {
 	if _, err := dbGetUser(ctx, i.sqlClient, int64(request.UserID)); err != nil {
 		if errors.Is(err, errNoUser) {
-			return adminapi.UpdateUserGroups404JSONResponse{NotFoundErrorJSONResponse: makeErrNotFound()}, nil
+			return adminapi.UpdateUserGroups404JSONResponse{
+				NotFoundErrorJSONResponse: makeErrNotFound(),
+			}, nil
 		}
 		zerologr.Error(err, "Failed to check admin user before group update")
-		return adminapi.UpdateUserGroups500JSONResponse{InternalErrorJSONResponse: makeErrInternal()}, nil
+		return adminapi.UpdateUserGroups500JSONResponse{
+			InternalErrorJSONResponse: makeErrInternal(),
+		}, nil
 	}
 
-	if err := dbUpdateUserGroupBindings(ctx, i.sqlClient, int64(request.UserID), request.Body.GroupIDs); err != nil {
+	if err := dbUpdateUserGroupBindings(
+		ctx,
+		i.sqlClient,
+		int64(request.UserID),
+		request.Body.GroupIDs,
+	); err != nil {
 		zerologr.Error(err, "Failed to update admin user group bindings")
-		return adminapi.UpdateUserGroups500JSONResponse{InternalErrorJSONResponse: makeErrInternal()}, nil
+		return adminapi.UpdateUserGroups500JSONResponse{
+			InternalErrorJSONResponse: makeErrInternal(),
+		}, nil
 	}
 
 	return adminapi.UpdateUserGroups204Response{}, nil
@@ -277,10 +327,14 @@ func (i *impl) CreateGroup(
 	id, err := dbCreateGroup(ctx, i.sqlClient, request.Body.Name)
 	if err != nil {
 		zerologr.Error(err, "Failed to create admin group")
-		return adminapi.CreateGroup500JSONResponse{InternalErrorJSONResponse: makeErrInternal()}, nil
+		return adminapi.CreateGroup500JSONResponse{
+			InternalErrorJSONResponse: makeErrInternal(),
+		}, nil
 	}
 
-	return adminapi.CreateGroup201JSONResponse(adminapi.Group{Id: int(id), Name: request.Body.Name}), nil
+	return adminapi.CreateGroup201JSONResponse(
+		adminapi.Group{Id: int(id), Name: request.Body.Name},
+	), nil
 }
 
 // GetGroups implements [withExtensions].
@@ -305,7 +359,9 @@ func (i *impl) GetGroup(
 	g, err := dbGetGroup(ctx, i.sqlClient, int64(request.GroupID))
 	if err != nil {
 		if errors.Is(err, errNoGroup) {
-			return adminapi.GetGroup404JSONResponse{NotFoundErrorJSONResponse: makeErrNotFound()}, nil
+			return adminapi.GetGroup404JSONResponse{
+				NotFoundErrorJSONResponse: makeErrNotFound(),
+			}, nil
 		}
 		zerologr.Error(err, "Failed to get admin group")
 		return adminapi.GetGroup500JSONResponse{InternalErrorJSONResponse: makeErrInternal()}, nil
@@ -321,15 +377,26 @@ func (i *impl) UpdateGroup(
 ) (adminapi.UpdateGroupResponseObject, error) {
 	if _, err := dbGetGroup(ctx, i.sqlClient, int64(request.GroupID)); err != nil {
 		if errors.Is(err, errNoGroup) {
-			return adminapi.UpdateGroup404JSONResponse{NotFoundErrorJSONResponse: makeErrNotFound()}, nil
+			return adminapi.UpdateGroup404JSONResponse{
+				NotFoundErrorJSONResponse: makeErrNotFound(),
+			}, nil
 		}
 		zerologr.Error(err, "Failed to check admin group before update")
-		return adminapi.UpdateGroup500JSONResponse{InternalErrorJSONResponse: makeErrInternal()}, nil
+		return adminapi.UpdateGroup500JSONResponse{
+			InternalErrorJSONResponse: makeErrInternal(),
+		}, nil
 	}
 
-	if err := dbUpdateGroup(ctx, i.sqlClient, int64(request.GroupID), request.Body.Name); err != nil {
+	if err := dbUpdateGroup(
+		ctx,
+		i.sqlClient,
+		int64(request.GroupID),
+		request.Body.Name,
+	); err != nil {
 		zerologr.Error(err, "Failed to update admin group")
-		return adminapi.UpdateGroup500JSONResponse{InternalErrorJSONResponse: makeErrInternal()}, nil
+		return adminapi.UpdateGroup500JSONResponse{
+			InternalErrorJSONResponse: makeErrInternal(),
+		}, nil
 	}
 
 	return adminapi.UpdateGroup204Response{}, nil
@@ -342,15 +409,21 @@ func (i *impl) DeleteGroup(
 ) (adminapi.DeleteGroupResponseObject, error) {
 	if _, err := dbGetGroup(ctx, i.sqlClient, int64(request.GroupID)); err != nil {
 		if errors.Is(err, errNoGroup) {
-			return adminapi.DeleteGroup404JSONResponse{NotFoundErrorJSONResponse: makeErrNotFound()}, nil
+			return adminapi.DeleteGroup404JSONResponse{
+				NotFoundErrorJSONResponse: makeErrNotFound(),
+			}, nil
 		}
 		zerologr.Error(err, "Failed to check admin group before delete")
-		return adminapi.DeleteGroup500JSONResponse{InternalErrorJSONResponse: makeErrInternal()}, nil
+		return adminapi.DeleteGroup500JSONResponse{
+			InternalErrorJSONResponse: makeErrInternal(),
+		}, nil
 	}
 
 	if err := dbDeleteGroup(ctx, i.sqlClient, int64(request.GroupID)); err != nil {
 		zerologr.Error(err, "Failed to delete admin group")
-		return adminapi.DeleteGroup500JSONResponse{InternalErrorJSONResponse: makeErrInternal()}, nil
+		return adminapi.DeleteGroup500JSONResponse{
+			InternalErrorJSONResponse: makeErrInternal(),
+		}, nil
 	}
 
 	return adminapi.DeleteGroup204Response{}, nil

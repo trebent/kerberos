@@ -24,15 +24,15 @@ const (
 	deleteSuperSessions = "DELETE FROM admin_sessions WHERE user_id = (SELECT id FROM admin_users WHERE superuser = true);"
 
 	// Users.
-	selectAdminUsers         = "SELECT id, name FROM admin_users WHERE superuser = false;"
-	selectAdminUser          = "SELECT id, name FROM admin_users WHERE id = @userID AND superuser = false;"
-	selectAdminLoginUser     = "SELECT id, salt, hashed_password FROM admin_users WHERE name = @username AND superuser = false;"
-	selectAdminUserAuth      = "SELECT salt, hashed_password FROM admin_users WHERE id = @userID AND superuser = false;"
-	insertAdminUser          = "INSERT INTO admin_users (name, salt, hashed_password, superuser) VALUES(@name, @salt, @hashedPassword, false);"
-	updateAdminUser          = "UPDATE admin_users SET name = @name WHERE id = @userID AND superuser = false;"
-	deleteAdminUser          = "DELETE FROM admin_users WHERE id = @userID AND superuser = false;"
+	selectAdminUsers     = "SELECT id, name FROM admin_users WHERE superuser = false;"
+	selectAdminUser      = "SELECT id, name FROM admin_users WHERE id = @userID AND superuser = false;"
+	selectAdminLoginUser = "SELECT id, salt, hashed_password FROM admin_users WHERE name = @username AND superuser = false;"
+	selectAdminUserAuth  = "SELECT salt, hashed_password FROM admin_users WHERE id = @userID AND superuser = false;"
+	insertAdminUser      = "INSERT INTO admin_users (name, salt, hashed_password, superuser) VALUES(@name, @salt, @hashedPassword, false);"
+	updateAdminUser      = "UPDATE admin_users SET name = @name WHERE id = @userID AND superuser = false;"
+	deleteAdminUser      = "DELETE FROM admin_users WHERE id = @userID AND superuser = false;"
 	//nolint:gosec // not a password
-	updateAdminUserPassword  = "UPDATE admin_users SET salt = @salt, hashed_password = @hashedPassword WHERE id = @userID AND superuser = false;"
+	updateAdminUserPassword = "UPDATE admin_users SET salt = @salt, hashed_password = @hashedPassword WHERE id = @userID AND superuser = false;"
 
 	// Groups.
 	selectAdminGroups = "SELECT id, name FROM admin_groups;"
@@ -42,7 +42,7 @@ const (
 	deleteAdminGroup  = "DELETE FROM admin_groups WHERE id = @groupID;"
 
 	// Group bindings.
-	selectAdminUserGroups  = "SELECT gb.group_id, g.name FROM admin_group_bindings gb INNER JOIN admin_groups g ON gb.group_id = g.id WHERE gb.user_id = @userID;"
+	selectAdminUserGroups   = "SELECT gb.group_id, g.name FROM admin_group_bindings gb INNER JOIN admin_groups g ON gb.group_id = g.id WHERE gb.user_id = @userID;"
 	deleteAdminGroupBinding = "DELETE FROM admin_group_bindings WHERE user_id = @userID AND group_id = @groupID;"
 	insertAdminGroupBinding = "INSERT INTO admin_group_bindings (user_id, group_id) VALUES (@userID, @groupID);"
 
@@ -91,7 +91,11 @@ func dbGetSuperuser(ctx context.Context, client db.SQLClient) (*model.User, erro
 
 // dbGetSession returns a session by its session ID.
 // Returns (nil, errNoSession) when no matching session exists.
-func dbGetSession(ctx context.Context, client db.SQLClient, sessionID string) (*model.Session, error) {
+func dbGetSession(
+	ctx context.Context,
+	client db.SQLClient,
+	sessionID string,
+) (*model.Session, error) {
 	rows, err := client.Query(
 		ctx,
 		selectAdminSession,
@@ -233,7 +237,11 @@ func dbDeleteUser(ctx context.Context, client db.SQLClient, userID int64) error 
 
 // dbGetUserAuth returns authentication credentials for a non-superuser admin user.
 // Returns (nil, errNoUser) when no matching user exists.
-func dbGetUserAuth(ctx context.Context, client db.SQLClient, userID int64) (*model.UserAuth, error) {
+func dbGetUserAuth(
+	ctx context.Context,
+	client db.SQLClient,
+	userID int64,
+) (*model.UserAuth, error) {
 	rows, err := client.Query(
 		ctx,
 		selectAdminUserAuth,
@@ -283,7 +291,11 @@ func dbUpdateUserPassword(
 
 // dbLoginLookup looks up a non-superuser admin user by username for authentication.
 // Returns (nil, errNoUser) when no matching user exists.
-func dbLoginLookup(ctx context.Context, client db.SQLClient, username string) (*model.SuperuserLoginUser, error) {
+func dbLoginLookup(
+	ctx context.Context,
+	client db.SQLClient,
+	username string,
+) (*model.SuperuserLoginUser, error) {
 	rows, err := client.Query(
 		ctx,
 		selectAdminLoginUser,
@@ -519,7 +531,12 @@ func dbUpdateUserGroupBindings(
 
 // --- Sessions ---
 
-func dbCreateSession(ctx context.Context, client db.SQLClient, userID int64, sessionID string) error {
+func dbCreateSession(
+	ctx context.Context,
+	client db.SQLClient,
+	userID int64,
+	sessionID string,
+) error {
 	_, err := client.Exec(
 		ctx,
 		insertSession,
