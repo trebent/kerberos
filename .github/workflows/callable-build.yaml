@@ -18,9 +18,6 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Install oapi-codegen
-        run: go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.6.0
-
       - name: Codegen
         run: make codegen
 

@@ -38,7 +38,10 @@ lint:
 	$(call cecho,Running linter for Kerberos...,$(BOLD_YELLOW))
 	@golangci-lint run --fix
 
-codegen:
+install-deps:
+	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.6.0
+
+codegen: install-deps
 	$(call cecho,Running codegen for Kerberos...,$(BOLD_YELLOW))
 	@go generate ./...
 	
