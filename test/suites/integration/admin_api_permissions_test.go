@@ -498,7 +498,7 @@ func TestPermissionsAdminUserMgmtAdminAllowed(t *testing.T) {
 	checkErr(err, t)
 	verifyStatusCode(updateGroupsResp.StatusCode(), http.StatusNoContent, t)
 
-	// adminusermgmtadmin must be able to delete a group (DELETE).
+	// adminusermgmtadmin must be able to update a group (PUT).
 	newGroupName := groupName()
 	updateGroupResp, err := adminClient.UpdateGroupWithResponse(
 		t.Context(),
