@@ -159,7 +159,7 @@ func TestComponentGetOAS(t *testing.T) {
 	}
 
 	_, err = c.GetOAS("non-existent-backend")
-	if !errors.Is(err, apierror.APIErrNotFound) {
+	if !errors.Is(err, apierror.ErrNotFound) {
 		t.Fatal("Expected error for non-existent backend, got nil")
 	}
 }

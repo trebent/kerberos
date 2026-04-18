@@ -35,6 +35,8 @@ components:
               username:
                 type: string
                 minLength: 1
+            required:
+              - username
     ChangePasswordRequest:
       description: Request body for changing a user's password.
       required: true

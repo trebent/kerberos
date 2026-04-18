@@ -110,7 +110,7 @@ func RequireSessionMiddleware() adminapigen.StrictMiddlewareFunc {
 				return f(ctx, w, r, request)
 			}
 
-			return nil, apierror.APIErrNoSession
+			return nil, apierror.ErrUnauthenticated
 		}
 	}
 }

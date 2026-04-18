@@ -153,19 +153,19 @@ func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	case err != nil:
 		zerologr.Error(err, "Error during authentication")
-		apierror.ErrorHandler(w, req, apierror.APIErrInternal)
+		apierror.ErrorHandler(w, req, apierror.ErrISE)
 		return
 	}
 
 	if err := m.Authenticated(req); err != nil {
 		zerologr.Error(err, "User tried to perform an authenticated action while unauthenticated")
-		apierror.ErrorHandler(w, req, apierror.APIErrNoPermission)
+		apierror.ErrorHandler(w, req, apierror.ErrUnauthenticated)
 		return
 	}
 
 	if err := m.Authorized(req); err != nil {
 		zerologr.Error(err, "User tried to perform an action they were not authorized to do")
-		apierror.ErrorHandler(w, req, apierror.APIErrForbidden)
+		apierror.ErrorHandler(w, req, apierror.ErrForbidden)
 		return
 	}
 
