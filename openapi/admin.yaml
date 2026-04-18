@@ -128,6 +128,12 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/APIErrorResponse"
+    ConflictError:
+      description: Conflict.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIErrorResponse"
     NotFoundError:
       description: Not found.
       content:
@@ -395,6 +401,8 @@ paths:
           $ref: "#/components/responses/UnauthorizedError"
         "403":
           $ref: "#/components/responses/ForbiddenError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
         "500":
           $ref: "#/components/responses/InternalError"
     get:
@@ -462,6 +470,8 @@ paths:
           $ref: "#/components/responses/ForbiddenError"
         "404":
           $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
         "500":
           $ref: "#/components/responses/InternalError"
     delete:
@@ -586,6 +596,8 @@ paths:
           $ref: "#/components/responses/UnauthorizedError"
         "403":
           $ref: "#/components/responses/ForbiddenError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
         "500":
           $ref: "#/components/responses/InternalError"
     get:
@@ -651,6 +663,8 @@ paths:
           $ref: "#/components/responses/ForbiddenError"
         "404":
           $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
         "500":
           $ref: "#/components/responses/InternalError"
     delete:

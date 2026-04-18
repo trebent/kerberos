@@ -112,6 +112,9 @@ type User struct {
 // BadRequestError defines model for BadRequestError.
 type BadRequestError = APIErrorResponse
 
+// ConflictError defines model for ConflictError.
+type ConflictError = APIErrorResponse
+
 // ForbiddenError defines model for ForbiddenError.
 type ForbiddenError = APIErrorResponse
 
@@ -1648,6 +1651,7 @@ type CreateGroupResponse struct {
 	JSON400      *BadRequestError
 	JSON401      *UnauthorizedError
 	JSON403      *ForbiddenError
+	JSON409      *ConflictError
 	JSON500      *InternalError
 }
 
@@ -1726,6 +1730,7 @@ type UpdateGroupResponse struct {
 	JSON401      *UnauthorizedError
 	JSON403      *ForbiddenError
 	JSON404      *NotFoundError
+	JSON409      *ConflictError
 	JSON500      *InternalError
 }
 
@@ -1895,6 +1900,7 @@ type CreateUserResponse struct {
 	JSON400      *BadRequestError
 	JSON401      *UnauthorizedError
 	JSON403      *ForbiddenError
+	JSON409      *ConflictError
 	JSON500      *InternalError
 }
 
@@ -1974,6 +1980,7 @@ type UpdateUserResponse struct {
 	JSON401      *UnauthorizedError
 	JSON403      *ForbiddenError
 	JSON404      *NotFoundError
+	JSON409      *ConflictError
 	JSON500      *InternalError
 }
 
@@ -2393,6 +2400,13 @@ func ParseCreateGroupResponse(rsp *http.Response) (*CreateGroupResponse, error) 
 		}
 		response.JSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ConflictError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -2554,6 +2568,13 @@ func ParseUpdateGroupResponse(rsp *http.Response) (*UpdateGroupResponse, error) 
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ConflictError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalError
@@ -2842,6 +2863,13 @@ func ParseCreateUserResponse(rsp *http.Response) (*CreateUserResponse, error) {
 		}
 		response.JSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ConflictError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -3010,6 +3038,13 @@ func ParseUpdateUserResponse(rsp *http.Response) (*UpdateUserResponse, error) {
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ConflictError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalError

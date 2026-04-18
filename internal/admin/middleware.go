@@ -84,7 +84,7 @@ func RequireSessionMiddleware() adminapigen.StrictMiddlewareFunc {
 			zerologr.V(20).Info("Running admin require session middleware")
 
 			// auto-approve since no session exists.
-			if operationID == "LoginSuperuser" {
+			if operationID == "LoginSuperuser" || operationID == "Login" {
 				return f(ctx, w, r, request)
 			}
 

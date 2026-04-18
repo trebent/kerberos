@@ -334,3 +334,27 @@ func extractSession(resp *http.Response, t *testing.T) string {
 
 	return session
 }
+
+// superLogin logs in as the superuser and returns the session ID.
+func superLogin(t *testing.T) string {
+	t.Helper()
+	resp, err := adminClient.LoginSuperuserWithResponse(
+		t.Context(),
+		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
+	)
+	checkErr(err, t)
+	verifyStatusCode(resp.StatusCode(), http.StatusNoContent, t)
+	return extractSession(resp.HTTPResponse, t)
+}
+
+// adminUserLogin logs in as a non-superuser admin and returns the session ID.
+func adminUserLogin(t *testing.T, name, pass string) string {
+	t.Helper()
+	resp, err := adminClient.LoginWithResponse(
+		t.Context(),
+		adminapi.LoginJSONRequestBody{Username: name, Password: pass},
+	)
+	checkErr(err, t)
+	verifyStatusCode(resp.StatusCode(), http.StatusNoContent, t)
+	return extractSession(resp.HTTPResponse, t)
+}
