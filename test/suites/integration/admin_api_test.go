@@ -39,6 +39,7 @@ func TestAdminLoginSuperuser(t *testing.T) {
 }
 
 func TestAdminLoginSuperuserFailure(t *testing.T) {
+	t.Parallel()
 	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
 		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: "not-correct"},
@@ -49,6 +50,7 @@ func TestAdminLoginSuperuserFailure(t *testing.T) {
 }
 
 func TestAdminOASFailure(t *testing.T) {
+	t.Parallel()
 	badSuperLoginResp, err := adminClient.LoginSuperuserWithResponse(t.Context(), adminapi.LoginSuperuserJSONRequestBody{})
 	checkErr(err, t)
 	verifyStatusCode(badSuperLoginResp.StatusCode(), http.StatusBadRequest, t)
@@ -56,6 +58,7 @@ func TestAdminOASFailure(t *testing.T) {
 }
 
 func TestAdminGetFlow(t *testing.T) {
+	t.Parallel()
 	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
 		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
@@ -122,6 +125,7 @@ func TestAdminGetFlow(t *testing.T) {
 }
 
 func TestAdminGetBackendOASNotFound(t *testing.T) {
+	t.Parallel()
 	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
 		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
@@ -141,6 +145,7 @@ func TestAdminGetBackendOASNotFound(t *testing.T) {
 }
 
 func TestAdminGetBackendOAS(t *testing.T) {
+	t.Parallel()
 	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
 		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},

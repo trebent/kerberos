@@ -9,6 +9,7 @@ import (
 
 // TestAdminGroupCreate verifies that a new admin group can be created.
 func TestAdminGroupCreate(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	name := groupName()
@@ -32,6 +33,7 @@ func TestAdminGroupCreate(t *testing.T) {
 
 // TestAdminGroupCreateConflict verifies that creating a duplicate admin group name is rejected.
 func TestAdminGroupCreateConflict(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	name := groupName()
@@ -55,6 +57,7 @@ func TestAdminGroupCreateConflict(t *testing.T) {
 
 // TestAdminGroupList verifies that a newly created admin group appears in the list response.
 func TestAdminGroupList(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	name := groupName()
@@ -84,6 +87,7 @@ func TestAdminGroupList(t *testing.T) {
 
 // TestAdminGroupGet verifies that a created admin group can be fetched by ID.
 func TestAdminGroupGet(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	name := groupName()
@@ -109,6 +113,7 @@ func TestAdminGroupGet(t *testing.T) {
 
 // TestAdminGroupGetNotFound verifies that fetching a non-existent admin group returns 404.
 func TestAdminGroupGetNotFound(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	getResp, err := adminClient.GetGroupWithResponse(
@@ -123,6 +128,7 @@ func TestAdminGroupGetNotFound(t *testing.T) {
 
 // TestAdminGroupUpdate verifies that an admin group's name can be updated.
 func TestAdminGroupUpdate(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	name := groupName()
@@ -157,6 +163,7 @@ func TestAdminGroupUpdate(t *testing.T) {
 
 // TestAdminGroupUpdateConflict verifies that updating an admin group's name to an existing name returns a conflict.
 func TestAdminGroupUpdateConflict(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	name := groupName()
@@ -192,6 +199,7 @@ func TestAdminGroupUpdateConflict(t *testing.T) {
 
 // TestAdminGroupDelete verifies that an admin group can be deleted and is no longer retrievable.
 func TestAdminGroupDelete(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	name := groupName()
@@ -223,6 +231,7 @@ func TestAdminGroupDelete(t *testing.T) {
 
 // TestAdminGroupDeleteNotFound verifies that deleting a non-existent admin group returns 404.
 func TestAdminGroupDeleteNotFound(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	deleteResp, err := adminClient.DeleteGroupWithResponse(

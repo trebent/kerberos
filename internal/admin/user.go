@@ -173,7 +173,8 @@ func (i *impl) GetUsers(
 	ctx context.Context,
 	_ adminapi.GetUsersRequestObject,
 ) (adminapi.GetUsersResponseObject, error) {
-	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) && !ContextIsAdminUserMgmtViewer(ctx) {
+	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) &&
+		!ContextIsAdminUserMgmtViewer(ctx) {
 		return adminapi.GetUsers403JSONResponse{
 			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
 				makeGenAPIError("permission denied"),
@@ -195,7 +196,8 @@ func (i *impl) GetUser(
 	ctx context.Context,
 	request adminapi.GetUserRequestObject,
 ) (adminapi.GetUserResponseObject, error) {
-	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) && !ContextIsAdminUserMgmtViewer(ctx) {
+	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) &&
+		!ContextIsAdminUserMgmtViewer(ctx) {
 		return adminapi.GetUser403JSONResponse{
 			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
 				makeGenAPIError("permission denied"),
@@ -443,7 +445,8 @@ func (i *impl) GetGroups(
 	ctx context.Context,
 	_ adminapi.GetGroupsRequestObject,
 ) (adminapi.GetGroupsResponseObject, error) {
-	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) && !ContextIsAdminUserMgmtViewer(ctx) {
+	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) &&
+		!ContextIsAdminUserMgmtViewer(ctx) {
 		return adminapi.GetGroups403JSONResponse{
 			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
 				makeGenAPIError("permission denied"),
@@ -476,7 +479,8 @@ func (i *impl) GetGroup(
 	ctx context.Context,
 	request adminapi.GetGroupRequestObject,
 ) (adminapi.GetGroupResponseObject, error) {
-	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) && !ContextIsAdminUserMgmtViewer(ctx) {
+	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) &&
+		!ContextIsAdminUserMgmtViewer(ctx) {
 		return adminapi.GetGroup403JSONResponse{
 			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
 				makeGenAPIError("permission denied"),

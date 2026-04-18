@@ -10,6 +10,7 @@ import (
 // TestAdminUserGroupBindingsAssign verifies that a user can be assigned to groups,
 // and that those groups are reflected in the GetUser response.
 func TestAdminUserGroupBindingsAssign(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	name := username()
@@ -72,6 +73,7 @@ func TestAdminUserGroupBindingsAssign(t *testing.T) {
 // TestAdminUserGroupBindingsUpdate verifies that a user's group membership can be partially updated
 // (groups removed and added).
 func TestAdminUserGroupBindingsUpdate(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	name := username()
@@ -158,6 +160,7 @@ func TestAdminUserGroupBindingsUpdate(t *testing.T) {
 
 // TestAdminUserGroupBindingsClear verifies that a user's group memberships can be cleared.
 func TestAdminUserGroupBindingsClear(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	name := username()
@@ -213,6 +216,7 @@ func TestAdminUserGroupBindingsClear(t *testing.T) {
 
 // TestAdminUserGroupBindingsNotFoundUser verifies that updating groups for a non-existent user returns 404.
 func TestAdminUserGroupBindingsNotFoundUser(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	updateResp, err := adminClient.UpdateUserGroupsWithResponse(

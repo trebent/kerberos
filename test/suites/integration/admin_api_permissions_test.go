@@ -10,12 +10,12 @@ import (
 
 // permIDs are the fixed permission IDs bootstrapped by the server.
 const (
-	permIDFlowViewer           = 1
-	permIDOASViewer            = 2
-	permIDBasicAuthOrgAdmin    = 3
-	permIDBasicAuthOrgViewer   = 4
-	permIDAdminUserMgmtAdmin   = 5
-	permIDAdminUserMgmtViewer  = 6
+	permIDFlowViewer          = 1
+	permIDOASViewer           = 2
+	permIDBasicAuthOrgAdmin   = 3
+	permIDBasicAuthOrgViewer  = 4
+	permIDAdminUserMgmtAdmin  = 5
+	permIDAdminUserMgmtViewer = 6
 )
 
 // createAdminUserInGroup creates a fresh admin user, creates a group with the specified
@@ -61,6 +61,7 @@ func createAdminUserInGroup(t *testing.T, superSession string, permissionIDs []i
 // TestPermissionsGetPermissions verifies that any authenticated admin user can list
 // available permissions.
 func TestPermissionsGetPermissions(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	resp, err := adminClient.GetPermissionsWithResponse(
@@ -100,6 +101,7 @@ func TestPermissionsGetPermissions(t *testing.T) {
 // TestPermissionsSuperuserAccessAll verifies that the superuser can access every
 // permission-gated endpoint without being a member of any group.
 func TestPermissionsSuperuserAccessAll(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	// GetFlow — requires flowviewer.
@@ -161,6 +163,7 @@ func TestPermissionsSuperuserAccessAll(t *testing.T) {
 // TestPermissionsFlowViewerAllowed verifies that an admin user with the flowviewer
 // permission can call GetFlow.
 func TestPermissionsFlowViewerAllowed(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 	session := createAdminUserInGroup(t, superSession, []int{permIDFlowViewer})
 
@@ -175,6 +178,7 @@ func TestPermissionsFlowViewerAllowed(t *testing.T) {
 // TestPermissionsFlowViewerDeniedWithoutPermission verifies that an admin user without
 // the flowviewer permission receives 403 when calling GetFlow.
 func TestPermissionsFlowViewerDeniedWithoutPermission(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 	// Give only oasviewer — no flowviewer.
 	session := createAdminUserInGroup(t, superSession, []int{permIDOASViewer})
@@ -190,6 +194,7 @@ func TestPermissionsFlowViewerDeniedWithoutPermission(t *testing.T) {
 // TestPermissionsFlowViewerDeniedNoGroup verifies that an admin user in no group at all
 // receives 403 when calling GetFlow.
 func TestPermissionsFlowViewerDeniedNoGroup(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	const pass = "testpassword1"
@@ -217,6 +222,7 @@ func TestPermissionsFlowViewerDeniedNoGroup(t *testing.T) {
 // TestPermissionsOASViewerAllowed verifies that an admin user with the oasviewer
 // permission can call GetBackendOAS.
 func TestPermissionsOASViewerAllowed(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 	session := createAdminUserInGroup(t, superSession, []int{permIDOASViewer})
 
@@ -232,6 +238,7 @@ func TestPermissionsOASViewerAllowed(t *testing.T) {
 // TestPermissionsOASViewerDeniedWithoutPermission verifies that an admin user without
 // the oasviewer permission receives 403 when calling GetBackendOAS.
 func TestPermissionsOASViewerDeniedWithoutPermission(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 	// Give only flowviewer — no oasviewer.
 	session := createAdminUserInGroup(t, superSession, []int{permIDFlowViewer})
@@ -251,6 +258,7 @@ func TestPermissionsOASViewerDeniedWithoutPermission(t *testing.T) {
 // basicauthorgadmin permission can perform both read and write operations on the
 // basic auth API.
 func TestPermissionsBasicAuthOrgAdminAllowed(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 	session := createAdminUserInGroup(t, superSession, []int{permIDBasicAuthOrgAdmin})
 
@@ -289,6 +297,7 @@ func TestPermissionsBasicAuthOrgAdminAllowed(t *testing.T) {
 // without any basic auth permission cannot access the basic auth API. The middleware falls
 // through to session lookup (which does not recognise an admin session), returning 401.
 func TestPermissionsBasicAuthOrgAdminDeniedWithoutPermission(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 	// Give only flowviewer — no basic auth permission.
 	session := createAdminUserInGroup(t, superSession, []int{permIDFlowViewer})
@@ -308,6 +317,7 @@ func TestPermissionsBasicAuthOrgAdminDeniedWithoutPermission(t *testing.T) {
 // TestPermissionsBasicAuthOrgViewerReadAllowed verifies that an admin user with the
 // basicauthorgviewer permission can call GET endpoints on the basic auth API.
 func TestPermissionsBasicAuthOrgViewerReadAllowed(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	// Create an org via the superuser first so there is something to read.
@@ -338,6 +348,7 @@ func TestPermissionsBasicAuthOrgViewerReadAllowed(t *testing.T) {
 // basicauthorgviewer permission is denied for non-GET (write) endpoints on the basic
 // auth API.
 func TestPermissionsBasicAuthOrgViewerWriteDenied(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 	session := createAdminUserInGroup(t, superSession, []int{permIDBasicAuthOrgViewer})
 
@@ -367,6 +378,7 @@ func TestPermissionsBasicAuthOrgViewerWriteDenied(t *testing.T) {
 // The middleware falls through to session lookup (which does not recognise an admin session),
 // returning 401.
 func TestPermissionsBasicAuthOrgViewerDeniedWithoutPermission(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 	orgID, _ := orgWithSession(t, superSession)
 
@@ -387,6 +399,7 @@ func TestPermissionsBasicAuthOrgViewerDeniedWithoutPermission(t *testing.T) {
 // TestPermissionsGroupResponseIncludesPermissions verifies that the permissions field is
 // present and accurate in the group create/get responses.
 func TestPermissionsGroupResponseIncludesPermissions(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	permIDs := []int{permIDFlowViewer, permIDOASViewer}
@@ -436,6 +449,7 @@ func TestPermissionsGroupResponseIncludesPermissions(t *testing.T) {
 // adminusermgmtadmin permission can perform both read and write operations on the
 // admin user and group management endpoints.
 func TestPermissionsAdminUserMgmtAdminAllowed(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 	session := createAdminUserInGroup(t, superSession, []int{permIDAdminUserMgmtAdmin})
 
@@ -531,6 +545,7 @@ func TestPermissionsAdminUserMgmtAdminAllowed(t *testing.T) {
 // TestPermissionsAdminUserMgmtAdminDeniedWithoutPermission verifies that an admin user
 // without the adminusermgmtadmin permission receives 403 when calling a write user mgmt endpoint.
 func TestPermissionsAdminUserMgmtAdminDeniedWithoutPermission(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 	// Give only flowviewer — no user mgmt permission.
 	session := createAdminUserInGroup(t, superSession, []int{permIDFlowViewer})
@@ -549,6 +564,7 @@ func TestPermissionsAdminUserMgmtAdminDeniedWithoutPermission(t *testing.T) {
 // TestPermissionsAdminUserMgmtViewerReadAllowed verifies that an admin user with the
 // adminusermgmtviewer permission can call GET endpoints on the admin user/group mgmt API.
 func TestPermissionsAdminUserMgmtViewerReadAllowed(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 	session := createAdminUserInGroup(t, superSession, []int{permIDAdminUserMgmtViewer})
 
@@ -573,6 +589,7 @@ func TestPermissionsAdminUserMgmtViewerReadAllowed(t *testing.T) {
 // adminusermgmtviewer permission is denied for non-GET (write) endpoints on the admin
 // user/group mgmt API.
 func TestPermissionsAdminUserMgmtViewerWriteDenied(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 	session := createAdminUserInGroup(t, superSession, []int{permIDAdminUserMgmtViewer})
 
@@ -598,6 +615,7 @@ func TestPermissionsAdminUserMgmtViewerWriteDenied(t *testing.T) {
 // TestPermissionsAdminUserMgmtViewerDeniedWithoutPermission verifies that an admin user
 // with no user mgmt permission receives 403 when calling even GET user mgmt endpoints.
 func TestPermissionsAdminUserMgmtViewerDeniedWithoutPermission(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 	// Give only flowviewer — no user mgmt permission.
 	session := createAdminUserInGroup(t, superSession, []int{permIDFlowViewer})
