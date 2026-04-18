@@ -91,22 +91,22 @@ func (a *basic) Authenticated(req *http.Request) error {
 				zerologr.V(30).Info("Header "+key, "values", values)
 			}
 		}
-		return apierror.APIErrNoSession
+		return apierror.ErrUnauthenticated
 	}
 
 	// Read session info from the DB and compare it to the incoming request.
 	session, err := dbGetSessionRow(req.Context(), a.sqlClient, sessionID)
 	if errors.Is(err, errNoSession) {
-		zerologr.Error(apierror.ErrNoSession, "Failed to find a matching session")
-		return apierror.APIErrNoSession
+		zerologr.Error(apierror.ErrUnauthenticated, "Failed to find a matching session")
+		return apierror.ErrUnauthenticated
 	}
 	if err != nil {
-		return apierror.APIErrInternal
+		return apierror.ErrISE
 	}
 
 	if time.Now().UnixMilli() > session.Expires {
-		zerologr.Error(apierror.ErrNoSession, "Session expired")
-		return apierror.APIErrNoSession
+		zerologr.Error(apierror.ErrUnauthenticated, "Session expired")
+		return apierror.ErrUnauthenticated
 	}
 
 	req.Header.Set("X-Krb-Org", strconv.Itoa(int(session.OrgID)))
@@ -159,17 +159,17 @@ func (a *basic) Authorized(req *http.Request) error {
 	orgID, err := strconv.ParseInt(req.Header.Get("X-Krb-Org"), 10, 64)
 	if err != nil {
 		zerologr.Error(err, "Failed to parse org ID header")
-		return apierror.APIErrInternal
+		return apierror.ErrISE
 	}
 	userID, err := strconv.ParseInt(req.Header.Get("X-Krb-User"), 10, 64)
 	if err != nil {
 		zerologr.Error(err, "Failed to parse user ID header")
-		return apierror.APIErrInternal
+		return apierror.ErrISE
 	}
 
 	userGroups, err := dbGetUserGroupNames(req.Context(), a.sqlClient, orgID, userID)
 	if err != nil {
-		return apierror.APIErrInternal
+		return apierror.ErrISE
 	}
 
 	for _, g := range userGroups {
@@ -183,7 +183,7 @@ func (a *basic) Authorized(req *http.Request) error {
 	}
 
 	// No group match found -> 403
-	return apierror.APIErrForbidden
+	return apierror.ErrForbidden
 }
 
 // RegisterRoutes registers the API routes for the basic auth method.

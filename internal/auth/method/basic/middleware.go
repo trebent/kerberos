@@ -64,7 +64,7 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 						"method",
 						r.Method,
 					)
-					return nil, apierror.APIErrForbidden
+					return nil, apierror.ErrForbidden
 				}
 				return f(ctx, w, r, request)
 			}
@@ -78,21 +78,21 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 						zerologr.V(30).Info("Header "+key, "values", values)
 					}
 				}
-				return nil, apierror.APIErrNoSession
+				return nil, apierror.ErrUnauthenticated
 			}
 
 			session, err := dbGetSessionRow(ctx, apiImpl.db, sessionID)
 			if errors.Is(err, errNoSession) {
-				zerologr.Error(apierror.APIErrNoSession, "Failed to find a matching session")
-				return nil, apierror.APIErrNoSession
+				zerologr.Error(apierror.ErrUnauthenticated, "Failed to find a matching session")
+				return nil, apierror.ErrUnauthenticated
 			}
 			if err != nil {
-				return nil, apierror.APIErrInternal
+				return nil, apierror.ErrISE
 			}
 
 			if time.Now().UnixMilli() > session.Expires {
-				zerologr.Error(apierror.ErrNoSession, "Session expired")
-				return nil, apierror.APIErrNoSession
+				zerologr.Error(apierror.ErrUnauthenticated, "Session expired")
+				return nil, apierror.ErrUnauthenticated
 			}
 
 			var validation []error
@@ -100,7 +100,7 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 			case "CreateOrganisation", "ListOrganisations":
 				zerologr.Info("Validating creating/listing organisations")
 				validation = make([]error, 1)
-				validation[0] = apierror.APIErrForbidden
+				validation[0] = apierror.ErrForbidden
 			case "Logout":
 				zerologr.V(20).Info("Validating auth for logout path")
 				validation = make([]error, 1)
@@ -194,7 +194,7 @@ func orgValidator(orgID int64, r *http.Request) error {
 	}
 
 	if parsedOrgID != orgID {
-		return apierror.APIErrForbidden
+		return apierror.ErrForbidden
 	}
 
 	return nil
@@ -205,7 +205,7 @@ func administratorValidator(isAdministrator bool) error {
 		return nil
 	}
 
-	return apierror.APIErrForbidden
+	return apierror.ErrForbidden
 }
 
 func ownerUserValidator(userID int64, r *http.Request) error {
@@ -215,7 +215,7 @@ func ownerUserValidator(userID int64, r *http.Request) error {
 	}
 
 	if parsedUserID != userID {
-		return apierror.APIErrForbidden
+		return apierror.ErrForbidden
 	}
 
 	return nil

@@ -20,7 +20,7 @@ func TestAdminSSIDummyOASBackend(t *testing.T) {
 	ssiImpl := ssi.(*impl)
 
 	_, err = ssiImpl.oasBackend.GetOAS("dummy-backend")
-	if !errors.Is(err, apierror.APIErrNotFound) {
+	if !errors.Is(err, apierror.ErrNotFound) {
 		t.Fatalf("expected APIErrNotFound, got %v", err)
 	}
 }

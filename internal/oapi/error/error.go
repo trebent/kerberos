@@ -19,45 +19,30 @@ type (
 var (
 	_ error = (*Error)(nil)
 
-	ErrNoPermission = errors.New("you do not have permission to do that")
-	ErrNoSession    = errors.New("no session found")
-	ErrInternal     = errors.New("internal error")
-	ErrConflict     = errors.New("conflict")
-	ErrNotFound     = errors.New("not found")
-	ErrMethod       = errors.New("method not allowed")
-
-	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
-	APIErrNoPermission = &Error{
-		Errors:     []string{ErrNoPermission.Error()},
+	ErrUnauthenticated = &Error{
+		Errors:     []string{http.StatusText(http.StatusUnauthorized)},
 		StatusCode: http.StatusUnauthorized,
 	}
-	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
-	APIErrNoSession = &Error{
-		Errors:     []string{ErrNoSession.Error()},
-		StatusCode: http.StatusUnauthorized,
-	}
-	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
-	APIErrInternal = &Error{
-		Errors:     []string{ErrInternal.Error()},
+	ErrISE = &Error{
+		Errors:     []string{http.StatusText(http.StatusInternalServerError)},
 		StatusCode: http.StatusInternalServerError,
 	}
-	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
-	APIErrNotFound = &Error{
-		Errors:     []string{ErrNotFound.Error()},
+	ErrNotFound = &Error{
+		Errors:     []string{http.StatusText(http.StatusNotFound)},
 		StatusCode: http.StatusNotFound,
 	}
 	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
-	APIErrMethodNotAllowed = &Error{
-		Errors:     []string{ErrMethod.Error()},
+	ErrMethodNotAllowed = &Error{
+		Errors:     []string{http.StatusText(http.StatusMethodNotAllowed)},
 		StatusCode: http.StatusMethodNotAllowed,
 	}
 	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
-	APIErrForbidden = &Error{
-		Errors:     []string{ErrNoPermission.Error()},
+	ErrForbidden = &Error{
+		Errors:     []string{http.StatusText(http.StatusForbidden)},
 		StatusCode: http.StatusForbidden,
 	}
 	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
-	APIErrUnimplemented = &Error{
+	ErrUnimplemented = &Error{
 		Errors:     []string{"unimplemented"},
 		StatusCode: http.StatusNotImplemented,
 	}
@@ -94,7 +79,7 @@ func ErrorHandler(w http.ResponseWriter, _ *http.Request, err error) {
 	apiError := &Error{}
 	if !errors.As(err, &apiError) {
 		zerologr.Info("No error is *Error", "err", err.Error())
-		apiError = APIErrInternal
+		apiError = ErrISE
 	}
 
 	w.Header().Set("Content-Type", "application/json")

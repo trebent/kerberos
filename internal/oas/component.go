@@ -133,5 +133,5 @@ func (v *validator) GetOAS(backendName string) ([]byte, error) {
 		}
 	}
 
-	return nil, apierror.APIErrNotFound
+	return nil, apierror.ErrNotFound
 }

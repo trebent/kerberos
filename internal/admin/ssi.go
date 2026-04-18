@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"net/http"
 
 	adminext "github.com/trebent/kerberos/internal/admin/extensions"
 	"github.com/trebent/kerberos/internal/db"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
-	apierror "github.com/trebent/kerberos/internal/oapi/error"
 	"github.com/trebent/zerologr"
 )
 
@@ -43,26 +43,15 @@ var (
 	errNoSuperuser = errors.New("no superuser exists")
 	errNoSession   = errors.New("no valid super session found")
 
-	apiErrInternal = adminapi.InternalErrorJSONResponse(
-		makeGenAPIError(apierror.APIErrInternal.Error()),
-	)
-	apiErrForbidden = adminapi.ForbiddenErrorJSONResponse(
-		makeGenAPIError(apierror.ErrNoPermission.Error()),
-	)
-	apiErrNotFound = adminapi.NotFoundErrorJSONResponse(
-		makeGenAPIError(apierror.ErrNotFound.Error()),
-	)
-	apiErrConflict = adminapi.ConflictErrorJSONResponse(
-		makeGenAPIError(apierror.ErrConflict.Error()),
-	)
+	apiErrInternal     = makeGenAPIError(http.StatusText(http.StatusInternalServerError))
+	apiErrForbidden    = makeGenAPIError(http.StatusText(http.StatusForbidden))
+	apiErrUnauthorized = makeGenAPIError(http.StatusText(http.StatusUnauthorized))
+	apiErrNotFound     = makeGenAPIError(http.StatusText(http.StatusNotFound))
+	apiErrConflict     = makeGenAPIError(http.StatusText(http.StatusConflict))
 )
 
 func makeGenAPIError(msg string) adminapi.APIErrorResponse {
 	return adminapi.APIErrorResponse{Errors: []string{msg}}
-}
-
-func makeErrUnauthorized(msg string) adminapi.UnauthorizedErrorJSONResponse {
-	return adminapi.UnauthorizedErrorJSONResponse(makeGenAPIError(msg))
 }
 
 func newSSI(opts *ssiOpts) (withExtensions, error) {
@@ -97,9 +86,7 @@ func (i *impl) GetFlow(
 	_ adminapi.GetFlowRequestObject,
 ) (adminapi.GetFlowResponseObject, error) {
 	if !IsSuperUserContext(ctx) && !ContextCanViewFlow(ctx) {
-		return adminapi.GetFlow403JSONResponse{
-			ForbiddenErrorJSONResponse: apiErrForbidden,
-		}, nil
+		return adminapi.GetFlow403JSONResponse(apiErrForbidden), nil
 	}
 
 	return adminapi.GetFlow200JSONResponse(i.flowFetcher.GetFlow()), nil
@@ -110,10 +97,6 @@ func (i *impl) GetBackendOAS(
 	ctx context.Context,
 	request adminapi.GetBackendOASRequestObject,
 ) (adminapi.GetBackendOASResponseObject, error) {
-	if i.oasBackend == nil {
-		return adminapi.GetBackendOAS404JSONResponse(apiErrNotFound), nil
-	}
-
 	if !IsSuperUserContext(ctx) && !ContextCanViewOAS(ctx) {
 		return adminapi.GetBackendOAS403JSONResponse(apiErrForbidden), nil
 	}
@@ -137,9 +120,7 @@ func (i *impl) GetPermissions(
 	perms, err := dbListPermissions(ctx, i.sqlClient)
 	if err != nil {
 		zerologr.Error(err, "Failed to list admin permissions")
-		return adminapi.GetPermissions500JSONResponse{
-			InternalErrorJSONResponse: apiErrInternal,
-		}, nil
+		return adminapi.GetPermissions500JSONResponse(apiErrInternal), nil
 	}
 
 	return adminapi.GetPermissions200JSONResponse(perms), nil

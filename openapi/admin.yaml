@@ -35,6 +35,8 @@ components:
               username:
                 type: string
                 minLength: 1
+            required:
+              - username
     ChangePasswordRequest:
       description: Request body for changing a user's password.
       required: true
@@ -119,43 +121,6 @@ components:
             required:
               - name
               - permissionIDs
-  responses:
-    BadRequestError:
-      description: Bad request.
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/APIErrorResponse"
-    UnauthorizedError:
-      description: Unauthorized.
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/APIErrorResponse"
-    ForbiddenError:
-      description: Forbidden.
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/APIErrorResponse"
-    ConflictError:
-      description: Conflict.
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/APIErrorResponse"
-    NotFoundError:
-      description: Not found.
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/APIErrorResponse"
-    InternalError:
-      description: Internal error.
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/APIErrorResponse"
   schemas:
     User:
       type: object
@@ -403,7 +368,11 @@ paths:
         "204":
           description: Logged the superuser out.
         "403":
-          $ref: "#/components/responses/ForbiddenError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "500":
           content:
             application/json:
@@ -424,15 +393,35 @@ paths:
         "201":
           description: Created the user successfully.
         "400":
-          $ref: "#/components/responses/BadRequestError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
         "403":
-          $ref: "#/components/responses/ForbiddenError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "409":
-          $ref: "#/components/responses/ConflictError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Conflict.
         "500":
-          $ref: "#/components/responses/InternalError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
     get:
       operationId: GetUsers
       responses:
@@ -445,11 +434,23 @@ paths:
                   $ref: "#/components/schemas/User"
           description: Got the users successfully.
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
         "403":
-          $ref: "#/components/responses/ForbiddenError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "500":
-          $ref: "#/components/responses/InternalError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
 
   /api/admin/users/{userID}:
     get:
@@ -468,15 +469,35 @@ paths:
                 $ref: "#/components/schemas/User"
           description: Got the user successfully.
         "400":
-          $ref: "#/components/responses/BadRequestError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
         "403":
-          $ref: "#/components/responses/ForbiddenError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "404":
-          $ref: "#/components/responses/NotFoundError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Not found.
         "500":
-          $ref: "#/components/responses/InternalError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
     put:
       operationId: UpdateUser
       parameters:
@@ -491,17 +512,41 @@ paths:
         "204":
           description: Updated the user successfully.
         "400":
-          $ref: "#/components/responses/BadRequestError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
         "403":
-          $ref: "#/components/responses/ForbiddenError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "404":
-          $ref: "#/components/responses/NotFoundError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Not found.
         "409":
-          $ref: "#/components/responses/ConflictError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Conflict.
         "500":
-          $ref: "#/components/responses/InternalError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
     delete:
       operationId: DeleteUser
       parameters:
@@ -514,15 +559,35 @@ paths:
         "204":
           description: Deleted the user successfully.
         "400":
-          $ref: "#/components/responses/BadRequestError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
         "403":
-          $ref: "#/components/responses/ForbiddenError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "404":
-          $ref: "#/components/responses/NotFoundError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Not found.
         "500":
-          $ref: "#/components/responses/InternalError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
 
   /api/admin/users/{userID}/password:
     put:
@@ -539,15 +604,35 @@ paths:
         "204":
           description: Changed the user's password successfully.
         "400":
-          $ref: "#/components/responses/BadRequestError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
         "403":
-          $ref: "#/components/responses/ForbiddenError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "404":
-          $ref: "#/components/responses/NotFoundError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Not found.
         "500":
-          $ref: "#/components/responses/InternalError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
 
   /api/admin/users/{userID}/groups:
     put:
@@ -564,15 +649,35 @@ paths:
         "204":
           description: Updated the user's groups successfully.
         "400":
-          $ref: "#/components/responses/BadRequestError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
         "403":
-          $ref: "#/components/responses/ForbiddenError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "404":
-          $ref: "#/components/responses/NotFoundError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Not found.
         "500":
-          $ref: "#/components/responses/InternalError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
 
   /api/admin/login:
     post:
@@ -587,11 +692,23 @@ paths:
               $ref: "#/components/headers/sessionid"
           description: Logged the user in.
         "400":
-          $ref: "#/components/responses/BadRequestError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
         "500":
-          $ref: "#/components/responses/InternalError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
 
   /api/admin/logout:
     post:
@@ -600,11 +717,23 @@ paths:
         "204":
           description: Logged the user out successfully.
         "400":
-          $ref: "#/components/responses/BadRequestError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
         "500":
-          $ref: "#/components/responses/InternalError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
 
   /api/admin/groups:
     post:
@@ -619,15 +748,35 @@ paths:
               schema:
                 $ref: "#/components/schemas/Group"
         "400":
-          $ref: "#/components/responses/BadRequestError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
         "403":
-          $ref: "#/components/responses/ForbiddenError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "409":
-          $ref: "#/components/responses/ConflictError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Conflict.
         "500":
-          $ref: "#/components/responses/InternalError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
     get:
       operationId: GetGroups
       responses:
@@ -640,11 +789,23 @@ paths:
                   $ref: "#/components/schemas/Group"
           description: Got the groups successfully.
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
         "403":
-          $ref: "#/components/responses/ForbiddenError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "500":
-          $ref: "#/components/responses/InternalError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
 
   /api/admin/groups/{groupID}:
     get:
@@ -663,13 +824,29 @@ paths:
                 $ref: "#/components/schemas/Group"
           description: Got the group successfully.
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
         "403":
-          $ref: "#/components/responses/ForbiddenError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "404":
-          $ref: "#/components/responses/NotFoundError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Not found.
         "500":
-          $ref: "#/components/responses/InternalError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
     put:
       operationId: UpdateGroup
       parameters:
@@ -684,17 +861,41 @@ paths:
         "204":
           description: Updated the group successfully.
         "400":
-          $ref: "#/components/responses/BadRequestError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
         "403":
-          $ref: "#/components/responses/ForbiddenError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "404":
-          $ref: "#/components/responses/NotFoundError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Not found.
         "409":
-          $ref: "#/components/responses/ConflictError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Conflict.
         "500":
-          $ref: "#/components/responses/InternalError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
     delete:
       operationId: DeleteGroup
       parameters:
@@ -707,15 +908,35 @@ paths:
         "204":
           description: Deleted the group successfully.
         "400":
-          $ref: "#/components/responses/BadRequestError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
         "403":
-          $ref: "#/components/responses/ForbiddenError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "404":
-          $ref: "#/components/responses/NotFoundError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Not found.
         "500":
-          $ref: "#/components/responses/InternalError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
 
   /api/admin/permissions:
     get:
@@ -730,9 +951,17 @@ paths:
                   $ref: "#/components/schemas/Permission"
           description: Got the permissions successfully.
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
         "500":
-          $ref: "#/components/responses/InternalError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
 
   #
   # Flow management endpoints.
@@ -751,9 +980,17 @@ paths:
                   $ref: "#/components/schemas/FlowMeta"
           description: Got the flow successfully.
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
         "403":
-          $ref: "#/components/responses/ForbiddenError"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "500":
           content:
             application/json:

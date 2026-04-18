@@ -37,5 +37,5 @@ type (
 var _ OASBackend = (*DummyOASBackend)(nil)
 
 func (d *DummyOASBackend) GetOAS(_ string) ([]byte, error) {
-	return nil, apierror.APIErrNotFound
+	return nil, apierror.ErrNotFound
 }

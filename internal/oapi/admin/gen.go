@@ -121,24 +121,6 @@ type User struct {
 	Username string   `json:"username"`
 }
 
-// BadRequestError defines model for BadRequestError.
-type BadRequestError = APIErrorResponse
-
-// ConflictError defines model for ConflictError.
-type ConflictError = APIErrorResponse
-
-// ForbiddenError defines model for ForbiddenError.
-type ForbiddenError = APIErrorResponse
-
-// InternalError defines model for InternalError.
-type InternalError = APIErrorResponse
-
-// NotFoundError defines model for NotFoundError.
-type NotFoundError = APIErrorResponse
-
-// UnauthorizedError defines model for UnauthorizedError.
-type UnauthorizedError = APIErrorResponse
-
 // ChangePasswordRequest defines model for ChangePasswordRequest.
 type ChangePasswordRequest struct {
 	NewPassword string `json:"newPassword"`
@@ -176,7 +158,7 @@ type UpdateUserGroupsRequest struct {
 
 // UpdateUserRequest defines model for UpdateUserRequest.
 type UpdateUserRequest struct {
-	Username *string `json:"username,omitempty"`
+	Username string `json:"username"`
 }
 
 // CreateGroupJSONBody defines parameters for CreateGroup.
@@ -211,7 +193,7 @@ type CreateUserJSONBody struct {
 
 // UpdateUserJSONBody defines parameters for UpdateUser.
 type UpdateUserJSONBody struct {
-	Username *string `json:"username,omitempty"`
+	Username string `json:"username"`
 }
 
 // UpdateUserGroupsJSONBody defines parameters for UpdateUserGroups.
@@ -1069,18 +1051,6 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	return m
 }
 
-type BadRequestErrorJSONResponse APIErrorResponse
-
-type ConflictErrorJSONResponse APIErrorResponse
-
-type ForbiddenErrorJSONResponse APIErrorResponse
-
-type InternalErrorJSONResponse APIErrorResponse
-
-type NotFoundErrorJSONResponse APIErrorResponse
-
-type UnauthorizedErrorJSONResponse APIErrorResponse
-
 type GetFlowRequestObject struct {
 }
 
@@ -1097,7 +1067,7 @@ func (response GetFlow200JSONResponse) VisitGetFlowResponse(w http.ResponseWrite
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetFlow401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+type GetFlow401JSONResponse APIErrorResponse
 
 func (response GetFlow401JSONResponse) VisitGetFlowResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1106,7 +1076,7 @@ func (response GetFlow401JSONResponse) VisitGetFlowResponse(w http.ResponseWrite
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetFlow403JSONResponse struct{ ForbiddenErrorJSONResponse }
+type GetFlow403JSONResponse APIErrorResponse
 
 func (response GetFlow403JSONResponse) VisitGetFlowResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1140,7 +1110,7 @@ func (response GetGroups200JSONResponse) VisitGetGroupsResponse(w http.ResponseW
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetGroups401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+type GetGroups401JSONResponse APIErrorResponse
 
 func (response GetGroups401JSONResponse) VisitGetGroupsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1149,7 +1119,7 @@ func (response GetGroups401JSONResponse) VisitGetGroupsResponse(w http.ResponseW
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetGroups403JSONResponse struct{ ForbiddenErrorJSONResponse }
+type GetGroups403JSONResponse APIErrorResponse
 
 func (response GetGroups403JSONResponse) VisitGetGroupsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1158,7 +1128,7 @@ func (response GetGroups403JSONResponse) VisitGetGroupsResponse(w http.ResponseW
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetGroups500JSONResponse struct{ InternalErrorJSONResponse }
+type GetGroups500JSONResponse APIErrorResponse
 
 func (response GetGroups500JSONResponse) VisitGetGroupsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1184,7 +1154,7 @@ func (response CreateGroup201JSONResponse) VisitCreateGroupResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
-type CreateGroup400JSONResponse struct{ BadRequestErrorJSONResponse }
+type CreateGroup400JSONResponse APIErrorResponse
 
 func (response CreateGroup400JSONResponse) VisitCreateGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1193,7 +1163,7 @@ func (response CreateGroup400JSONResponse) VisitCreateGroupResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
-type CreateGroup401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+type CreateGroup401JSONResponse APIErrorResponse
 
 func (response CreateGroup401JSONResponse) VisitCreateGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1202,7 +1172,7 @@ func (response CreateGroup401JSONResponse) VisitCreateGroupResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
-type CreateGroup403JSONResponse struct{ ForbiddenErrorJSONResponse }
+type CreateGroup403JSONResponse APIErrorResponse
 
 func (response CreateGroup403JSONResponse) VisitCreateGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1211,7 +1181,7 @@ func (response CreateGroup403JSONResponse) VisitCreateGroupResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
-type CreateGroup409JSONResponse struct{ ConflictErrorJSONResponse }
+type CreateGroup409JSONResponse APIErrorResponse
 
 func (response CreateGroup409JSONResponse) VisitCreateGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1220,7 +1190,7 @@ func (response CreateGroup409JSONResponse) VisitCreateGroupResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
-type CreateGroup500JSONResponse struct{ InternalErrorJSONResponse }
+type CreateGroup500JSONResponse APIErrorResponse
 
 func (response CreateGroup500JSONResponse) VisitCreateGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1245,7 +1215,7 @@ func (response DeleteGroup204Response) VisitDeleteGroupResponse(w http.ResponseW
 	return nil
 }
 
-type DeleteGroup400JSONResponse struct{ BadRequestErrorJSONResponse }
+type DeleteGroup400JSONResponse APIErrorResponse
 
 func (response DeleteGroup400JSONResponse) VisitDeleteGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1254,7 +1224,7 @@ func (response DeleteGroup400JSONResponse) VisitDeleteGroupResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
-type DeleteGroup401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+type DeleteGroup401JSONResponse APIErrorResponse
 
 func (response DeleteGroup401JSONResponse) VisitDeleteGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1263,7 +1233,7 @@ func (response DeleteGroup401JSONResponse) VisitDeleteGroupResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
-type DeleteGroup403JSONResponse struct{ ForbiddenErrorJSONResponse }
+type DeleteGroup403JSONResponse APIErrorResponse
 
 func (response DeleteGroup403JSONResponse) VisitDeleteGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1272,7 +1242,7 @@ func (response DeleteGroup403JSONResponse) VisitDeleteGroupResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
-type DeleteGroup404JSONResponse struct{ NotFoundErrorJSONResponse }
+type DeleteGroup404JSONResponse APIErrorResponse
 
 func (response DeleteGroup404JSONResponse) VisitDeleteGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1281,7 +1251,7 @@ func (response DeleteGroup404JSONResponse) VisitDeleteGroupResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
-type DeleteGroup500JSONResponse struct{ InternalErrorJSONResponse }
+type DeleteGroup500JSONResponse APIErrorResponse
 
 func (response DeleteGroup500JSONResponse) VisitDeleteGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1307,7 +1277,7 @@ func (response GetGroup200JSONResponse) VisitGetGroupResponse(w http.ResponseWri
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetGroup401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+type GetGroup401JSONResponse APIErrorResponse
 
 func (response GetGroup401JSONResponse) VisitGetGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1316,7 +1286,7 @@ func (response GetGroup401JSONResponse) VisitGetGroupResponse(w http.ResponseWri
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetGroup403JSONResponse struct{ ForbiddenErrorJSONResponse }
+type GetGroup403JSONResponse APIErrorResponse
 
 func (response GetGroup403JSONResponse) VisitGetGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1325,7 +1295,7 @@ func (response GetGroup403JSONResponse) VisitGetGroupResponse(w http.ResponseWri
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetGroup404JSONResponse struct{ NotFoundErrorJSONResponse }
+type GetGroup404JSONResponse APIErrorResponse
 
 func (response GetGroup404JSONResponse) VisitGetGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1334,7 +1304,7 @@ func (response GetGroup404JSONResponse) VisitGetGroupResponse(w http.ResponseWri
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetGroup500JSONResponse struct{ InternalErrorJSONResponse }
+type GetGroup500JSONResponse APIErrorResponse
 
 func (response GetGroup500JSONResponse) VisitGetGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1360,7 +1330,7 @@ func (response UpdateGroup204Response) VisitUpdateGroupResponse(w http.ResponseW
 	return nil
 }
 
-type UpdateGroup400JSONResponse struct{ BadRequestErrorJSONResponse }
+type UpdateGroup400JSONResponse APIErrorResponse
 
 func (response UpdateGroup400JSONResponse) VisitUpdateGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1369,7 +1339,7 @@ func (response UpdateGroup400JSONResponse) VisitUpdateGroupResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateGroup401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+type UpdateGroup401JSONResponse APIErrorResponse
 
 func (response UpdateGroup401JSONResponse) VisitUpdateGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1378,7 +1348,7 @@ func (response UpdateGroup401JSONResponse) VisitUpdateGroupResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateGroup403JSONResponse struct{ ForbiddenErrorJSONResponse }
+type UpdateGroup403JSONResponse APIErrorResponse
 
 func (response UpdateGroup403JSONResponse) VisitUpdateGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1387,7 +1357,7 @@ func (response UpdateGroup403JSONResponse) VisitUpdateGroupResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateGroup404JSONResponse struct{ NotFoundErrorJSONResponse }
+type UpdateGroup404JSONResponse APIErrorResponse
 
 func (response UpdateGroup404JSONResponse) VisitUpdateGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1396,7 +1366,7 @@ func (response UpdateGroup404JSONResponse) VisitUpdateGroupResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateGroup409JSONResponse struct{ ConflictErrorJSONResponse }
+type UpdateGroup409JSONResponse APIErrorResponse
 
 func (response UpdateGroup409JSONResponse) VisitUpdateGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1405,7 +1375,7 @@ func (response UpdateGroup409JSONResponse) VisitUpdateGroupResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateGroup500JSONResponse struct{ InternalErrorJSONResponse }
+type UpdateGroup500JSONResponse APIErrorResponse
 
 func (response UpdateGroup500JSONResponse) VisitUpdateGroupResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1436,7 +1406,7 @@ func (response Login204Response) VisitLoginResponse(w http.ResponseWriter) error
 	return nil
 }
 
-type Login400JSONResponse struct{ BadRequestErrorJSONResponse }
+type Login400JSONResponse APIErrorResponse
 
 func (response Login400JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1445,7 +1415,7 @@ func (response Login400JSONResponse) VisitLoginResponse(w http.ResponseWriter) e
 	return json.NewEncoder(w).Encode(response)
 }
 
-type Login401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+type Login401JSONResponse APIErrorResponse
 
 func (response Login401JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1454,7 +1424,7 @@ func (response Login401JSONResponse) VisitLoginResponse(w http.ResponseWriter) e
 	return json.NewEncoder(w).Encode(response)
 }
 
-type Login500JSONResponse struct{ InternalErrorJSONResponse }
+type Login500JSONResponse APIErrorResponse
 
 func (response Login500JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1478,7 +1448,7 @@ func (response Logout204Response) VisitLogoutResponse(w http.ResponseWriter) err
 	return nil
 }
 
-type Logout400JSONResponse struct{ BadRequestErrorJSONResponse }
+type Logout400JSONResponse APIErrorResponse
 
 func (response Logout400JSONResponse) VisitLogoutResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1487,7 +1457,7 @@ func (response Logout400JSONResponse) VisitLogoutResponse(w http.ResponseWriter)
 	return json.NewEncoder(w).Encode(response)
 }
 
-type Logout401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+type Logout401JSONResponse APIErrorResponse
 
 func (response Logout401JSONResponse) VisitLogoutResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1496,7 +1466,7 @@ func (response Logout401JSONResponse) VisitLogoutResponse(w http.ResponseWriter)
 	return json.NewEncoder(w).Encode(response)
 }
 
-type Logout500JSONResponse struct{ InternalErrorJSONResponse }
+type Logout500JSONResponse APIErrorResponse
 
 func (response Logout500JSONResponse) VisitLogoutResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1584,7 +1554,7 @@ func (response GetPermissions200JSONResponse) VisitGetPermissionsResponse(w http
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetPermissions401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+type GetPermissions401JSONResponse APIErrorResponse
 
 func (response GetPermissions401JSONResponse) VisitGetPermissionsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1593,7 +1563,7 @@ func (response GetPermissions401JSONResponse) VisitGetPermissionsResponse(w http
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetPermissions500JSONResponse struct{ InternalErrorJSONResponse }
+type GetPermissions500JSONResponse APIErrorResponse
 
 func (response GetPermissions500JSONResponse) VisitGetPermissionsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1675,7 +1645,7 @@ func (response LogoutSuperuser204Response) VisitLogoutSuperuserResponse(w http.R
 	return nil
 }
 
-type LogoutSuperuser403JSONResponse struct{ ForbiddenErrorJSONResponse }
+type LogoutSuperuser403JSONResponse APIErrorResponse
 
 func (response LogoutSuperuser403JSONResponse) VisitLogoutSuperuserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1709,7 +1679,7 @@ func (response GetUsers200JSONResponse) VisitGetUsersResponse(w http.ResponseWri
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetUsers401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+type GetUsers401JSONResponse APIErrorResponse
 
 func (response GetUsers401JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1718,7 +1688,7 @@ func (response GetUsers401JSONResponse) VisitGetUsersResponse(w http.ResponseWri
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetUsers403JSONResponse struct{ ForbiddenErrorJSONResponse }
+type GetUsers403JSONResponse APIErrorResponse
 
 func (response GetUsers403JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1727,7 +1697,7 @@ func (response GetUsers403JSONResponse) VisitGetUsersResponse(w http.ResponseWri
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetUsers500JSONResponse struct{ InternalErrorJSONResponse }
+type GetUsers500JSONResponse APIErrorResponse
 
 func (response GetUsers500JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1752,7 +1722,7 @@ func (response CreateUser201Response) VisitCreateUserResponse(w http.ResponseWri
 	return nil
 }
 
-type CreateUser400JSONResponse struct{ BadRequestErrorJSONResponse }
+type CreateUser400JSONResponse APIErrorResponse
 
 func (response CreateUser400JSONResponse) VisitCreateUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1761,7 +1731,7 @@ func (response CreateUser400JSONResponse) VisitCreateUserResponse(w http.Respons
 	return json.NewEncoder(w).Encode(response)
 }
 
-type CreateUser401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+type CreateUser401JSONResponse APIErrorResponse
 
 func (response CreateUser401JSONResponse) VisitCreateUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1770,7 +1740,7 @@ func (response CreateUser401JSONResponse) VisitCreateUserResponse(w http.Respons
 	return json.NewEncoder(w).Encode(response)
 }
 
-type CreateUser403JSONResponse struct{ ForbiddenErrorJSONResponse }
+type CreateUser403JSONResponse APIErrorResponse
 
 func (response CreateUser403JSONResponse) VisitCreateUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1779,7 +1749,7 @@ func (response CreateUser403JSONResponse) VisitCreateUserResponse(w http.Respons
 	return json.NewEncoder(w).Encode(response)
 }
 
-type CreateUser409JSONResponse struct{ ConflictErrorJSONResponse }
+type CreateUser409JSONResponse APIErrorResponse
 
 func (response CreateUser409JSONResponse) VisitCreateUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1788,7 +1758,7 @@ func (response CreateUser409JSONResponse) VisitCreateUserResponse(w http.Respons
 	return json.NewEncoder(w).Encode(response)
 }
 
-type CreateUser500JSONResponse struct{ InternalErrorJSONResponse }
+type CreateUser500JSONResponse APIErrorResponse
 
 func (response CreateUser500JSONResponse) VisitCreateUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1813,7 +1783,7 @@ func (response DeleteUser204Response) VisitDeleteUserResponse(w http.ResponseWri
 	return nil
 }
 
-type DeleteUser400JSONResponse struct{ BadRequestErrorJSONResponse }
+type DeleteUser400JSONResponse APIErrorResponse
 
 func (response DeleteUser400JSONResponse) VisitDeleteUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1822,7 +1792,7 @@ func (response DeleteUser400JSONResponse) VisitDeleteUserResponse(w http.Respons
 	return json.NewEncoder(w).Encode(response)
 }
 
-type DeleteUser401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+type DeleteUser401JSONResponse APIErrorResponse
 
 func (response DeleteUser401JSONResponse) VisitDeleteUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1831,7 +1801,7 @@ func (response DeleteUser401JSONResponse) VisitDeleteUserResponse(w http.Respons
 	return json.NewEncoder(w).Encode(response)
 }
 
-type DeleteUser403JSONResponse struct{ ForbiddenErrorJSONResponse }
+type DeleteUser403JSONResponse APIErrorResponse
 
 func (response DeleteUser403JSONResponse) VisitDeleteUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1840,7 +1810,7 @@ func (response DeleteUser403JSONResponse) VisitDeleteUserResponse(w http.Respons
 	return json.NewEncoder(w).Encode(response)
 }
 
-type DeleteUser404JSONResponse struct{ NotFoundErrorJSONResponse }
+type DeleteUser404JSONResponse APIErrorResponse
 
 func (response DeleteUser404JSONResponse) VisitDeleteUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1849,7 +1819,7 @@ func (response DeleteUser404JSONResponse) VisitDeleteUserResponse(w http.Respons
 	return json.NewEncoder(w).Encode(response)
 }
 
-type DeleteUser500JSONResponse struct{ InternalErrorJSONResponse }
+type DeleteUser500JSONResponse APIErrorResponse
 
 func (response DeleteUser500JSONResponse) VisitDeleteUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1875,7 +1845,7 @@ func (response GetUser200JSONResponse) VisitGetUserResponse(w http.ResponseWrite
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetUser400JSONResponse struct{ BadRequestErrorJSONResponse }
+type GetUser400JSONResponse APIErrorResponse
 
 func (response GetUser400JSONResponse) VisitGetUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1884,7 +1854,7 @@ func (response GetUser400JSONResponse) VisitGetUserResponse(w http.ResponseWrite
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetUser401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+type GetUser401JSONResponse APIErrorResponse
 
 func (response GetUser401JSONResponse) VisitGetUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1893,7 +1863,7 @@ func (response GetUser401JSONResponse) VisitGetUserResponse(w http.ResponseWrite
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetUser403JSONResponse struct{ ForbiddenErrorJSONResponse }
+type GetUser403JSONResponse APIErrorResponse
 
 func (response GetUser403JSONResponse) VisitGetUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1902,7 +1872,7 @@ func (response GetUser403JSONResponse) VisitGetUserResponse(w http.ResponseWrite
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetUser404JSONResponse struct{ NotFoundErrorJSONResponse }
+type GetUser404JSONResponse APIErrorResponse
 
 func (response GetUser404JSONResponse) VisitGetUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1911,7 +1881,7 @@ func (response GetUser404JSONResponse) VisitGetUserResponse(w http.ResponseWrite
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetUser500JSONResponse struct{ InternalErrorJSONResponse }
+type GetUser500JSONResponse APIErrorResponse
 
 func (response GetUser500JSONResponse) VisitGetUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1937,7 +1907,7 @@ func (response UpdateUser204Response) VisitUpdateUserResponse(w http.ResponseWri
 	return nil
 }
 
-type UpdateUser400JSONResponse struct{ BadRequestErrorJSONResponse }
+type UpdateUser400JSONResponse APIErrorResponse
 
 func (response UpdateUser400JSONResponse) VisitUpdateUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1946,7 +1916,7 @@ func (response UpdateUser400JSONResponse) VisitUpdateUserResponse(w http.Respons
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateUser401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+type UpdateUser401JSONResponse APIErrorResponse
 
 func (response UpdateUser401JSONResponse) VisitUpdateUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1955,7 +1925,7 @@ func (response UpdateUser401JSONResponse) VisitUpdateUserResponse(w http.Respons
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateUser403JSONResponse struct{ ForbiddenErrorJSONResponse }
+type UpdateUser403JSONResponse APIErrorResponse
 
 func (response UpdateUser403JSONResponse) VisitUpdateUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1964,7 +1934,7 @@ func (response UpdateUser403JSONResponse) VisitUpdateUserResponse(w http.Respons
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateUser404JSONResponse struct{ NotFoundErrorJSONResponse }
+type UpdateUser404JSONResponse APIErrorResponse
 
 func (response UpdateUser404JSONResponse) VisitUpdateUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1973,7 +1943,7 @@ func (response UpdateUser404JSONResponse) VisitUpdateUserResponse(w http.Respons
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateUser409JSONResponse struct{ ConflictErrorJSONResponse }
+type UpdateUser409JSONResponse APIErrorResponse
 
 func (response UpdateUser409JSONResponse) VisitUpdateUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -1982,7 +1952,7 @@ func (response UpdateUser409JSONResponse) VisitUpdateUserResponse(w http.Respons
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateUser500JSONResponse struct{ InternalErrorJSONResponse }
+type UpdateUser500JSONResponse APIErrorResponse
 
 func (response UpdateUser500JSONResponse) VisitUpdateUserResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -2008,7 +1978,7 @@ func (response UpdateUserGroups204Response) VisitUpdateUserGroupsResponse(w http
 	return nil
 }
 
-type UpdateUserGroups400JSONResponse struct{ BadRequestErrorJSONResponse }
+type UpdateUserGroups400JSONResponse APIErrorResponse
 
 func (response UpdateUserGroups400JSONResponse) VisitUpdateUserGroupsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -2017,7 +1987,7 @@ func (response UpdateUserGroups400JSONResponse) VisitUpdateUserGroupsResponse(w 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateUserGroups401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+type UpdateUserGroups401JSONResponse APIErrorResponse
 
 func (response UpdateUserGroups401JSONResponse) VisitUpdateUserGroupsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -2026,7 +1996,7 @@ func (response UpdateUserGroups401JSONResponse) VisitUpdateUserGroupsResponse(w 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateUserGroups403JSONResponse struct{ ForbiddenErrorJSONResponse }
+type UpdateUserGroups403JSONResponse APIErrorResponse
 
 func (response UpdateUserGroups403JSONResponse) VisitUpdateUserGroupsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -2035,7 +2005,7 @@ func (response UpdateUserGroups403JSONResponse) VisitUpdateUserGroupsResponse(w 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateUserGroups404JSONResponse struct{ NotFoundErrorJSONResponse }
+type UpdateUserGroups404JSONResponse APIErrorResponse
 
 func (response UpdateUserGroups404JSONResponse) VisitUpdateUserGroupsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -2044,7 +2014,7 @@ func (response UpdateUserGroups404JSONResponse) VisitUpdateUserGroupsResponse(w 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateUserGroups500JSONResponse struct{ InternalErrorJSONResponse }
+type UpdateUserGroups500JSONResponse APIErrorResponse
 
 func (response UpdateUserGroups500JSONResponse) VisitUpdateUserGroupsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -2070,7 +2040,7 @@ func (response ChangeUserPassword204Response) VisitChangeUserPasswordResponse(w 
 	return nil
 }
 
-type ChangeUserPassword400JSONResponse struct{ BadRequestErrorJSONResponse }
+type ChangeUserPassword400JSONResponse APIErrorResponse
 
 func (response ChangeUserPassword400JSONResponse) VisitChangeUserPasswordResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -2079,7 +2049,7 @@ func (response ChangeUserPassword400JSONResponse) VisitChangeUserPasswordRespons
 	return json.NewEncoder(w).Encode(response)
 }
 
-type ChangeUserPassword401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+type ChangeUserPassword401JSONResponse APIErrorResponse
 
 func (response ChangeUserPassword401JSONResponse) VisitChangeUserPasswordResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -2088,7 +2058,7 @@ func (response ChangeUserPassword401JSONResponse) VisitChangeUserPasswordRespons
 	return json.NewEncoder(w).Encode(response)
 }
 
-type ChangeUserPassword403JSONResponse struct{ ForbiddenErrorJSONResponse }
+type ChangeUserPassword403JSONResponse APIErrorResponse
 
 func (response ChangeUserPassword403JSONResponse) VisitChangeUserPasswordResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -2097,7 +2067,7 @@ func (response ChangeUserPassword403JSONResponse) VisitChangeUserPasswordRespons
 	return json.NewEncoder(w).Encode(response)
 }
 
-type ChangeUserPassword404JSONResponse struct{ NotFoundErrorJSONResponse }
+type ChangeUserPassword404JSONResponse APIErrorResponse
 
 func (response ChangeUserPassword404JSONResponse) VisitChangeUserPasswordResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -2106,7 +2076,7 @@ func (response ChangeUserPassword404JSONResponse) VisitChangeUserPasswordRespons
 	return json.NewEncoder(w).Encode(response)
 }
 
-type ChangeUserPassword500JSONResponse struct{ InternalErrorJSONResponse }
+type ChangeUserPassword500JSONResponse APIErrorResponse
 
 func (response ChangeUserPassword500JSONResponse) VisitChangeUserPasswordResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -2738,37 +2708,36 @@ func (sh *strictHandler) ChangeUserPassword(w http.ResponseWriter, r *http.Reque
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
