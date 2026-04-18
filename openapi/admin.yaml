@@ -402,6 +402,8 @@ paths:
       responses:
         "204":
           description: Logged the superuser out.
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
         "500":
           content:
             application/json:

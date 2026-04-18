@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"time"
 
 	adminext "github.com/trebent/kerberos/internal/admin/extensions"
 	"github.com/trebent/kerberos/internal/db"
@@ -38,10 +37,6 @@ type (
 	}
 )
 
-const (
-	superSessionExpiry = 15 * time.Minute
-)
-
 var (
 	_ withExtensions = (*impl)(nil)
 
@@ -50,6 +45,9 @@ var (
 
 	apiErrInternal = adminapi.InternalErrorJSONResponse(
 		makeGenAPIError(apierror.APIErrInternal.Error()),
+	)
+	apiErrForbidden = adminapi.ForbiddenErrorJSONResponse(
+		makeGenAPIError(apierror.ErrNoPermission.Error()),
 	)
 	apiErrNotFound = adminapi.NotFoundErrorJSONResponse(
 		makeGenAPIError(apierror.ErrNotFound.Error()),
@@ -100,11 +98,10 @@ func (i *impl) GetFlow(
 ) (adminapi.GetFlowResponseObject, error) {
 	if !IsSuperUserContext(ctx) && !ContextCanViewFlow(ctx) {
 		return adminapi.GetFlow403JSONResponse{
-			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
-				makeGenAPIError("permission denied"),
-			),
+			ForbiddenErrorJSONResponse: apiErrForbidden,
 		}, nil
 	}
+
 	return adminapi.GetFlow200JSONResponse(i.flowFetcher.GetFlow()), nil
 }
 
@@ -118,7 +115,7 @@ func (i *impl) GetBackendOAS(
 	}
 
 	if !IsSuperUserContext(ctx) && !ContextCanViewOAS(ctx) {
-		return adminapi.GetBackendOAS403JSONResponse(makeGenAPIError("permission denied")), nil
+		return adminapi.GetBackendOAS403JSONResponse(apiErrForbidden), nil
 	}
 
 	oasData, err := i.oasBackend.GetOAS(request.Backend)

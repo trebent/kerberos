@@ -2,9 +2,7 @@ package admin
 
 import (
 	"context"
-	"database/sql"
 	"errors"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/trebent/kerberos/internal/admin/model"
@@ -41,14 +39,7 @@ func (i *impl) LoginSuperuser(
 	}
 
 	sessionID := uuid.NewString()
-	_, err = i.sqlClient.Exec(
-		ctx,
-		insertSession,
-		sql.NamedArg{Name: "user_id", Value: superuser.ID},
-		sql.NamedArg{Name: "session_id", Value: sessionID},
-		sql.NamedArg{Name: "expires", Value: time.Now().Add(superSessionExpiry).UnixMilli()},
-	)
-	if err != nil {
+	if err := dbCreateSession(ctx, i.sqlClient, superuser.ID, sessionID); err != nil {
 		zerologr.Error(err, "Failed to store super-session")
 		return adminapi.LoginSuperuser500JSONResponse(
 			makeGenAPIError(apierror.APIErrInternal.Error()),
@@ -67,6 +58,12 @@ func (i *impl) LogoutSuperuser(
 	ctx context.Context,
 	_ adminapi.LogoutSuperuserRequestObject,
 ) (adminapi.LogoutSuperuserResponseObject, error) {
+	if !IsSuperUserContext(ctx) {
+		return adminapi.LogoutSuperuser403JSONResponse{
+			ForbiddenErrorJSONResponse: apiErrForbidden,
+		}, nil
+	}
+
 	_, err := i.sqlClient.Exec(ctx, deleteSuperSessions)
 	if err != nil {
 		zerologr.Error(err, "Failed to delete super sessions during logout")
@@ -137,6 +134,12 @@ func (i *impl) CreateUser(
 	ctx context.Context,
 	request adminapi.CreateUserRequestObject,
 ) (adminapi.CreateUserResponseObject, error) {
+	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
+		return adminapi.CreateUser403JSONResponse{
+			ForbiddenErrorJSONResponse: apiErrForbidden,
+		}, nil
+	}
+
 	_, salt, hashedPassword := password.Make(request.Body.Password)
 
 	if _, err := dbCreateUser(
@@ -165,6 +168,15 @@ func (i *impl) GetUsers(
 	ctx context.Context,
 	_ adminapi.GetUsersRequestObject,
 ) (adminapi.GetUsersResponseObject, error) {
+	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) &&
+		!ContextIsAdminUserMgmtViewer(ctx) {
+		return adminapi.GetUsers403JSONResponse{
+			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
+				makeGenAPIError("permission denied"),
+			),
+		}, nil
+	}
+
 	users, err := dbListUsers(ctx, i.sqlClient)
 	if err != nil {
 		zerologr.Error(err, "Failed to list admin users")
@@ -179,6 +191,15 @@ func (i *impl) GetUser(
 	ctx context.Context,
 	request adminapi.GetUserRequestObject,
 ) (adminapi.GetUserResponseObject, error) {
+	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) &&
+		!ContextIsAdminUserMgmtViewer(ctx) {
+		return adminapi.GetUser403JSONResponse{
+			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
+				makeGenAPIError("permission denied"),
+			),
+		}, nil
+	}
+
 	u, err := dbGetUser(ctx, i.sqlClient, int64(request.UserID))
 	if err != nil {
 		if errors.Is(err, errNoUser) {
@@ -210,6 +231,14 @@ func (i *impl) UpdateUser(
 	ctx context.Context,
 	request adminapi.UpdateUserRequestObject,
 ) (adminapi.UpdateUserResponseObject, error) {
+	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
+		return adminapi.UpdateUser403JSONResponse{
+			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
+				makeGenAPIError("permission denied"),
+			),
+		}, nil
+	}
+
 	if request.Body.Username == nil {
 		return adminapi.UpdateUser400JSONResponse{
 			BadRequestErrorJSONResponse: adminapi.BadRequestErrorJSONResponse(
@@ -243,6 +272,14 @@ func (i *impl) DeleteUser(
 	ctx context.Context,
 	request adminapi.DeleteUserRequestObject,
 ) (adminapi.DeleteUserResponseObject, error) {
+	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
+		return adminapi.DeleteUser403JSONResponse{
+			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
+				makeGenAPIError("permission denied"),
+			),
+		}, nil
+	}
+
 	if _, err := dbGetUser(ctx, i.sqlClient, int64(request.UserID)); err != nil {
 		if errors.Is(err, errNoUser) {
 			return adminapi.DeleteUser404JSONResponse{
@@ -266,6 +303,14 @@ func (i *impl) ChangeUserPassword(
 	ctx context.Context,
 	request adminapi.ChangeUserPasswordRequestObject,
 ) (adminapi.ChangeUserPasswordResponseObject, error) {
+	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
+		return adminapi.ChangeUserPassword403JSONResponse{
+			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
+				makeGenAPIError("permission denied"),
+			),
+		}, nil
+	}
+
 	auth, err := dbGetUserAuth(ctx, i.sqlClient, int64(request.UserID))
 	if err != nil {
 		if errors.Is(err, errNoUser) {
@@ -307,6 +352,14 @@ func (i *impl) UpdateUserGroups(
 	ctx context.Context,
 	request adminapi.UpdateUserGroupsRequestObject,
 ) (adminapi.UpdateUserGroupsResponseObject, error) {
+	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
+		return adminapi.UpdateUserGroups403JSONResponse{
+			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
+				makeGenAPIError("permission denied"),
+			),
+		}, nil
+	}
+
 	if _, err := dbGetUser(ctx, i.sqlClient, int64(request.UserID)); err != nil {
 		if errors.Is(err, errNoUser) {
 			return adminapi.UpdateUserGroups404JSONResponse{
@@ -339,6 +392,14 @@ func (i *impl) CreateGroup(
 	ctx context.Context,
 	request adminapi.CreateGroupRequestObject,
 ) (adminapi.CreateGroupResponseObject, error) {
+	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
+		return adminapi.CreateGroup403JSONResponse{
+			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
+				makeGenAPIError("permission denied"),
+			),
+		}, nil
+	}
+
 	id, err := dbCreateGroup(ctx, i.sqlClient, request.Body.Name)
 	if err != nil {
 		if errors.Is(err, db.ErrUnique) {
@@ -379,6 +440,15 @@ func (i *impl) GetGroups(
 	ctx context.Context,
 	_ adminapi.GetGroupsRequestObject,
 ) (adminapi.GetGroupsResponseObject, error) {
+	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) &&
+		!ContextIsAdminUserMgmtViewer(ctx) {
+		return adminapi.GetGroups403JSONResponse{
+			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
+				makeGenAPIError("permission denied"),
+			),
+		}, nil
+	}
+
 	groups, err := dbListGroups(ctx, i.sqlClient)
 	if err != nil {
 		zerologr.Error(err, "Failed to list admin groups")
@@ -404,6 +474,15 @@ func (i *impl) GetGroup(
 	ctx context.Context,
 	request adminapi.GetGroupRequestObject,
 ) (adminapi.GetGroupResponseObject, error) {
+	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) &&
+		!ContextIsAdminUserMgmtViewer(ctx) {
+		return adminapi.GetGroup403JSONResponse{
+			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
+				makeGenAPIError("permission denied"),
+			),
+		}, nil
+	}
+
 	g, err := dbGetGroup(ctx, i.sqlClient, int64(request.GroupID))
 	if err != nil {
 		if errors.Is(err, errNoGroup) {
@@ -430,6 +509,14 @@ func (i *impl) UpdateGroup(
 	ctx context.Context,
 	request adminapi.UpdateGroupRequestObject,
 ) (adminapi.UpdateGroupResponseObject, error) {
+	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
+		return adminapi.UpdateGroup403JSONResponse{
+			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
+				makeGenAPIError("permission denied"),
+			),
+		}, nil
+	}
+
 	if _, err := dbGetGroup(ctx, i.sqlClient, int64(request.GroupID)); err != nil {
 		if errors.Is(err, errNoGroup) {
 			return adminapi.UpdateGroup404JSONResponse{
@@ -482,6 +569,14 @@ func (i *impl) DeleteGroup(
 	ctx context.Context,
 	request adminapi.DeleteGroupRequestObject,
 ) (adminapi.DeleteGroupResponseObject, error) {
+	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
+		return adminapi.DeleteGroup403JSONResponse{
+			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
+				makeGenAPIError("permission denied"),
+			),
+		}, nil
+	}
+
 	if _, err := dbGetGroup(ctx, i.sqlClient, int64(request.GroupID)); err != nil {
 		if errors.Is(err, errNoGroup) {
 			return adminapi.DeleteGroup404JSONResponse{

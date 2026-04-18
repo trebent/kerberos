@@ -10,10 +10,12 @@ import (
 
 // permIDs are the fixed permission IDs bootstrapped by the server.
 const (
-	permIDFlowViewer         = 1
-	permIDOASViewer          = 2
-	permIDBasicAuthOrgAdmin  = 3
-	permIDBasicAuthOrgViewer = 4
+	permIDFlowViewer          = 1
+	permIDOASViewer           = 2
+	permIDBasicAuthOrgAdmin   = 3
+	permIDBasicAuthOrgViewer  = 4
+	permIDAdminUserMgmtAdmin  = 5
+	permIDAdminUserMgmtViewer = 6
 )
 
 // createAdminUserInGroup creates a fresh admin user, creates a group with the specified
@@ -59,6 +61,7 @@ func createAdminUserInGroup(t *testing.T, superSession string, permissionIDs []i
 // TestPermissionsGetPermissions verifies that any authenticated admin user can list
 // available permissions.
 func TestPermissionsGetPermissions(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	resp, err := adminClient.GetPermissionsWithResponse(
@@ -79,10 +82,12 @@ func TestPermissionsGetPermissions(t *testing.T) {
 	}
 
 	expected := map[int]string{
-		permIDFlowViewer:         "flowviewer",
-		permIDOASViewer:          "oasviewer",
-		permIDBasicAuthOrgAdmin:  "basicauthorgadmin",
-		permIDBasicAuthOrgViewer: "basicauthorgviewer",
+		permIDFlowViewer:          "flowviewer",
+		permIDOASViewer:           "oasviewer",
+		permIDBasicAuthOrgAdmin:   "basicauthorgadmin",
+		permIDBasicAuthOrgViewer:  "basicauthorgviewer",
+		permIDAdminUserMgmtAdmin:  "adminusermgmtadmin",
+		permIDAdminUserMgmtViewer: "adminusermgmtviewer",
 	}
 	for id, name := range expected {
 		if nameByID[id] != name {
@@ -96,6 +101,7 @@ func TestPermissionsGetPermissions(t *testing.T) {
 // TestPermissionsSuperuserAccessAll verifies that the superuser can access every
 // permission-gated endpoint without being a member of any group.
 func TestPermissionsSuperuserAccessAll(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	// GetFlow — requires flowviewer.
@@ -133,6 +139,23 @@ func TestPermissionsSuperuserAccessAll(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
+
+	// Admin user mgmt (GET) — requires adminusermgmtadmin or adminusermgmtviewer.
+	getUsersResp, err := adminClient.GetUsersWithResponse(
+		t.Context(),
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getUsersResp.StatusCode(), http.StatusOK, t)
+
+	// Admin user mgmt (non-GET) — requires adminusermgmtadmin.
+	createUserResp, err := adminClient.CreateUserWithResponse(
+		t.Context(),
+		adminapi.CreateUserJSONRequestBody{Username: username(), Password: "password123"},
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
 }
 
 // --- flowviewer permission ---
@@ -140,6 +163,7 @@ func TestPermissionsSuperuserAccessAll(t *testing.T) {
 // TestPermissionsFlowViewerAllowed verifies that an admin user with the flowviewer
 // permission can call GetFlow.
 func TestPermissionsFlowViewerAllowed(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 	session := createAdminUserInGroup(t, superSession, []int{permIDFlowViewer})
 
@@ -154,6 +178,7 @@ func TestPermissionsFlowViewerAllowed(t *testing.T) {
 // TestPermissionsFlowViewerDeniedWithoutPermission verifies that an admin user without
 // the flowviewer permission receives 403 when calling GetFlow.
 func TestPermissionsFlowViewerDeniedWithoutPermission(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 	// Give only oasviewer — no flowviewer.
 	session := createAdminUserInGroup(t, superSession, []int{permIDOASViewer})
@@ -169,6 +194,7 @@ func TestPermissionsFlowViewerDeniedWithoutPermission(t *testing.T) {
 // TestPermissionsFlowViewerDeniedNoGroup verifies that an admin user in no group at all
 // receives 403 when calling GetFlow.
 func TestPermissionsFlowViewerDeniedNoGroup(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	const pass = "testpassword1"
@@ -196,6 +222,7 @@ func TestPermissionsFlowViewerDeniedNoGroup(t *testing.T) {
 // TestPermissionsOASViewerAllowed verifies that an admin user with the oasviewer
 // permission can call GetBackendOAS.
 func TestPermissionsOASViewerAllowed(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 	session := createAdminUserInGroup(t, superSession, []int{permIDOASViewer})
 
@@ -211,6 +238,7 @@ func TestPermissionsOASViewerAllowed(t *testing.T) {
 // TestPermissionsOASViewerDeniedWithoutPermission verifies that an admin user without
 // the oasviewer permission receives 403 when calling GetBackendOAS.
 func TestPermissionsOASViewerDeniedWithoutPermission(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 	// Give only flowviewer — no oasviewer.
 	session := createAdminUserInGroup(t, superSession, []int{permIDFlowViewer})
@@ -230,6 +258,7 @@ func TestPermissionsOASViewerDeniedWithoutPermission(t *testing.T) {
 // basicauthorgadmin permission can perform both read and write operations on the
 // basic auth API.
 func TestPermissionsBasicAuthOrgAdminAllowed(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 	session := createAdminUserInGroup(t, superSession, []int{permIDBasicAuthOrgAdmin})
 
@@ -268,6 +297,7 @@ func TestPermissionsBasicAuthOrgAdminAllowed(t *testing.T) {
 // without any basic auth permission cannot access the basic auth API. The middleware falls
 // through to session lookup (which does not recognise an admin session), returning 401.
 func TestPermissionsBasicAuthOrgAdminDeniedWithoutPermission(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 	// Give only flowviewer — no basic auth permission.
 	session := createAdminUserInGroup(t, superSession, []int{permIDFlowViewer})
@@ -287,6 +317,7 @@ func TestPermissionsBasicAuthOrgAdminDeniedWithoutPermission(t *testing.T) {
 // TestPermissionsBasicAuthOrgViewerReadAllowed verifies that an admin user with the
 // basicauthorgviewer permission can call GET endpoints on the basic auth API.
 func TestPermissionsBasicAuthOrgViewerReadAllowed(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	// Create an org via the superuser first so there is something to read.
@@ -317,6 +348,7 @@ func TestPermissionsBasicAuthOrgViewerReadAllowed(t *testing.T) {
 // basicauthorgviewer permission is denied for non-GET (write) endpoints on the basic
 // auth API.
 func TestPermissionsBasicAuthOrgViewerWriteDenied(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 	session := createAdminUserInGroup(t, superSession, []int{permIDBasicAuthOrgViewer})
 
@@ -346,6 +378,7 @@ func TestPermissionsBasicAuthOrgViewerWriteDenied(t *testing.T) {
 // The middleware falls through to session lookup (which does not recognise an admin session),
 // returning 401.
 func TestPermissionsBasicAuthOrgViewerDeniedWithoutPermission(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 	orgID, _ := orgWithSession(t, superSession)
 
@@ -366,6 +399,7 @@ func TestPermissionsBasicAuthOrgViewerDeniedWithoutPermission(t *testing.T) {
 // TestPermissionsGroupResponseIncludesPermissions verifies that the permissions field is
 // present and accurate in the group create/get responses.
 func TestPermissionsGroupResponseIncludesPermissions(t *testing.T) {
+	t.Parallel()
 	superSession := superLogin(t)
 
 	permIDs := []int{permIDFlowViewer, permIDOASViewer}
@@ -407,4 +441,202 @@ func TestPermissionsGroupResponseIncludesPermissions(t *testing.T) {
 	}
 	containsAll(permIDs, getReturnedIDs, t)
 	containsAll(getReturnedIDs, permIDs, t)
+}
+
+// --- adminusermgmtadmin permission ---
+
+// TestPermissionsAdminUserMgmtAdminAllowed verifies that an admin user with the
+// adminusermgmtadmin permission can perform both read and write operations on the
+// admin user and group management endpoints.
+func TestPermissionsAdminUserMgmtAdminAllowed(t *testing.T) {
+	t.Parallel()
+	superSession := superLogin(t)
+	session := createAdminUserInGroup(t, superSession, []int{permIDAdminUserMgmtAdmin})
+
+	// adminusermgmtadmin must be able to list users (GET).
+	listUsersResp, err := adminClient.GetUsersWithResponse(
+		t.Context(),
+		adminapi.RequestEditorFn(requestEditorSessionID(session)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(listUsersResp.StatusCode(), http.StatusOK, t)
+
+	// adminusermgmtadmin must be able to create a user (POST).
+	name := username()
+	const pass = "testpassword1"
+	createUserResp, err := adminClient.CreateUserWithResponse(
+		t.Context(),
+		adminapi.CreateUserJSONRequestBody{Username: name, Password: pass},
+		adminapi.RequestEditorFn(requestEditorSessionID(session)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
+
+	userID := mustGetAdminUserID(t, superSession, name)
+
+	// adminusermgmtadmin must be able to get a user (GET).
+	getUserResp, err := adminClient.GetUserWithResponse(
+		t.Context(),
+		userID,
+		adminapi.RequestEditorFn(requestEditorSessionID(session)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(getUserResp.StatusCode(), http.StatusOK, t)
+
+	// adminusermgmtadmin must be able to list groups (GET).
+	listGroupsResp, err := adminClient.GetGroupsWithResponse(
+		t.Context(),
+		adminapi.RequestEditorFn(requestEditorSessionID(session)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(listGroupsResp.StatusCode(), http.StatusOK, t)
+
+	// adminusermgmtadmin must be able to create a group (POST).
+	createGroupResp, err := adminClient.CreateGroupWithResponse(
+		t.Context(),
+		adminapi.CreateGroupJSONRequestBody{Name: groupName(), PermissionIDs: []int{}},
+		adminapi.RequestEditorFn(requestEditorSessionID(session)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createGroupResp.StatusCode(), http.StatusCreated, t)
+
+	groupID := createGroupResp.JSON201.Id
+
+	// adminusermgmtadmin must be able to update user–group bindings (PUT).
+	updateGroupsResp, err := adminClient.UpdateUserGroupsWithResponse(
+		t.Context(),
+		userID,
+		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int{groupID}},
+		adminapi.RequestEditorFn(requestEditorSessionID(session)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(updateGroupsResp.StatusCode(), http.StatusNoContent, t)
+
+	// adminusermgmtadmin must be able to update a group (PUT).
+	newGroupName := groupName()
+	updateGroupResp, err := adminClient.UpdateGroupWithResponse(
+		t.Context(),
+		groupID,
+		adminapi.UpdateGroupJSONRequestBody{Name: newGroupName, PermissionIDs: []int{}},
+		adminapi.RequestEditorFn(requestEditorSessionID(session)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(updateGroupResp.StatusCode(), http.StatusNoContent, t)
+
+	// adminusermgmtadmin must be able to delete a user (DELETE).
+	deleteUserResp, err := adminClient.DeleteUserWithResponse(
+		t.Context(),
+		userID,
+		adminapi.RequestEditorFn(requestEditorSessionID(session)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(deleteUserResp.StatusCode(), http.StatusNoContent, t)
+
+	// adminusermgmtadmin must be able to delete a group (DELETE).
+	deleteGroupResp, err := adminClient.DeleteGroupWithResponse(
+		t.Context(),
+		groupID,
+		adminapi.RequestEditorFn(requestEditorSessionID(session)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(deleteGroupResp.StatusCode(), http.StatusNoContent, t)
+}
+
+// TestPermissionsAdminUserMgmtAdminDeniedWithoutPermission verifies that an admin user
+// without the adminusermgmtadmin permission receives 403 when calling a write user mgmt endpoint.
+func TestPermissionsAdminUserMgmtAdminDeniedWithoutPermission(t *testing.T) {
+	t.Parallel()
+	superSession := superLogin(t)
+	// Give only flowviewer — no user mgmt permission.
+	session := createAdminUserInGroup(t, superSession, []int{permIDFlowViewer})
+
+	createUserResp, err := adminClient.CreateUserWithResponse(
+		t.Context(),
+		adminapi.CreateUserJSONRequestBody{Username: username(), Password: "testpassword1"},
+		adminapi.RequestEditorFn(requestEditorSessionID(session)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createUserResp.StatusCode(), http.StatusForbidden, t)
+}
+
+// --- adminusermgmtviewer permission ---
+
+// TestPermissionsAdminUserMgmtViewerReadAllowed verifies that an admin user with the
+// adminusermgmtviewer permission can call GET endpoints on the admin user/group mgmt API.
+func TestPermissionsAdminUserMgmtViewerReadAllowed(t *testing.T) {
+	t.Parallel()
+	superSession := superLogin(t)
+	session := createAdminUserInGroup(t, superSession, []int{permIDAdminUserMgmtViewer})
+
+	// adminusermgmtviewer must be able to list users (GET).
+	listUsersResp, err := adminClient.GetUsersWithResponse(
+		t.Context(),
+		adminapi.RequestEditorFn(requestEditorSessionID(session)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(listUsersResp.StatusCode(), http.StatusOK, t)
+
+	// adminusermgmtviewer must be able to list groups (GET).
+	listGroupsResp, err := adminClient.GetGroupsWithResponse(
+		t.Context(),
+		adminapi.RequestEditorFn(requestEditorSessionID(session)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(listGroupsResp.StatusCode(), http.StatusOK, t)
+}
+
+// TestPermissionsAdminUserMgmtViewerWriteDenied verifies that an admin user with the
+// adminusermgmtviewer permission is denied for non-GET (write) endpoints on the admin
+// user/group mgmt API.
+func TestPermissionsAdminUserMgmtViewerWriteDenied(t *testing.T) {
+	t.Parallel()
+	superSession := superLogin(t)
+	session := createAdminUserInGroup(t, superSession, []int{permIDAdminUserMgmtViewer})
+
+	// adminusermgmtviewer must NOT be able to create a user (POST).
+	createUserResp, err := adminClient.CreateUserWithResponse(
+		t.Context(),
+		adminapi.CreateUserJSONRequestBody{Username: username(), Password: "testpassword1"},
+		adminapi.RequestEditorFn(requestEditorSessionID(session)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createUserResp.StatusCode(), http.StatusForbidden, t)
+
+	// adminusermgmtviewer must NOT be able to create a group (POST).
+	createGroupResp, err := adminClient.CreateGroupWithResponse(
+		t.Context(),
+		adminapi.CreateGroupJSONRequestBody{Name: groupName(), PermissionIDs: []int{}},
+		adminapi.RequestEditorFn(requestEditorSessionID(session)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createGroupResp.StatusCode(), http.StatusForbidden, t)
+}
+
+// TestPermissionsAdminUserMgmtViewerDeniedWithoutPermission verifies that an admin user
+// with no user mgmt permission receives 403 when calling even GET user mgmt endpoints.
+func TestPermissionsAdminUserMgmtViewerDeniedWithoutPermission(t *testing.T) {
+	t.Parallel()
+	superSession := superLogin(t)
+	// Give only flowviewer — no user mgmt permission.
+	session := createAdminUserInGroup(t, superSession, []int{permIDFlowViewer})
+
+	listUsersResp, err := adminClient.GetUsersWithResponse(
+		t.Context(),
+		adminapi.RequestEditorFn(requestEditorSessionID(session)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(listUsersResp.StatusCode(), http.StatusForbidden, t)
+}
+
+func TestPermissionsNormalUserLogoutSuper(t *testing.T) {
+	superSession := superLogin(t)
+	session := createAdminUserInGroup(t, superSession, []int{permIDAdminUserMgmtViewer})
+
+	// Normal admin users should not be able to log out the superuser, even if they
+	// have permissions to call the logout endpoint.
+	logoutResp, err := adminClient.LogoutSuperuserWithResponse(
+		t.Context(), adminapi.RequestEditorFn(requestEditorSessionID(session)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(logoutResp.StatusCode(), http.StatusForbidden, t)
 }

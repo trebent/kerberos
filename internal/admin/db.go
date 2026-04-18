@@ -618,6 +618,8 @@ func dbBootstrapPermissions(client db.SQLClient) error {
 		{PermissionIDOASViewer, PermissionNameOASViewer},
 		{PermissionIDBasicAuthOrgAdmin, PermissionNameBasicAuthOrgAdmin},
 		{PermissionIDBasicAuthOrgViewer, PermissionNameBasicAuthOrgViewer},
+		{PermissionIDAdminUserMgmtAdmin, PermissionNameAdminUserMgmtAdmin},
+		{PermissionIDAdminUserMgmtViewer, PermissionNameAdminUserMgmtViewer},
 	}
 
 	for _, p := range perms {
