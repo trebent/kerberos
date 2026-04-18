@@ -21,9 +21,10 @@ func TestMain(m *testing.M) {
 		panic("failed to apply admin DB schema: " + err.Error())
 	}
 
-	// Bootstrap the superuser so all tests have a consistent superuser.
+	// Bootstrap the superuser and permissions so all tests have a consistent state.
 	i := &impl{sqlClient: testClient}
 	i.bootstrapSuperuser(testClientID, testClientSecret)
+	i.bootstrapPermissions()
 
 	code := m.Run()
 

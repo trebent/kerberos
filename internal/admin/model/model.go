@@ -24,9 +24,10 @@ type (
 		Name    string
 	}
 	Session struct {
-		UserID    int64
-		SessionID string
-		IsSuper   bool
-		Expires   int64
+		UserID      int64
+		SessionID   string
+		IsSuper     bool
+		Expires     int64
+		Permissions []int64 // permission IDs derived from the user's group memberships
 	}
 )

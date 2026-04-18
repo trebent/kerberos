@@ -354,8 +354,23 @@ func (i *impl) CreateGroup(
 		}, nil
 	}
 
+	if err := dbSetGroupPermissions(ctx, i.sqlClient, id, request.Body.PermissionIDs); err != nil {
+		zerologr.Error(err, "Failed to set permissions for admin group")
+		return adminapi.CreateGroup500JSONResponse{
+			InternalErrorJSONResponse: apiErrInternal,
+		}, nil
+	}
+
+	perms, err := dbGetGroupPermissions(ctx, i.sqlClient, id)
+	if err != nil {
+		zerologr.Error(err, "Failed to fetch permissions for created admin group")
+		return adminapi.CreateGroup500JSONResponse{
+			InternalErrorJSONResponse: apiErrInternal,
+		}, nil
+	}
+
 	return adminapi.CreateGroup201JSONResponse(
-		adminapi.Group{Id: int(id), Name: request.Body.Name},
+		adminapi.Group{Id: int(id), Name: request.Body.Name, Permissions: &perms},
 	), nil
 }
 
@@ -370,7 +385,18 @@ func (i *impl) GetGroups(
 		return adminapi.GetGroups500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
 	}
 
-	return adminapi.GetGroups200JSONResponse(groups), nil
+	enriched := make([]adminapi.Group, 0, len(groups))
+	for _, g := range groups {
+		perms, err := dbGetGroupPermissions(ctx, i.sqlClient, int64(g.Id))
+		if err != nil {
+			zerologr.Error(err, "Failed to fetch permissions for admin group")
+			return adminapi.GetGroups500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
+		}
+		g.Permissions = &perms
+		enriched = append(enriched, g)
+	}
+
+	return adminapi.GetGroups200JSONResponse(enriched), nil
 }
 
 // GetGroup implements [withExtensions].
@@ -388,6 +414,13 @@ func (i *impl) GetGroup(
 		zerologr.Error(err, "Failed to get admin group")
 		return adminapi.GetGroup500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
 	}
+
+	perms, err := dbGetGroupPermissions(ctx, i.sqlClient, int64(request.GroupID))
+	if err != nil {
+		zerologr.Error(err, "Failed to fetch permissions for admin group")
+		return adminapi.GetGroup500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
+	}
+	g.Permissions = &perms
 
 	return adminapi.GetGroup200JSONResponse(*g), nil
 }
@@ -424,6 +457,13 @@ func (i *impl) UpdateGroup(
 		}
 
 		zerologr.Error(err, "Failed to update admin group")
+		return adminapi.UpdateGroup500JSONResponse{
+			InternalErrorJSONResponse: apiErrInternal,
+		}, nil
+	}
+
+	if err := dbSetGroupPermissions(ctx, i.sqlClient, int64(request.GroupID), request.Body.PermissionIDs); err != nil {
+		zerologr.Error(err, "Failed to update permissions for admin group")
 		return adminapi.UpdateGroup500JSONResponse{
 			InternalErrorJSONResponse: apiErrInternal,
 		}, nil

@@ -94,8 +94,13 @@ components:
               name:
                 type: string
                 minLength: 1
+              permissionIDs:
+                type: array
+                items:
+                  type: integer
             required:
               - name
+              - permissionIDs
     UpdateGroupRequest:
       description: Request body for updating a group.
       required: true
@@ -107,8 +112,13 @@ components:
               name:
                 type: string
                 minLength: 1
+              permissionIDs:
+                type: array
+                items:
+                  type: integer
             required:
               - name
+              - permissionIDs
   responses:
     BadRequestError:
       description: Bad request.
@@ -163,6 +173,21 @@ components:
         - id
         - username
     Group:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Permission"
+      required:
+        - id
+        - name
+    Permission:
       type: object
       additionalProperties: false
       properties:
@@ -689,6 +714,23 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/admin/permissions:
+    get:
+      operationId: GetPermissions
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Permission"
+          description: Got the permissions successfully.
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   #
   # Flow management endpoints.
   #
@@ -705,6 +747,10 @@ paths:
                 items:
                   $ref: "#/components/schemas/FlowMeta"
           description: Got the flow successfully.
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
         "500":
           content:
             application/json:
@@ -729,6 +775,18 @@ paths:
                 type: object
                 additionalProperties: true
           description: Got the backend OAS successfully.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "404":
           content:
             application/json:

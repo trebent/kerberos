@@ -100,12 +100,19 @@ type FlowMetaDataRouterBackend struct {
 
 // Group defines model for Group.
 type Group struct {
-	Id   int    `json:"id"`
-	Name string `json:"name"`
+	Id          int           `json:"id"`
+	Name        string        `json:"name"`
+	Permissions *[]Permission `json:"permissions,omitempty"`
 }
 
 // NoFlowMetaData No metadata for the flow component.
 type NoFlowMetaData = map[string]interface{}
+
+// Permission defines model for Permission.
+type Permission struct {
+	Id   int    `json:"id"`
+	Name string `json:"name"`
+}
 
 // User defines model for User.
 type User struct {
@@ -140,7 +147,8 @@ type ChangePasswordRequest struct {
 
 // CreateGroupRequest defines model for CreateGroupRequest.
 type CreateGroupRequest struct {
-	Name string `json:"name"`
+	Name          string `json:"name"`
+	PermissionIDs []int  `json:"permissionIDs"`
 }
 
 // CreateUserRequest defines model for CreateUserRequest.
@@ -157,7 +165,8 @@ type LoginUserRequest struct {
 
 // UpdateGroupRequest defines model for UpdateGroupRequest.
 type UpdateGroupRequest struct {
-	Name string `json:"name"`
+	Name          string `json:"name"`
+	PermissionIDs []int  `json:"permissionIDs"`
 }
 
 // UpdateUserGroupsRequest defines model for UpdateUserGroupsRequest.
@@ -172,12 +181,14 @@ type UpdateUserRequest struct {
 
 // CreateGroupJSONBody defines parameters for CreateGroup.
 type CreateGroupJSONBody struct {
-	Name string `json:"name"`
+	Name          string `json:"name"`
+	PermissionIDs []int  `json:"permissionIDs"`
 }
 
 // UpdateGroupJSONBody defines parameters for UpdateGroup.
 type UpdateGroupJSONBody struct {
-	Name string `json:"name"`
+	Name          string `json:"name"`
+	PermissionIDs []int  `json:"permissionIDs"`
 }
 
 // LoginJSONBody defines parameters for Login.
@@ -407,6 +418,9 @@ type ServerInterface interface {
 
 	// (GET /api/admin/oas/{backend})
 	GetBackendOAS(w http.ResponseWriter, r *http.Request, backend string)
+
+	// (GET /api/admin/permissions)
+	GetPermissions(w http.ResponseWriter, r *http.Request)
 
 	// (POST /api/admin/superuser/login)
 	LoginSuperuser(w http.ResponseWriter, r *http.Request)
@@ -654,6 +668,26 @@ func (siw *ServerInterfaceWrapper) GetBackendOAS(w http.ResponseWriter, r *http.
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetBackendOAS(w, r, backend)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetPermissions operation middleware
+func (siw *ServerInterfaceWrapper) GetPermissions(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPermissions(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1021,6 +1055,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("POST "+options.BaseURL+"/api/admin/login", wrapper.Login)
 	m.HandleFunc("POST "+options.BaseURL+"/api/admin/logout", wrapper.Logout)
 	m.HandleFunc("GET "+options.BaseURL+"/api/admin/oas/{backend}", wrapper.GetBackendOAS)
+	m.HandleFunc("GET "+options.BaseURL+"/api/admin/permissions", wrapper.GetPermissions)
 	m.HandleFunc("POST "+options.BaseURL+"/api/admin/superuser/login", wrapper.LoginSuperuser)
 	m.HandleFunc("POST "+options.BaseURL+"/api/admin/superuser/logout", wrapper.LogoutSuperuser)
 	m.HandleFunc("GET "+options.BaseURL+"/api/admin/users", wrapper.GetUsers)
@@ -1058,6 +1093,24 @@ type GetFlow200JSONResponse []FlowMeta
 func (response GetFlow200JSONResponse) VisitGetFlowResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetFlow401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+
+func (response GetFlow401JSONResponse) VisitGetFlowResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetFlow403JSONResponse struct{ ForbiddenErrorJSONResponse }
+
+func (response GetFlow403JSONResponse) VisitGetFlowResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -1479,6 +1532,24 @@ func (response GetBackendOAS200ApplicationyamlResponse) VisitGetBackendOASRespon
 	return err
 }
 
+type GetBackendOAS401JSONResponse APIErrorResponse
+
+func (response GetBackendOAS401JSONResponse) VisitGetBackendOASResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetBackendOAS403JSONResponse APIErrorResponse
+
+func (response GetBackendOAS403JSONResponse) VisitGetBackendOASResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type GetBackendOAS404JSONResponse APIErrorResponse
 
 func (response GetBackendOAS404JSONResponse) VisitGetBackendOASResponse(w http.ResponseWriter) error {
@@ -1491,6 +1562,40 @@ func (response GetBackendOAS404JSONResponse) VisitGetBackendOASResponse(w http.R
 type GetBackendOAS500JSONResponse APIErrorResponse
 
 func (response GetBackendOAS500JSONResponse) VisitGetBackendOASResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetPermissionsRequestObject struct {
+}
+
+type GetPermissionsResponseObject interface {
+	VisitGetPermissionsResponse(w http.ResponseWriter) error
+}
+
+type GetPermissions200JSONResponse []Permission
+
+func (response GetPermissions200JSONResponse) VisitGetPermissionsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetPermissions401JSONResponse struct{ UnauthorizedErrorJSONResponse }
+
+func (response GetPermissions401JSONResponse) VisitGetPermissionsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetPermissions500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response GetPermissions500JSONResponse) VisitGetPermissionsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
 
@@ -2031,6 +2136,9 @@ type StrictServerInterface interface {
 	// (GET /api/admin/oas/{backend})
 	GetBackendOAS(ctx context.Context, request GetBackendOASRequestObject) (GetBackendOASResponseObject, error)
 
+	// (GET /api/admin/permissions)
+	GetPermissions(ctx context.Context, request GetPermissionsRequestObject) (GetPermissionsResponseObject, error)
+
 	// (POST /api/admin/superuser/login)
 	LoginSuperuser(ctx context.Context, request LoginSuperuserRequestObject) (LoginSuperuserResponseObject, error)
 
@@ -2333,6 +2441,30 @@ func (sh *strictHandler) GetBackendOAS(w http.ResponseWriter, r *http.Request, b
 	}
 }
 
+// GetPermissions operation middleware
+func (sh *strictHandler) GetPermissions(w http.ResponseWriter, r *http.Request) {
+	var request GetPermissionsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPermissions(ctx, request.(GetPermissionsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPermissions")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetPermissionsResponseObject); ok {
+		if err := validResponse.VisitGetPermissionsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // LoginSuperuser operation middleware
 func (sh *strictHandler) LoginSuperuser(w http.ResponseWriter, r *http.Request) {
 	var request LoginSuperuserRequestObject
@@ -2597,36 +2729,37 @@ func (sh *strictHandler) ChangeUserPassword(w http.ResponseWriter, r *http.Reque
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

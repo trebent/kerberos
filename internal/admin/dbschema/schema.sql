@@ -7,6 +7,22 @@ CREATE TABLE IF NOT EXISTS admin_groups (
 
 CREATE UNIQUE INDEX IF NOT EXISTS admin_group_name ON admin_groups(name);
 
+CREATE TABLE IF NOT EXISTS admin_permissions (
+  id INTEGER PRIMARY KEY,
+  name VARCHAR(100) NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS admin_permission_name ON admin_permissions(name);
+
+CREATE TABLE IF NOT EXISTS admin_group_permission_bindings (
+  group_id INTEGER,
+  permission_id INTEGER,
+  FOREIGN KEY(group_id) REFERENCES admin_groups(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY(permission_id) REFERENCES admin_permissions(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS admin_group_permissions ON admin_group_permission_bindings(group_id, permission_id);
+
 CREATE TABLE IF NOT EXISTS admin_users (
   id INTEGER PRIMARY KEY,
   name VARCHAR(100) NOT NULL,

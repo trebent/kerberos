@@ -95,12 +95,19 @@ type FlowMetaDataRouterBackend struct {
 
 // Group defines model for Group.
 type Group struct {
-	Id   int    `json:"id"`
-	Name string `json:"name"`
+	Id          int           `json:"id"`
+	Name        string        `json:"name"`
+	Permissions *[]Permission `json:"permissions,omitempty"`
 }
 
 // NoFlowMetaData No metadata for the flow component.
 type NoFlowMetaData = map[string]interface{}
+
+// Permission defines model for Permission.
+type Permission struct {
+	Id   int    `json:"id"`
+	Name string `json:"name"`
+}
 
 // User defines model for User.
 type User struct {
@@ -135,7 +142,8 @@ type ChangePasswordRequest struct {
 
 // CreateGroupRequest defines model for CreateGroupRequest.
 type CreateGroupRequest struct {
-	Name string `json:"name"`
+	Name          string `json:"name"`
+	PermissionIDs []int  `json:"permissionIDs"`
 }
 
 // CreateUserRequest defines model for CreateUserRequest.
@@ -152,7 +160,8 @@ type LoginUserRequest struct {
 
 // UpdateGroupRequest defines model for UpdateGroupRequest.
 type UpdateGroupRequest struct {
-	Name string `json:"name"`
+	Name          string `json:"name"`
+	PermissionIDs []int  `json:"permissionIDs"`
 }
 
 // UpdateUserGroupsRequest defines model for UpdateUserGroupsRequest.
@@ -167,12 +176,14 @@ type UpdateUserRequest struct {
 
 // CreateGroupJSONBody defines parameters for CreateGroup.
 type CreateGroupJSONBody struct {
-	Name string `json:"name"`
+	Name          string `json:"name"`
+	PermissionIDs []int  `json:"permissionIDs"`
 }
 
 // UpdateGroupJSONBody defines parameters for UpdateGroup.
 type UpdateGroupJSONBody struct {
-	Name string `json:"name"`
+	Name          string `json:"name"`
+	PermissionIDs []int  `json:"permissionIDs"`
 }
 
 // LoginJSONBody defines parameters for Login.
@@ -479,6 +490,9 @@ type ClientInterface interface {
 	// GetBackendOAS request
 	GetBackendOAS(ctx context.Context, backend string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetPermissions request
+	GetPermissions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// LoginSuperuserWithBody request with any body
 	LoginSuperuserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -651,6 +665,18 @@ func (c *Client) Logout(ctx context.Context, reqEditors ...RequestEditorFn) (*ht
 
 func (c *Client) GetBackendOAS(ctx context.Context, backend string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetBackendOASRequest(c.Server, backend)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetPermissions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetPermissionsRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -1139,6 +1165,33 @@ func NewGetBackendOASRequest(server string, backend string) (*http.Request, erro
 	return req, nil
 }
 
+// NewGetPermissionsRequest generates requests for GetPermissions
+func NewGetPermissionsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/admin/permissions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewLoginSuperuserRequest calls the generic LoginSuperuser builder with application/json body
 func NewLoginSuperuserRequest(server string, body LoginSuperuserJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -1558,6 +1611,9 @@ type ClientWithResponsesInterface interface {
 	// GetBackendOASWithResponse request
 	GetBackendOASWithResponse(ctx context.Context, backend string, reqEditors ...RequestEditorFn) (*GetBackendOASResponse, error)
 
+	// GetPermissionsWithResponse request
+	GetPermissionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetPermissionsResponse, error)
+
 	// LoginSuperuserWithBodyWithResponse request with any body
 	LoginSuperuserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginSuperuserResponse, error)
 
@@ -1600,6 +1656,8 @@ type GetFlowResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]FlowMeta
+	JSON401      *UnauthorizedError
+	JSON403      *ForbiddenError
 	JSON500      *APIErrorResponse
 }
 
@@ -1802,6 +1860,8 @@ type GetBackendOASResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	YAML200      *map[string]interface{}
+	JSON401      *APIErrorResponse
+	JSON403      *APIErrorResponse
 	JSON404      *APIErrorResponse
 	JSON500      *APIErrorResponse
 }
@@ -1816,6 +1876,30 @@ func (r GetBackendOASResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetBackendOASResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetPermissionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]Permission
+	JSON401      *UnauthorizedError
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r GetPermissionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetPermissionsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -2157,6 +2241,15 @@ func (c *ClientWithResponses) GetBackendOASWithResponse(ctx context.Context, bac
 	return ParseGetBackendOASResponse(rsp)
 }
 
+// GetPermissionsWithResponse request returning *GetPermissionsResponse
+func (c *ClientWithResponses) GetPermissionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetPermissionsResponse, error) {
+	rsp, err := c.GetPermissions(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetPermissionsResponse(rsp)
+}
+
 // LoginSuperuserWithBodyWithResponse request with arbitrary body returning *LoginSuperuserResponse
 func (c *ClientWithResponses) LoginSuperuserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginSuperuserResponse, error) {
 	rsp, err := c.LoginSuperuserWithBody(ctx, contentType, body, reqEditors...)
@@ -2298,6 +2391,20 @@ func ParseGetFlowResponse(rsp *http.Response) (*GetFlowResponse, error) {
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest APIErrorResponse
@@ -2682,6 +2789,20 @@ func ParseGetBackendOASResponse(rsp *http.Response) (*GetBackendOASResponse, err
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
 		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -2702,6 +2823,46 @@ func ParseGetBackendOASResponse(rsp *http.Response) (*GetBackendOASResponse, err
 			return nil, err
 		}
 		response.YAML200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetPermissionsResponse parses an HTTP response from a GetPermissionsWithResponse call
+func ParseGetPermissionsResponse(rsp *http.Response) (*GetPermissionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetPermissionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []Permission
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
 
 	}
 

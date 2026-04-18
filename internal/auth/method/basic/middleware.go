@@ -51,6 +51,20 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 				return f(ctx, w, r, request)
 			}
 
+			if admin.ContextIsBasicAuthAdmin(ctx) {
+				zerologr.V(20).Info("Permitting basicauthorgadmin access")
+				return f(ctx, w, r, request)
+			}
+
+			if admin.ContextIsBasicAuthViewer(ctx) {
+				zerologr.V(20).Info("Validating basicauthorgviewer access")
+				if r.Method != "GET" {
+					zerologr.V(20).Info("basicauthorgviewer denied non-GET method", "method", r.Method)
+					return nil, apierror.APIErrForbidden
+				}
+				return f(ctx, w, r, request)
+			}
+
 			sessionID := r.Header.Get("X-Krb-Session")
 			if sessionID == "" {
 				zerologr.V(20).Info("Failed to find a session header")
