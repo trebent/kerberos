@@ -142,7 +142,7 @@ func setupConfig() (*config.RootConfig, error) {
 // nolint: funlen,gocognit // welp
 func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	adminMux := http.NewServeMux()
-	mux := http.NewServeMux()
+	gwMux := http.NewServeMux()
 	db := sqlite.New(
 		&sqlite.Opts{DSN: filepath.Join(internalenv.DBDirectory.Value(), sqlite.DBName)},
 	)
@@ -225,12 +225,12 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	admin.SetFlowFetcher(composer)
 
 	zerologr.Info("Starting server")
-	mux.Handle("/gw/", composer)
+	gwMux.Handle("/gw/", composer)
 	gwServer := http.Server{
 		Addr:         fmt.Sprintf(":%d", internalenv.Port.Value()),
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
-		Handler:      mux,
+		Handler:      gwMux,
 	}
 	adminServer := http.Server{
 		Addr:         fmt.Sprintf(":%d", internalenv.AdminPort.Value()),
