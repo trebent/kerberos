@@ -462,7 +462,12 @@ func (i *impl) UpdateGroup(
 		}, nil
 	}
 
-	if err := dbSetGroupPermissions(ctx, i.sqlClient, int64(request.GroupID), request.Body.PermissionIDs); err != nil {
+	if err := dbSetGroupPermissions(
+		ctx,
+		i.sqlClient,
+		int64(request.GroupID),
+		request.Body.PermissionIDs,
+	); err != nil {
 		zerologr.Error(err, "Failed to update permissions for admin group")
 		return adminapi.UpdateGroup500JSONResponse{
 			InternalErrorJSONResponse: apiErrInternal,
@@ -497,38 +502,4 @@ func (i *impl) DeleteGroup(
 	}
 
 	return adminapi.DeleteGroup204Response{}, nil
-}
-
-// bootstrapSuperuser checks if a super user exists and if not, creates one with the provided credentials.
-// This is to allow bootstrapping of the first super user. Subsequent calls to this function will not have any effect.
-// This is to prevent re-provisioning of the super-user, potentially allowing an attacker to reset powerful credentials.
-func (i *impl) bootstrapSuperuser(clientID, clientSecret string) {
-	// check if a super user already exists.
-	rows, err := i.sqlClient.Query(context.Background(), selectSuperuser)
-	if err != nil {
-		panic(err)
-	}
-	defer rows.Close()
-
-	// No row found, check if due to an error.
-	if !rows.Next() {
-		// Error, panic.
-		if err := rows.Err(); err != nil {
-			panic(err)
-		}
-
-		// No super user exists, create one with the provided credentials.
-		_, salt, hashedPassword := password.Make(clientSecret)
-		if _, err := i.sqlClient.Exec(
-			context.TODO(),
-			insertSuperuser,
-			sql.NamedArg{Name: "name", Value: clientID},
-			sql.NamedArg{Name: "salt", Value: salt},
-			sql.NamedArg{Name: "hashed_password", Value: hashedPassword},
-		); err != nil {
-			panic(err)
-		}
-	}
-
-	// no-op, a row existed
 }

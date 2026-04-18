@@ -67,15 +67,22 @@ func makeErrUnauthorized(msg string) adminapi.UnauthorizedErrorJSONResponse {
 	return adminapi.UnauthorizedErrorJSONResponse(makeGenAPIError(msg))
 }
 
-func newSSI(opts *ssiOpts) withExtensions {
+func newSSI(opts *ssiOpts) (withExtensions, error) {
 	i := &impl{
 		sqlClient: opts.SQLClient,
 
 		oasBackend: &adminext.DummyOASBackend{},
 	}
-	i.bootstrapSuperuser(opts.ClientID, opts.ClientSecret)
-	i.bootstrapPermissions()
-	return i
+
+	if err := dbBootstrapSuperuser(i.sqlClient, opts.ClientID, opts.ClientSecret); err != nil {
+		return nil, err
+	}
+
+	if err := dbBootstrapPermissions(i.sqlClient); err != nil {
+		return nil, err
+	}
+
+	return i, nil
 }
 
 func (i *impl) SetFlowFetcher(ff adminext.FlowFetcher) {
@@ -93,7 +100,9 @@ func (i *impl) GetFlow(
 ) (adminapi.GetFlowResponseObject, error) {
 	if !IsSuperUserContext(ctx) && !ContextCanViewFlow(ctx) {
 		return adminapi.GetFlow403JSONResponse{
-			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(makeGenAPIError("permission denied")),
+			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
+				makeGenAPIError("permission denied"),
+			),
 		}, nil
 	}
 	return adminapi.GetFlow200JSONResponse(i.flowFetcher.GetFlow()), nil
@@ -126,17 +135,10 @@ func (i *impl) GetPermissions(
 	perms, err := dbListPermissions(ctx, i.sqlClient)
 	if err != nil {
 		zerologr.Error(err, "Failed to list admin permissions")
-		return adminapi.GetPermissions500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
+		return adminapi.GetPermissions500JSONResponse{
+			InternalErrorJSONResponse: apiErrInternal,
+		}, nil
 	}
 
 	return adminapi.GetPermissions200JSONResponse(perms), nil
-}
-
-// bootstrapPermissions inserts the fixed set of permissions if they do not yet exist.
-// This is idempotent and safe to call multiple times.
-func (i *impl) bootstrapPermissions() {
-	ctx := context.Background()
-	if err := dbBootstrapPermissions(ctx, i.sqlClient); err != nil {
-		panic(err)
-	}
 }

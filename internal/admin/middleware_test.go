@@ -15,13 +15,17 @@ import (
 )
 
 func TestAdminSessionMiddleware(t *testing.T) {
-	ssi := newSSI(&ssiOpts{
+	ssi, err := newSSI(&ssiOpts{
 		SQLClient:    testClient,
 		ClientID:     testClientID,
 		ClientSecret: testClientSecret,
-	}).(*impl)
+	})
+	if err != nil {
+		t.Fatalf("expected newSSI to succeed, got error: %v", err)
+	}
+	ssiImpl := ssi.(*impl)
 
-	mw := SessionMiddleware(ssi)
+	mw := SessionMiddleware(ssiImpl)
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -39,7 +43,7 @@ func TestAdminSessionMiddleware(t *testing.T) {
 	}, "")
 
 	// Force login to create a session.
-	response, err := ssi.LoginSuperuser(t.Context(), adminapi.LoginSuperuserRequestObject{
+	response, err := ssiImpl.LoginSuperuser(t.Context(), adminapi.LoginSuperuserRequestObject{
 		Body: &adminapi.LoginSuperuserJSONRequestBody{
 			ClientId:     testClientID,
 			ClientSecret: testClientSecret,

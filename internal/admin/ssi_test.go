@@ -9,13 +9,17 @@ import (
 )
 
 func TestAdminSSIDummyOASBackend(t *testing.T) {
-	ssi := newSSI(&ssiOpts{
+	ssi, err := newSSI(&ssiOpts{
 		SQLClient:    testClient,
 		ClientID:     testClientID,
 		ClientSecret: testClientSecret,
-	}).(*impl)
+	})
+	if err != nil {
+		t.Fatalf("expected newSSI to succeed, got error: %v", err)
+	}
+	ssiImpl := ssi.(*impl)
 
-	_, err := ssi.oasBackend.GetOAS("dummy-backend")
+	_, err = ssiImpl.oasBackend.GetOAS("dummy-backend")
 	if !errors.Is(err, apierror.APIErrNotFound) {
 		t.Fatalf("expected APIErrNotFound, got %v", err)
 	}
@@ -45,13 +49,19 @@ func TestAdminSSISuperuserBootstrap(t *testing.T) {
 }
 
 func TestAdminSSISuperuser(t *testing.T) {
-	ssi := newSSI(&ssiOpts{
+	ssi, err := newSSI(&ssiOpts{
 		SQLClient:    testClient,
 		ClientID:     testClientID,
 		ClientSecret: testClientSecret,
 	})
 
-	_, err := ssi.LoginSuperuser(t.Context(), adminapi.LoginSuperuserRequestObject{
+	if err != nil {
+		t.Fatalf("expected newSSI to succeed, got error: %v", err)
+	}
+
+	// Test superuser login.
+
+	_, err = ssi.LoginSuperuser(t.Context(), adminapi.LoginSuperuserRequestObject{
 		Body: &adminapi.LoginSuperuserJSONRequestBody{
 			ClientId:     testClientID,
 			ClientSecret: testClientSecret,
