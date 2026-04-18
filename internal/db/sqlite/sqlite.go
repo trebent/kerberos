@@ -119,6 +119,8 @@ func wrap(err error) error {
 
 	code := errorCode(err)
 	switch code {
+	case 1555: // primary key duplication/violation
+		return fmt.Errorf("%w: %w", db.ErrUnique, err)
 	case 2067:
 		return fmt.Errorf("%w: %w", db.ErrUnique, err)
 		// SQLITE OK

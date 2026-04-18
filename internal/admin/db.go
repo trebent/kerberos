@@ -44,7 +44,7 @@ const (
 
 	// Permissions.
 	selectAdminPermissions = "SELECT id, name FROM admin_permissions;"
-	insertAdminPermission  = "INSERT OR IGNORE INTO admin_permissions (id, name) VALUES(@id, @name);"
+	insertAdminPermission  = "INSERT INTO admin_permissions (id, name) VALUES(@id, @name);"
 
 	// Group permission bindings.
 	selectGroupPermissions       = "SELECT p.id, p.name FROM admin_group_permission_bindings gpb INNER JOIN admin_permissions p ON gpb.permission_id = p.id WHERE gpb.group_id = @groupID;"

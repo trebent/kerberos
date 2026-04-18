@@ -26,16 +26,14 @@ func TestAdminSSIDummyOASBackend(t *testing.T) {
 }
 
 func TestAdminSSISuperuserBootstrap(t *testing.T) {
-	defer func() {
-		if r := recover(); r != nil {
-			t.Fatalf("bootstrapSuperuser panicked: %v", r)
-		}
-	}()
-	newSSI(&ssiOpts{
+	_, err := newSSI(&ssiOpts{
 		SQLClient:    testClient,
 		ClientID:     testClientID,
 		ClientSecret: testClientSecret,
 	})
+	if err != nil {
+		t.Fatalf("expected newSSI to succeed, got error: %v", err)
+	}
 
 	// Check if superuser was created.
 	superuser, err := dbGetSuperuser(t.Context(), testClient)
@@ -45,6 +43,27 @@ func TestAdminSSISuperuserBootstrap(t *testing.T) {
 
 	if superuser.Username != testClientID {
 		t.Fatalf("expected superuser username to be %s, got %s", testClientID, superuser.Username)
+	}
+}
+
+func TestAdminSSIPermissionBootstrap(t *testing.T) {
+	_, err := newSSI(&ssiOpts{
+		SQLClient:    testClient,
+		ClientID:     testClientID,
+		ClientSecret: testClientSecret,
+	})
+	if err != nil {
+		t.Fatalf("expected newSSI to succeed, got error: %v", err)
+	}
+
+	// Check if permissions were created.
+	permissions, err := dbListPermissions(t.Context(), testClient)
+	if err != nil {
+		t.Fatalf("expected permissions to be created, got error: %v", err)
+	}
+
+	if len(permissions) == 0 {
+		t.Fatalf("expected permissions to be created, got none")
 	}
 }
 
