@@ -153,7 +153,7 @@ func TestAdminUserUpdate(t *testing.T) {
 	updateResp, err := adminClient.UpdateUserWithResponse(
 		t.Context(),
 		userID,
-		adminapi.UpdateUserJSONRequestBody{Username: &newName},
+		adminapi.UpdateUserJSONRequestBody{Username: newName},
 		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
@@ -197,7 +197,7 @@ func TestAdminUserUpdateConflict(t *testing.T) {
 	updateResp, err := adminClient.UpdateUserWithResponse(
 		t.Context(),
 		userID,
-		adminapi.UpdateUserJSONRequestBody{Username: &name2},
+		adminapi.UpdateUserJSONRequestBody{Username: name2},
 		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
