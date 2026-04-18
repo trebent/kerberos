@@ -44,8 +44,8 @@ func TestAdminGroupCreateConflict(t *testing.T) {
 		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
-	verifyStatusCode(dupResp.StatusCode(), http.StatusInternalServerError, t)
-	verifyAdminAPIErrorResponse(dupResp.JSON500, t)
+	verifyStatusCode(dupResp.StatusCode(), http.StatusConflict, t)
+	verifyAdminAPIErrorResponse(dupResp.JSON409, t)
 }
 
 // TestAdminGroupList verifies that a newly created admin group appears in the list response.
@@ -148,6 +148,41 @@ func TestAdminGroupUpdate(t *testing.T) {
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
 	matches(getResp.JSON200.Name, newName, t)
+}
+
+// TestAdminGroupUpdateConflict verifies that updating an admin group's name to an existing name returns a conflict.
+func TestAdminGroupUpdateConflict(t *testing.T) {
+	superSession := superLogin(t)
+
+	name := groupName()
+	createResp, err := adminClient.CreateGroupWithResponse(
+		t.Context(),
+		adminapi.CreateGroupJSONRequestBody{Name: name},
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+
+	name2 := groupName()
+	createResp2, err := adminClient.CreateGroupWithResponse(
+		t.Context(),
+		adminapi.CreateGroupJSONRequestBody{Name: name2},
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createResp2.StatusCode(), http.StatusCreated, t)
+
+	groupID := createResp.JSON201.Id
+
+	updateResp, err := adminClient.UpdateGroupWithResponse(
+		t.Context(),
+		groupID,
+		adminapi.UpdateGroupJSONRequestBody{Name: name2},
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(updateResp.StatusCode(), http.StatusConflict, t)
+	verifyAdminAPIErrorResponse(updateResp.JSON409, t)
 }
 
 // TestAdminGroupDelete verifies that an admin group can be deleted and is no longer retrievable.

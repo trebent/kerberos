@@ -57,8 +57,8 @@ func TestAdminUserCreateConflict(t *testing.T) {
 		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
-	verifyStatusCode(dupResp.StatusCode(), http.StatusInternalServerError, t)
-	verifyAdminAPIErrorResponse(dupResp.JSON500, t)
+	verifyStatusCode(dupResp.StatusCode(), http.StatusConflict, t)
+	verifyAdminAPIErrorResponse(dupResp.JSON409, t)
 }
 
 // TestAdminUserList verifies that a newly created admin user appears in the list response.
@@ -161,6 +161,40 @@ func TestAdminUserUpdate(t *testing.T) {
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
 	matches(getResp.JSON200.Username, newName, t)
+}
+
+// TestAdminUserUpdateConflict verifies that updating an admin user's username to an existing username returns a conflict.
+func TestAdminUserUpdateConflict(t *testing.T) {
+	superSession := superLogin(t)
+
+	name := username()
+	createResp, err := adminClient.CreateUserWithResponse(
+		t.Context(),
+		adminapi.CreateUserJSONRequestBody{Username: name, Password: "password123"},
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+
+	name2 := username()
+	createResp2, err := adminClient.CreateUserWithResponse(
+		t.Context(),
+		adminapi.CreateUserJSONRequestBody{Username: name2, Password: "password123"},
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createResp2.StatusCode(), http.StatusCreated, t)
+
+	userID := mustGetAdminUserID(t, superSession, name)
+
+	updateResp, err := adminClient.UpdateUserWithResponse(
+		t.Context(),
+		userID,
+		adminapi.UpdateUserJSONRequestBody{Username: &name2},
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(updateResp.StatusCode(), http.StatusConflict, t)
 }
 
 // TestAdminUserDelete verifies that an admin user can be deleted and is no longer retrievable.
