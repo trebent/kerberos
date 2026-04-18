@@ -28,5 +28,9 @@ type (
 		SessionID string
 		IsSuper   bool
 		Expires   int64
+
+		// Permissions is populated for non-superusers to hold the permission IDs derived from their group memberships.
+		// This is done at session validation time to avoid a database query on every request to fetch the user's permissions.
+		Permissions []int64
 	}
 )

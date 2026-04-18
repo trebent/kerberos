@@ -3,6 +3,7 @@ package admin
 import (
 	"context"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
@@ -17,6 +18,7 @@ type adminContextKey int
 const (
 	adminContextIsSuperUser adminContextKey = 0
 	adminContextSession     adminContextKey = 1
+	adminContextPermissions adminContextKey = 2
 )
 
 // SessionMiddleware provides context population of administration session information.
@@ -63,6 +65,22 @@ func SessionMiddleware(
 			ctx = context.WithValue(ctx, adminContextSession, session)
 			if session.IsSuper {
 				ctx = context.WithValue(ctx, adminContextIsSuperUser, true)
+			} else {
+				// Populate the user's permissions from their group memberships.
+				permIDs, err := dbGetUserPermissionIDs(ctx, apiImpl.sqlClient, session.UserID)
+				if err != nil {
+					zerologr.Error(
+						err,
+						"Failed to fetch user permissions for session; continuing with no permissions",
+						"userID",
+						session.UserID,
+					)
+					// Continue without permissions rather than blocking the request — the endpoint
+					// will deny access if a permission is required.
+					permIDs = []int64{}
+				}
+				session.Permissions = permIDs
+				ctx = context.WithValue(ctx, adminContextPermissions, permIDs)
 			}
 
 			return f(ctx, w, r, request)
@@ -109,5 +127,53 @@ func ContextSessionValid(ctx context.Context) bool {
 
 func IsSuperUserContext(ctx context.Context) bool {
 	val := ctx.Value(adminContextIsSuperUser)
-	return val != nil
+	if val == nil {
+		return false
+	}
+
+	b, ok := val.(bool)
+	if !ok {
+		return false
+	}
+
+	return b
+}
+
+// ContextHasPermission reports whether the calling admin user holds the given permission.
+// Superusers implicitly hold all permissions.
+func ContextHasPermission(ctx context.Context, permissionID int64) bool {
+	if IsSuperUserContext(ctx) {
+		return true
+	}
+	val := ctx.Value(adminContextPermissions)
+	if val == nil {
+		return false
+	}
+
+	ids, ok := val.([]int64)
+	if !ok {
+		return false
+	}
+
+	return slices.Contains(ids, permissionID)
+}
+
+// ContextCanViewFlow reports whether the calling admin user has the flowviewer permission.
+func ContextCanViewFlow(ctx context.Context) bool {
+	return ContextHasPermission(ctx, PermissionIDFlowViewer)
+}
+
+// ContextCanViewOAS reports whether the calling admin user has the oasviewer permission.
+func ContextCanViewOAS(ctx context.Context) bool {
+	return ContextHasPermission(ctx, PermissionIDOASViewer)
+}
+
+// ContextIsBasicAuthAdmin reports whether the calling admin user has the basicauthorgadmin permission.
+func ContextIsBasicAuthAdmin(ctx context.Context) bool {
+	return ContextHasPermission(ctx, PermissionIDBasicAuthOrgAdmin)
+}
+
+// ContextIsBasicAuthViewer reports whether the calling admin user has the basicauthorgviewer permission.
+func ContextIsBasicAuthViewer(ctx context.Context) bool {
+	return ContextHasPermission(ctx, PermissionIDBasicAuthOrgViewer)
 }

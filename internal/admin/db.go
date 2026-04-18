@@ -10,6 +10,7 @@ import (
 	"github.com/trebent/kerberos/internal/admin/model"
 	"github.com/trebent/kerberos/internal/db"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
+	"github.com/trebent/kerberos/internal/util/password"
 	"github.com/trebent/zerologr"
 )
 
@@ -40,6 +41,16 @@ const (
 	insertAdminGroup  = "INSERT INTO admin_groups (name) VALUES(@name);"
 	updateAdminGroup  = "UPDATE admin_groups SET name = @name WHERE id = @groupID;"
 	deleteAdminGroup  = "DELETE FROM admin_groups WHERE id = @groupID;"
+
+	// Permissions.
+	selectAdminPermissions = "SELECT id, name FROM admin_permissions;"
+	insertAdminPermission  = "INSERT INTO admin_permissions (id, name) VALUES(@id, @name);"
+
+	// Group permission bindings.
+	selectGroupPermissions       = "SELECT p.id, p.name FROM admin_group_permission_bindings gpb INNER JOIN admin_permissions p ON gpb.permission_id = p.id WHERE gpb.group_id = @groupID;"
+	deleteAdminGroupPermBindings = "DELETE FROM admin_group_permission_bindings WHERE group_id = @groupID;"
+	insertAdminGroupPermBinding  = "INSERT INTO admin_group_permission_bindings (group_id, permission_id) VALUES (@groupID, @permissionID);"
+	selectUserPermissionIDs      = "SELECT DISTINCT gpb.permission_id FROM admin_group_bindings gb INNER JOIN admin_group_permission_bindings gpb ON gb.group_id = gpb.group_id WHERE gb.user_id = @userID;"
 
 	// Group bindings.
 	selectAdminUserGroups   = "SELECT gb.group_id, g.name FROM admin_group_bindings gb INNER JOIN admin_groups g ON gb.group_id = g.id WHERE gb.user_id = @userID;"
@@ -560,4 +571,217 @@ func dbDeleteSession(ctx context.Context, client db.SQLClient, sessionID string)
 		zerologr.Error(err, "Failed to delete admin session")
 	}
 	return err
+}
+
+// bootstrapSuperuser checks if a super user exists and if not, creates one with the provided credentials.
+// This is to allow bootstrapping of the first super user. Subsequent calls to this function will not have any effect.
+// This is to prevent re-provisioning of the super-user, potentially allowing an attacker to reset powerful credentials.
+func dbBootstrapSuperuser(client db.SQLClient, clientID, clientSecret string) error {
+	// check if a super user already exists.
+	rows, err := client.Query(context.Background(), selectSuperuser)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	// No row found, check if due to an error.
+	if !rows.Next() {
+		if err := rows.Err(); err != nil {
+			return err
+		}
+
+		// No super user exists, create one with the provided credentials.
+		_, salt, hashedPassword := password.Make(clientSecret)
+		if _, err := client.Exec(
+			context.TODO(),
+			insertSuperuser,
+			sql.NamedArg{Name: "name", Value: clientID},
+			sql.NamedArg{Name: "salt", Value: salt},
+			sql.NamedArg{Name: "hashed_password", Value: hashedPassword},
+		); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// --- Permissions ---
+
+// dbBootstrapPermissions inserts the fixed set of permissions if they do not yet exist.
+func dbBootstrapPermissions(client db.SQLClient) error {
+	perms := []struct {
+		id   int64
+		name string
+	}{
+		{PermissionIDFlowViewer, PermissionNameFlowViewer},
+		{PermissionIDOASViewer, PermissionNameOASViewer},
+		{PermissionIDBasicAuthOrgAdmin, PermissionNameBasicAuthOrgAdmin},
+		{PermissionIDBasicAuthOrgViewer, PermissionNameBasicAuthOrgViewer},
+	}
+
+	for _, p := range perms {
+		if _, err := client.Exec(
+			context.Background(),
+			insertAdminPermission,
+			sql.NamedArg{Name: "id", Value: p.id},
+			sql.NamedArg{Name: "name", Value: p.name},
+		); err != nil {
+			if errors.Is(err, db.ErrUnique) {
+				// Permission already exists, ignore error.
+				zerologr.Info(
+					"Permission already exists, skipping insert",
+					"id",
+					p.id,
+					"name",
+					p.name,
+				)
+				continue
+			}
+
+			zerologr.Error(err, "Failed to bootstrap permission", "name", p.name)
+			return err
+		}
+	}
+
+	return nil
+}
+
+// dbListPermissions returns all available permissions.
+func dbListPermissions(ctx context.Context, client db.SQLClient) ([]adminapi.Permission, error) {
+	rows, err := client.Query(ctx, selectAdminPermissions)
+	if err != nil {
+		zerologr.Error(err, "Failed to query admin permissions")
+		return nil, err
+	}
+	defer rows.Close()
+
+	perms := make([]adminapi.Permission, 0)
+	for rows.Next() {
+		var p adminapi.Permission
+		if err := rows.Scan(&p.Id, &p.Name); err != nil {
+			zerologr.Error(err, "Failed to scan admin permission row")
+			return nil, err
+		}
+		perms = append(perms, p)
+	}
+	if err := rows.Err(); err != nil {
+		zerologr.Error(err, "Failed to iterate admin permission rows")
+		return nil, err
+	}
+
+	return perms, nil
+}
+
+// dbGetGroupPermissions returns the permissions assigned to the given group.
+func dbGetGroupPermissions(
+	ctx context.Context,
+	client db.SQLClient,
+	groupID int64,
+) ([]adminapi.Permission, error) {
+	rows, err := client.Query(
+		ctx,
+		selectGroupPermissions,
+		sql.NamedArg{Name: "groupID", Value: groupID},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to query group permissions")
+		return nil, err
+	}
+	defer rows.Close()
+
+	perms := make([]adminapi.Permission, 0)
+	for rows.Next() {
+		var p adminapi.Permission
+		if err := rows.Scan(&p.Id, &p.Name); err != nil {
+			zerologr.Error(err, "Failed to scan group permission row")
+			return nil, err
+		}
+		perms = append(perms, p)
+	}
+	if err := rows.Err(); err != nil {
+		zerologr.Error(err, "Failed to iterate group permission rows")
+		return nil, err
+	}
+
+	return perms, nil
+}
+
+// dbSetGroupPermissions atomically replaces a group's permission bindings with the provided set.
+func dbSetGroupPermissions(
+	ctx context.Context,
+	client db.SQLClient,
+	groupID int64,
+	permissionIDs []int,
+) error {
+	tx, err := client.Begin(ctx)
+	if err != nil {
+		zerologr.Error(err, "Failed to start transaction for group permission bindings")
+		return err
+	}
+	//nolint:errcheck // Rollback is a best-effort cleanup. If Commit already succeeded, Rollback is a no-op.
+	// Errors from Rollback are intentionally ignored in all cases as they cannot be recovered from here.
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(
+		ctx,
+		deleteAdminGroupPermBindings,
+		sql.NamedArg{Name: "groupID", Value: groupID},
+	); err != nil {
+		zerologr.Error(err, "Failed to delete group permission bindings")
+		return err
+	}
+
+	for _, permID := range permissionIDs {
+		if _, err := tx.Exec(
+			ctx,
+			insertAdminGroupPermBinding,
+			sql.NamedArg{Name: "groupID", Value: groupID},
+			sql.NamedArg{Name: "permissionID", Value: permID},
+		); err != nil {
+			zerologr.Error(err, "Failed to insert group permission binding")
+			return err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		zerologr.Error(err, "Failed to commit group permission bindings transaction")
+		return err
+	}
+
+	return nil
+}
+
+// dbGetUserPermissionIDs returns all permission IDs available to the given user via their group memberships.
+func dbGetUserPermissionIDs(
+	ctx context.Context,
+	client db.SQLClient,
+	userID int64,
+) ([]int64, error) {
+	rows, err := client.Query(
+		ctx,
+		selectUserPermissionIDs,
+		sql.NamedArg{Name: "userID", Value: userID},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to query user permission IDs")
+		return nil, err
+	}
+	defer rows.Close()
+
+	ids := make([]int64, 0)
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			zerologr.Error(err, "Failed to scan user permission ID row")
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		zerologr.Error(err, "Failed to iterate user permission ID rows")
+		return nil, err
+	}
+
+	return ids, nil
 }

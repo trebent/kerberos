@@ -9,29 +9,31 @@ import (
 )
 
 func TestAdminSSIDummyOASBackend(t *testing.T) {
-	ssi := newSSI(&ssiOpts{
+	ssi, err := newSSI(&ssiOpts{
 		SQLClient:    testClient,
 		ClientID:     testClientID,
 		ClientSecret: testClientSecret,
-	}).(*impl)
+	})
+	if err != nil {
+		t.Fatalf("expected newSSI to succeed, got error: %v", err)
+	}
+	ssiImpl := ssi.(*impl)
 
-	_, err := ssi.oasBackend.GetOAS("dummy-backend")
+	_, err = ssiImpl.oasBackend.GetOAS("dummy-backend")
 	if !errors.Is(err, apierror.APIErrNotFound) {
 		t.Fatalf("expected APIErrNotFound, got %v", err)
 	}
 }
 
 func TestAdminSSISuperuserBootstrap(t *testing.T) {
-	defer func() {
-		if r := recover(); r != nil {
-			t.Fatalf("bootstrapSuperuser panicked: %v", r)
-		}
-	}()
-	newSSI(&ssiOpts{
+	_, err := newSSI(&ssiOpts{
 		SQLClient:    testClient,
 		ClientID:     testClientID,
 		ClientSecret: testClientSecret,
 	})
+	if err != nil {
+		t.Fatalf("expected newSSI to succeed, got error: %v", err)
+	}
 
 	// Check if superuser was created.
 	superuser, err := dbGetSuperuser(t.Context(), testClient)
@@ -44,14 +46,41 @@ func TestAdminSSISuperuserBootstrap(t *testing.T) {
 	}
 }
 
+func TestAdminSSIPermissionBootstrap(t *testing.T) {
+	_, err := newSSI(&ssiOpts{
+		SQLClient:    testClient,
+		ClientID:     testClientID,
+		ClientSecret: testClientSecret,
+	})
+	if err != nil {
+		t.Fatalf("expected newSSI to succeed, got error: %v", err)
+	}
+
+	// Check if permissions were created.
+	permissions, err := dbListPermissions(t.Context(), testClient)
+	if err != nil {
+		t.Fatalf("expected permissions to be created, got error: %v", err)
+	}
+
+	if len(permissions) == 0 {
+		t.Fatalf("expected permissions to be created, got none")
+	}
+}
+
 func TestAdminSSISuperuser(t *testing.T) {
-	ssi := newSSI(&ssiOpts{
+	ssi, err := newSSI(&ssiOpts{
 		SQLClient:    testClient,
 		ClientID:     testClientID,
 		ClientSecret: testClientSecret,
 	})
 
-	_, err := ssi.LoginSuperuser(t.Context(), adminapi.LoginSuperuserRequestObject{
+	if err != nil {
+		t.Fatalf("expected newSSI to succeed, got error: %v", err)
+	}
+
+	// Test superuser login.
+
+	_, err = ssi.LoginSuperuser(t.Context(), adminapi.LoginSuperuserRequestObject{
 		Body: &adminapi.LoginSuperuserJSONRequestBody{
 			ClientId:     testClientID,
 			ClientSecret: testClientSecret,

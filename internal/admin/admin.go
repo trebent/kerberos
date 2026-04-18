@@ -64,11 +64,14 @@ func New(opts *Opts) (*Admin, error) {
 		return nil, fmt.Errorf("failed to load admin OAS: %w", err)
 	}
 
-	ssi := newSSI(&ssiOpts{
+	ssi, err := newSSI(&ssiOpts{
 		SQLClient:    opts.SQLClient,
 		ClientID:     opts.Cfg.SuperUser.ClientID,
 		ClientSecret: opts.Cfg.SuperUser.ClientSecret,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create SSI: %w", err)
+	}
 
 	adminSessionMiddleware := SessionMiddleware(ssi)
 	strictHandler := adminapi.NewStrictHandlerWithOptions(

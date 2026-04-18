@@ -7,8 +7,11 @@ import (
 	adminapi "github.com/trebent/kerberos/test/integration/client/admin"
 )
 
+// allPermissionIDs is the base set of all available admin group permissions.
+// Tests that create admin groups should include these to avoid breaking permission-gated endpoints.
+var allPermissionIDs = []int{1, 2, 3, 4}
+
 func TestAdminLoginSuperuser(t *testing.T) {
-	t.Log("Logging the superuser in")
 	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
 		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
@@ -169,6 +172,26 @@ func TestAdminGetFlowAsAdminUser(t *testing.T) {
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
 
+	userID := mustGetAdminUserID(t, superSession, name)
+
+	// Create a group with the flowviewer permission and assign the user to it.
+	grpResp, err := adminClient.CreateGroupWithResponse(
+		t.Context(),
+		adminapi.CreateGroupJSONRequestBody{Name: groupName(), PermissionIDs: allPermissionIDs},
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(grpResp.StatusCode(), http.StatusCreated, t)
+
+	updateResp, err := adminClient.UpdateUserGroupsWithResponse(
+		t.Context(),
+		userID,
+		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int{grpResp.JSON201.Id}},
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(updateResp.StatusCode(), http.StatusNoContent, t)
+
 	adminSession := adminUserLogin(t, name, pass)
 
 	getFlowResp, err := adminClient.GetFlowWithResponse(
@@ -192,6 +215,26 @@ func TestAdminGetBackendOASAsAdminUser(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+
+	userID := mustGetAdminUserID(t, superSession, name)
+
+	// Create a group with the oasviewer permission and assign the user to it.
+	grpResp, err := adminClient.CreateGroupWithResponse(
+		t.Context(),
+		adminapi.CreateGroupJSONRequestBody{Name: groupName(), PermissionIDs: allPermissionIDs},
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(grpResp.StatusCode(), http.StatusCreated, t)
+
+	updateResp, err := adminClient.UpdateUserGroupsWithResponse(
+		t.Context(),
+		userID,
+		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int{grpResp.JSON201.Id}},
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(updateResp.StatusCode(), http.StatusNoContent, t)
 
 	adminSession := adminUserLogin(t, name, pass)
 

@@ -14,7 +14,7 @@ func TestAdminGroupCreate(t *testing.T) {
 	name := groupName()
 	createResp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
-		adminapi.CreateGroupJSONRequestBody{Name: name},
+		adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: allPermissionIDs},
 		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
@@ -22,6 +22,11 @@ func TestAdminGroupCreate(t *testing.T) {
 	matches(createResp.JSON201.Name, name, t)
 	if createResp.JSON201.Id == 0 {
 		t.Fatal("expected non-zero group ID in create response")
+	}
+
+	if len(createResp.JSON201.Permissions) != len(allPermissionIDs) {
+		t.Fatalf("expected %d permissions in create response, got %d",
+			len(allPermissionIDs), len(createResp.JSON201.Permissions))
 	}
 }
 
@@ -32,7 +37,7 @@ func TestAdminGroupCreateConflict(t *testing.T) {
 	name := groupName()
 	createResp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
-		adminapi.CreateGroupJSONRequestBody{Name: name},
+		adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: allPermissionIDs},
 		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
@@ -40,7 +45,7 @@ func TestAdminGroupCreateConflict(t *testing.T) {
 
 	dupResp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
-		adminapi.CreateGroupJSONRequestBody{Name: name},
+		adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: allPermissionIDs},
 		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
@@ -55,7 +60,7 @@ func TestAdminGroupList(t *testing.T) {
 	name := groupName()
 	createResp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
-		adminapi.CreateGroupJSONRequestBody{Name: name},
+		adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: allPermissionIDs},
 		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
@@ -84,7 +89,7 @@ func TestAdminGroupGet(t *testing.T) {
 	name := groupName()
 	createResp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
-		adminapi.CreateGroupJSONRequestBody{Name: name},
+		adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: allPermissionIDs},
 		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
@@ -123,7 +128,7 @@ func TestAdminGroupUpdate(t *testing.T) {
 	name := groupName()
 	createResp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
-		adminapi.CreateGroupJSONRequestBody{Name: name},
+		adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: allPermissionIDs},
 		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
@@ -134,7 +139,7 @@ func TestAdminGroupUpdate(t *testing.T) {
 	updateResp, err := adminClient.UpdateGroupWithResponse(
 		t.Context(),
 		groupID,
-		adminapi.UpdateGroupJSONRequestBody{Name: newName},
+		adminapi.UpdateGroupJSONRequestBody{Name: newName, PermissionIDs: allPermissionIDs},
 		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
@@ -157,7 +162,7 @@ func TestAdminGroupUpdateConflict(t *testing.T) {
 	name := groupName()
 	createResp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
-		adminapi.CreateGroupJSONRequestBody{Name: name},
+		adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: allPermissionIDs},
 		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
@@ -166,7 +171,7 @@ func TestAdminGroupUpdateConflict(t *testing.T) {
 	name2 := groupName()
 	createResp2, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
-		adminapi.CreateGroupJSONRequestBody{Name: name2},
+		adminapi.CreateGroupJSONRequestBody{Name: name2, PermissionIDs: allPermissionIDs},
 		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
@@ -177,7 +182,7 @@ func TestAdminGroupUpdateConflict(t *testing.T) {
 	updateResp, err := adminClient.UpdateGroupWithResponse(
 		t.Context(),
 		groupID,
-		adminapi.UpdateGroupJSONRequestBody{Name: name2},
+		adminapi.UpdateGroupJSONRequestBody{Name: name2, PermissionIDs: allPermissionIDs},
 		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
@@ -192,7 +197,7 @@ func TestAdminGroupDelete(t *testing.T) {
 	name := groupName()
 	createResp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
-		adminapi.CreateGroupJSONRequestBody{Name: name},
+		adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: allPermissionIDs},
 		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)

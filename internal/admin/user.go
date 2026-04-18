@@ -354,8 +354,23 @@ func (i *impl) CreateGroup(
 		}, nil
 	}
 
+	if err := dbSetGroupPermissions(ctx, i.sqlClient, id, request.Body.PermissionIDs); err != nil {
+		zerologr.Error(err, "Failed to set permissions for admin group")
+		return adminapi.CreateGroup500JSONResponse{
+			InternalErrorJSONResponse: apiErrInternal,
+		}, nil
+	}
+
+	perms, err := dbGetGroupPermissions(ctx, i.sqlClient, id)
+	if err != nil {
+		zerologr.Error(err, "Failed to fetch permissions for created admin group")
+		return adminapi.CreateGroup500JSONResponse{
+			InternalErrorJSONResponse: apiErrInternal,
+		}, nil
+	}
+
 	return adminapi.CreateGroup201JSONResponse(
-		adminapi.Group{Id: int(id), Name: request.Body.Name},
+		adminapi.Group{Id: int(id), Name: request.Body.Name, Permissions: perms},
 	), nil
 }
 
@@ -370,7 +385,18 @@ func (i *impl) GetGroups(
 		return adminapi.GetGroups500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
 	}
 
-	return adminapi.GetGroups200JSONResponse(groups), nil
+	enriched := make([]adminapi.Group, 0, len(groups))
+	for _, g := range groups {
+		perms, err := dbGetGroupPermissions(ctx, i.sqlClient, int64(g.Id))
+		if err != nil {
+			zerologr.Error(err, "Failed to fetch permissions for admin group")
+			return adminapi.GetGroups500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
+		}
+		g.Permissions = perms
+		enriched = append(enriched, g)
+	}
+
+	return adminapi.GetGroups200JSONResponse(enriched), nil
 }
 
 // GetGroup implements [withExtensions].
@@ -388,6 +414,13 @@ func (i *impl) GetGroup(
 		zerologr.Error(err, "Failed to get admin group")
 		return adminapi.GetGroup500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
 	}
+
+	perms, err := dbGetGroupPermissions(ctx, i.sqlClient, int64(request.GroupID))
+	if err != nil {
+		zerologr.Error(err, "Failed to fetch permissions for admin group")
+		return adminapi.GetGroup500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
+	}
+	g.Permissions = perms
 
 	return adminapi.GetGroup200JSONResponse(*g), nil
 }
@@ -429,6 +462,18 @@ func (i *impl) UpdateGroup(
 		}, nil
 	}
 
+	if err := dbSetGroupPermissions(
+		ctx,
+		i.sqlClient,
+		int64(request.GroupID),
+		request.Body.PermissionIDs,
+	); err != nil {
+		zerologr.Error(err, "Failed to update permissions for admin group")
+		return adminapi.UpdateGroup500JSONResponse{
+			InternalErrorJSONResponse: apiErrInternal,
+		}, nil
+	}
+
 	return adminapi.UpdateGroup204Response{}, nil
 }
 
@@ -457,38 +502,4 @@ func (i *impl) DeleteGroup(
 	}
 
 	return adminapi.DeleteGroup204Response{}, nil
-}
-
-// bootstrapSuperuser checks if a super user exists and if not, creates one with the provided credentials.
-// This is to allow bootstrapping of the first super user. Subsequent calls to this function will not have any effect.
-// This is to prevent re-provisioning of the super-user, potentially allowing an attacker to reset powerful credentials.
-func (i *impl) bootstrapSuperuser(clientID, clientSecret string) {
-	// check if a super user already exists.
-	rows, err := i.sqlClient.Query(context.Background(), selectSuperuser)
-	if err != nil {
-		panic(err)
-	}
-	defer rows.Close()
-
-	// No row found, check if due to an error.
-	if !rows.Next() {
-		// Error, panic.
-		if err := rows.Err(); err != nil {
-			panic(err)
-		}
-
-		// No super user exists, create one with the provided credentials.
-		_, salt, hashedPassword := password.Make(clientSecret)
-		if _, err := i.sqlClient.Exec(
-			context.TODO(),
-			insertSuperuser,
-			sql.NamedArg{Name: "name", Value: clientID},
-			sql.NamedArg{Name: "salt", Value: salt},
-			sql.NamedArg{Name: "hashed_password", Value: hashedPassword},
-		); err != nil {
-			panic(err)
-		}
-	}
-
-	// no-op, a row existed
 }

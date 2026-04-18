@@ -12,7 +12,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
-func TestMiddleware(t *testing.T) {
+func TestOASMiddleware(t *testing.T) {
 	data, err := os.ReadFile("testspecs/test.yaml")
 	if err != nil {
 		t.Fatalf("Failed to read data from test OAS: %v", err)
@@ -63,6 +63,6 @@ func TestMiddleware(t *testing.T) {
 	handler.ServeHTTP(recorder, req)
 
 	if recorder.Code != http.StatusNoContent {
-		t.Fatal("Expected bad request from missing body")
+		t.Fatal("Expected no content from valid body")
 	}
 }
