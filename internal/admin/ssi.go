@@ -47,9 +47,15 @@ var (
 	errNoSuperuser = errors.New("no superuser exists")
 	errNoSession   = errors.New("no valid super session found")
 
-	apiErrInternal = adminapi.InternalErrorJSONResponse(makeGenAPIError(apierror.APIErrInternal.Error()))
-	apiErrNotFound = adminapi.NotFoundErrorJSONResponse(makeGenAPIError(apierror.ErrNotFound.Error()))
-	apiErrConflict = adminapi.ConflictErrorJSONResponse(makeGenAPIError(apierror.ErrConflict.Error()))
+	apiErrInternal = adminapi.InternalErrorJSONResponse(
+		makeGenAPIError(apierror.APIErrInternal.Error()),
+	)
+	apiErrNotFound = adminapi.NotFoundErrorJSONResponse(
+		makeGenAPIError(apierror.ErrNotFound.Error()),
+	)
+	apiErrConflict = adminapi.ConflictErrorJSONResponse(
+		makeGenAPIError(apierror.ErrConflict.Error()),
+	)
 )
 
 func makeGenAPIError(msg string) adminapi.APIErrorResponse {

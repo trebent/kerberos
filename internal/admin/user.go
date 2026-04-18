@@ -146,7 +146,6 @@ func (i *impl) CreateUser(
 		salt,
 		hashedPassword,
 	); err != nil {
-
 		if errors.Is(err, db.ErrUnique) {
 			zerologr.Error(err, "Username conflict")
 			return adminapi.CreateUser409JSONResponse{
@@ -225,7 +224,6 @@ func (i *impl) UpdateUser(
 		int64(request.UserID),
 		*request.Body.Username,
 	); err != nil {
-
 		if errors.Is(err, db.ErrUnique) {
 			zerologr.Error(err, "Username conflict during update")
 			return adminapi.UpdateUser409JSONResponse{
@@ -343,7 +341,6 @@ func (i *impl) CreateGroup(
 ) (adminapi.CreateGroupResponseObject, error) {
 	id, err := dbCreateGroup(ctx, i.sqlClient, request.Body.Name)
 	if err != nil {
-
 		if errors.Is(err, db.ErrUnique) {
 			zerologr.Error(err, "Group name conflict")
 			return adminapi.CreateGroup409JSONResponse{
@@ -419,7 +416,6 @@ func (i *impl) UpdateGroup(
 		int64(request.GroupID),
 		request.Body.Name,
 	); err != nil {
-
 		if errors.Is(err, db.ErrUnique) {
 			zerologr.Error(err, "Group name conflict during update")
 			return adminapi.UpdateGroup409JSONResponse{
