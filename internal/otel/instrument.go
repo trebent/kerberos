@@ -106,7 +106,7 @@ func newTracerProvider(ctx context.Context, res *resource.Resource) (*trace.Trac
 	}
 
 	// NOTE: make sure to configure a sampler in production. The default is AlwaysSample unless otherwise stated by the parent span.
-	// There are appropriate for development and testing, but can lead to high overhead in production.
+	// This is appropriate for development and testing, but can lead to high load in production settings.
 	// OTEL_TRACES_SAMPLER=parentbased_traceidratio
 	// OTEL_TRACES_SAMPLER_ARG=0.1
 	return trace.NewTracerProvider(
