@@ -10,7 +10,8 @@ import (
 // allPermissionIDs is the base set of all available admin group permissions.
 // Tests that create admin groups should include these to avoid breaking permission-gated endpoints.
 var allPermissionIDs = []int{1, 2, 3, 4}
-	t.Log("Logging the superuser in")
+
+func TestAdminLoginSuperuser(t *testing.T) {
 	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
 		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
