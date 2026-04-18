@@ -187,6 +187,7 @@ components:
       required:
         - id
         - name
+        - permissions
     Permission:
       type: object
       additionalProperties: false

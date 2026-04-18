@@ -95,9 +95,9 @@ type FlowMetaDataRouterBackend struct {
 
 // Group defines model for Group.
 type Group struct {
-	Id          int           `json:"id"`
-	Name        string        `json:"name"`
-	Permissions *[]Permission `json:"permissions,omitempty"`
+	Id          int          `json:"id"`
+	Name        string       `json:"name"`
+	Permissions []Permission `json:"permissions"`
 }
 
 // NoFlowMetaData No metadata for the flow component.

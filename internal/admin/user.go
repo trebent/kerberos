@@ -370,7 +370,7 @@ func (i *impl) CreateGroup(
 	}
 
 	return adminapi.CreateGroup201JSONResponse(
-		adminapi.Group{Id: int(id), Name: request.Body.Name, Permissions: &perms},
+		adminapi.Group{Id: int(id), Name: request.Body.Name, Permissions: perms},
 	), nil
 }
 
@@ -392,7 +392,7 @@ func (i *impl) GetGroups(
 			zerologr.Error(err, "Failed to fetch permissions for admin group")
 			return adminapi.GetGroups500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
 		}
-		g.Permissions = &perms
+		g.Permissions = perms
 		enriched = append(enriched, g)
 	}
 
@@ -420,7 +420,7 @@ func (i *impl) GetGroup(
 		zerologr.Error(err, "Failed to fetch permissions for admin group")
 		return adminapi.GetGroup500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
 	}
-	g.Permissions = &perms
+	g.Permissions = perms
 
 	return adminapi.GetGroup200JSONResponse(*g), nil
 }
