@@ -69,8 +69,9 @@ func SessionMiddleware(
 				// Populate the user's permissions from their group memberships.
 				permIDs, err := dbGetUserPermissionIDs(ctx, apiImpl.sqlClient, session.UserID)
 				if err != nil {
-					zerologr.Error(err, "Failed to fetch user permissions for session")
-					// Continue without permissions rather than blocking the request.
+					zerologr.Error(err, "Failed to fetch user permissions for session; continuing with no permissions", "userID", session.UserID)
+					// Continue without permissions rather than blocking the request — the endpoint
+					// will deny access if a permission is required.
 					permIDs = []int64{}
 				}
 				session.Permissions = permIDs

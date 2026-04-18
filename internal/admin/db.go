@@ -664,7 +664,8 @@ func dbSetGroupPermissions(ctx context.Context, client db.SQLClient, groupID int
 		zerologr.Error(err, "Failed to start transaction for group permission bindings")
 		return err
 	}
-	//nolint:errcheck // intentional: no-op if already committed
+	//nolint:errcheck // Rollback is a best-effort cleanup. If Commit already succeeded, Rollback is a no-op.
+	// Errors from Rollback are intentionally ignored in all cases as they cannot be recovered from here.
 	defer tx.Rollback()
 
 	if _, err := tx.Exec(
