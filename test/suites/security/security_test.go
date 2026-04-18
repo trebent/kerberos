@@ -77,6 +77,8 @@ func plainClient() *http.Client {
 // TestAdminAPITLS verifies that the admin API is reachable over TLS.
 // A 401 response confirms the TLS handshake completed and the server is up.
 func TestAdminAPITLS(t *testing.T) {
+	t.Parallel()
+
 	resp, err := tlsClient(t).Get(fmt.Sprintf("https://localhost:%d/api/admin/flow", adminPort))
 	if err != nil {
 		t.Fatalf("HTTPS request failed: %v", err)
@@ -90,6 +92,8 @@ func TestAdminAPITLS(t *testing.T) {
 
 // TestAdminAPIPlainHTTP verifies that the admin API rejects plain HTTP connections.
 func TestAdminAPIPlainHTTP(t *testing.T) {
+	t.Parallel()
+
 	resp, err := plainClient().Get(fmt.Sprintf("http://localhost:%d/api/admin/flow", adminPort))
 	if err != nil {
 		t.Fatalf("Unexpected error when sending plain HTTP request: %v", err)
@@ -104,6 +108,8 @@ func TestAdminAPIPlainHTTP(t *testing.T) {
 
 // TestGWAPITLS verifies that the gateway API is reachable over TLS.
 func TestGWAPITLS(t *testing.T) {
+	t.Parallel()
+
 	resp, err := tlsClient(t).Get(fmt.Sprintf("https://localhost:%d/gw/backend/echo/hi", kerberosPort))
 	if err != nil {
 		t.Fatalf("HTTPS request failed: %v", err)
@@ -117,6 +123,8 @@ func TestGWAPITLS(t *testing.T) {
 
 // TestGWAPIPlainHTTP verifies that the gateway API rejects plain HTTP connections.
 func TestGWAPIPlainHTTP(t *testing.T) {
+	t.Parallel()
+
 	resp, err := plainClient().Get(fmt.Sprintf("http://localhost:%d/gw/backend/echo/hi", kerberosPort))
 	if err != nil {
 		t.Fatalf("Unexpected error when sending plain HTTP request: %v", err)
@@ -140,6 +148,8 @@ type EchoResponse struct {
 // TestEchoMTLS verifies that echo accepts a connection when the client presents
 // a valid certificate, and that echo itself presents a valid server certificate.
 func TestEchoMTLS(t *testing.T) {
+	t.Parallel()
+
 	resp, err := mtlsClient(t).Get(fmt.Sprintf("https://localhost:%d/hi", echoPort))
 	if err != nil {
 		t.Fatalf("mTLS request failed: %v", err)
@@ -169,6 +179,8 @@ func TestEchoMTLS(t *testing.T) {
 // TestEchoMTLSNoClientCert verifies that echo rejects TLS connections that do
 // not supply a client certificate (mTLS is mandatory).
 func TestEchoMTLSNoClientCert(t *testing.T) {
+	t.Parallel()
+
 	_, err := tlsClient(t).Get(fmt.Sprintf("https://localhost:%d/hi", echoPort))
 	if err == nil {
 		t.Fatal("expected a TLS error when connecting without a client certificate, got nil")
@@ -177,6 +189,8 @@ func TestEchoMTLSNoClientCert(t *testing.T) {
 
 // TestEchoPlainHTTP verifies that echo rejects plain HTTP connections.
 func TestEchoPlainHTTP(t *testing.T) {
+	t.Parallel()
+
 	resp, err := plainClient().Get(fmt.Sprintf("http://localhost:%d/hi", echoPort))
 	if err != nil {
 		t.Fatalf("Unexpected error when sending plain HTTP request: %v", err)
