@@ -43,26 +43,18 @@ var (
 	errNoSuperuser = errors.New("no superuser exists")
 	errNoSession   = errors.New("no valid super session found")
 
-	apiErrInternal = adminapi.InternalErrorJSONResponse(
-		makeGenAPIError(apierror.APIErrInternal.Error()),
-	)
-	apiErrForbidden = adminapi.ForbiddenErrorJSONResponse(
-		makeGenAPIError(apierror.ErrNoPermission.Error()),
-	)
-	apiErrNotFound = adminapi.NotFoundErrorJSONResponse(
-		makeGenAPIError(apierror.ErrNotFound.Error()),
-	)
-	apiErrConflict = adminapi.ConflictErrorJSONResponse(
-		makeGenAPIError(apierror.ErrConflict.Error()),
-	)
+	apiErrInternal  = makeGenAPIError(apierror.APIErrInternal.Error())
+	apiErrForbidden = makeGenAPIError(apierror.ErrNoPermission.Error())
+	apiErrNotFound  = makeGenAPIError(apierror.ErrNotFound.Error())
+	apiErrConflict  = makeGenAPIError(apierror.ErrConflict.Error())
 )
 
 func makeGenAPIError(msg string) adminapi.APIErrorResponse {
 	return adminapi.APIErrorResponse{Errors: []string{msg}}
 }
 
-func makeErrUnauthorized(msg string) adminapi.UnauthorizedErrorJSONResponse {
-	return adminapi.UnauthorizedErrorJSONResponse(makeGenAPIError(msg))
+func makeErrUnauthorized(msg string) adminapi.APIErrorResponse {
+	return makeGenAPIError(msg)
 }
 
 func newSSI(opts *ssiOpts) (withExtensions, error) {
@@ -97,9 +89,7 @@ func (i *impl) GetFlow(
 	_ adminapi.GetFlowRequestObject,
 ) (adminapi.GetFlowResponseObject, error) {
 	if !IsSuperUserContext(ctx) && !ContextCanViewFlow(ctx) {
-		return adminapi.GetFlow403JSONResponse{
-			ForbiddenErrorJSONResponse: apiErrForbidden,
-		}, nil
+		return adminapi.GetFlow403JSONResponse(apiErrForbidden), nil
 	}
 
 	return adminapi.GetFlow200JSONResponse(i.flowFetcher.GetFlow()), nil
@@ -137,9 +127,7 @@ func (i *impl) GetPermissions(
 	perms, err := dbListPermissions(ctx, i.sqlClient)
 	if err != nil {
 		zerologr.Error(err, "Failed to list admin permissions")
-		return adminapi.GetPermissions500JSONResponse{
-			InternalErrorJSONResponse: apiErrInternal,
-		}, nil
+		return adminapi.GetPermissions500JSONResponse(apiErrInternal), nil
 	}
 
 	return adminapi.GetPermissions200JSONResponse(perms), nil

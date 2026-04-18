@@ -59,9 +59,7 @@ func (i *impl) LogoutSuperuser(
 	_ adminapi.LogoutSuperuserRequestObject,
 ) (adminapi.LogoutSuperuserResponseObject, error) {
 	if !IsSuperUserContext(ctx) {
-		return adminapi.LogoutSuperuser403JSONResponse{
-			ForbiddenErrorJSONResponse: apiErrForbidden,
-		}, nil
+		return adminapi.LogoutSuperuser403JSONResponse(apiErrForbidden), nil
 	}
 
 	_, err := i.sqlClient.Exec(ctx, deleteSuperSessions)
@@ -82,24 +80,20 @@ func (i *impl) Login(
 	u, err := dbLoginLookup(ctx, i.sqlClient, request.Body.Username)
 	if err != nil {
 		if errors.Is(err, errNoUser) {
-			return adminapi.Login401JSONResponse{
-				UnauthorizedErrorJSONResponse: makeErrUnauthorized("Login failed."),
-			}, nil
+			return adminapi.Login401JSONResponse(makeErrUnauthorized("Login failed.")), nil
 		}
 		zerologr.Error(err, "Failed to look up admin user during login")
-		return adminapi.Login500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
+		return adminapi.Login500JSONResponse(apiErrInternal), nil
 	}
 
 	if !password.Match(u.Salt, u.HashedPassword, request.Body.Password) {
-		return adminapi.Login401JSONResponse{
-			UnauthorizedErrorJSONResponse: makeErrUnauthorized("Login failed."),
-		}, nil
+		return adminapi.Login401JSONResponse(makeErrUnauthorized("Login failed.")), nil
 	}
 
 	sessionID := uuid.NewString()
 	if err := dbCreateSession(ctx, i.sqlClient, u.ID, sessionID); err != nil {
 		zerologr.Error(err, "Failed to store admin session")
-		return adminapi.Login500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
+		return adminapi.Login500JSONResponse(apiErrInternal), nil
 	}
 
 	return adminapi.Login204Response{
@@ -116,14 +110,12 @@ func (i *impl) Logout(
 ) (adminapi.LogoutResponseObject, error) {
 	session, ok := ctx.Value(adminContextSession).(*model.Session)
 	if !ok || session == nil {
-		return adminapi.Logout401JSONResponse{
-			UnauthorizedErrorJSONResponse: makeErrUnauthorized(apierror.ErrNoSession.Error()),
-		}, nil
+		return adminapi.Logout401JSONResponse(makeErrUnauthorized(apierror.ErrNoSession.Error())), nil
 	}
 
 	if err := dbDeleteSession(ctx, i.sqlClient, session.SessionID); err != nil {
 		zerologr.Error(err, "Failed to delete admin session during logout")
-		return adminapi.Logout500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
+		return adminapi.Logout500JSONResponse(apiErrInternal), nil
 	}
 
 	return adminapi.Logout204Response{}, nil
@@ -135,9 +127,7 @@ func (i *impl) CreateUser(
 	request adminapi.CreateUserRequestObject,
 ) (adminapi.CreateUserResponseObject, error) {
 	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
-		return adminapi.CreateUser403JSONResponse{
-			ForbiddenErrorJSONResponse: apiErrForbidden,
-		}, nil
+		return adminapi.CreateUser403JSONResponse(apiErrForbidden), nil
 	}
 
 	_, salt, hashedPassword := password.Make(request.Body.Password)
@@ -151,13 +141,11 @@ func (i *impl) CreateUser(
 	); err != nil {
 		if errors.Is(err, db.ErrUnique) {
 			zerologr.Error(err, "Username conflict")
-			return adminapi.CreateUser409JSONResponse{
-				ConflictErrorJSONResponse: apiErrConflict,
-			}, nil
+			return adminapi.CreateUser409JSONResponse(apiErrConflict), nil
 		}
 
 		zerologr.Error(err, "Failed to create admin user")
-		return adminapi.CreateUser500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
+		return adminapi.CreateUser500JSONResponse(apiErrInternal), nil
 	}
 
 	return adminapi.CreateUser201Response{}, nil
@@ -170,17 +158,13 @@ func (i *impl) GetUsers(
 ) (adminapi.GetUsersResponseObject, error) {
 	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) &&
 		!ContextIsAdminUserMgmtViewer(ctx) {
-		return adminapi.GetUsers403JSONResponse{
-			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
-				makeGenAPIError("permission denied"),
-			),
-		}, nil
+		return adminapi.GetUsers403JSONResponse(makeGenAPIError("permission denied")), nil
 	}
 
 	users, err := dbListUsers(ctx, i.sqlClient)
 	if err != nil {
 		zerologr.Error(err, "Failed to list admin users")
-		return adminapi.GetUsers500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
+		return adminapi.GetUsers500JSONResponse(apiErrInternal), nil
 	}
 
 	return adminapi.GetUsers200JSONResponse(users), nil
@@ -193,28 +177,22 @@ func (i *impl) GetUser(
 ) (adminapi.GetUserResponseObject, error) {
 	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) &&
 		!ContextIsAdminUserMgmtViewer(ctx) {
-		return adminapi.GetUser403JSONResponse{
-			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
-				makeGenAPIError("permission denied"),
-			),
-		}, nil
+		return adminapi.GetUser403JSONResponse(makeGenAPIError("permission denied")), nil
 	}
 
 	u, err := dbGetUser(ctx, i.sqlClient, int64(request.UserID))
 	if err != nil {
 		if errors.Is(err, errNoUser) {
-			return adminapi.GetUser404JSONResponse{
-				NotFoundErrorJSONResponse: apiErrNotFound,
-			}, nil
+			return adminapi.GetUser404JSONResponse(apiErrNotFound), nil
 		}
 		zerologr.Error(err, "Failed to get admin user")
-		return adminapi.GetUser500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
+		return adminapi.GetUser500JSONResponse(apiErrInternal), nil
 	}
 
 	groups, err := dbListGroupBindings(ctx, i.sqlClient, int64(u.Id))
 	if err != nil {
 		zerologr.Error(err, "Failed to list admin user group bindings")
-		return adminapi.GetUser500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
+		return adminapi.GetUser500JSONResponse(apiErrInternal), nil
 	}
 
 	apiGroups := make([]adminapi.Group, 0, len(groups))
@@ -232,19 +210,11 @@ func (i *impl) UpdateUser(
 	request adminapi.UpdateUserRequestObject,
 ) (adminapi.UpdateUserResponseObject, error) {
 	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
-		return adminapi.UpdateUser403JSONResponse{
-			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
-				makeGenAPIError("permission denied"),
-			),
-		}, nil
+		return adminapi.UpdateUser403JSONResponse(makeGenAPIError("permission denied")), nil
 	}
 
 	if request.Body.Username == nil {
-		return adminapi.UpdateUser400JSONResponse{
-			BadRequestErrorJSONResponse: adminapi.BadRequestErrorJSONResponse(
-				makeGenAPIError("username is required"),
-			),
-		}, nil
+		return adminapi.UpdateUser400JSONResponse(makeGenAPIError("username is required")), nil
 	}
 
 	if err := dbUpdateUser(
@@ -255,13 +225,11 @@ func (i *impl) UpdateUser(
 	); err != nil {
 		if errors.Is(err, db.ErrUnique) {
 			zerologr.Error(err, "Username conflict during update")
-			return adminapi.UpdateUser409JSONResponse{
-				ConflictErrorJSONResponse: apiErrConflict,
-			}, nil
+			return adminapi.UpdateUser409JSONResponse(apiErrConflict), nil
 		}
 
 		zerologr.Error(err, "Failed to update admin user")
-		return adminapi.UpdateUser500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
+		return adminapi.UpdateUser500JSONResponse(apiErrInternal), nil
 	}
 
 	return adminapi.UpdateUser204Response{}, nil
@@ -273,26 +241,20 @@ func (i *impl) DeleteUser(
 	request adminapi.DeleteUserRequestObject,
 ) (adminapi.DeleteUserResponseObject, error) {
 	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
-		return adminapi.DeleteUser403JSONResponse{
-			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
-				makeGenAPIError("permission denied"),
-			),
-		}, nil
+		return adminapi.DeleteUser403JSONResponse(makeGenAPIError("permission denied")), nil
 	}
 
 	if _, err := dbGetUser(ctx, i.sqlClient, int64(request.UserID)); err != nil {
 		if errors.Is(err, errNoUser) {
-			return adminapi.DeleteUser404JSONResponse{
-				NotFoundErrorJSONResponse: apiErrNotFound,
-			}, nil
+			return adminapi.DeleteUser404JSONResponse(apiErrNotFound), nil
 		}
 		zerologr.Error(err, "Failed to check admin user before delete")
-		return adminapi.DeleteUser500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
+		return adminapi.DeleteUser500JSONResponse(apiErrInternal), nil
 	}
 
 	if err := dbDeleteUser(ctx, i.sqlClient, int64(request.UserID)); err != nil {
 		zerologr.Error(err, "Failed to delete admin user")
-		return adminapi.DeleteUser500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
+		return adminapi.DeleteUser500JSONResponse(apiErrInternal), nil
 	}
 
 	return adminapi.DeleteUser204Response{}, nil
@@ -304,30 +266,20 @@ func (i *impl) ChangeUserPassword(
 	request adminapi.ChangeUserPasswordRequestObject,
 ) (adminapi.ChangeUserPasswordResponseObject, error) {
 	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
-		return adminapi.ChangeUserPassword403JSONResponse{
-			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
-				makeGenAPIError("permission denied"),
-			),
-		}, nil
+		return adminapi.ChangeUserPassword403JSONResponse(makeGenAPIError("permission denied")), nil
 	}
 
 	auth, err := dbGetUserAuth(ctx, i.sqlClient, int64(request.UserID))
 	if err != nil {
 		if errors.Is(err, errNoUser) {
-			return adminapi.ChangeUserPassword404JSONResponse{
-				NotFoundErrorJSONResponse: apiErrNotFound,
-			}, nil
+			return adminapi.ChangeUserPassword404JSONResponse(apiErrNotFound), nil
 		}
 		zerologr.Error(err, "Failed to get admin user auth for password change")
-		return adminapi.ChangeUserPassword500JSONResponse{
-			InternalErrorJSONResponse: apiErrInternal,
-		}, nil
+		return adminapi.ChangeUserPassword500JSONResponse(apiErrInternal), nil
 	}
 
 	if !password.Match(auth.Salt, auth.HashedPassword, request.Body.OldPassword) {
-		return adminapi.ChangeUserPassword401JSONResponse{
-			UnauthorizedErrorJSONResponse: makeErrUnauthorized("Old password does not match."),
-		}, nil
+		return adminapi.ChangeUserPassword401JSONResponse(makeErrUnauthorized("Old password does not match.")), nil
 	}
 
 	_, newSalt, newHashed := password.Make(request.Body.NewPassword)
@@ -339,9 +291,7 @@ func (i *impl) ChangeUserPassword(
 		newHashed,
 	); err != nil {
 		zerologr.Error(err, "Failed to update admin user password")
-		return adminapi.ChangeUserPassword500JSONResponse{
-			InternalErrorJSONResponse: apiErrInternal,
-		}, nil
+		return adminapi.ChangeUserPassword500JSONResponse(apiErrInternal), nil
 	}
 
 	return adminapi.ChangeUserPassword204Response{}, nil
@@ -353,23 +303,15 @@ func (i *impl) UpdateUserGroups(
 	request adminapi.UpdateUserGroupsRequestObject,
 ) (adminapi.UpdateUserGroupsResponseObject, error) {
 	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
-		return adminapi.UpdateUserGroups403JSONResponse{
-			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
-				makeGenAPIError("permission denied"),
-			),
-		}, nil
+		return adminapi.UpdateUserGroups403JSONResponse(makeGenAPIError("permission denied")), nil
 	}
 
 	if _, err := dbGetUser(ctx, i.sqlClient, int64(request.UserID)); err != nil {
 		if errors.Is(err, errNoUser) {
-			return adminapi.UpdateUserGroups404JSONResponse{
-				NotFoundErrorJSONResponse: apiErrNotFound,
-			}, nil
+			return adminapi.UpdateUserGroups404JSONResponse(apiErrNotFound), nil
 		}
 		zerologr.Error(err, "Failed to check admin user before group update")
-		return adminapi.UpdateUserGroups500JSONResponse{
-			InternalErrorJSONResponse: apiErrInternal,
-		}, nil
+		return adminapi.UpdateUserGroups500JSONResponse(apiErrInternal), nil
 	}
 
 	if err := dbUpdateUserGroupBindings(
@@ -379,9 +321,7 @@ func (i *impl) UpdateUserGroups(
 		request.Body.GroupIDs,
 	); err != nil {
 		zerologr.Error(err, "Failed to update admin user group bindings")
-		return adminapi.UpdateUserGroups500JSONResponse{
-			InternalErrorJSONResponse: apiErrInternal,
-		}, nil
+		return adminapi.UpdateUserGroups500JSONResponse(apiErrInternal), nil
 	}
 
 	return adminapi.UpdateUserGroups204Response{}, nil
@@ -393,41 +333,29 @@ func (i *impl) CreateGroup(
 	request adminapi.CreateGroupRequestObject,
 ) (adminapi.CreateGroupResponseObject, error) {
 	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
-		return adminapi.CreateGroup403JSONResponse{
-			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
-				makeGenAPIError("permission denied"),
-			),
-		}, nil
+		return adminapi.CreateGroup403JSONResponse(makeGenAPIError("permission denied")), nil
 	}
 
 	id, err := dbCreateGroup(ctx, i.sqlClient, request.Body.Name)
 	if err != nil {
 		if errors.Is(err, db.ErrUnique) {
 			zerologr.Error(err, "Group name conflict")
-			return adminapi.CreateGroup409JSONResponse{
-				ConflictErrorJSONResponse: apiErrConflict,
-			}, nil
+			return adminapi.CreateGroup409JSONResponse(apiErrConflict), nil
 		}
 
 		zerologr.Error(err, "Failed to create admin group")
-		return adminapi.CreateGroup500JSONResponse{
-			InternalErrorJSONResponse: apiErrInternal,
-		}, nil
+		return adminapi.CreateGroup500JSONResponse(apiErrInternal), nil
 	}
 
 	if err := dbSetGroupPermissions(ctx, i.sqlClient, id, request.Body.PermissionIDs); err != nil {
 		zerologr.Error(err, "Failed to set permissions for admin group")
-		return adminapi.CreateGroup500JSONResponse{
-			InternalErrorJSONResponse: apiErrInternal,
-		}, nil
+		return adminapi.CreateGroup500JSONResponse(apiErrInternal), nil
 	}
 
 	perms, err := dbGetGroupPermissions(ctx, i.sqlClient, id)
 	if err != nil {
 		zerologr.Error(err, "Failed to fetch permissions for created admin group")
-		return adminapi.CreateGroup500JSONResponse{
-			InternalErrorJSONResponse: apiErrInternal,
-		}, nil
+		return adminapi.CreateGroup500JSONResponse(apiErrInternal), nil
 	}
 
 	return adminapi.CreateGroup201JSONResponse(
@@ -442,17 +370,13 @@ func (i *impl) GetGroups(
 ) (adminapi.GetGroupsResponseObject, error) {
 	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) &&
 		!ContextIsAdminUserMgmtViewer(ctx) {
-		return adminapi.GetGroups403JSONResponse{
-			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
-				makeGenAPIError("permission denied"),
-			),
-		}, nil
+		return adminapi.GetGroups403JSONResponse(makeGenAPIError("permission denied")), nil
 	}
 
 	groups, err := dbListGroups(ctx, i.sqlClient)
 	if err != nil {
 		zerologr.Error(err, "Failed to list admin groups")
-		return adminapi.GetGroups500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
+		return adminapi.GetGroups500JSONResponse(apiErrInternal), nil
 	}
 
 	enriched := make([]adminapi.Group, 0, len(groups))
@@ -460,7 +384,7 @@ func (i *impl) GetGroups(
 		perms, err := dbGetGroupPermissions(ctx, i.sqlClient, int64(g.Id))
 		if err != nil {
 			zerologr.Error(err, "Failed to fetch permissions for admin group")
-			return adminapi.GetGroups500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
+			return adminapi.GetGroups500JSONResponse(apiErrInternal), nil
 		}
 		g.Permissions = perms
 		enriched = append(enriched, g)
@@ -476,28 +400,22 @@ func (i *impl) GetGroup(
 ) (adminapi.GetGroupResponseObject, error) {
 	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) &&
 		!ContextIsAdminUserMgmtViewer(ctx) {
-		return adminapi.GetGroup403JSONResponse{
-			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
-				makeGenAPIError("permission denied"),
-			),
-		}, nil
+		return adminapi.GetGroup403JSONResponse(makeGenAPIError("permission denied")), nil
 	}
 
 	g, err := dbGetGroup(ctx, i.sqlClient, int64(request.GroupID))
 	if err != nil {
 		if errors.Is(err, errNoGroup) {
-			return adminapi.GetGroup404JSONResponse{
-				NotFoundErrorJSONResponse: apiErrNotFound,
-			}, nil
+			return adminapi.GetGroup404JSONResponse(apiErrNotFound), nil
 		}
 		zerologr.Error(err, "Failed to get admin group")
-		return adminapi.GetGroup500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
+		return adminapi.GetGroup500JSONResponse(apiErrInternal), nil
 	}
 
 	perms, err := dbGetGroupPermissions(ctx, i.sqlClient, int64(request.GroupID))
 	if err != nil {
 		zerologr.Error(err, "Failed to fetch permissions for admin group")
-		return adminapi.GetGroup500JSONResponse{InternalErrorJSONResponse: apiErrInternal}, nil
+		return adminapi.GetGroup500JSONResponse(apiErrInternal), nil
 	}
 	g.Permissions = perms
 
@@ -510,24 +428,16 @@ func (i *impl) UpdateGroup(
 	request adminapi.UpdateGroupRequestObject,
 ) (adminapi.UpdateGroupResponseObject, error) {
 	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
-		return adminapi.UpdateGroup403JSONResponse{
-			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
-				makeGenAPIError("permission denied"),
-			),
-		}, nil
+		return adminapi.UpdateGroup403JSONResponse(makeGenAPIError("permission denied")), nil
 	}
 
 	if _, err := dbGetGroup(ctx, i.sqlClient, int64(request.GroupID)); err != nil {
 		if errors.Is(err, errNoGroup) {
-			return adminapi.UpdateGroup404JSONResponse{
-				NotFoundErrorJSONResponse: apiErrNotFound,
-			}, nil
+			return adminapi.UpdateGroup404JSONResponse(apiErrNotFound), nil
 		}
 
 		zerologr.Error(err, "Failed to check admin group before update")
-		return adminapi.UpdateGroup500JSONResponse{
-			InternalErrorJSONResponse: apiErrInternal,
-		}, nil
+		return adminapi.UpdateGroup500JSONResponse(apiErrInternal), nil
 	}
 
 	if err := dbUpdateGroup(
@@ -538,15 +448,11 @@ func (i *impl) UpdateGroup(
 	); err != nil {
 		if errors.Is(err, db.ErrUnique) {
 			zerologr.Error(err, "Group name conflict during update")
-			return adminapi.UpdateGroup409JSONResponse{
-				ConflictErrorJSONResponse: apiErrConflict,
-			}, nil
+			return adminapi.UpdateGroup409JSONResponse(apiErrConflict), nil
 		}
 
 		zerologr.Error(err, "Failed to update admin group")
-		return adminapi.UpdateGroup500JSONResponse{
-			InternalErrorJSONResponse: apiErrInternal,
-		}, nil
+		return adminapi.UpdateGroup500JSONResponse(apiErrInternal), nil
 	}
 
 	if err := dbSetGroupPermissions(
@@ -556,9 +462,7 @@ func (i *impl) UpdateGroup(
 		request.Body.PermissionIDs,
 	); err != nil {
 		zerologr.Error(err, "Failed to update permissions for admin group")
-		return adminapi.UpdateGroup500JSONResponse{
-			InternalErrorJSONResponse: apiErrInternal,
-		}, nil
+		return adminapi.UpdateGroup500JSONResponse(apiErrInternal), nil
 	}
 
 	return adminapi.UpdateGroup204Response{}, nil
@@ -570,30 +474,20 @@ func (i *impl) DeleteGroup(
 	request adminapi.DeleteGroupRequestObject,
 ) (adminapi.DeleteGroupResponseObject, error) {
 	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
-		return adminapi.DeleteGroup403JSONResponse{
-			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
-				makeGenAPIError("permission denied"),
-			),
-		}, nil
+		return adminapi.DeleteGroup403JSONResponse(makeGenAPIError("permission denied")), nil
 	}
 
 	if _, err := dbGetGroup(ctx, i.sqlClient, int64(request.GroupID)); err != nil {
 		if errors.Is(err, errNoGroup) {
-			return adminapi.DeleteGroup404JSONResponse{
-				NotFoundErrorJSONResponse: apiErrNotFound,
-			}, nil
+			return adminapi.DeleteGroup404JSONResponse(apiErrNotFound), nil
 		}
 		zerologr.Error(err, "Failed to check admin group before delete")
-		return adminapi.DeleteGroup500JSONResponse{
-			InternalErrorJSONResponse: apiErrInternal,
-		}, nil
+		return adminapi.DeleteGroup500JSONResponse(apiErrInternal), nil
 	}
 
 	if err := dbDeleteGroup(ctx, i.sqlClient, int64(request.GroupID)); err != nil {
 		zerologr.Error(err, "Failed to delete admin group")
-		return adminapi.DeleteGroup500JSONResponse{
-			InternalErrorJSONResponse: apiErrInternal,
-		}, nil
+		return adminapi.DeleteGroup500JSONResponse(apiErrInternal), nil
 	}
 
 	return adminapi.DeleteGroup204Response{}, nil
