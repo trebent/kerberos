@@ -25,16 +25,6 @@ func mustCreateAdminGroup(t *testing.T, name string) int64 {
 	if err != nil {
 		t.Fatalf("dbCreateGroup(%q) error: %v", name, err)
 	}
-	// Assign all permissions by default so tests that use this group don't fail permission checks.
-	allPerms := []int{
-		int(PermissionIDFlowViewer),
-		int(PermissionIDOASViewer),
-		int(PermissionIDBasicAuthOrgAdmin),
-		int(PermissionIDBasicAuthOrgViewer),
-	}
-	if err := dbSetGroupPermissions(context.Background(), testClient, id, allPerms); err != nil {
-		t.Fatalf("dbSetGroupPermissions(%d) error: %v", id, err)
-	}
 	return id
 }
 

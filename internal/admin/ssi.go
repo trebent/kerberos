@@ -113,9 +113,14 @@ func (i *impl) GetBackendOAS(
 	ctx context.Context,
 	request adminapi.GetBackendOASRequestObject,
 ) (adminapi.GetBackendOASResponseObject, error) {
+	if i.oasBackend == nil {
+		return adminapi.GetBackendOAS404JSONResponse(apiErrNotFound), nil
+	}
+
 	if !IsSuperUserContext(ctx) && !ContextCanViewOAS(ctx) {
 		return adminapi.GetBackendOAS403JSONResponse(makeGenAPIError("permission denied")), nil
 	}
+
 	oasData, err := i.oasBackend.GetOAS(request.Backend)
 	if err != nil {
 		return nil, err

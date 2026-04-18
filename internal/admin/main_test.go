@@ -21,8 +21,13 @@ func TestMain(m *testing.M) {
 		panic("failed to apply admin DB schema: " + err.Error())
 	}
 
-	dbBootstrapSuperuser(testClient, testClientID, testClientSecret)
-	dbBootstrapPermissions(testClient)
+	if err := dbBootstrapSuperuser(testClient, testClientID, testClientSecret); err != nil {
+		panic("failed to bootstrap superuser: " + err.Error())
+	}
+
+	if err := dbBootstrapPermissions(testClient); err != nil {
+		panic("failed to bootstrap permissions: " + err.Error())
+	}
 
 	code := m.Run()
 
