@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS admin_groups (
-  id INTEGER PRIMARY KEY,
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
   name VARCHAR(100) NOT NULL,
   created TEXT NOT NULL DEFAULT current_timestamp,
   updated TEXT NOT NULL DEFAULT current_timestamp
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS admin_group_permission_bindings (
 CREATE UNIQUE INDEX IF NOT EXISTS admin_group_permissions ON admin_group_permission_bindings(group_id, permission_id);
 
 CREATE TABLE IF NOT EXISTS admin_users (
-  id INTEGER PRIMARY KEY,
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
   name VARCHAR(100) NOT NULL,
   superuser BOOLEAN DEFAULT FALSE NOT NULL,
   salt VARCHAR(100) NOT NULL,

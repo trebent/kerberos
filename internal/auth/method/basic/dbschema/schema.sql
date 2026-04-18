@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS organisations (
-  id INTEGER PRIMARY KEY,
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
   name VARCHAR(100) NOT NULL,
   created TEXT NOT NULL DEFAULT current_timestamp,
   updated TEXT NOT NULL DEFAULT current_timestamp
@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS organisations (
 CREATE UNIQUE INDEX IF NOT EXISTS organisation_name ON organisations(name);
 
 CREATE TABLE IF NOT EXISTS groups (
-  id INTEGER PRIMARY KEY,
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
   name VARCHAR(100) NOT NULL,
   organisation_id INTEGER,
   created TEXT NOT NULL DEFAULT current_timestamp,
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS groups (
 CREATE UNIQUE INDEX IF NOT EXISTS group_name ON groups(organisation_id, name);
 
 CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY,
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
   name VARCHAR(100) NOT NULL,
   salt VARCHAR(100) NOT NULL,
   hashed_password VARCHAR(100) NOT NULL,

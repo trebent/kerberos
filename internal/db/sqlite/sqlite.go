@@ -18,7 +18,6 @@ type (
 	Opts struct {
 		DSN string
 	}
-	// PRAGMA foreign_keys=ON; needs to be run per connection to enforce FKs.
 	impl struct {
 		db *sql.DB
 	}
@@ -37,10 +36,10 @@ const (
 	DBName = "krb.db"
 
 	driver = "sqlite"
-
-	queryEnableForeignKeys = "PRAGMA foreign_keys=ON;"
 )
 
+// New creates a new SQLite client. If opts.DSN is empty, it defaults to "krb.db" in the current directory.
+// The input DNS is modified to ensure that foreign key constraints are enabled.
 func New(opts *Opts) db.SQLClient {
 	dsn := opts.DSN
 	if dsn == "" {
@@ -75,41 +74,53 @@ func (i *impl) Begin(ctx context.Context) (db.Transaction, error) {
 		return nil, wrap(err)
 	}
 
-	_, err = tx.ExecContext(ctx, queryEnableForeignKeys)
-	if err != nil {
-		_ = tx.Rollback()
-		return nil, wrap(err)
-	}
-
-	return &txImpl{tx: tx}, err
+	return &txImpl{tx: tx}, nil
 }
 
 func (i *impl) Exec(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	res, err := i.db.ExecContext(ctx, query, args...)
-	return res, wrap(err)
+	if err != nil {
+		return nil, wrap(err)
+	}
+	return res, nil
 }
 
 func (i *impl) Query(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	rows, err := i.db.QueryContext(ctx, query, args...)
-	return rows, wrap(err)
+	if err != nil {
+		return nil, wrap(err)
+	}
+	return rows, nil
 }
 
 func (t *txImpl) Exec(ctx context.Context, stmt string, args ...any) (sql.Result, error) {
 	res, err := t.tx.ExecContext(ctx, stmt, args...)
-	return res, wrap(err)
+	if err != nil {
+		return nil, wrap(err)
+	}
+	return res, nil
 }
 
 func (t *txImpl) Query(ctx context.Context, stmt string, args ...any) (*sql.Rows, error) {
 	rows, err := t.tx.QueryContext(ctx, stmt, args...)
-	return rows, wrap(err)
+	if err != nil {
+		return nil, wrap(err)
+	}
+	return rows, nil
 }
 
 func (t *txImpl) Commit() error {
-	return wrap(t.tx.Commit())
+	if err := t.tx.Commit(); err != nil {
+		return wrap(err)
+	}
+	return nil
 }
 
 func (t *txImpl) Rollback() error {
-	return wrap(t.tx.Rollback())
+	if err := t.tx.Rollback(); err != nil {
+		return wrap(err)
+	}
+	return nil
 }
 
 func wrap(err error) error {
