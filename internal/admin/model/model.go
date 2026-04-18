@@ -24,10 +24,13 @@ type (
 		Name    string
 	}
 	Session struct {
-		UserID      int64
-		SessionID   string
-		IsSuper     bool
-		Expires     int64
-		Permissions []int64 // permission IDs derived from the user's group memberships
+		UserID    int64
+		SessionID string
+		IsSuper   bool
+		Expires   int64
+
+		// Permissions is populated for non-superusers to hold the permission IDs derived from their group memberships.
+		// This is done at session validation time to avoid a database query on every request to fetch the user's permissions.
+		Permissions []int64
 	}
 )

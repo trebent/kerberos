@@ -127,7 +127,16 @@ func ContextSessionValid(ctx context.Context) bool {
 
 func IsSuperUserContext(ctx context.Context) bool {
 	val := ctx.Value(adminContextIsSuperUser)
-	return val != nil
+	if val == nil {
+		return false
+	}
+
+	b, ok := val.(bool)
+	if !ok {
+		return false
+	}
+
+	return b
 }
 
 // ContextHasPermission reports whether the calling admin user holds the given permission.
@@ -137,10 +146,15 @@ func ContextHasPermission(ctx context.Context, permissionID int64) bool {
 		return true
 	}
 	val := ctx.Value(adminContextPermissions)
+	if val == nil {
+		return false
+	}
+
 	ids, ok := val.([]int64)
 	if !ok {
 		return false
 	}
+
 	return slices.Contains(ids, permissionID)
 }
 
