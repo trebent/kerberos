@@ -2,9 +2,7 @@ package admin
 
 import (
 	"context"
-	"database/sql"
 	"errors"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/trebent/kerberos/internal/admin/model"
@@ -41,14 +39,7 @@ func (i *impl) LoginSuperuser(
 	}
 
 	sessionID := uuid.NewString()
-	_, err = i.sqlClient.Exec(
-		ctx,
-		insertSession,
-		sql.NamedArg{Name: "user_id", Value: superuser.ID},
-		sql.NamedArg{Name: "session_id", Value: sessionID},
-		sql.NamedArg{Name: "expires", Value: time.Now().Add(superSessionExpiry).UnixMilli()},
-	)
-	if err != nil {
+	if err := dbCreateSession(ctx, i.sqlClient, superuser.ID, sessionID); err != nil {
 		zerologr.Error(err, "Failed to store super-session")
 		return adminapi.LoginSuperuser500JSONResponse(
 			makeGenAPIError(apierror.APIErrInternal.Error()),
@@ -67,6 +58,12 @@ func (i *impl) LogoutSuperuser(
 	ctx context.Context,
 	_ adminapi.LogoutSuperuserRequestObject,
 ) (adminapi.LogoutSuperuserResponseObject, error) {
+	if !IsSuperUserContext(ctx) {
+		return adminapi.LogoutSuperuser403JSONResponse{
+			ForbiddenErrorJSONResponse: apiErrForbidden,
+		}, nil
+	}
+
 	_, err := i.sqlClient.Exec(ctx, deleteSuperSessions)
 	if err != nil {
 		zerologr.Error(err, "Failed to delete super sessions during logout")
@@ -139,9 +136,7 @@ func (i *impl) CreateUser(
 ) (adminapi.CreateUserResponseObject, error) {
 	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
 		return adminapi.CreateUser403JSONResponse{
-			ForbiddenErrorJSONResponse: adminapi.ForbiddenErrorJSONResponse(
-				makeGenAPIError("permission denied"),
-			),
+			ForbiddenErrorJSONResponse: apiErrForbidden,
 		}, nil
 	}
 

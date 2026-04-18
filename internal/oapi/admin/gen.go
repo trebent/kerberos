@@ -1675,6 +1675,15 @@ func (response LogoutSuperuser204Response) VisitLogoutSuperuserResponse(w http.R
 	return nil
 }
 
+type LogoutSuperuser403JSONResponse struct{ ForbiddenErrorJSONResponse }
+
+func (response LogoutSuperuser403JSONResponse) VisitLogoutSuperuserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type LogoutSuperuser500JSONResponse APIErrorResponse
 
 func (response LogoutSuperuser500JSONResponse) VisitLogoutSuperuserResponse(w http.ResponseWriter) error {
@@ -2729,37 +2738,37 @@ func (sh *strictHandler) ChangeUserPassword(w http.ResponseWriter, r *http.Reque
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

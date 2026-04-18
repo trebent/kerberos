@@ -1934,6 +1934,7 @@ func (r LoginSuperuserResponse) StatusCode() int {
 type LogoutSuperuserResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON403      *ForbiddenError
 	JSON500      *APIErrorResponse
 }
 
@@ -2930,6 +2931,13 @@ func ParseLogoutSuperuserResponse(rsp *http.Response) (*LogoutSuperuserResponse,
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

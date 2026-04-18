@@ -627,3 +627,16 @@ func TestPermissionsAdminUserMgmtViewerDeniedWithoutPermission(t *testing.T) {
 	checkErr(err, t)
 	verifyStatusCode(listUsersResp.StatusCode(), http.StatusForbidden, t)
 }
+
+func TestPermissionsNormalUserLogoutSuper(t *testing.T) {
+	superSession := superLogin(t)
+	session := createAdminUserInGroup(t, superSession, []int{permIDAdminUserMgmtViewer})
+
+	// Normal admin users should not be able to log out the superuser, even if they
+	// have permissions to call the logout endpoint.
+	logoutResp, err := adminClient.LogoutSuperuserWithResponse(
+		t.Context(), adminapi.RequestEditorFn(requestEditorSessionID(session)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(logoutResp.StatusCode(), http.StatusForbidden, t)
+}
