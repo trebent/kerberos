@@ -23,6 +23,11 @@ func TestAdminGroupCreate(t *testing.T) {
 	if createResp.JSON201.Id == 0 {
 		t.Fatal("expected non-zero group ID in create response")
 	}
+
+	if len(*createResp.JSON201.Permissions) != len(allPermissionIDs) {
+		t.Fatalf("expected %d permissions in create response, got %d",
+			len(allPermissionIDs), len(*createResp.JSON201.Permissions))
+	}
 }
 
 // TestAdminGroupCreateConflict verifies that creating a duplicate admin group name is rejected.
