@@ -116,24 +116,6 @@ type User struct {
 	Username string   `json:"username"`
 }
 
-// BadRequestError defines model for BadRequestError.
-type BadRequestError = APIErrorResponse
-
-// ConflictError defines model for ConflictError.
-type ConflictError = APIErrorResponse
-
-// ForbiddenError defines model for ForbiddenError.
-type ForbiddenError = APIErrorResponse
-
-// InternalError defines model for InternalError.
-type InternalError = APIErrorResponse
-
-// NotFoundError defines model for NotFoundError.
-type NotFoundError = APIErrorResponse
-
-// UnauthorizedError defines model for UnauthorizedError.
-type UnauthorizedError = APIErrorResponse
-
 // ChangePasswordRequest defines model for ChangePasswordRequest.
 type ChangePasswordRequest struct {
 	NewPassword string `json:"newPassword"`
@@ -171,7 +153,7 @@ type UpdateUserGroupsRequest struct {
 
 // UpdateUserRequest defines model for UpdateUserRequest.
 type UpdateUserRequest struct {
-	Username *string `json:"username,omitempty"`
+	Username string `json:"username"`
 }
 
 // CreateGroupJSONBody defines parameters for CreateGroup.
@@ -206,7 +188,7 @@ type CreateUserJSONBody struct {
 
 // UpdateUserJSONBody defines parameters for UpdateUser.
 type UpdateUserJSONBody struct {
-	Username *string `json:"username,omitempty"`
+	Username string `json:"username"`
 }
 
 // UpdateUserGroupsJSONBody defines parameters for UpdateUserGroups.
@@ -1656,8 +1638,8 @@ type GetFlowResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]FlowMeta
-	JSON401      *UnauthorizedError
-	JSON403      *ForbiddenError
+	JSON401      *APIErrorResponse
+	JSON403      *APIErrorResponse
 	JSON500      *APIErrorResponse
 }
 
@@ -1681,9 +1663,9 @@ type GetGroupsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]Group
-	JSON401      *UnauthorizedError
-	JSON403      *ForbiddenError
-	JSON500      *InternalError
+	JSON401      *APIErrorResponse
+	JSON403      *APIErrorResponse
+	JSON500      *APIErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -1706,11 +1688,11 @@ type CreateGroupResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON201      *Group
-	JSON400      *BadRequestError
-	JSON401      *UnauthorizedError
-	JSON403      *ForbiddenError
-	JSON409      *ConflictError
-	JSON500      *InternalError
+	JSON400      *APIErrorResponse
+	JSON401      *APIErrorResponse
+	JSON403      *APIErrorResponse
+	JSON409      *APIErrorResponse
+	JSON500      *APIErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -1732,11 +1714,11 @@ func (r CreateGroupResponse) StatusCode() int {
 type DeleteGroupResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON400      *BadRequestError
-	JSON401      *UnauthorizedError
-	JSON403      *ForbiddenError
-	JSON404      *NotFoundError
-	JSON500      *InternalError
+	JSON400      *APIErrorResponse
+	JSON401      *APIErrorResponse
+	JSON403      *APIErrorResponse
+	JSON404      *APIErrorResponse
+	JSON500      *APIErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -1759,10 +1741,10 @@ type GetGroupResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *Group
-	JSON401      *UnauthorizedError
-	JSON403      *ForbiddenError
-	JSON404      *NotFoundError
-	JSON500      *InternalError
+	JSON401      *APIErrorResponse
+	JSON403      *APIErrorResponse
+	JSON404      *APIErrorResponse
+	JSON500      *APIErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -1784,12 +1766,12 @@ func (r GetGroupResponse) StatusCode() int {
 type UpdateGroupResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON400      *BadRequestError
-	JSON401      *UnauthorizedError
-	JSON403      *ForbiddenError
-	JSON404      *NotFoundError
-	JSON409      *ConflictError
-	JSON500      *InternalError
+	JSON400      *APIErrorResponse
+	JSON401      *APIErrorResponse
+	JSON403      *APIErrorResponse
+	JSON404      *APIErrorResponse
+	JSON409      *APIErrorResponse
+	JSON500      *APIErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -1811,9 +1793,9 @@ func (r UpdateGroupResponse) StatusCode() int {
 type LoginResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON400      *BadRequestError
-	JSON401      *UnauthorizedError
-	JSON500      *InternalError
+	JSON400      *APIErrorResponse
+	JSON401      *APIErrorResponse
+	JSON500      *APIErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -1835,9 +1817,9 @@ func (r LoginResponse) StatusCode() int {
 type LogoutResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON400      *BadRequestError
-	JSON401      *UnauthorizedError
-	JSON500      *InternalError
+	JSON400      *APIErrorResponse
+	JSON401      *APIErrorResponse
+	JSON500      *APIErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -1886,8 +1868,8 @@ type GetPermissionsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]Permission
-	JSON401      *UnauthorizedError
-	JSON500      *InternalError
+	JSON401      *APIErrorResponse
+	JSON500      *APIErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -1934,7 +1916,7 @@ func (r LoginSuperuserResponse) StatusCode() int {
 type LogoutSuperuserResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON403      *ForbiddenError
+	JSON403      *APIErrorResponse
 	JSON500      *APIErrorResponse
 }
 
@@ -1958,9 +1940,9 @@ type GetUsersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]User
-	JSON401      *UnauthorizedError
-	JSON403      *ForbiddenError
-	JSON500      *InternalError
+	JSON401      *APIErrorResponse
+	JSON403      *APIErrorResponse
+	JSON500      *APIErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -1982,11 +1964,11 @@ func (r GetUsersResponse) StatusCode() int {
 type CreateUserResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON400      *BadRequestError
-	JSON401      *UnauthorizedError
-	JSON403      *ForbiddenError
-	JSON409      *ConflictError
-	JSON500      *InternalError
+	JSON400      *APIErrorResponse
+	JSON401      *APIErrorResponse
+	JSON403      *APIErrorResponse
+	JSON409      *APIErrorResponse
+	JSON500      *APIErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -2008,11 +1990,11 @@ func (r CreateUserResponse) StatusCode() int {
 type DeleteUserResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON400      *BadRequestError
-	JSON401      *UnauthorizedError
-	JSON403      *ForbiddenError
-	JSON404      *NotFoundError
-	JSON500      *InternalError
+	JSON400      *APIErrorResponse
+	JSON401      *APIErrorResponse
+	JSON403      *APIErrorResponse
+	JSON404      *APIErrorResponse
+	JSON500      *APIErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -2035,11 +2017,11 @@ type GetUserResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *User
-	JSON400      *BadRequestError
-	JSON401      *UnauthorizedError
-	JSON403      *ForbiddenError
-	JSON404      *NotFoundError
-	JSON500      *InternalError
+	JSON400      *APIErrorResponse
+	JSON401      *APIErrorResponse
+	JSON403      *APIErrorResponse
+	JSON404      *APIErrorResponse
+	JSON500      *APIErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -2061,12 +2043,12 @@ func (r GetUserResponse) StatusCode() int {
 type UpdateUserResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON400      *BadRequestError
-	JSON401      *UnauthorizedError
-	JSON403      *ForbiddenError
-	JSON404      *NotFoundError
-	JSON409      *ConflictError
-	JSON500      *InternalError
+	JSON400      *APIErrorResponse
+	JSON401      *APIErrorResponse
+	JSON403      *APIErrorResponse
+	JSON404      *APIErrorResponse
+	JSON409      *APIErrorResponse
+	JSON500      *APIErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -2088,11 +2070,11 @@ func (r UpdateUserResponse) StatusCode() int {
 type UpdateUserGroupsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON400      *BadRequestError
-	JSON401      *UnauthorizedError
-	JSON403      *ForbiddenError
-	JSON404      *NotFoundError
-	JSON500      *InternalError
+	JSON400      *APIErrorResponse
+	JSON401      *APIErrorResponse
+	JSON403      *APIErrorResponse
+	JSON404      *APIErrorResponse
+	JSON500      *APIErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -2114,11 +2096,11 @@ func (r UpdateUserGroupsResponse) StatusCode() int {
 type ChangeUserPasswordResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON400      *BadRequestError
-	JSON401      *UnauthorizedError
-	JSON403      *ForbiddenError
-	JSON404      *NotFoundError
-	JSON500      *InternalError
+	JSON400      *APIErrorResponse
+	JSON401      *APIErrorResponse
+	JSON403      *APIErrorResponse
+	JSON404      *APIErrorResponse
+	JSON500      *APIErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -2394,14 +2376,14 @@ func ParseGetFlowResponse(rsp *http.Response) (*GetFlowResponse, error) {
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2441,21 +2423,21 @@ func ParseGetGroupsResponse(rsp *http.Response) (*GetGroupsResponse, error) {
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2488,35 +2470,35 @@ func ParseCreateGroupResponse(rsp *http.Response) (*CreateGroupResponse, error) 
 		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequestError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest ConflictError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2542,35 +2524,35 @@ func ParseDeleteGroupResponse(rsp *http.Response) (*DeleteGroupResponse, error) 
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequestError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2603,28 +2585,28 @@ func ParseGetGroupResponse(rsp *http.Response) (*GetGroupResponse, error) {
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2650,42 +2632,42 @@ func ParseUpdateGroupResponse(rsp *http.Response) (*UpdateGroupResponse, error) 
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequestError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest ConflictError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2711,21 +2693,21 @@ func ParseLoginResponse(rsp *http.Response) (*LoginResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequestError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2751,21 +2733,21 @@ func ParseLogoutResponse(rsp *http.Response) (*LogoutResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequestError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2852,14 +2834,14 @@ func ParseGetPermissionsResponse(rsp *http.Response) (*GetPermissionsResponse, e
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2932,7 +2914,7 @@ func ParseLogoutSuperuserResponse(rsp *http.Response) (*LogoutSuperuserResponse,
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2972,21 +2954,21 @@ func ParseGetUsersResponse(rsp *http.Response) (*GetUsersResponse, error) {
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -3012,35 +2994,35 @@ func ParseCreateUserResponse(rsp *http.Response) (*CreateUserResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequestError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest ConflictError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -3066,35 +3048,35 @@ func ParseDeleteUserResponse(rsp *http.Response) (*DeleteUserResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequestError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -3127,35 +3109,35 @@ func ParseGetUserResponse(rsp *http.Response) (*GetUserResponse, error) {
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequestError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -3181,42 +3163,42 @@ func ParseUpdateUserResponse(rsp *http.Response) (*UpdateUserResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequestError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest ConflictError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -3242,35 +3224,35 @@ func ParseUpdateUserGroupsResponse(rsp *http.Response) (*UpdateUserGroupsRespons
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequestError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -3296,35 +3278,35 @@ func ParseChangeUserPasswordResponse(rsp *http.Response) (*ChangeUserPasswordRes
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequestError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalError
+		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

@@ -210,7 +210,7 @@ func (i *impl) UpdateUser(
 		ctx,
 		i.sqlClient,
 		int64(request.UserID),
-		*request.Body.Username,
+		request.Body.Username,
 	); err != nil {
 		if errors.Is(err, db.ErrUnique) {
 			zerologr.Error(err, "Username conflict during update")
@@ -230,7 +230,7 @@ func (i *impl) DeleteUser(
 	request adminapi.DeleteUserRequestObject,
 ) (adminapi.DeleteUserResponseObject, error) {
 	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
-		return adminapi.DeleteUser403JSONResponse(makeGenAPIError("permission denied")), nil
+		return adminapi.DeleteUser403JSONResponse(apiErrForbidden), nil
 	}
 
 	if _, err := dbGetUser(ctx, i.sqlClient, int64(request.UserID)); err != nil {
