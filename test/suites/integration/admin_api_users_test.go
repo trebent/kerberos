@@ -260,12 +260,13 @@ func TestAdminUserLoginLogout(t *testing.T) {
 
 	adminSession := adminUserLogin(t, name, pass)
 
-	getUsersResp, err := adminClient.GetUsersWithResponse(
+	// GetPermissions is accessible to any authenticated admin user (no specific permission required).
+	getPermsResp, err := adminClient.GetPermissionsWithResponse(
 		t.Context(),
 		adminapi.RequestEditorFn(requestEditorSessionID(adminSession)),
 	)
 	checkErr(err, t)
-	verifyStatusCode(getUsersResp.StatusCode(), http.StatusOK, t)
+	verifyStatusCode(getPermsResp.StatusCode(), http.StatusOK, t)
 
 	logoutResp, err := adminClient.LogoutWithResponse(
 		t.Context(),
@@ -274,12 +275,12 @@ func TestAdminUserLoginLogout(t *testing.T) {
 	checkErr(err, t)
 	verifyStatusCode(logoutResp.StatusCode(), http.StatusNoContent, t)
 
-	getUsersResp, err = adminClient.GetUsersWithResponse(
+	getPermsResp, err = adminClient.GetPermissionsWithResponse(
 		t.Context(),
 		adminapi.RequestEditorFn(requestEditorSessionID(adminSession)),
 	)
 	checkErr(err, t)
-	verifyStatusCode(getUsersResp.StatusCode(), http.StatusUnauthorized, t)
+	verifyStatusCode(getPermsResp.StatusCode(), http.StatusUnauthorized, t)
 }
 
 // TestAdminUserLoginFailure verifies that login with incorrect credentials returns 401.

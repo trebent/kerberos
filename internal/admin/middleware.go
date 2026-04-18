@@ -177,3 +177,13 @@ func ContextIsBasicAuthAdmin(ctx context.Context) bool {
 func ContextIsBasicAuthViewer(ctx context.Context) bool {
 	return ContextHasPermission(ctx, PermissionIDBasicAuthOrgViewer)
 }
+
+// ContextIsAdminUserMgmtAdmin reports whether the calling admin user has the adminusermgmtadmin permission.
+func ContextIsAdminUserMgmtAdmin(ctx context.Context) bool {
+	return ContextHasPermission(ctx, PermissionIDAdminUserMgmtAdmin)
+}
+
+// ContextIsAdminUserMgmtViewer reports whether the calling admin user has the adminusermgmtviewer permission.
+func ContextIsAdminUserMgmtViewer(ctx context.Context) bool {
+	return ContextHasPermission(ctx, PermissionIDAdminUserMgmtViewer)
+}

@@ -9,7 +9,7 @@ import (
 
 // allPermissionIDs is the base set of all available admin group permissions.
 // Tests that create admin groups should include these to avoid breaking permission-gated endpoints.
-var allPermissionIDs = []int{1, 2, 3, 4}
+var allPermissionIDs = []int{1, 2, 3, 4, 5, 6}
 
 func TestAdminLoginSuperuser(t *testing.T) {
 	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
