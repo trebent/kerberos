@@ -391,6 +391,10 @@ paths:
         $ref: "#/components/requestBodies/CreateUserRequest"
       responses:
         "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
           description: Created the user successfully.
         "400":
           content:

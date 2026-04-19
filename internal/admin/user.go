@@ -119,19 +119,20 @@ func (i *impl) CreateUser(
 	ctx context.Context,
 	request adminapi.CreateUserRequestObject,
 ) (adminapi.CreateUserResponseObject, error) {
-	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
+	if !ContextIsAdminUserMgmtAdmin(ctx) {
 		return adminapi.CreateUser403JSONResponse(apiErrForbidden), nil
 	}
 
 	_, salt, hashedPassword := password.Make(request.Body.Password)
 
-	if _, err := dbCreateUser(
+	id, err := dbCreateUser(
 		ctx,
 		i.sqlClient,
 		request.Body.Username,
 		salt,
 		hashedPassword,
-	); err != nil {
+	)
+	if err != nil {
 		if errors.Is(err, db.ErrUnique) {
 			zerologr.Error(err, "Username conflict")
 			return adminapi.CreateUser409JSONResponse(apiErrConflict), nil
@@ -141,7 +142,10 @@ func (i *impl) CreateUser(
 		return adminapi.CreateUser500JSONResponse(apiErrInternal), nil
 	}
 
-	return adminapi.CreateUser201Response{}, nil
+	return adminapi.CreateUser201JSONResponse{
+		Id:       int(id),
+		Username: request.Body.Username,
+	}, nil
 }
 
 // GetUsers implements [withExtensions].
@@ -149,8 +153,7 @@ func (i *impl) GetUsers(
 	ctx context.Context,
 	_ adminapi.GetUsersRequestObject,
 ) (adminapi.GetUsersResponseObject, error) {
-	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) &&
-		!ContextIsAdminUserMgmtViewer(ctx) {
+	if !ContextIsAdminUserMgmtAdmin(ctx) && !ContextIsAdminUserMgmtViewer(ctx) {
 		return adminapi.GetUsers403JSONResponse(apiErrForbidden), nil
 	}
 
@@ -168,8 +171,11 @@ func (i *impl) GetUser(
 	ctx context.Context,
 	request adminapi.GetUserRequestObject,
 ) (adminapi.GetUserResponseObject, error) {
-	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) &&
-		!ContextIsAdminUserMgmtViewer(ctx) {
+	//nolint:errcheck // no need, done in mware
+	session := ctx.Value(adminContextSession).(*model.Session)
+	self := session.UserID == int64(request.UserID)
+
+	if !self && !ContextIsAdminUserMgmtAdmin(ctx) && !ContextIsAdminUserMgmtViewer(ctx) {
 		return adminapi.GetUser403JSONResponse(apiErrForbidden), nil
 	}
 
@@ -202,7 +208,11 @@ func (i *impl) UpdateUser(
 	ctx context.Context,
 	request adminapi.UpdateUserRequestObject,
 ) (adminapi.UpdateUserResponseObject, error) {
-	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
+	//nolint:errcheck // no need, done in mware
+	session := ctx.Value(adminContextSession).(*model.Session)
+	self := session.UserID == int64(request.UserID)
+
+	if !self && !ContextIsAdminUserMgmtAdmin(ctx) {
 		return adminapi.UpdateUser403JSONResponse(apiErrForbidden), nil
 	}
 
@@ -229,7 +239,7 @@ func (i *impl) DeleteUser(
 	ctx context.Context,
 	request adminapi.DeleteUserRequestObject,
 ) (adminapi.DeleteUserResponseObject, error) {
-	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
+	if !ContextIsAdminUserMgmtAdmin(ctx) {
 		return adminapi.DeleteUser403JSONResponse(apiErrForbidden), nil
 	}
 
@@ -254,7 +264,11 @@ func (i *impl) ChangeUserPassword(
 	ctx context.Context,
 	request adminapi.ChangeUserPasswordRequestObject,
 ) (adminapi.ChangeUserPasswordResponseObject, error) {
-	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
+	//nolint:errcheck // no need, done in mware
+	session := ctx.Value(adminContextSession).(*model.Session)
+	self := session.UserID == int64(request.UserID)
+
+	if !ContextIsAdminUserMgmtAdmin(ctx) && !self {
 		return adminapi.ChangeUserPassword403JSONResponse(apiErrForbidden), nil
 	}
 
@@ -291,7 +305,7 @@ func (i *impl) UpdateUserGroups(
 	ctx context.Context,
 	request adminapi.UpdateUserGroupsRequestObject,
 ) (adminapi.UpdateUserGroupsResponseObject, error) {
-	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
+	if !ContextIsAdminUserMgmtAdmin(ctx) {
 		return adminapi.UpdateUserGroups403JSONResponse(apiErrForbidden), nil
 	}
 
@@ -321,7 +335,7 @@ func (i *impl) CreateGroup(
 	ctx context.Context,
 	request adminapi.CreateGroupRequestObject,
 ) (adminapi.CreateGroupResponseObject, error) {
-	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
+	if !ContextIsAdminUserMgmtAdmin(ctx) {
 		return adminapi.CreateGroup403JSONResponse(apiErrForbidden), nil
 	}
 
@@ -357,8 +371,7 @@ func (i *impl) GetGroups(
 	ctx context.Context,
 	_ adminapi.GetGroupsRequestObject,
 ) (adminapi.GetGroupsResponseObject, error) {
-	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) &&
-		!ContextIsAdminUserMgmtViewer(ctx) {
+	if !ContextIsAdminUserMgmtAdmin(ctx) && !ContextIsAdminUserMgmtViewer(ctx) {
 		return adminapi.GetGroups403JSONResponse(apiErrForbidden), nil
 	}
 
@@ -387,8 +400,7 @@ func (i *impl) GetGroup(
 	ctx context.Context,
 	request adminapi.GetGroupRequestObject,
 ) (adminapi.GetGroupResponseObject, error) {
-	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) &&
-		!ContextIsAdminUserMgmtViewer(ctx) {
+	if !ContextIsAdminUserMgmtAdmin(ctx) && !ContextIsAdminUserMgmtViewer(ctx) {
 		return adminapi.GetGroup403JSONResponse(apiErrForbidden), nil
 	}
 
@@ -416,7 +428,7 @@ func (i *impl) UpdateGroup(
 	ctx context.Context,
 	request adminapi.UpdateGroupRequestObject,
 ) (adminapi.UpdateGroupResponseObject, error) {
-	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
+	if !ContextIsAdminUserMgmtAdmin(ctx) {
 		return adminapi.UpdateGroup403JSONResponse(apiErrForbidden), nil
 	}
 
@@ -462,7 +474,7 @@ func (i *impl) DeleteGroup(
 	ctx context.Context,
 	request adminapi.DeleteGroupRequestObject,
 ) (adminapi.DeleteGroupResponseObject, error) {
-	if !IsSuperUserContext(ctx) && !ContextIsAdminUserMgmtAdmin(ctx) {
+	if !ContextIsAdminUserMgmtAdmin(ctx) {
 		return adminapi.DeleteGroup403JSONResponse(apiErrForbidden), nil
 	}
 

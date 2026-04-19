@@ -1964,6 +1964,7 @@ func (r GetUsersResponse) StatusCode() int {
 type CreateUserResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON201      *User
 	JSON400      *APIErrorResponse
 	JSON401      *APIErrorResponse
 	JSON403      *APIErrorResponse
@@ -2993,6 +2994,13 @@ func ParseCreateUserResponse(rsp *http.Response) (*CreateUserResponse, error) {
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest User
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

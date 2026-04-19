@@ -322,13 +322,13 @@ func TestAdminUserChangePassword(t *testing.T) {
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
 
-	userID := mustGetAdminUserID(t, superSession, name)
+	session := adminUserLogin(t, name, oldPass)
 
 	changeResp, err := adminClient.ChangeUserPasswordWithResponse(
 		t.Context(),
-		userID,
+		createResp.JSON201.Id,
 		adminapi.ChangeUserPasswordJSONRequestBody{OldPassword: oldPass, NewPassword: newPass},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(requestEditorSessionID(session)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(changeResp.StatusCode(), http.StatusNoContent, t)
@@ -340,7 +340,7 @@ func TestAdminUserChangePassword(t *testing.T) {
 	checkErr(err, t)
 	verifyStatusCode(oldLoginResp.StatusCode(), http.StatusUnauthorized, t)
 
-	adminUserLogin(t, name, newPass)
+	_ = adminUserLogin(t, name, newPass)
 }
 
 // TestAdminUserChangePasswordWrongOld verifies that providing the wrong old password is rejected.
@@ -359,15 +359,50 @@ func TestAdminUserChangePasswordWrongOld(t *testing.T) {
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
 
-	userID := mustGetAdminUserID(t, superSession, name)
-
 	changeResp, err := adminClient.ChangeUserPasswordWithResponse(
 		t.Context(),
-		userID,
+		createResp.JSON201.Id,
 		adminapi.ChangeUserPasswordJSONRequestBody{OldPassword: "wrong-old-pass", NewPassword: "newpass"},
 		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
 	verifyStatusCode(changeResp.StatusCode(), http.StatusUnauthorized, t)
 	verifyAdminAPIErrorResponse(changeResp.JSON401, t)
+}
+
+func TestAdminUserChangePasswordWrongUser(t *testing.T) {
+	t.Parallel()
+	superSession := superLogin(t)
+
+	name := username()
+	const pass = "correctpassword123"
+
+	createResp, err := adminClient.CreateUserWithResponse(
+		t.Context(),
+		adminapi.CreateUserJSONRequestBody{Username: name, Password: pass},
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+
+	name2 := username()
+	createResp2, err := adminClient.CreateUserWithResponse(
+		t.Context(),
+		adminapi.CreateUserJSONRequestBody{Username: name2, Password: pass},
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createResp2.StatusCode(), http.StatusCreated, t)
+
+	userSession2 := adminUserLogin(t, name2, pass)
+
+	changeResp, err := adminClient.ChangeUserPasswordWithResponse(
+		t.Context(),
+		createResp.JSON201.Id,
+		adminapi.ChangeUserPasswordJSONRequestBody{OldPassword: pass, NewPassword: "newpass"},
+		adminapi.RequestEditorFn(requestEditorSessionID(userSession2)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(changeResp.StatusCode(), http.StatusForbidden, t)
+	verifyAdminAPIErrorResponse(changeResp.JSON403, t)
 }

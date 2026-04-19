@@ -1707,12 +1707,13 @@ type CreateUserResponseObject interface {
 	VisitCreateUserResponse(w http.ResponseWriter) error
 }
 
-type CreateUser201Response struct {
-}
+type CreateUser201JSONResponse User
 
-func (response CreateUser201Response) VisitCreateUserResponse(w http.ResponseWriter) error {
+func (response CreateUser201JSONResponse) VisitCreateUserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(201)
-	return nil
+
+	return json.NewEncoder(w).Encode(response)
 }
 
 type CreateUser400JSONResponse APIErrorResponse

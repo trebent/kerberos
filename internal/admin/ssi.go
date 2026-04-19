@@ -85,7 +85,7 @@ func (i *impl) GetFlow(
 	ctx context.Context,
 	_ adminapi.GetFlowRequestObject,
 ) (adminapi.GetFlowResponseObject, error) {
-	if !IsSuperUserContext(ctx) && !ContextCanViewFlow(ctx) {
+	if !ContextCanViewFlow(ctx) {
 		return adminapi.GetFlow403JSONResponse(apiErrForbidden), nil
 	}
 
@@ -97,7 +97,7 @@ func (i *impl) GetBackendOAS(
 	ctx context.Context,
 	request adminapi.GetBackendOASRequestObject,
 ) (adminapi.GetBackendOASResponseObject, error) {
-	if !IsSuperUserContext(ctx) && !ContextCanViewOAS(ctx) {
+	if !ContextCanViewOAS(ctx) {
 		return adminapi.GetBackendOAS403JSONResponse(apiErrForbidden), nil
 	}
 
