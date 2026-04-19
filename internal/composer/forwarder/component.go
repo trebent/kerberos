@@ -24,7 +24,6 @@ type (
 	}
 	forwarder struct {
 		targetContextKey composer.ContextKey
-		defaultClient    *http.Client
 		clients          map[string]*http.Client // keyed by RouterBackend.Name
 	}
 )
@@ -61,7 +60,6 @@ func NewComponent(opts *Opts) (composer.FlowComponent, error) {
 	}
 	return &forwarder{
 		targetContextKey: composer.TargetContextKey,
-		defaultClient:    &http.Client{},
 		clients:          clients,
 	}, nil
 }
@@ -92,7 +90,7 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	// Forward request and pipe forwarded response into origin response.
 	rLogger, _ := logr.FromContext(req.Context())
 	rLogger = rLogger.WithName("forwarder")
-	rLogger.Info("Forwarding request")
+	rLogger.V(20).Info("Forwarding request")
 
 	target, ok := req.Context().Value(f.targetContextKey).(*config.RouterBackend)
 	if !ok {
@@ -106,7 +104,12 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 
 	client, ok := f.clients[target.Name]
 	if !ok {
-		client = f.defaultClient
+		rLogger.Error(
+			fmt.Errorf("%w: %s", errFailedTargetExtract, req.URL.Path),
+			"Client not found for target",
+		)
+		apierror.ErrorHandler(wrapped, req, apiErrFailedTargetExtract)
+		return
 	}
 
 	scheme := "http"
