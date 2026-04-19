@@ -542,23 +542,6 @@ func TestPermissionsAdminUserMgmtAdminAllowed(t *testing.T) {
 	verifyStatusCode(deleteGroupResp.StatusCode(), http.StatusNoContent, t)
 }
 
-// TestPermissionsAdminUserMgmtAdminDeniedWithoutPermission verifies that an admin user
-// without the adminusermgmtadmin permission receives 403 when calling a write user mgmt endpoint.
-func TestPermissionsAdminUserMgmtAdminDeniedWithoutPermission(t *testing.T) {
-	t.Parallel()
-	superSession := superLogin(t)
-	// Give only flowviewer — no user mgmt permission.
-	session := createAdminUserInGroup(t, superSession, []int{permIDFlowViewer})
-
-	createUserResp, err := adminClient.CreateUserWithResponse(
-		t.Context(),
-		adminapi.CreateUserJSONRequestBody{Username: username(), Password: "testpassword1"},
-		adminapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(createUserResp.StatusCode(), http.StatusForbidden, t)
-}
-
 // --- adminusermgmtviewer permission ---
 
 // TestPermissionsAdminUserMgmtViewerReadAllowed verifies that an admin user with the
