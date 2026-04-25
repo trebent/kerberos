@@ -8,9 +8,11 @@ package adminapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/oapi-codegen/runtime"
 	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
@@ -20,18 +22,89 @@ const (
 	SessionidScopes = "sessionid.Scopes"
 )
 
+// Defines values for DebugSessionOperationFlowTransitionsResultOutcome.
+const (
+	Failure DebugSessionOperationFlowTransitionsResultOutcome = "failure"
+	Success DebugSessionOperationFlowTransitionsResultOutcome = "success"
+)
+
+// Valid indicates whether the value is a known member of the DebugSessionOperationFlowTransitionsResultOutcome enum.
+func (e DebugSessionOperationFlowTransitionsResultOutcome) Valid() bool {
+	switch e {
+	case Failure:
+		return true
+	case Success:
+		return true
+	default:
+		return false
+	}
+}
+
 // APIErrorResponse defines model for APIErrorResponse.
 type APIErrorResponse struct {
 	Errors []string `json:"errors"`
 }
 
-// FlowMeta defines model for FlowMeta.
-type FlowMeta struct {
-	Data FlowMeta_Data `json:"data"`
-	Name string        `json:"name"`
+// DebugSession defines model for DebugSession.
+type DebugSession struct {
+	// SessionExpiresAt The time when the debug session expires.
+	SessionExpiresAt time.Time `json:"sessionExpiresAt"`
+
+	// SessionId The ID for the debug session.
+	SessionId string `json:"sessionId"`
+
+	// SessionStartedAt The time when the debug session started.
+	SessionStartedAt time.Time `json:"sessionStartedAt"`
+
+	// SessionStoppedAt The time when the debug session was stopped. Null if the session is still active.
+	SessionStoppedAt *time.Time `json:"sessionStoppedAt,omitempty"`
 }
 
-// FlowMeta_Data defines model for FlowMeta.Data.
+// DebugSessionOperation defines model for DebugSessionOperation.
+type DebugSessionOperation struct {
+	// FlowTransitions The flow transitions that occurred during this operation, in chronological order.
+	FlowTransitions *[]struct {
+		// Component The flow component that the transition corresponds to.
+		Component *string `json:"component,omitempty"`
+		Result    *struct {
+			// Cause The cause of the flow transition result, if outcome is 'failure'.
+			Cause   *string                                           `json:"cause,omitempty"`
+			Outcome DebugSessionOperationFlowTransitionsResultOutcome `json:"outcome"`
+		} `json:"result,omitempty"`
+
+		// StartedAt The time when the flow transition started.
+		StartedAt *time.Time `json:"startedAt,omitempty"`
+
+		// StoppedAt The time when the flow transition stopped. Null if the transition is still active.
+		StoppedAt *time.Time `json:"stoppedAt,omitempty"`
+	} `json:"flowTransitions,omitempty"`
+
+	// Method The HTTP method of the operation.
+	Method string `json:"method"`
+
+	// StartedAt The time when the operation was started.
+	StartedAt time.Time `json:"startedAt"`
+
+	// StoppedAt The time when the operation was stopped. Null if the operation is still active.
+	StoppedAt time.Time `json:"stoppedAt"`
+
+	// Url The full URL of the request.
+	Url string `json:"url"`
+}
+
+// DebugSessionOperationFlowTransitionsResultOutcome defines model for DebugSessionOperation.FlowTransitions.Result.Outcome.
+type DebugSessionOperationFlowTransitionsResultOutcome string
+
+// FlowMeta defines model for FlowMeta.
+type FlowMeta struct {
+	// Data The metadata for the flow component. The structure of the metadata depends on the flow component.
+	Data FlowMeta_Data `json:"data"`
+
+	// Name The name of the flow component, e.g. "observability", "router".
+	Name string `json:"name"`
+}
+
+// FlowMeta_Data The metadata for the flow component. The structure of the metadata depends on the flow component.
 type FlowMeta_Data struct {
 	union json.RawMessage
 }
@@ -138,6 +211,12 @@ type LoginUserRequest struct {
 	Username string `json:"username"`
 }
 
+// StartDebugSessionRequest defines model for StartDebugSessionRequest.
+type StartDebugSessionRequest struct {
+	// DurationSeconds Duration in seconds to keep the backend in debug mode. If not provided, the backend will be kept in debug mode until debug is disabled, or for a maximum of 1 hour. Minimum is 1 minute, defaults to 5 minutes.
+	DurationSeconds *int `json:"durationSeconds,omitempty"`
+}
+
 // UpdateGroupRequest defines model for UpdateGroupRequest.
 type UpdateGroupRequest struct {
 	Name          string `json:"name"`
@@ -152,6 +231,18 @@ type UpdateUserGroupsRequest struct {
 // UpdateUserRequest defines model for UpdateUserRequest.
 type UpdateUserRequest struct {
 	Username string `json:"username"`
+}
+
+// StartDebugSessionJSONBody defines parameters for StartDebugSession.
+type StartDebugSessionJSONBody struct {
+	// DurationSeconds Duration in seconds to keep the backend in debug mode. If not provided, the backend will be kept in debug mode until debug is disabled, or for a maximum of 1 hour. Minimum is 1 minute, defaults to 5 minutes.
+	DurationSeconds *int `json:"durationSeconds,omitempty"`
+}
+
+// ExtendDebugSessionJSONBody defines parameters for ExtendDebugSession.
+type ExtendDebugSessionJSONBody struct {
+	// AdditionalDurationSeconds Additional duration in seconds to keep the backend in debug mode. Total duration cannot exceed 1 hour.
+	AdditionalDurationSeconds int `json:"additionalDurationSeconds"`
 }
 
 // CreateGroupJSONBody defines parameters for CreateGroup.
@@ -199,6 +290,12 @@ type ChangeUserPasswordJSONBody struct {
 	NewPassword string `json:"newPassword"`
 	OldPassword string `json:"oldPassword"`
 }
+
+// StartDebugSessionJSONRequestBody defines body for StartDebugSession for application/json ContentType.
+type StartDebugSessionJSONRequestBody StartDebugSessionJSONBody
+
+// ExtendDebugSessionJSONRequestBody defines body for ExtendDebugSession for application/json ContentType.
+type ExtendDebugSessionJSONRequestBody ExtendDebugSessionJSONBody
 
 // CreateGroupJSONRequestBody defines body for CreateGroup for application/json ContentType.
 type CreateGroupJSONRequestBody CreateGroupJSONBody
@@ -367,6 +464,24 @@ func (t *FlowMeta_Data) UnmarshalJSON(b []byte) error {
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
+	// (GET /api/admin/debug/{backend}/sessions)
+	ListDebugSessions(w http.ResponseWriter, r *http.Request, backend string)
+
+	// (POST /api/admin/debug/{backend}/sessions)
+	StartDebugSession(w http.ResponseWriter, r *http.Request, backend string)
+
+	// (DELETE /api/admin/debug/{backend}/sessions/{sessionId})
+	StopDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId string)
+
+	// (GET /api/admin/debug/{backend}/sessions/{sessionId})
+	GetDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId string)
+
+	// (PUT /api/admin/debug/{backend}/sessions/{sessionId})
+	ExtendDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId string)
+
+	// (GET /api/admin/debug/{backend}/sessions/{sessionId}/operations)
+	ListDebugSessionOperations(w http.ResponseWriter, r *http.Request, backend string, sessionId string)
+
 	// (GET /api/admin/flow)
 	GetFlow(w http.ResponseWriter, r *http.Request)
 
@@ -433,6 +548,228 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ListDebugSessions operation middleware
+func (siw *ServerInterfaceWrapper) ListDebugSessions(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "backend" -------------
+	var backend string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "backend", r.PathValue("backend"), &backend, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "backend", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListDebugSessions(w, r, backend)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// StartDebugSession operation middleware
+func (siw *ServerInterfaceWrapper) StartDebugSession(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "backend" -------------
+	var backend string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "backend", r.PathValue("backend"), &backend, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "backend", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.StartDebugSession(w, r, backend)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// StopDebugSession operation middleware
+func (siw *ServerInterfaceWrapper) StopDebugSession(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "backend" -------------
+	var backend string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "backend", r.PathValue("backend"), &backend, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "backend", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "sessionId" -------------
+	var sessionId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.StopDebugSession(w, r, backend, sessionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetDebugSession operation middleware
+func (siw *ServerInterfaceWrapper) GetDebugSession(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "backend" -------------
+	var backend string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "backend", r.PathValue("backend"), &backend, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "backend", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "sessionId" -------------
+	var sessionId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetDebugSession(w, r, backend, sessionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ExtendDebugSession operation middleware
+func (siw *ServerInterfaceWrapper) ExtendDebugSession(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "backend" -------------
+	var backend string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "backend", r.PathValue("backend"), &backend, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "backend", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "sessionId" -------------
+	var sessionId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ExtendDebugSession(w, r, backend, sessionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListDebugSessionOperations operation middleware
+func (siw *ServerInterfaceWrapper) ListDebugSessionOperations(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "backend" -------------
+	var backend string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "backend", r.PathValue("backend"), &backend, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "backend", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "sessionId" -------------
+	var sessionId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListDebugSessionOperations(w, r, backend, sessionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // GetFlow operation middleware
 func (siw *ServerInterfaceWrapper) GetFlow(w http.ResponseWriter, r *http.Request) {
@@ -1021,6 +1358,12 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	m.HandleFunc("GET "+options.BaseURL+"/api/admin/debug/{backend}/sessions", wrapper.ListDebugSessions)
+	m.HandleFunc("POST "+options.BaseURL+"/api/admin/debug/{backend}/sessions", wrapper.StartDebugSession)
+	m.HandleFunc("DELETE "+options.BaseURL+"/api/admin/debug/{backend}/sessions/{sessionId}", wrapper.StopDebugSession)
+	m.HandleFunc("GET "+options.BaseURL+"/api/admin/debug/{backend}/sessions/{sessionId}", wrapper.GetDebugSession)
+	m.HandleFunc("PUT "+options.BaseURL+"/api/admin/debug/{backend}/sessions/{sessionId}", wrapper.ExtendDebugSession)
+	m.HandleFunc("GET "+options.BaseURL+"/api/admin/debug/{backend}/sessions/{sessionId}/operations", wrapper.ListDebugSessionOperations)
 	m.HandleFunc("GET "+options.BaseURL+"/api/admin/flow", wrapper.GetFlow)
 	m.HandleFunc("GET "+options.BaseURL+"/api/admin/groups", wrapper.GetGroups)
 	m.HandleFunc("POST "+options.BaseURL+"/api/admin/groups", wrapper.CreateGroup)
@@ -1042,6 +1385,284 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("PUT "+options.BaseURL+"/api/admin/users/{userID}/password", wrapper.ChangeUserPassword)
 
 	return m
+}
+
+type ListDebugSessionsRequestObject struct {
+	Backend string `json:"backend"`
+}
+
+type ListDebugSessionsResponseObject interface {
+	VisitListDebugSessionsResponse(w http.ResponseWriter) error
+}
+
+type ListDebugSessions200JSONResponse []DebugSession
+
+func (response ListDebugSessions200JSONResponse) VisitListDebugSessionsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListDebugSessions404JSONResponse APIErrorResponse
+
+func (response ListDebugSessions404JSONResponse) VisitListDebugSessionsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListDebugSessions500JSONResponse APIErrorResponse
+
+func (response ListDebugSessions500JSONResponse) VisitListDebugSessionsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type StartDebugSessionRequestObject struct {
+	Backend string `json:"backend"`
+	Body    *StartDebugSessionJSONRequestBody
+}
+
+type StartDebugSessionResponseObject interface {
+	VisitStartDebugSessionResponse(w http.ResponseWriter) error
+}
+
+type StartDebugSession200JSONResponse DebugSession
+
+func (response StartDebugSession200JSONResponse) VisitStartDebugSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type StartDebugSession400JSONResponse APIErrorResponse
+
+func (response StartDebugSession400JSONResponse) VisitStartDebugSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type StartDebugSession404JSONResponse APIErrorResponse
+
+func (response StartDebugSession404JSONResponse) VisitStartDebugSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type StartDebugSession409JSONResponse APIErrorResponse
+
+func (response StartDebugSession409JSONResponse) VisitStartDebugSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type StartDebugSession500JSONResponse APIErrorResponse
+
+func (response StartDebugSession500JSONResponse) VisitStartDebugSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type StopDebugSessionRequestObject struct {
+	Backend   string `json:"backend"`
+	SessionId string `json:"sessionId"`
+}
+
+type StopDebugSessionResponseObject interface {
+	VisitStopDebugSessionResponse(w http.ResponseWriter) error
+}
+
+type StopDebugSession204Response struct {
+}
+
+func (response StopDebugSession204Response) VisitStopDebugSessionResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type StopDebugSession400JSONResponse APIErrorResponse
+
+func (response StopDebugSession400JSONResponse) VisitStopDebugSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type StopDebugSession404JSONResponse APIErrorResponse
+
+func (response StopDebugSession404JSONResponse) VisitStopDebugSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type StopDebugSession500JSONResponse APIErrorResponse
+
+func (response StopDebugSession500JSONResponse) VisitStopDebugSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetDebugSessionRequestObject struct {
+	Backend   string `json:"backend"`
+	SessionId string `json:"sessionId"`
+}
+
+type GetDebugSessionResponseObject interface {
+	VisitGetDebugSessionResponse(w http.ResponseWriter) error
+}
+
+type GetDebugSession200JSONResponse DebugSession
+
+func (response GetDebugSession200JSONResponse) VisitGetDebugSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetDebugSession400JSONResponse APIErrorResponse
+
+func (response GetDebugSession400JSONResponse) VisitGetDebugSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetDebugSession404JSONResponse APIErrorResponse
+
+func (response GetDebugSession404JSONResponse) VisitGetDebugSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetDebugSession500JSONResponse APIErrorResponse
+
+func (response GetDebugSession500JSONResponse) VisitGetDebugSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ExtendDebugSessionRequestObject struct {
+	Backend   string `json:"backend"`
+	SessionId string `json:"sessionId"`
+	Body      *ExtendDebugSessionJSONRequestBody
+}
+
+type ExtendDebugSessionResponseObject interface {
+	VisitExtendDebugSessionResponse(w http.ResponseWriter) error
+}
+
+type ExtendDebugSession200JSONResponse DebugSession
+
+func (response ExtendDebugSession200JSONResponse) VisitExtendDebugSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ExtendDebugSession400JSONResponse APIErrorResponse
+
+func (response ExtendDebugSession400JSONResponse) VisitExtendDebugSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ExtendDebugSession404JSONResponse APIErrorResponse
+
+func (response ExtendDebugSession404JSONResponse) VisitExtendDebugSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ExtendDebugSession409JSONResponse APIErrorResponse
+
+func (response ExtendDebugSession409JSONResponse) VisitExtendDebugSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ExtendDebugSession500JSONResponse APIErrorResponse
+
+func (response ExtendDebugSession500JSONResponse) VisitExtendDebugSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListDebugSessionOperationsRequestObject struct {
+	Backend   string `json:"backend"`
+	SessionId string `json:"sessionId"`
+}
+
+type ListDebugSessionOperationsResponseObject interface {
+	VisitListDebugSessionOperationsResponse(w http.ResponseWriter) error
+}
+
+type ListDebugSessionOperations200JSONResponse []DebugSessionOperation
+
+func (response ListDebugSessionOperations200JSONResponse) VisitListDebugSessionOperationsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListDebugSessionOperations400JSONResponse APIErrorResponse
+
+func (response ListDebugSessionOperations400JSONResponse) VisitListDebugSessionOperationsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListDebugSessionOperations404JSONResponse APIErrorResponse
+
+func (response ListDebugSessionOperations404JSONResponse) VisitListDebugSessionOperationsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListDebugSessionOperations500JSONResponse APIErrorResponse
+
+func (response ListDebugSessionOperations500JSONResponse) VisitListDebugSessionOperationsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
 }
 
 type GetFlowRequestObject struct {
@@ -2082,6 +2703,24 @@ func (response ChangeUserPassword500JSONResponse) VisitChangeUserPasswordRespons
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
+	// (GET /api/admin/debug/{backend}/sessions)
+	ListDebugSessions(ctx context.Context, request ListDebugSessionsRequestObject) (ListDebugSessionsResponseObject, error)
+
+	// (POST /api/admin/debug/{backend}/sessions)
+	StartDebugSession(ctx context.Context, request StartDebugSessionRequestObject) (StartDebugSessionResponseObject, error)
+
+	// (DELETE /api/admin/debug/{backend}/sessions/{sessionId})
+	StopDebugSession(ctx context.Context, request StopDebugSessionRequestObject) (StopDebugSessionResponseObject, error)
+
+	// (GET /api/admin/debug/{backend}/sessions/{sessionId})
+	GetDebugSession(ctx context.Context, request GetDebugSessionRequestObject) (GetDebugSessionResponseObject, error)
+
+	// (PUT /api/admin/debug/{backend}/sessions/{sessionId})
+	ExtendDebugSession(ctx context.Context, request ExtendDebugSessionRequestObject) (ExtendDebugSessionResponseObject, error)
+
+	// (GET /api/admin/debug/{backend}/sessions/{sessionId}/operations)
+	ListDebugSessionOperations(ctx context.Context, request ListDebugSessionOperationsRequestObject) (ListDebugSessionOperationsResponseObject, error)
+
 	// (GET /api/admin/flow)
 	GetFlow(ctx context.Context, request GetFlowRequestObject) (GetFlowResponseObject, error)
 
@@ -2167,6 +2806,183 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// ListDebugSessions operation middleware
+func (sh *strictHandler) ListDebugSessions(w http.ResponseWriter, r *http.Request, backend string) {
+	var request ListDebugSessionsRequestObject
+
+	request.Backend = backend
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListDebugSessions(ctx, request.(ListDebugSessionsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListDebugSessions")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListDebugSessionsResponseObject); ok {
+		if err := validResponse.VisitListDebugSessionsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// StartDebugSession operation middleware
+func (sh *strictHandler) StartDebugSession(w http.ResponseWriter, r *http.Request, backend string) {
+	var request StartDebugSessionRequestObject
+
+	request.Backend = backend
+
+	var body StartDebugSessionJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.StartDebugSession(ctx, request.(StartDebugSessionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "StartDebugSession")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(StartDebugSessionResponseObject); ok {
+		if err := validResponse.VisitStartDebugSessionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// StopDebugSession operation middleware
+func (sh *strictHandler) StopDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId string) {
+	var request StopDebugSessionRequestObject
+
+	request.Backend = backend
+	request.SessionId = sessionId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.StopDebugSession(ctx, request.(StopDebugSessionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "StopDebugSession")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(StopDebugSessionResponseObject); ok {
+		if err := validResponse.VisitStopDebugSessionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetDebugSession operation middleware
+func (sh *strictHandler) GetDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId string) {
+	var request GetDebugSessionRequestObject
+
+	request.Backend = backend
+	request.SessionId = sessionId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetDebugSession(ctx, request.(GetDebugSessionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetDebugSession")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetDebugSessionResponseObject); ok {
+		if err := validResponse.VisitGetDebugSessionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ExtendDebugSession operation middleware
+func (sh *strictHandler) ExtendDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId string) {
+	var request ExtendDebugSessionRequestObject
+
+	request.Backend = backend
+	request.SessionId = sessionId
+
+	var body ExtendDebugSessionJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ExtendDebugSession(ctx, request.(ExtendDebugSessionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ExtendDebugSession")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ExtendDebugSessionResponseObject); ok {
+		if err := validResponse.VisitExtendDebugSessionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListDebugSessionOperations operation middleware
+func (sh *strictHandler) ListDebugSessionOperations(w http.ResponseWriter, r *http.Request, backend string, sessionId string) {
+	var request ListDebugSessionOperationsRequestObject
+
+	request.Backend = backend
+	request.SessionId = sessionId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListDebugSessionOperations(ctx, request.(ListDebugSessionOperationsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListDebugSessionOperations")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListDebugSessionOperationsResponseObject); ok {
+		if err := validResponse.VisitListDebugSessionOperationsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // GetFlow operation middleware

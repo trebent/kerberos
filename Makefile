@@ -23,7 +23,7 @@ LOG_VERBOSITY ?= 20
 VERSION ?= $(shell git describe --tags --always)
 
 define cecho
-	@echo -e "${2}${1}${RESET}"
+	@printf "${2}${1}${RESET}\n"
 endef
 
 default: lint vulncheck go-build unittest
