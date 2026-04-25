@@ -36,10 +36,16 @@ jobs:
       version: unstable
       push: true
 
-  test:
+  integration-test:
     needs: image
-    uses: ./.github/workflows/callable-test.yaml
+    uses: ./.github/workflows/callable-integration-test.yaml
     secrets: inherit
     with:
       version: unstable
-      integration: true
+
+  security-test:
+    needs: image
+    uses: ./.github/workflows/callable-security-test.yaml
+    secrets: inherit
+    with:
+      version: unstable

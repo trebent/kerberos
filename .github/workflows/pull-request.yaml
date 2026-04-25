@@ -32,9 +32,7 @@ jobs:
     uses: ./.github/workflows/callable-image.yaml
     secrets: inherit
 
-  test:
+  unit-test:
     needs: image
-    uses: ./.github/workflows/callable-test.yaml
+    uses: ./.github/workflows/callable-unit-test.yaml
     secrets: inherit
-    with:
-      integration: false
