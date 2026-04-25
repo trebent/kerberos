@@ -29,9 +29,6 @@ type (
 		next FlowComponent
 
 		CustomHandler CustomHandlerFunc
-		// Returned by Order() int. Don't import the custom types package here to avoid circular
-		// imports, so we just use an int and interpret it as the order.
-		O int
 	}
 	CustomHandlerFunc func(FlowComponent, http.ResponseWriter, *http.Request)
 )
@@ -54,10 +51,6 @@ func (d *Dummy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 func (d *Dummy) Next(next FlowComponent) {
 	d.next = next
-}
-
-func (d *Dummy) Order() int {
-	return d.O
 }
 
 func (d *Dummy) GetMeta() []adminapi.FlowMeta {

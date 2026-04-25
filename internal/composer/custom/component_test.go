@@ -1,4 +1,4 @@
-package custom
+package custom_test
 
 import (
 	"net/http"
@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/trebent/kerberos/internal/composer"
+	"github.com/trebent/kerberos/internal/composer/custom"
 )
 
 func TestCustom(t *testing.T) {
@@ -20,18 +21,18 @@ func TestCustom(t *testing.T) {
 	wgFinal := sync.WaitGroup{}
 	wgFinal.Add(1)
 
-	custom := NewComponent(
-		&composer.Dummy{O: 3, CustomHandler: func(fc composer.FlowComponent, w http.ResponseWriter, r *http.Request) {
+	custom := custom.NewComponent(
+		&custom.Dummy{O: 3, CustomHandler: func(fc composer.FlowComponent, w http.ResponseWriter, r *http.Request) {
 			t.Log("Running component 3")
 			wg3.Done()
 			fc.ServeHTTP(w, r)
 		}},
-		&composer.Dummy{O: 2, CustomHandler: func(fc composer.FlowComponent, w http.ResponseWriter, r *http.Request) {
+		&custom.Dummy{O: 2, CustomHandler: func(fc composer.FlowComponent, w http.ResponseWriter, r *http.Request) {
 			t.Log("Running component 2")
 			wg2.Done()
 			fc.ServeHTTP(w, r)
 		}},
-		&composer.Dummy{O: 1, CustomHandler: func(fc composer.FlowComponent, w http.ResponseWriter, r *http.Request) {
+		&custom.Dummy{O: 1, CustomHandler: func(fc composer.FlowComponent, w http.ResponseWriter, r *http.Request) {
 			t.Log("Running component 1")
 			wg1.Done()
 			fc.ServeHTTP(w, r)

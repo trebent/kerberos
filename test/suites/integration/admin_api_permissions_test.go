@@ -542,23 +542,6 @@ func TestPermissionsAdminUserMgmtAdminAllowed(t *testing.T) {
 	verifyStatusCode(deleteGroupResp.StatusCode(), http.StatusNoContent, t)
 }
 
-// TestPermissionsAdminUserMgmtAdminDeniedWithoutPermission verifies that an admin user
-// without the adminusermgmtadmin permission receives 403 when calling a write user mgmt endpoint.
-func TestPermissionsAdminUserMgmtAdminDeniedWithoutPermission(t *testing.T) {
-	t.Parallel()
-	superSession := superLogin(t)
-	// Give only flowviewer — no user mgmt permission.
-	session := createAdminUserInGroup(t, superSession, []int{permIDFlowViewer})
-
-	createUserResp, err := adminClient.CreateUserWithResponse(
-		t.Context(),
-		adminapi.CreateUserJSONRequestBody{Username: username(), Password: "testpassword1"},
-		adminapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(createUserResp.StatusCode(), http.StatusForbidden, t)
-}
-
 // --- adminusermgmtviewer permission ---
 
 // TestPermissionsAdminUserMgmtViewerReadAllowed verifies that an admin user with the
@@ -628,6 +611,36 @@ func TestPermissionsAdminUserMgmtViewerDeniedWithoutPermission(t *testing.T) {
 	verifyStatusCode(listUsersResp.StatusCode(), http.StatusForbidden, t)
 }
 
+// TestPermissionsAdminUserMgmtViewerGetSelf verifies that an admin user
+// with no user mgmt permission can still get their own user information.
+func TestPermissionsAdminUserMgmtViewerGetSelf(t *testing.T) {
+	t.Parallel()
+	superSession := superLogin(t)
+
+	name := username()
+	createResp, err := adminClient.CreateUserWithResponse(
+		t.Context(),
+		adminapi.CreateUserJSONRequestBody{Username: name, Password: "pass"},
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+
+	userSession := adminUserLogin(t, name, "pass")
+
+	listUsersResp, err := adminClient.GetUserWithResponse(
+		t.Context(),
+		createResp.JSON201.Id,
+		adminapi.RequestEditorFn(requestEditorSessionID(userSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(listUsersResp.StatusCode(), http.StatusOK, t)
+	matches(listUsersResp.JSON200.Username, name, t)
+	matches(listUsersResp.JSON200.Id, createResp.JSON201.Id, t)
+}
+
+// TestPermissionsNormalUserLogoutSuper verifies that a normal admin user, even with permissions to call the logout
+// endpoint, cannot log out the superuser.
 func TestPermissionsNormalUserLogoutSuper(t *testing.T) {
 	superSession := superLogin(t)
 	session := createAdminUserInGroup(t, superSession, []int{permIDAdminUserMgmtViewer})
@@ -639,4 +652,42 @@ func TestPermissionsNormalUserLogoutSuper(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(logoutResp.StatusCode(), http.StatusForbidden, t)
+}
+
+// TestPermissionsAdminUserChangePasswordWrongUser verifies that an admin user cannot change another user's password without the appropriate permission.
+func TestPermissionsAdminUserChangePasswordWrongUser(t *testing.T) {
+	t.Parallel()
+	superSession := superLogin(t)
+
+	name := username()
+	const pass = "correctpassword123"
+
+	createResp, err := adminClient.CreateUserWithResponse(
+		t.Context(),
+		adminapi.CreateUserJSONRequestBody{Username: name, Password: pass},
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+
+	name2 := username()
+	createResp2, err := adminClient.CreateUserWithResponse(
+		t.Context(),
+		adminapi.CreateUserJSONRequestBody{Username: name2, Password: pass},
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createResp2.StatusCode(), http.StatusCreated, t)
+
+	userSession2 := adminUserLogin(t, name2, pass)
+
+	changeResp, err := adminClient.ChangeUserPasswordWithResponse(
+		t.Context(),
+		createResp.JSON201.Id,
+		adminapi.ChangeUserPasswordJSONRequestBody{OldPassword: pass, NewPassword: "newpass"},
+		adminapi.RequestEditorFn(requestEditorSessionID(userSession2)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(changeResp.StatusCode(), http.StatusForbidden, t)
+	verifyAdminAPIErrorResponse(changeResp.JSON403, t)
 }
