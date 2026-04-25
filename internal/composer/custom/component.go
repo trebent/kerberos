@@ -6,6 +6,7 @@ import (
 
 	"github.com/trebent/kerberos/internal/composer"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
+	"github.com/trebent/zerologr"
 )
 
 type (
@@ -63,6 +64,8 @@ func NewComponent(components ...composer.FlowComponent) composer.FlowComponent {
 }
 
 func (c *custom) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	zerologr.V(20).Info("Executing custom component chain")
+
 	// By calling first, the full custom chain will be executed as the linked list is set up
 	// in the component constructor function, or the next component if the custom setup was
 	// empty.
