@@ -99,8 +99,8 @@ type (
 	PersistenceConfig struct {
 		// Driver selects the database backend: "sqlite" or "postgres".
 		Driver string `json:"driver"`
-		// Address is the database address. For postgres: host:port. For sqlite: file path.
-		Address string `json:"address,omitempty"`
+		// Address is the database address. For postgres: host. For sqlite: file path.
+		Address string `json:"address"`
 
 		// Postgres contains specific configuration for the postgres driver. Ignored for other drivers.
 		*Postgres `json:"postgres,omitempty"`
@@ -109,11 +109,11 @@ type (
 		// Database is the database name (postgres only).
 		Database string `json:"database"`
 		// Username is the database user (postgres only).
-		Username string `json:"username,omitempty"`
+		Username *string `json:"username,omitempty"`
 		// Password is the database password (postgres only).
-		Password string `json:"password,omitempty"`
+		Password *string `json:"password,omitempty"`
 		// SSLMode controls TLS for postgres connections (e.g. "disable", "require", "verify-full").
-		SSLMode string `json:"sslMode,omitempty"`
+		SSLMode *string `json:"sslMode,omitempty"`
 	}
 )
 

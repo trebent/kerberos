@@ -138,23 +138,23 @@ func TestConfigPersistence(t *testing.T) {
 		t.Errorf("expected persistence driver to be 'postgres', got '%s'", cfg.PersistenceConfig.Driver)
 	}
 
-	if cfg.PersistenceConfig.Address != "localhost:5432" {
-		t.Errorf("expected persistence address to be 'localhost:5432', got '%s'", cfg.PersistenceConfig.Address)
+	if cfg.PersistenceConfig.Address != "localhost" {
+		t.Errorf("expected persistence address to be 'localhost', got '%s'", cfg.PersistenceConfig.Address)
 	}
 
 	if cfg.PersistenceConfig.Database != "kerberos" {
 		t.Errorf("expected persistence database to be 'kerberos', got '%s'", cfg.PersistenceConfig.Database)
 	}
 
-	if cfg.PersistenceConfig.Postgres.Username != "user" {
+	if *cfg.PersistenceConfig.Postgres.Username != "user" {
 		t.Errorf("expected persistence user to be 'user', got '%s'", cfg.PersistenceConfig.Postgres.Username)
 	}
 
-	if cfg.PersistenceConfig.Postgres.Password != "password" {
+	if *cfg.PersistenceConfig.Postgres.Password != "password" {
 		t.Errorf("expected persistence password to be 'password', got '%s'", cfg.PersistenceConfig.Password)
 	}
 
-	if cfg.PersistenceConfig.SSLMode != "require" {
+	if *cfg.PersistenceConfig.SSLMode != "require" {
 		t.Errorf("expected persistence SSL mode to be 'require', got '%s'", cfg.PersistenceConfig.SSLMode)
 	}
 }

@@ -12,7 +12,7 @@
   },
   "persistence": {
     "driver": "postgres",
-    "address": "localhost:5432",
+    "address": "localhost",
     "postgres": {
       "database": "kerberos",
       "username": "user",

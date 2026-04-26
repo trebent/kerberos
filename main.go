@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
@@ -113,29 +112,36 @@ func main() {
 // newDBClient constructs a db.SQLClient based on the persistence configuration.
 // When no persistence config is provided, SQLite in DB_DIRECTORY is used (legacy default).
 func newDBClient(cfg *config.PersistenceConfig) db.SQLClient {
-	if cfg == nil || cfg.Driver == "sqlite" {
-		dsn := filepath.Join(internalenv.DBDirectory.Value(), sqlite.DBName)
-		if cfg != nil && cfg.Address != "" {
-			dsn = cfg.Address
-		}
-		return sqlite.New(&sqlite.Opts{DSN: dsn})
+	if cfg.Driver == "sqlite" {
+		zerologr.Info("Using SQLite persistence")
+		return sqlite.New(&sqlite.Opts{DSN: cfg.Address})
 	}
 
-	// Build postgres DSN from structured fields.
-	host := cfg.Address
-	if host == "" {
-		host = "localhost:5432"
-	}
-	sslMode := cfg.SSLMode
-	if sslMode == "" {
-		sslMode = "disable"
-	}
-	dsn := fmt.Sprintf(
-		"host=%s dbname=%s user=%s password=%s sslmode=%s",
-		host, cfg.Database, cfg.Username, cfg.Password, sslMode,
-	)
 	zerologr.Info("Using PostgreSQL persistence")
-	return postgres.New(&postgres.Opts{DSN: dsn})
+
+	// Build postgres DSN from structured fields.
+	dsn := "host=%s dbname=%s"
+	params := []any{cfg.Address, cfg.Database}
+
+	if cfg.SSLMode != nil {
+		dsn += " sslmode=%s"
+		params = append(params, *cfg.SSLMode)
+	}
+
+	if cfg.Postgres.Username != nil && cfg.Postgres.Password != nil {
+		dsn += " user=%s"
+		params = append(params, *cfg.Postgres.Username)
+
+		dsn += " password=%s"
+		params = append(params, *cfg.Postgres.Password)
+	}
+
+	// dsn := fmt.Sprintf(
+	// 	"host=%s dbname=%s user=%s password=%s sslmode=%s",
+	// 	host, cfg.Database, cfg.Username, cfg.Password, sslMode,
+	// )
+
+	return postgres.New(&postgres.Opts{DSN: fmt.Sprintf(dsn, params...)})
 }
 
 // setupConfig sets up the configuration map and registers all necessary
