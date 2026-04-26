@@ -8,14 +8,23 @@ import (
 	authbasicapi "github.com/trebent/kerberos/test/integration/client/auth/basic"
 )
 
-// permIDs are the fixed permission IDs bootstrapped by the server.
+// Permission IDs are the fixed permission IDs bootstrapped by the server.
 const (
-	permIDFlowViewer          = 1
-	permIDOASViewer           = 2
-	permIDBasicAuthOrgAdmin   = 3
-	permIDBasicAuthOrgViewer  = 4
-	permIDAdminUserMgmtAdmin  = 5
-	permIDAdminUserMgmtViewer = 6
+	PermissionIDFlowViewer          = 1
+	PermissionIDOASViewer           = 2
+	PermissionIDBasicAuthOrgAdmin   = 3
+	PermissionIDBasicAuthOrgViewer  = 4
+	PermissionIDAdminUserMgmtAdmin  = 5
+	PermissionIDAdminUserMgmtViewer = 6
+
+	// Permission names.
+
+	PermissionNameFlowViewer          = "flow-viewer"
+	PermissionNameOASViewer           = "oas-viewer"
+	PermissionNameBasicAuthOrgAdmin   = "basic-auth-org-admin"
+	PermissionNameBasicAuthOrgViewer  = "basic-auth-org-viewer"
+	PermissionNameAdminUserMgmtAdmin  = "admin-user-mgmt-admin"
+	PermissionNameAdminUserMgmtViewer = "admin-user-mgmt-viewer"
 )
 
 // createAdminUserInGroup creates a fresh admin user, creates a group with the specified
@@ -82,12 +91,12 @@ func TestPermissionsGetPermissions(t *testing.T) {
 	}
 
 	expected := map[int]string{
-		permIDFlowViewer:          "flowviewer",
-		permIDOASViewer:           "oasviewer",
-		permIDBasicAuthOrgAdmin:   "basicauthorgadmin",
-		permIDBasicAuthOrgViewer:  "basicauthorgviewer",
-		permIDAdminUserMgmtAdmin:  "adminusermgmtadmin",
-		permIDAdminUserMgmtViewer: "adminusermgmtviewer",
+		PermissionIDFlowViewer:          PermissionNameFlowViewer,
+		PermissionIDOASViewer:           PermissionNameOASViewer,
+		PermissionIDBasicAuthOrgViewer:  PermissionNameBasicAuthOrgViewer,
+		PermissionIDBasicAuthOrgAdmin:   PermissionNameBasicAuthOrgAdmin,
+		PermissionIDAdminUserMgmtViewer: PermissionNameAdminUserMgmtViewer,
+		PermissionIDAdminUserMgmtAdmin:  PermissionNameAdminUserMgmtAdmin,
 	}
 	for id, name := range expected {
 		if nameByID[id] != name {
@@ -165,7 +174,7 @@ func TestPermissionsSuperuserAccessAll(t *testing.T) {
 func TestPermissionsFlowViewerAllowed(t *testing.T) {
 	t.Parallel()
 	superSession := superLogin(t)
-	session := createAdminUserInGroup(t, superSession, []int{permIDFlowViewer})
+	session := createAdminUserInGroup(t, superSession, []int{PermissionIDFlowViewer})
 
 	resp, err := adminClient.GetFlowWithResponse(
 		t.Context(),
@@ -181,7 +190,7 @@ func TestPermissionsFlowViewerDeniedWithoutPermission(t *testing.T) {
 	t.Parallel()
 	superSession := superLogin(t)
 	// Give only oasviewer — no flowviewer.
-	session := createAdminUserInGroup(t, superSession, []int{permIDOASViewer})
+	session := createAdminUserInGroup(t, superSession, []int{PermissionIDOASViewer})
 
 	resp, err := adminClient.GetFlowWithResponse(
 		t.Context(),
@@ -224,7 +233,7 @@ func TestPermissionsFlowViewerDeniedNoGroup(t *testing.T) {
 func TestPermissionsOASViewerAllowed(t *testing.T) {
 	t.Parallel()
 	superSession := superLogin(t)
-	session := createAdminUserInGroup(t, superSession, []int{permIDOASViewer})
+	session := createAdminUserInGroup(t, superSession, []int{PermissionIDOASViewer})
 
 	resp, err := adminClient.GetBackendOASWithResponse(
 		t.Context(),
@@ -241,7 +250,7 @@ func TestPermissionsOASViewerDeniedWithoutPermission(t *testing.T) {
 	t.Parallel()
 	superSession := superLogin(t)
 	// Give only flowviewer — no oasviewer.
-	session := createAdminUserInGroup(t, superSession, []int{permIDFlowViewer})
+	session := createAdminUserInGroup(t, superSession, []int{PermissionIDFlowViewer})
 
 	resp, err := adminClient.GetBackendOASWithResponse(
 		t.Context(),
@@ -260,7 +269,7 @@ func TestPermissionsOASViewerDeniedWithoutPermission(t *testing.T) {
 func TestPermissionsBasicAuthOrgAdminAllowed(t *testing.T) {
 	t.Parallel()
 	superSession := superLogin(t)
-	session := createAdminUserInGroup(t, superSession, []int{permIDBasicAuthOrgAdmin})
+	session := createAdminUserInGroup(t, superSession, []int{PermissionIDBasicAuthOrgAdmin})
 
 	// basicauthorgadmin must be able to create an organisation (write).
 	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
@@ -300,7 +309,7 @@ func TestPermissionsBasicAuthOrgAdminDeniedWithoutPermission(t *testing.T) {
 	t.Parallel()
 	superSession := superLogin(t)
 	// Give only flowviewer — no basic auth permission.
-	session := createAdminUserInGroup(t, superSession, []int{permIDFlowViewer})
+	session := createAdminUserInGroup(t, superSession, []int{PermissionIDFlowViewer})
 
 	// The admin session is not a valid basic auth session, so the middleware returns 401.
 	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
@@ -323,7 +332,7 @@ func TestPermissionsBasicAuthOrgViewerReadAllowed(t *testing.T) {
 	// Create an org via the superuser first so there is something to read.
 	orgID, _ := orgWithSession(t, superSession)
 
-	session := createAdminUserInGroup(t, superSession, []int{permIDBasicAuthOrgViewer})
+	session := createAdminUserInGroup(t, superSession, []int{PermissionIDBasicAuthOrgViewer})
 
 	// basicauthorgviewer must be able to list users (GET).
 	listUsersResp, err := basicAuthClient.ListUsersWithResponse(
@@ -350,7 +359,7 @@ func TestPermissionsBasicAuthOrgViewerReadAllowed(t *testing.T) {
 func TestPermissionsBasicAuthOrgViewerWriteDenied(t *testing.T) {
 	t.Parallel()
 	superSession := superLogin(t)
-	session := createAdminUserInGroup(t, superSession, []int{permIDBasicAuthOrgViewer})
+	session := createAdminUserInGroup(t, superSession, []int{PermissionIDBasicAuthOrgViewer})
 
 	// basicauthorgviewer must NOT be able to create an organisation (POST).
 	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
@@ -383,7 +392,7 @@ func TestPermissionsBasicAuthOrgViewerDeniedWithoutPermission(t *testing.T) {
 	orgID, _ := orgWithSession(t, superSession)
 
 	// Give only flowviewer — no basic auth permission.
-	session := createAdminUserInGroup(t, superSession, []int{permIDFlowViewer})
+	session := createAdminUserInGroup(t, superSession, []int{PermissionIDFlowViewer})
 
 	listUsersResp, err := basicAuthClient.ListUsersWithResponse(
 		t.Context(),
@@ -402,7 +411,7 @@ func TestPermissionsGroupResponseIncludesPermissions(t *testing.T) {
 	t.Parallel()
 	superSession := superLogin(t)
 
-	permIDs := []int{permIDFlowViewer, permIDOASViewer}
+	permIDs := []int{PermissionIDFlowViewer, PermissionIDOASViewer}
 	createResp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
 		adminapi.CreateGroupJSONRequestBody{Name: groupName(), PermissionIDs: permIDs},
@@ -451,7 +460,7 @@ func TestPermissionsGroupResponseIncludesPermissions(t *testing.T) {
 func TestPermissionsAdminUserMgmtAdminAllowed(t *testing.T) {
 	t.Parallel()
 	superSession := superLogin(t)
-	session := createAdminUserInGroup(t, superSession, []int{permIDAdminUserMgmtAdmin})
+	session := createAdminUserInGroup(t, superSession, []int{PermissionIDAdminUserMgmtAdmin})
 
 	// adminusermgmtadmin must be able to list users (GET).
 	listUsersResp, err := adminClient.GetUsersWithResponse(
@@ -549,7 +558,7 @@ func TestPermissionsAdminUserMgmtAdminAllowed(t *testing.T) {
 func TestPermissionsAdminUserMgmtViewerReadAllowed(t *testing.T) {
 	t.Parallel()
 	superSession := superLogin(t)
-	session := createAdminUserInGroup(t, superSession, []int{permIDAdminUserMgmtViewer})
+	session := createAdminUserInGroup(t, superSession, []int{PermissionIDAdminUserMgmtViewer})
 
 	// adminusermgmtviewer must be able to list users (GET).
 	listUsersResp, err := adminClient.GetUsersWithResponse(
@@ -574,7 +583,7 @@ func TestPermissionsAdminUserMgmtViewerReadAllowed(t *testing.T) {
 func TestPermissionsAdminUserMgmtViewerWriteDenied(t *testing.T) {
 	t.Parallel()
 	superSession := superLogin(t)
-	session := createAdminUserInGroup(t, superSession, []int{permIDAdminUserMgmtViewer})
+	session := createAdminUserInGroup(t, superSession, []int{PermissionIDAdminUserMgmtViewer})
 
 	// adminusermgmtviewer must NOT be able to create a user (POST).
 	createUserResp, err := adminClient.CreateUserWithResponse(
@@ -601,7 +610,7 @@ func TestPermissionsAdminUserMgmtViewerDeniedWithoutPermission(t *testing.T) {
 	t.Parallel()
 	superSession := superLogin(t)
 	// Give only flowviewer — no user mgmt permission.
-	session := createAdminUserInGroup(t, superSession, []int{permIDFlowViewer})
+	session := createAdminUserInGroup(t, superSession, []int{PermissionIDFlowViewer})
 
 	listUsersResp, err := adminClient.GetUsersWithResponse(
 		t.Context(),
@@ -643,7 +652,7 @@ func TestPermissionsAdminUserMgmtViewerGetSelf(t *testing.T) {
 // endpoint, cannot log out the superuser.
 func TestPermissionsNormalUserLogoutSuper(t *testing.T) {
 	superSession := superLogin(t)
-	session := createAdminUserInGroup(t, superSession, []int{permIDAdminUserMgmtViewer})
+	session := createAdminUserInGroup(t, superSession, []int{PermissionIDAdminUserMgmtViewer})
 
 	// Normal admin users should not be able to log out the superuser, even if they
 	// have permissions to call the logout endpoint.
