@@ -104,4 +104,3 @@ func TestPostgres_NamedArgs(t *testing.T) {
 		t.Fatalf("expected Charlie, got %q", name)
 	}
 }
-

@@ -26,9 +26,9 @@ func postgresDSN() string {
 	if host == "" {
 		host = "localhost:5432"
 	}
-	db := os.Getenv("POSTGRES_DB")
-	if db == "" {
-		db = "kerberos"
+	dbName := os.Getenv("POSTGRES_DB")
+	if dbName == "" {
+		dbName = "kerberos"
 	}
 	user := os.Getenv("POSTGRES_USER")
 	if user == "" {
@@ -38,7 +38,7 @@ func postgresDSN() string {
 	if password == "" {
 		password = "kerberos"
 	}
-	return fmt.Sprintf("host=%s dbname=%s user=%s password=%s sslmode=disable", host, db, user, password)
+	return fmt.Sprintf("host=%s dbname=%s user=%s password=%s sslmode=disable", host, dbName, user, password)
 }
 
 func TestMain(m *testing.M) {
