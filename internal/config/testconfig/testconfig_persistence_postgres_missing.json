@@ -1,0 +1,17 @@
+{
+  "gateway": {
+    "router": {
+      "backends": [
+        {
+          "name": "backend1",
+          "host": "localhost",
+          "port": 8080
+        }
+      ]
+    }
+  },
+  "persistence": {
+    "driver": "postgres",
+    "address": "localhost:5432"
+  }
+}

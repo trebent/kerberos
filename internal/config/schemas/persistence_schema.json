@@ -47,5 +47,20 @@
     "driver",
     "address"
   ],
+  "if": {
+    "properties": {
+      "driver": {
+        "const": "postgres"
+      }
+    },
+    "required": [
+      "driver"
+    ]
+  },
+  "then": {
+    "required": [
+      "postgres"
+    ]
+  },
   "additionalProperties": false
 }
