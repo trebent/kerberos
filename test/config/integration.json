@@ -1,4 +1,14 @@
 {
+  "persistence": {
+    "driver": "postgres",
+    "address": "postgres:5432",
+    "postgres": {
+      "database": "kerberos",
+      "username": "kerberos",
+      "password": "kerberos",
+      "sslMode": "disable"
+    }
+  },
   "gateway": {
     "router": {
       "backends": [

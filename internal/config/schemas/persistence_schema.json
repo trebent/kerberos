@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://trebent.com/kerberos/schemas/persistence_schema.json",
+  "type": "object",
+  "properties": {
+    "driver": {
+      "type": "string",
+      "enum": [
+        "sqlite",
+        "postgres"
+      ],
+      "description": "The backing database driver to use."
+    },
+    "address": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Database address. For postgres: host:port. For sqlite: file path."
+    },
+    "postgres": {
+      "type": "object",
+      "properties": {
+        "database": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Database name."
+        },
+        "username": {
+          "type": "string",
+          "description": "Database user."
+        },
+        "password": {
+          "type": "string",
+          "description": "Database password."
+        },
+        "sslMode": {
+          "type": "string",
+          "description": "SSL mode for postgres connections (e.g. disable, require, verify-full)."
+        }
+      },
+      "required": [
+        "database"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "driver",
+    "address"
+  ],
+  "if": {
+    "properties": {
+      "driver": {
+        "const": "postgres"
+      }
+    },
+    "required": [
+      "driver"
+    ]
+  },
+  "then": {
+    "required": [
+      "postgres"
+    ]
+  },
+  "additionalProperties": false
+}

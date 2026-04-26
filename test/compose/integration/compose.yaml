@@ -1,8 +1,24 @@
 services:
+  postgres:
+    image: "postgres:17-alpine"
+    pull_policy: if_not_present
+    environment:
+      - POSTGRES_DB=kerberos
+      - POSTGRES_USER=kerberos
+      - POSTGRES_PASSWORD=kerberos
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kerberos -d kerberos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   kerberos:
     image: "ghcr.io/trebent/kerberos:${VERSION:-unset}"
     command: --config /config/integration.json
     pull_policy: if_not_present
+    depends_on:
+      postgres:
+        condition: service_healthy
     build:
       context: ../../..
       dockerfile: ./Dockerfile

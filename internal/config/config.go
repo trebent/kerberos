@@ -28,6 +28,7 @@ type (
 		*AdminConfig         `json:"admin"`
 		*OASConfig           `json:"oas,omitempty"`
 		*AuthConfig          `json:"auth,omitempty"`
+		*PersistenceConfig   `json:"persistence,omitempty"`
 	}
 )
 
@@ -51,6 +52,8 @@ var (
 	schemaBytesOAS []byte
 	//go:embed schemas/config_schema.json
 	schemaBytesConfig []byte
+	//go:embed schemas/persistence_schema.json
+	schemaBytesPersistence []byte
 )
 
 func (rc *RootConfig) AuthEnabled() bool {
@@ -68,6 +71,7 @@ func New() *RootConfig {
 
 		ObservabilityConfig: newObservabilityConfig(),
 		AdminConfig:         newAdminConfig(),
+		PersistenceConfig:   newPersistenceConfig(),
 	}
 }
 
@@ -392,6 +396,7 @@ func (rc *RootConfig) validateSchema() error {
 		gojsonschema.NewBytesLoader(schemaBytesObservability),
 		gojsonschema.NewBytesLoader(schemaBytesRouter),
 		gojsonschema.NewBytesLoader(schemaBytesOAS),
+		gojsonschema.NewBytesLoader(schemaBytesPersistence),
 	); err != nil {
 		zerologr.Error(err, "Failed to add global schemas")
 		return err
@@ -440,6 +445,7 @@ func (rc *RootConfig) postProcess() {
 	}
 	rc.GatewayConfig.postProcess()
 	rc.ObservabilityConfig.postProcess()
+	rc.PersistenceConfig.postProcess()
 	rc.AdminConfig.postProcess()
 }
 

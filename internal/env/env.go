@@ -47,15 +47,9 @@ var (
 		Validate: validateGreaterThanZero,
 	})
 
-	DBDirectory = envparser.Register(&envparser.Opts[string]{
-		Name:     "DB_DIRECTORY",
-		Desc:     "Path to the directory where DB files will be stored.",
-		Value:    "",
-		Validate: validateDirPath,
-	})
 	OASDirectory = envparser.Register(&envparser.Opts[string]{
 		Name:     "OAS_DIRECTORY",
-		Desc:     "Path to the directory where OAS specifications are stored.",
+		Desc:     "Path to the directory where Kerberos OAS specifications are stored.",
 		Value:    "",
 		Validate: validateDirPath,
 	})

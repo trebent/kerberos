@@ -17,6 +17,9 @@
     },
     "observability": {
       "$ref": "http://trebent.com/kerberos/schemas/observability_schema.json"
+    },
+    "persistence": {
+      "$ref": "http://trebent.com/kerberos/schemas/persistence_schema.json"
     }
   },
   "additionalProperties": false,

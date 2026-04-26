@@ -33,6 +33,5 @@ jobs:
     secrets: inherit
 
   unit-test:
-    needs: image
     uses: ./.github/workflows/callable-unit-test.yaml
     secrets: inherit

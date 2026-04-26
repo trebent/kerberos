@@ -19,12 +19,12 @@ const (
 
 	// Permission names.
 
-	PermissionNameFlowViewer          = "flowviewer"
-	PermissionNameOASViewer           = "oasviewer"
-	PermissionNameBasicAuthOrgAdmin   = "basicauthorgadmin"
-	PermissionNameBasicAuthOrgViewer  = "basicauthorgviewer"
-	PermissionNameAdminUserMgmtAdmin  = "adminusermgmtadmin"
-	PermissionNameAdminUserMgmtViewer = "adminusermgmtviewer"
+	PermissionNameFlowViewer          = "flow-viewer"
+	PermissionNameOASViewer           = "oas-viewer"
+	PermissionNameBasicAuthOrgAdmin   = "basic-auth-org-admin"
+	PermissionNameBasicAuthOrgViewer  = "basic-auth-org-viewer"
+	PermissionNameAdminUserMgmtAdmin  = "admin-user-mgmt-admin"
+	PermissionNameAdminUserMgmtViewer = "admin-user-mgmt-viewer"
 )
 
 // ContextSessionValid reports whether the context contains an admin session.

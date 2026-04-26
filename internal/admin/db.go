@@ -9,6 +9,7 @@ import (
 
 	"github.com/trebent/kerberos/internal/admin/model"
 	"github.com/trebent/kerberos/internal/db"
+	"github.com/trebent/kerberos/internal/db/postgres"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	"github.com/trebent/kerberos/internal/util/password"
 	"github.com/trebent/zerologr"
@@ -25,22 +26,24 @@ const (
 	deleteSuperSessions = "DELETE FROM admin_sessions WHERE user_id = (SELECT id FROM admin_users WHERE superuser = true);"
 
 	// Users.
-	selectAdminUsers     = "SELECT id, name FROM admin_users WHERE superuser = false;"
-	selectAdminUser      = "SELECT id, name FROM admin_users WHERE id = @userID AND superuser = false;"
-	selectAdminLoginUser = "SELECT id, salt, hashed_password FROM admin_users WHERE name = @username AND superuser = false;"
-	selectAdminUserAuth  = "SELECT salt, hashed_password FROM admin_users WHERE id = @userID AND superuser = false;"
-	insertAdminUser      = "INSERT INTO admin_users (name, salt, hashed_password, superuser) VALUES(@name, @salt, @hashedPassword, false);"
-	updateAdminUser      = "UPDATE admin_users SET name = @name WHERE id = @userID AND superuser = false;"
-	deleteAdminUser      = "DELETE FROM admin_users WHERE id = @userID AND superuser = false;"
+	selectAdminUsers         = "SELECT id, name FROM admin_users WHERE superuser = false;"
+	selectAdminUser          = "SELECT id, name FROM admin_users WHERE id = @userID AND superuser = false;"
+	selectAdminLoginUser     = "SELECT id, salt, hashed_password FROM admin_users WHERE name = @username AND superuser = false;"
+	selectAdminUserAuth      = "SELECT salt, hashed_password FROM admin_users WHERE id = @userID AND superuser = false;"
+	insertAdminUser          = "INSERT INTO admin_users (name, salt, hashed_password, superuser) VALUES(@name, @salt, @hashedPassword, false);"
+	insertAdminUserReturning = "INSERT INTO admin_users (name, salt, hashed_password, superuser) VALUES(@name, @salt, @hashedPassword, false) RETURNING id"
+	updateAdminUser          = "UPDATE admin_users SET name = @name WHERE id = @userID AND superuser = false;"
+	deleteAdminUser          = "DELETE FROM admin_users WHERE id = @userID AND superuser = false;"
 	//nolint:gosec // not a password
 	updateAdminUserPassword = "UPDATE admin_users SET salt = @salt, hashed_password = @hashedPassword WHERE id = @userID AND superuser = false;"
 
 	// Groups.
-	selectAdminGroups = "SELECT id, name FROM admin_groups;"
-	selectAdminGroup  = "SELECT id, name FROM admin_groups WHERE id = @groupID;"
-	insertAdminGroup  = "INSERT INTO admin_groups (name) VALUES(@name);"
-	updateAdminGroup  = "UPDATE admin_groups SET name = @name WHERE id = @groupID;"
-	deleteAdminGroup  = "DELETE FROM admin_groups WHERE id = @groupID;"
+	selectAdminGroups         = "SELECT id, name FROM admin_groups;"
+	selectAdminGroup          = "SELECT id, name FROM admin_groups WHERE id = @groupID;"
+	insertAdminGroup          = "INSERT INTO admin_groups (name) VALUES(@name);"
+	insertAdminGroupReturning = "INSERT INTO admin_groups (name) VALUES(@name) RETURNING id"
+	updateAdminGroup          = "UPDATE admin_groups SET name = @name WHERE id = @groupID;"
+	deleteAdminGroup          = "DELETE FROM admin_groups WHERE id = @groupID;"
 
 	// Permissions.
 	selectAdminPermissions = "SELECT id, name FROM admin_permissions;"
@@ -201,6 +204,13 @@ func dbCreateUser(
 	client db.SQLClient,
 	username, salt, hashedPassword string,
 ) (int64, error) {
+	if client.Dialect() == db.PostgresDialect {
+		return postgres.QueryReturningID(ctx, client, insertAdminUserReturning,
+			sql.NamedArg{Name: "name", Value: username},
+			sql.NamedArg{Name: "salt", Value: salt},
+			sql.NamedArg{Name: "hashedPassword", Value: hashedPassword},
+		)
+	}
 	res, err := client.Exec(
 		ctx,
 		insertAdminUser,
@@ -394,6 +404,11 @@ func dbListGroups(ctx context.Context, client db.SQLClient) ([]adminapi.Group, e
 }
 
 func dbCreateGroup(ctx context.Context, client db.SQLClient, name string) (int64, error) {
+	if client.Dialect() == db.PostgresDialect {
+		return postgres.QueryReturningID(ctx, client, insertAdminGroupReturning,
+			sql.NamedArg{Name: "name", Value: name},
+		)
+	}
 	res, err := client.Exec(
 		ctx,
 		insertAdminGroup,
@@ -787,3 +802,5 @@ func dbGetUserPermissionIDs(
 
 	return ids, nil
 }
+
+// (queryReturningID and queryer have been moved to internal/db.QueryReturningID)

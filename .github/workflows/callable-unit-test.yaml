@@ -45,3 +45,23 @@ jobs:
         with:
           name: go-coverage-report-${{ github.sha }}
           path: build/coverage.html
+
+  unit-test-postgres:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Golang
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod
+
+      - name: Run postgres
+        run: make run-postgres
+
+      - name: Run unit tests with PostgreSQL
+        run: make unittest-postgres
+
+      - name: Stop postgres
+        run: make stop-postgres

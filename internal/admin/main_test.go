@@ -1,3 +1,5 @@
+//go:build !postgres_integration
+
 package admin
 
 import (

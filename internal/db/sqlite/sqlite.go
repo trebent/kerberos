@@ -123,6 +123,10 @@ func (t *txImpl) Rollback() error {
 	return nil
 }
 
+func (i *impl) Dialect() db.Dialect {
+	return db.SQLiteDialect
+}
+
 func wrap(err error) error {
 	if err == nil {
 		return nil
