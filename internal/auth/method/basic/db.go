@@ -325,7 +325,7 @@ func dbCreateUser(
 	orgID int64,
 ) (int64, error) {
 	if client.Dialect() == db.PostgresDialect {
-		return queryReturningID(ctx, client, insertUserReturning,
+		return db.QueryReturningID(ctx, client, insertUserReturning,
 			sql.NamedArg{Name: "name", Value: name},
 			sql.NamedArg{Name: "salt", Value: salt},
 			sql.NamedArg{Name: "hashedPassword", Value: hashedPassword},
@@ -567,7 +567,7 @@ func dbCreateGroup(
 	name string,
 ) (int64, error) {
 	if client.Dialect() == db.PostgresDialect {
-		return queryReturningID(ctx, client, insertGroupReturning,
+		return db.QueryReturningID(ctx, client, insertGroupReturning,
 			sql.NamedArg{Name: "name", Value: name},
 			sql.NamedArg{Name: "orgID", Value: orgID},
 		)
@@ -678,7 +678,7 @@ func dbCreateOrganisation(
 	zerologr.Info("Creating organisation " + name)
 
 	if client.Dialect() == db.PostgresDialect {
-		orgID, err = queryReturningID(
+		orgID, err = db.QueryReturningID(
 			ctx,
 			tx,
 			insertOrgReturning,
@@ -701,7 +701,7 @@ func dbCreateOrganisation(
 	adminPassword, salt, hashedAdminPassword := password.Make("")
 
 	if client.Dialect() == db.PostgresDialect {
-		adminUserID, err = queryReturningID(ctx, tx, insertUserReturning,
+		adminUserID, err = db.QueryReturningID(ctx, tx, insertUserReturning,
 			sql.NamedArg{Name: "name", Value: adminUsername},
 			sql.NamedArg{Name: "salt", Value: salt},
 			sql.NamedArg{Name: "hashedPassword", Value: hashedAdminPassword},
@@ -805,29 +805,4 @@ func dbUpdateUserGroupBindings(
 	return nil
 }
 
-// queryer is satisfied by both db.SQLClient and db.Transaction.
-type queryer interface {
-	Query(ctx context.Context, stmt string, args ...any) (*sql.Rows, error)
-}
-
-// queryReturningID executes an INSERT ... RETURNING id query and returns the inserted ID.
-func queryReturningID(ctx context.Context, q queryer, query string, args ...any) (int64, error) {
-	rows, err := q.Query(ctx, query, args...)
-	if err != nil {
-		return 0, err
-	}
-	defer rows.Close()
-
-	if !rows.Next() {
-		if err := rows.Err(); err != nil {
-			return 0, err
-		}
-		return 0, errors.New("insert returned no id")
-	}
-
-	var id int64
-	if err := rows.Scan(&id); err != nil {
-		return 0, err
-	}
-	return id, nil
-}
+// (queryer and queryReturningID have been moved to internal/db.QueryReturningID)

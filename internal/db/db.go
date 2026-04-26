@@ -7,6 +7,33 @@ import (
 	"time"
 )
 
+// Queryer is satisfied by both SQLClient and Transaction.
+type Queryer interface {
+	Query(ctx context.Context, stmt string, args ...any) (*sql.Rows, error)
+}
+
+// QueryReturningID executes an INSERT ... RETURNING id query and returns the inserted ID.
+func QueryReturningID(ctx context.Context, q Queryer, query string, args ...any) (int64, error) {
+	rows, err := q.Query(ctx, query, args...)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		if err := rows.Err(); err != nil {
+			return 0, err
+		}
+		return 0, errors.New("insert returned no id")
+	}
+
+	var id int64
+	if err := rows.Scan(&id); err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
 // Dialect identifies the underlying database engine.
 type Dialect string
 
