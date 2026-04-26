@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -119,9 +121,19 @@ func newDBClient(cfg *config.PersistenceConfig) db.SQLClient {
 
 	zerologr.Info("Using PostgreSQL persistence")
 
+	hostPort := strings.Split(cfg.Address, ":")
+	if len(hostPort) != 2 {
+		panic("Invalid database address format. Expected host:port for PostgreSQL.")
+	}
+	host := hostPort[0]
+	port, err := strconv.Atoi(hostPort[1])
+	if err != nil {
+		panic("Invalid port in database address: " + err.Error())
+	}
+
 	// Build postgres DSN from structured fields.
-	dsn := "host=%s dbname=%s"
-	params := []any{cfg.Address, cfg.Database}
+	dsn := "host=%s port=%d dbname=%s"
+	params := []any{host, port, cfg.Database}
 
 	if cfg.SSLMode != nil {
 		dsn += " sslmode=%s"
@@ -135,11 +147,6 @@ func newDBClient(cfg *config.PersistenceConfig) db.SQLClient {
 		dsn += " password=%s"
 		params = append(params, *cfg.Postgres.Password)
 	}
-
-	// dsn := fmt.Sprintf(
-	// 	"host=%s dbname=%s user=%s password=%s sslmode=%s",
-	// 	host, cfg.Database, cfg.Username, cfg.Password, sslMode,
-	// )
 
 	return postgres.New(&postgres.Opts{DSN: fmt.Sprintf(dsn, params...)})
 }
