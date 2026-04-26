@@ -19,12 +19,27 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Install dependencies
-        run: make install-deps
+      - name: Install oapi-codegen and golangci-lint
+        run: |
+          make install-deps
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
+            | sh -s -- -b "$(go env GOPATH)/bin" v2.11.2
 
-      - name: Compose the test environment
+      - name: Download Go module dependencies
+        run: |
+          go mod download
+          (cd tools && go mod download)
+          (cd test/suites/integration && go mod download)
+          (cd test/suites/security && go mod download)
+
+      - name: Compose the integration test environment
         run: make compose
 
-      - name: Tear down test environment
+      - name: Compose the security test environment
+        run: make compose-security
+
+      - name: Tear down test environments
         if: always()
-        run: make compose-down
+        run: |
+          make compose-down
+          make compose-security-down
