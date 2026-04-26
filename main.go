@@ -134,7 +134,7 @@ func newDBClient(cfg *config.PersistenceConfig) db.SQLClient {
 		"host=%s dbname=%s user=%s password=%s sslmode=%s",
 		host, cfg.Database, cfg.Username, cfg.Password, sslMode,
 	)
-	zerologr.Info("Using PostgreSQL persistence", "address", cfg.Address, "database", cfg.Database)
+	zerologr.Info("Using PostgreSQL persistence")
 	return postgres.New(&postgres.Opts{DSN: dsn})
 }
 

@@ -37,11 +37,11 @@ var (
 func New(opts *Opts) db.SQLClient {
 	sqlDB, err := sql.Open("postgres", opts.DSN)
 	if err != nil {
-		panic(fmt.Sprintf("failed to open postgres connection: %v", err))
+		panic("failed to open postgres connection: invalid driver configuration")
 	}
 
 	if err := sqlDB.PingContext(context.Background()); err != nil {
-		panic(fmt.Sprintf("failed to ping postgres: %v", err))
+		panic("failed to ping postgres: check DSN and connectivity")
 	}
 
 	return &impl{db: sqlDB}
@@ -158,7 +158,7 @@ func wrap(err error) error {
 		if pgErr.Code == "23505" { // unique_violation
 			return fmt.Errorf("%w: %w", db.ErrUnique, err)
 		}
-		zerologr.Info("Unrecognized postgres error", "code", pgErr.Code, "message", pgErr.Message)
+		zerologr.Info("Unrecognized postgres error", "code", pgErr.Code)
 	}
 
 	return err
