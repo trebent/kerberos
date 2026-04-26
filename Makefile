@@ -53,6 +53,10 @@ unittest:
 	@mkdir -p build
 	@go test -v ./... -timeout 20s -failfast -coverprofile=build/coverage.out -covermode=atomic
 
+unittest-postgres:
+	$(call cecho,Running unit tests for Kerberos with PostgreSQL...,$(BOLD_YELLOW))
+	go test -v ./... -timeout 20s -failfast -tags=postgres_integration
+
 unittest-json:
 	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
@@ -182,6 +186,21 @@ compose-ps:
 compose-down:
 	$(call cecho,Tearing down Kerberos test environment...,$(BOLD_YELLOW))
 	@docker compose -f test/compose/integration/compose.yaml down
+
+run-postgres:
+	$(call cecho,Running PostgreSQL for Kerberos...,$(BOLD_YELLOW))
+	@docker run -d \
+		--rm \
+		-p 5432:5432 \
+		-e POSTGRES_USER=kerberos \
+		-e POSTGRES_PASSWORD=kerberos \
+		-e POSTGRES_DB=kerberos \
+		--name kerberos-postgres \
+		postgres:17-alpine
+
+stop-postgres:
+	$(call cecho,Stopping PostgreSQL for Kerberos...,$(BOLD_YELLOW))
+	@docker stop kerberos-postgres || true
 
 #
 # Compose security test environment

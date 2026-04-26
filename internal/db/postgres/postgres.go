@@ -92,6 +92,7 @@ func (i *impl) Exec(ctx context.Context, query string, args ...any) (sql.Result,
 
 func (i *impl) Query(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	q, positional := translateNamedArgs(query, args)
+
 	rows, err := i.db.QueryContext(ctx, q, positional...)
 	if err != nil {
 		return nil, wrap(err)
@@ -101,6 +102,7 @@ func (i *impl) Query(ctx context.Context, query string, args ...any) (*sql.Rows,
 
 func (t *txImpl) Exec(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	q, positional := translateNamedArgs(query, args)
+
 	res, err := t.tx.ExecContext(ctx, q, positional...)
 	if err != nil {
 		return nil, wrap(err)
@@ -175,8 +177,7 @@ func wrap(err error) error {
 		return nil
 	}
 
-	var pgErr *pq.Error
-	if errors.As(err, &pgErr) {
+	if pgErr, ok := errors.AsType[*pq.Error](err); ok {
 		if pgErr.Code == "23505" { // unique_violation
 			return fmt.Errorf("%w: %w", db.ErrUnique, err)
 		}

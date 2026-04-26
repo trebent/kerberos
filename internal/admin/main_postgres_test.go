@@ -24,7 +24,7 @@ func postgresDSN() string {
 	}
 	host := os.Getenv("POSTGRES_HOST")
 	if host == "" {
-		host = "localhost:5432"
+		host = "localhost"
 	}
 	dbName := os.Getenv("POSTGRES_DB")
 	if dbName == "" {
