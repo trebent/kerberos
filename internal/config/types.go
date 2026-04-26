@@ -101,8 +101,13 @@ type (
 		Driver string `json:"driver"`
 		// Address is the database address. For postgres: host:port. For sqlite: file path.
 		Address string `json:"address,omitempty"`
+
+		// Postgres contains specific configuration for the postgres driver. Ignored for other drivers.
+		*Postgres `json:"postgres,omitempty"`
+	}
+	Postgres struct {
 		// Database is the database name (postgres only).
-		Database string `json:"database,omitempty"`
+		Database string `json:"database"`
 		// Username is the database user (postgres only).
 		Username string `json:"username,omitempty"`
 		// Password is the database password (postgres only).
@@ -130,6 +135,13 @@ func newObservabilityConfig() *ObservabilityConfig {
 	}
 }
 
+func newPersistenceConfig() *PersistenceConfig {
+	return &PersistenceConfig{
+		Driver:  "sqlite",
+		Address: "krb.db",
+	}
+}
+
 func (ac *AuthConfig) postProcess() {}
 func (gc *GatewayConfig) postProcess() {
 	for _, b := range gc.Router.Backends {
@@ -138,6 +150,7 @@ func (gc *GatewayConfig) postProcess() {
 		}
 	}
 }
+func (pc *PersistenceConfig) postProcess()   {}
 func (oc *ObservabilityConfig) postProcess() {}
 func (ac *AdminConfig) postProcess()         {}
 func (oc *OASConfig) postProcess() {

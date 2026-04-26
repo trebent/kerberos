@@ -10,6 +10,7 @@ import (
 
 	models "github.com/trebent/kerberos/internal/auth/method/basic/model"
 	"github.com/trebent/kerberos/internal/db"
+	"github.com/trebent/kerberos/internal/db/postgres"
 	authbasicapi "github.com/trebent/kerberos/internal/oapi/auth/basic"
 	"github.com/trebent/kerberos/internal/util/password"
 	"github.com/trebent/zerologr"
@@ -325,7 +326,7 @@ func dbCreateUser(
 	orgID int64,
 ) (int64, error) {
 	if client.Dialect() == db.PostgresDialect {
-		return db.QueryReturningID(ctx, client, insertUserReturning,
+		return postgres.QueryReturningID(ctx, client, insertUserReturning,
 			sql.NamedArg{Name: "name", Value: name},
 			sql.NamedArg{Name: "salt", Value: salt},
 			sql.NamedArg{Name: "hashedPassword", Value: hashedPassword},
@@ -333,6 +334,7 @@ func dbCreateUser(
 			sql.NamedArg{Name: "isAdmin", Value: false},
 		)
 	}
+
 	res, err := client.Exec(
 		ctx,
 		insertUser,
@@ -567,7 +569,7 @@ func dbCreateGroup(
 	name string,
 ) (int64, error) {
 	if client.Dialect() == db.PostgresDialect {
-		return db.QueryReturningID(ctx, client, insertGroupReturning,
+		return postgres.QueryReturningID(ctx, client, insertGroupReturning,
 			sql.NamedArg{Name: "name", Value: name},
 			sql.NamedArg{Name: "orgID", Value: orgID},
 		)
@@ -678,7 +680,7 @@ func dbCreateOrganisation(
 	zerologr.Info("Creating organisation " + name)
 
 	if client.Dialect() == db.PostgresDialect {
-		orgID, err = db.QueryReturningID(
+		orgID, err = postgres.QueryReturningID(
 			ctx,
 			tx,
 			insertOrgReturning,
@@ -701,7 +703,7 @@ func dbCreateOrganisation(
 	adminPassword, salt, hashedAdminPassword := password.Make("")
 
 	if client.Dialect() == db.PostgresDialect {
-		adminUserID, err = db.QueryReturningID(ctx, tx, insertUserReturning,
+		adminUserID, err = postgres.QueryReturningID(ctx, tx, insertUserReturning,
 			sql.NamedArg{Name: "name", Value: adminUsername},
 			sql.NamedArg{Name: "salt", Value: salt},
 			sql.NamedArg{Name: "hashedPassword", Value: hashedAdminPassword},

@@ -121,3 +121,61 @@ func TestConfigOAS(t *testing.T) {
 		t.Errorf("expected OAS mapping options to have ValidateBody=true, got false")
 	}
 }
+
+func TestConfigPersistence(t *testing.T) {
+	data, err := os.ReadFile("./testconfig/testconfig_persistence.json")
+	if err != nil {
+		t.Fatalf("failed to read test config: %v", err)
+	}
+
+	cfg := New()
+	cfg.Load(data)
+	if err := cfg.Parse(); err != nil {
+		t.Fatalf("failed to load config: %v", err)
+	}
+
+	if cfg.PersistenceConfig.Driver != "postgres" {
+		t.Errorf("expected persistence driver to be 'postgres', got '%s'", cfg.PersistenceConfig.Driver)
+	}
+
+	if cfg.PersistenceConfig.Address != "localhost:5432" {
+		t.Errorf("expected persistence address to be 'localhost:5432', got '%s'", cfg.PersistenceConfig.Address)
+	}
+
+	if cfg.PersistenceConfig.Database != "kerberos" {
+		t.Errorf("expected persistence database to be 'kerberos', got '%s'", cfg.PersistenceConfig.Database)
+	}
+
+	if cfg.PersistenceConfig.Postgres.Username != "user" {
+		t.Errorf("expected persistence user to be 'user', got '%s'", cfg.PersistenceConfig.Postgres.Username)
+	}
+
+	if cfg.PersistenceConfig.Postgres.Password != "password" {
+		t.Errorf("expected persistence password to be 'password', got '%s'", cfg.PersistenceConfig.Password)
+	}
+
+	if cfg.PersistenceConfig.SSLMode != "require" {
+		t.Errorf("expected persistence SSL mode to be 'require', got '%s'", cfg.PersistenceConfig.SSLMode)
+	}
+}
+
+func TestConfigPersistenceOmitDefault(t *testing.T) {
+	data, err := os.ReadFile("./testconfig/testconfig_persistence_omit.json")
+	if err != nil {
+		t.Fatalf("failed to read test config: %v", err)
+	}
+
+	cfg := New()
+	cfg.Load(data)
+	if err := cfg.Parse(); err != nil {
+		t.Fatalf("failed to load config: %v", err)
+	}
+
+	if cfg.PersistenceConfig.Driver != "sqlite" {
+		t.Errorf("expected persistence driver to be 'sqlite', got '%s'", cfg.PersistenceConfig.Driver)
+	}
+
+	if cfg.PersistenceConfig.Address != "krb.db" {
+		t.Errorf("expected persistence address to be 'krb.db', got '%s'", cfg.PersistenceConfig.Address)
+	}
+}

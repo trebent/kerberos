@@ -9,6 +9,7 @@ import (
 
 	"github.com/trebent/kerberos/internal/admin/model"
 	"github.com/trebent/kerberos/internal/db"
+	"github.com/trebent/kerberos/internal/db/postgres"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	"github.com/trebent/kerberos/internal/util/password"
 	"github.com/trebent/zerologr"
@@ -204,7 +205,7 @@ func dbCreateUser(
 	username, salt, hashedPassword string,
 ) (int64, error) {
 	if client.Dialect() == db.PostgresDialect {
-		return db.QueryReturningID(ctx, client, insertAdminUserReturning,
+		return postgres.QueryReturningID(ctx, client, insertAdminUserReturning,
 			sql.NamedArg{Name: "name", Value: username},
 			sql.NamedArg{Name: "salt", Value: salt},
 			sql.NamedArg{Name: "hashedPassword", Value: hashedPassword},
@@ -404,7 +405,7 @@ func dbListGroups(ctx context.Context, client db.SQLClient) ([]adminapi.Group, e
 
 func dbCreateGroup(ctx context.Context, client db.SQLClient, name string) (int64, error) {
 	if client.Dialect() == db.PostgresDialect {
-		return db.QueryReturningID(ctx, client, insertAdminGroupReturning,
+		return postgres.QueryReturningID(ctx, client, insertAdminGroupReturning,
 			sql.NamedArg{Name: "name", Value: name},
 		)
 	}

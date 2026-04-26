@@ -71,6 +71,7 @@ func New() *RootConfig {
 
 		ObservabilityConfig: newObservabilityConfig(),
 		AdminConfig:         newAdminConfig(),
+		PersistenceConfig:   newPersistenceConfig(),
 	}
 }
 
@@ -444,6 +445,7 @@ func (rc *RootConfig) postProcess() {
 	}
 	rc.GatewayConfig.postProcess()
 	rc.ObservabilityConfig.postProcess()
+	rc.PersistenceConfig.postProcess()
 	rc.AdminConfig.postProcess()
 }
 
