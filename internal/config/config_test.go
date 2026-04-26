@@ -123,7 +123,7 @@ func TestConfigOAS(t *testing.T) {
 }
 
 func TestConfigPersistence(t *testing.T) {
-	t.Run("Happy", func(t *testing.T) {
+	t.Run("Postgres happy", func(t *testing.T) {
 		data, err := os.ReadFile("./testconfig/testconfig_persistence.json")
 		if err != nil {
 			t.Fatalf("failed to read test config: %v", err)
@@ -160,7 +160,7 @@ func TestConfigPersistence(t *testing.T) {
 		}
 	})
 
-	t.Run("OmitDefault", func(t *testing.T) {
+	t.Run("Default", func(t *testing.T) {
 		data, err := os.ReadFile("./testconfig/testconfig_persistence_omit.json")
 		if err != nil {
 			t.Fatalf("failed to read test config: %v", err)
@@ -181,7 +181,7 @@ func TestConfigPersistence(t *testing.T) {
 		}
 	})
 
-	t.Run("PostgresMissing", func(t *testing.T) {
+	t.Run("Postgres missing", func(t *testing.T) {
 		data, err := os.ReadFile("./testconfig/testconfig_persistence_postgres_missing.json")
 		if err != nil {
 			t.Fatalf("failed to read test config: %v", err)
