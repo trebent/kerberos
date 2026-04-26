@@ -25,24 +25,24 @@ const (
 	deleteSuperSessions = "DELETE FROM admin_sessions WHERE user_id = (SELECT id FROM admin_users WHERE superuser = true);"
 
 	// Users.
-	selectAdminUsers     = "SELECT id, name FROM admin_users WHERE superuser = false;"
-	selectAdminUser      = "SELECT id, name FROM admin_users WHERE id = @userID AND superuser = false;"
-	selectAdminLoginUser = "SELECT id, salt, hashed_password FROM admin_users WHERE name = @username AND superuser = false;"
-	selectAdminUserAuth  = "SELECT salt, hashed_password FROM admin_users WHERE id = @userID AND superuser = false;"
-	insertAdminUser         = "INSERT INTO admin_users (name, salt, hashed_password, superuser) VALUES(@name, @salt, @hashedPassword, false);"
+	selectAdminUsers         = "SELECT id, name FROM admin_users WHERE superuser = false;"
+	selectAdminUser          = "SELECT id, name FROM admin_users WHERE id = @userID AND superuser = false;"
+	selectAdminLoginUser     = "SELECT id, salt, hashed_password FROM admin_users WHERE name = @username AND superuser = false;"
+	selectAdminUserAuth      = "SELECT salt, hashed_password FROM admin_users WHERE id = @userID AND superuser = false;"
+	insertAdminUser          = "INSERT INTO admin_users (name, salt, hashed_password, superuser) VALUES(@name, @salt, @hashedPassword, false);"
 	insertAdminUserReturning = "INSERT INTO admin_users (name, salt, hashed_password, superuser) VALUES(@name, @salt, @hashedPassword, false) RETURNING id"
-	updateAdminUser      = "UPDATE admin_users SET name = @name WHERE id = @userID AND superuser = false;"
-	deleteAdminUser      = "DELETE FROM admin_users WHERE id = @userID AND superuser = false;"
+	updateAdminUser          = "UPDATE admin_users SET name = @name WHERE id = @userID AND superuser = false;"
+	deleteAdminUser          = "DELETE FROM admin_users WHERE id = @userID AND superuser = false;"
 	//nolint:gosec // not a password
 	updateAdminUserPassword = "UPDATE admin_users SET salt = @salt, hashed_password = @hashedPassword WHERE id = @userID AND superuser = false;"
 
 	// Groups.
-	selectAdminGroups      = "SELECT id, name FROM admin_groups;"
-	selectAdminGroup       = "SELECT id, name FROM admin_groups WHERE id = @groupID;"
-	insertAdminGroup           = "INSERT INTO admin_groups (name) VALUES(@name);"
-	insertAdminGroupReturning  = "INSERT INTO admin_groups (name) VALUES(@name) RETURNING id"
-	updateAdminGroup       = "UPDATE admin_groups SET name = @name WHERE id = @groupID;"
-	deleteAdminGroup       = "DELETE FROM admin_groups WHERE id = @groupID;"
+	selectAdminGroups         = "SELECT id, name FROM admin_groups;"
+	selectAdminGroup          = "SELECT id, name FROM admin_groups WHERE id = @groupID;"
+	insertAdminGroup          = "INSERT INTO admin_groups (name) VALUES(@name);"
+	insertAdminGroupReturning = "INSERT INTO admin_groups (name) VALUES(@name) RETURNING id"
+	updateAdminGroup          = "UPDATE admin_groups SET name = @name WHERE id = @groupID;"
+	deleteAdminGroup          = "DELETE FROM admin_groups WHERE id = @groupID;"
 
 	// Permissions.
 	selectAdminPermissions = "SELECT id, name FROM admin_permissions;"

@@ -155,8 +155,7 @@ func wrap(err error) error {
 
 	var pgErr *pq.Error
 	if errors.As(err, &pgErr) {
-		switch pgErr.Code {
-		case "23505": // unique_violation
+		if pgErr.Code == "23505" { // unique_violation
 			return fmt.Errorf("%w: %w", db.ErrUnique, err)
 		}
 		zerologr.Info("Unrecognized postgres error", "code", pgErr.Code, "message", pgErr.Message)
