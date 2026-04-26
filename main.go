@@ -21,6 +21,8 @@ import (
 	obs "github.com/trebent/kerberos/internal/composer/observability"
 	"github.com/trebent/kerberos/internal/composer/router"
 	"github.com/trebent/kerberos/internal/config"
+	"github.com/trebent/kerberos/internal/db"
+	"github.com/trebent/kerberos/internal/db/postgres"
 	"github.com/trebent/kerberos/internal/db/sqlite"
 	internalenv "github.com/trebent/kerberos/internal/env"
 	"github.com/trebent/kerberos/internal/oas"
@@ -108,6 +110,34 @@ func main() {
 	startLogger.Info("Kerberos stopped")
 }
 
+// newDBClient constructs a db.SQLClient based on the persistence configuration.
+// When no persistence config is provided, SQLite in DB_DIRECTORY is used (legacy default).
+func newDBClient(cfg *config.PersistenceConfig) db.SQLClient {
+	if cfg == nil || cfg.Driver == "sqlite" {
+		dsn := filepath.Join(internalenv.DBDirectory.Value(), sqlite.DBName)
+		if cfg != nil && cfg.Address != "" {
+			dsn = cfg.Address
+		}
+		return sqlite.New(&sqlite.Opts{DSN: dsn})
+	}
+
+	// Build postgres DSN from structured fields.
+	host := cfg.Address
+	if host == "" {
+		host = "localhost:5432"
+	}
+	sslMode := cfg.SSLMode
+	if sslMode == "" {
+		sslMode = "disable"
+	}
+	dsn := fmt.Sprintf(
+		"host=%s dbname=%s user=%s password=%s sslmode=%s",
+		host, cfg.Database, cfg.Username, cfg.Password, sslMode,
+	)
+	zerologr.Info("Using PostgreSQL persistence", "address", cfg.Address, "database", cfg.Database)
+	return postgres.New(&postgres.Opts{DSN: dsn})
+}
+
 // setupConfig sets up the configuration map and registers all necessary
 // configurations. It returns the configuration map after calling Parse().
 func setupConfig() (*config.RootConfig, error) {
@@ -143,9 +173,7 @@ func setupConfig() (*config.RootConfig, error) {
 func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	adminMux := http.NewServeMux()
 	gwMux := http.NewServeMux()
-	db := sqlite.New(
-		&sqlite.Opts{DSN: filepath.Join(internalenv.DBDirectory.Value(), sqlite.DBName)},
-	)
+	db := newDBClient(cfg.PersistenceConfig)
 
 	// Even though the admin configuration is optional, it's always available. The admin initialisation
 	// output is used to configure and prepare other internal components for administration.

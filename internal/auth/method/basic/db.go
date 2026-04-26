@@ -17,26 +17,29 @@ import (
 
 const (
 	// Organisations.
-	insertOrg  = "INSERT INTO organisations (name) VALUES(@name);"
-	deleteOrg  = "DELETE FROM organisations WHERE id = @orgID;"
-	selectOrg  = "SELECT id, name FROM organisations WHERE id = @orgID;"
-	selectOrgs = "SELECT id, name FROM organisations;"
-	updateOrg  = "UPDATE organisations SET name = @name WHERE id = @orgID;"
+	insertOrg          = "INSERT INTO organisations (name) VALUES(@name);"
+	insertOrgReturning = "INSERT INTO organisations (name) VALUES(@name) RETURNING id"
+	deleteOrg          = "DELETE FROM organisations WHERE id = @orgID;"
+	selectOrg          = "SELECT id, name FROM organisations WHERE id = @orgID;"
+	selectOrgs         = "SELECT id, name FROM organisations;"
+	updateOrg          = "UPDATE organisations SET name = @name WHERE id = @orgID;"
 
 	// Groups.
-	insertGroup  = "INSERT INTO groups (name, organisation_id) VALUES(@name, @orgID);"
-	deleteGroup  = "DELETE FROM groups WHERE organisation_id = @orgID AND id = @groupID;"
-	selectGroup  = "SELECT id, name FROM groups WHERE id = @groupID AND organisation_id = @orgID;"
-	selectGroups = "SELECT id, name FROM groups WHERE organisation_id = @orgID;"
-	updateGroup  = "UPDATE groups SET name = @name WHERE id = @groupID AND organisation_id = @orgID;"
+	insertGroup          = "INSERT INTO groups (name, organisation_id) VALUES(@name, @orgID);"
+	insertGroupReturning = "INSERT INTO groups (name, organisation_id) VALUES(@name, @orgID) RETURNING id"
+	deleteGroup          = "DELETE FROM groups WHERE organisation_id = @orgID AND id = @groupID;"
+	selectGroup          = "SELECT id, name FROM groups WHERE id = @groupID AND organisation_id = @orgID;"
+	selectGroups         = "SELECT id, name FROM groups WHERE organisation_id = @orgID;"
+	updateGroup          = "UPDATE groups SET name = @name WHERE id = @groupID AND organisation_id = @orgID;"
 
 	// Users.
-	insertUser     = "INSERT INTO users (name, salt, hashed_password, organisation_id, administrator) VALUES(@name, @salt, @hashedPassword, @orgID, @isAdmin);"
-	deleteUser     = "DELETE FROM users WHERE id = @userID AND organisation_id = @orgID;"
-	selectUser     = "SELECT id, name FROM users WHERE id = @userID AND organisation_id = @orgID;"
-	selectUserAuth = "SELECT salt, hashed_password FROM users WHERE id = @userID AND organisation_id = @orgID;"
-	selectUsers    = "SELECT id, name FROM users WHERE organisation_id = @orgID;"
-	updateUser     = "UPDATE users SET name = @name WHERE id = @userID AND organisation_id = @orgID;"
+	insertUser          = "INSERT INTO users (name, salt, hashed_password, organisation_id, administrator) VALUES(@name, @salt, @hashedPassword, @orgID, @isAdmin);"
+	insertUserReturning = "INSERT INTO users (name, salt, hashed_password, organisation_id, administrator) VALUES(@name, @salt, @hashedPassword, @orgID, @isAdmin) RETURNING id"
+	deleteUser          = "DELETE FROM users WHERE id = @userID AND organisation_id = @orgID;"
+	selectUser          = "SELECT id, name FROM users WHERE id = @userID AND organisation_id = @orgID;"
+	selectUserAuth      = "SELECT salt, hashed_password FROM users WHERE id = @userID AND organisation_id = @orgID;"
+	selectUsers         = "SELECT id, name FROM users WHERE organisation_id = @orgID;"
+	updateUser          = "UPDATE users SET name = @name WHERE id = @userID AND organisation_id = @orgID;"
 	//nolint:gosec // not a password
 	updateUserPassword = "UPDATE users SET salt = @salt, hashed_password = @hashedPassword WHERE id = @id;"
 	selectLoginUser    = "SELECT id, name, salt, hashed_password, organisation_id FROM users WHERE organisation_id = @orgID AND name = @username;"
@@ -321,6 +324,15 @@ func dbCreateUser(
 	name, salt, hashedPassword string,
 	orgID int64,
 ) (int64, error) {
+	if client.Dialect() == db.PostgresDialect {
+		return queryReturningID(ctx, client, insertUserReturning,
+			sql.NamedArg{Name: "name", Value: name},
+			sql.NamedArg{Name: "salt", Value: salt},
+			sql.NamedArg{Name: "hashedPassword", Value: hashedPassword},
+			sql.NamedArg{Name: "orgID", Value: orgID},
+			sql.NamedArg{Name: "isAdmin", Value: false},
+		)
+	}
 	res, err := client.Exec(
 		ctx,
 		insertUser,
@@ -554,6 +566,12 @@ func dbCreateGroup(
 	orgID int64,
 	name string,
 ) (int64, error) {
+	if client.Dialect() == db.PostgresDialect {
+		return queryReturningID(ctx, client, insertGroupReturning,
+			sql.NamedArg{Name: "name", Value: name},
+			sql.NamedArg{Name: "orgID", Value: orgID},
+		)
+	}
 	res, err := client.Exec(
 		ctx,
 		insertGroup,
@@ -658,30 +676,52 @@ func dbCreateOrganisation(
 	defer tx.Rollback()
 
 	zerologr.Info("Creating organisation " + name)
-	res, err := tx.Exec(ctx, insertOrg, sql.NamedArg{Name: "name", Value: name})
+
+	if client.Dialect() == db.PostgresDialect {
+		orgID, err = queryReturningID(ctx, tx, insertOrgReturning, sql.NamedArg{Name: "name", Value: name})
+	} else {
+		var res sql.Result
+		res, err = tx.Exec(ctx, insertOrg, sql.NamedArg{Name: "name", Value: name})
+		if err == nil {
+			orgID, _ = res.LastInsertId()
+		}
+	}
 	if err != nil {
 		zerologr.Error(err, "Failed to create organisation")
 		return 0, 0, "", "", err
 	}
-	orgID, _ = res.LastInsertId()
 	zerologr.Info(fmt.Sprintf("Created organisation with id %d", orgID))
 
 	adminUsername = fmt.Sprintf("%s-%s", "admin", name)
 	adminPassword, salt, hashedAdminPassword := password.Make("")
-	res, err = tx.Exec(
-		ctx,
-		insertUser,
-		sql.NamedArg{Name: "name", Value: adminUsername},
-		sql.NamedArg{Name: "salt", Value: salt},
-		sql.NamedArg{Name: "hashedPassword", Value: hashedAdminPassword},
-		sql.NamedArg{Name: "orgID", Value: orgID},
-		sql.NamedArg{Name: "isAdmin", Value: true},
-	)
+
+	if client.Dialect() == db.PostgresDialect {
+		adminUserID, err = queryReturningID(ctx, tx, insertUserReturning,
+			sql.NamedArg{Name: "name", Value: adminUsername},
+			sql.NamedArg{Name: "salt", Value: salt},
+			sql.NamedArg{Name: "hashedPassword", Value: hashedAdminPassword},
+			sql.NamedArg{Name: "orgID", Value: orgID},
+			sql.NamedArg{Name: "isAdmin", Value: true},
+		)
+	} else {
+		var res sql.Result
+		res, err = tx.Exec(
+			ctx,
+			insertUser,
+			sql.NamedArg{Name: "name", Value: adminUsername},
+			sql.NamedArg{Name: "salt", Value: salt},
+			sql.NamedArg{Name: "hashedPassword", Value: hashedAdminPassword},
+			sql.NamedArg{Name: "orgID", Value: orgID},
+			sql.NamedArg{Name: "isAdmin", Value: true},
+		)
+		if err == nil {
+			adminUserID, _ = res.LastInsertId()
+		}
+	}
 	if err != nil {
 		zerologr.Error(err, "Failed to create admin user for organisation")
 		return 0, 0, "", "", err
 	}
-	adminUserID, _ = res.LastInsertId()
 
 	if err = tx.Commit(); err != nil {
 		zerologr.Error(err, "Failed to commit organisation creation transaction")
@@ -758,4 +798,31 @@ func dbUpdateUserGroupBindings(
 	}
 
 	return nil
+}
+
+// queryer is satisfied by both db.SQLClient and db.Transaction.
+type queryer interface {
+Query(ctx context.Context, stmt string, args ...any) (*sql.Rows, error)
+}
+
+// queryReturningID executes an INSERT ... RETURNING id query and returns the inserted ID.
+func queryReturningID(ctx context.Context, q queryer, query string, args ...any) (int64, error) {
+rows, err := q.Query(ctx, query, args...)
+if err != nil {
+return 0, err
+}
+defer rows.Close()
+
+if !rows.Next() {
+if err := rows.Err(); err != nil {
+return 0, err
+}
+return 0, errors.New("insert returned no id")
+}
+
+var id int64
+if err := rows.Scan(&id); err != nil {
+return 0, err
+}
+return id, nil
 }

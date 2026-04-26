@@ -94,6 +94,22 @@ type (
 		CertFile string `json:"serverCertFile"`
 		KeyFile  string `json:"serverKeyFile"`
 	}
+
+	// PersistenceConfig holds configuration for the backing database.
+	PersistenceConfig struct {
+		// Driver selects the database backend: "sqlite" or "postgres".
+		Driver string `json:"driver"`
+		// Address is the database address. For postgres: host:port. For sqlite: file path.
+		Address string `json:"address,omitempty"`
+		// Database is the database name (postgres only).
+		Database string `json:"database,omitempty"`
+		// Username is the database user (postgres only).
+		Username string `json:"username,omitempty"`
+		// Password is the database password (postgres only).
+		Password string `json:"password,omitempty"`
+		// SSLMode controls TLS for postgres connections (e.g. "disable", "require", "verify-full").
+		SSLMode string `json:"sslMode,omitempty"`
+	}
 )
 
 const defaultCalloutTimeoutMs = 5000

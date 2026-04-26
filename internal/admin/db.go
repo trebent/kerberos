@@ -29,18 +29,20 @@ const (
 	selectAdminUser      = "SELECT id, name FROM admin_users WHERE id = @userID AND superuser = false;"
 	selectAdminLoginUser = "SELECT id, salt, hashed_password FROM admin_users WHERE name = @username AND superuser = false;"
 	selectAdminUserAuth  = "SELECT salt, hashed_password FROM admin_users WHERE id = @userID AND superuser = false;"
-	insertAdminUser      = "INSERT INTO admin_users (name, salt, hashed_password, superuser) VALUES(@name, @salt, @hashedPassword, false);"
+	insertAdminUser         = "INSERT INTO admin_users (name, salt, hashed_password, superuser) VALUES(@name, @salt, @hashedPassword, false);"
+	insertAdminUserReturning = "INSERT INTO admin_users (name, salt, hashed_password, superuser) VALUES(@name, @salt, @hashedPassword, false) RETURNING id"
 	updateAdminUser      = "UPDATE admin_users SET name = @name WHERE id = @userID AND superuser = false;"
 	deleteAdminUser      = "DELETE FROM admin_users WHERE id = @userID AND superuser = false;"
 	//nolint:gosec // not a password
 	updateAdminUserPassword = "UPDATE admin_users SET salt = @salt, hashed_password = @hashedPassword WHERE id = @userID AND superuser = false;"
 
 	// Groups.
-	selectAdminGroups = "SELECT id, name FROM admin_groups;"
-	selectAdminGroup  = "SELECT id, name FROM admin_groups WHERE id = @groupID;"
-	insertAdminGroup  = "INSERT INTO admin_groups (name) VALUES(@name);"
-	updateAdminGroup  = "UPDATE admin_groups SET name = @name WHERE id = @groupID;"
-	deleteAdminGroup  = "DELETE FROM admin_groups WHERE id = @groupID;"
+	selectAdminGroups      = "SELECT id, name FROM admin_groups;"
+	selectAdminGroup       = "SELECT id, name FROM admin_groups WHERE id = @groupID;"
+	insertAdminGroup           = "INSERT INTO admin_groups (name) VALUES(@name);"
+	insertAdminGroupReturning  = "INSERT INTO admin_groups (name) VALUES(@name) RETURNING id"
+	updateAdminGroup       = "UPDATE admin_groups SET name = @name WHERE id = @groupID;"
+	deleteAdminGroup       = "DELETE FROM admin_groups WHERE id = @groupID;"
 
 	// Permissions.
 	selectAdminPermissions = "SELECT id, name FROM admin_permissions;"
@@ -201,6 +203,13 @@ func dbCreateUser(
 	client db.SQLClient,
 	username, salt, hashedPassword string,
 ) (int64, error) {
+	if client.Dialect() == db.PostgresDialect {
+		return queryReturningID(ctx, client, insertAdminUserReturning,
+			sql.NamedArg{Name: "name", Value: username},
+			sql.NamedArg{Name: "salt", Value: salt},
+			sql.NamedArg{Name: "hashedPassword", Value: hashedPassword},
+		)
+	}
 	res, err := client.Exec(
 		ctx,
 		insertAdminUser,
@@ -394,6 +403,11 @@ func dbListGroups(ctx context.Context, client db.SQLClient) ([]adminapi.Group, e
 }
 
 func dbCreateGroup(ctx context.Context, client db.SQLClient, name string) (int64, error) {
+	if client.Dialect() == db.PostgresDialect {
+		return queryReturningID(ctx, client, insertAdminGroupReturning,
+			sql.NamedArg{Name: "name", Value: name},
+		)
+	}
 	res, err := client.Exec(
 		ctx,
 		insertAdminGroup,
@@ -786,4 +800,31 @@ func dbGetUserPermissionIDs(
 	}
 
 	return ids, nil
+}
+
+// queryer is satisfied by both db.SQLClient and db.Transaction.
+type queryer interface {
+	Query(ctx context.Context, stmt string, args ...any) (*sql.Rows, error)
+}
+
+// queryReturningID executes an INSERT ... RETURNING id query and returns the inserted ID.
+func queryReturningID(ctx context.Context, q queryer, query string, args ...any) (int64, error) {
+	rows, err := q.Query(ctx, query, args...)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		if err := rows.Err(); err != nil {
+			return 0, err
+		}
+		return 0, errors.New("insert returned no id")
+	}
+
+	var id int64
+	if err := rows.Scan(&id); err != nil {
+		return 0, err
+	}
+	return id, nil
 }

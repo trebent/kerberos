@@ -1,0 +1,54 @@
+CREATE TABLE IF NOT EXISTS admin_groups (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  created TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS admin_group_name ON admin_groups(name);
+
+CREATE TABLE IF NOT EXISTS admin_permissions (
+  id INTEGER PRIMARY KEY,
+  name VARCHAR(100) NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS admin_permission_name ON admin_permissions(name);
+
+CREATE TABLE IF NOT EXISTS admin_group_permission_bindings (
+  group_id INTEGER,
+  permission_id INTEGER,
+  FOREIGN KEY(group_id) REFERENCES admin_groups(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY(permission_id) REFERENCES admin_permissions(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS admin_group_permissions ON admin_group_permission_bindings(group_id, permission_id);
+
+CREATE TABLE IF NOT EXISTS admin_users (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  superuser BOOLEAN NOT NULL DEFAULT FALSE,
+  salt VARCHAR(100) NOT NULL,
+  hashed_password VARCHAR(100) NOT NULL,
+  created TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS admin_user_name ON admin_users(name);
+
+CREATE TABLE IF NOT EXISTS admin_group_bindings (
+  user_id INTEGER,
+  group_id INTEGER,
+  created TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(user_id) REFERENCES admin_users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY(group_id) REFERENCES admin_groups(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS admin_user_groups ON admin_group_bindings(user_id, group_id);
+
+CREATE TABLE IF NOT EXISTS admin_sessions (
+  user_id INTEGER,
+  session_id VARCHAR(100),
+  expires BIGINT NOT NULL,
+  FOREIGN KEY(user_id) REFERENCES admin_users(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
