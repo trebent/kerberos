@@ -1,7 +1,7 @@
 {
   "persistence": {
     "driver": "postgres",
-    "address": "postgres",
+    "address": "postgres:5432",
     "postgres": {
       "database": "kerberos",
       "username": "kerberos",
