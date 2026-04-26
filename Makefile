@@ -54,8 +54,9 @@ unittest:
 	@go test -v ./... -timeout 20s -failfast -coverprofile=build/coverage.out -covermode=atomic
 
 unittest-postgres:
-	$(call cecho,Running unit tests for Kerberos with PostgreSQL...,$(BOLD_YELLOW))
-	go test -v ./... -timeout 20s -failfast -tags=postgres_integration
+	$(call cecho,Running unit tests (admin, basic auth) for Kerberos with PostgreSQL...,$(BOLD_YELLOW))
+	cd internal/admin && go test -v ./... -timeout 20s -failfast -tags=postgres_integration
+	cd internal/auth/method/basic && go test -v ./... -timeout 20s -failfast -tags=postgres_integration
 
 unittest-json:
 	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))

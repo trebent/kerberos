@@ -146,16 +146,16 @@ func TestConfigPersistence(t *testing.T) {
 		t.Errorf("expected persistence database to be 'kerberos', got '%s'", cfg.PersistenceConfig.Database)
 	}
 
-	if *cfg.PersistenceConfig.Postgres.Username != "user" {
-		t.Errorf("expected persistence user to be 'user', got '%s'", cfg.PersistenceConfig.Postgres.Username)
+	if *cfg.PersistenceConfig.Username != "user" {
+		t.Errorf("expected persistence user to be 'user', got '%s'", *cfg.PersistenceConfig.Postgres.Username)
 	}
 
-	if *cfg.PersistenceConfig.Postgres.Password != "password" {
-		t.Errorf("expected persistence password to be 'password', got '%s'", cfg.PersistenceConfig.Password)
+	if *cfg.PersistenceConfig.Password != "password" {
+		t.Errorf("expected persistence password to be 'password', got '%s'", *cfg.PersistenceConfig.Password)
 	}
 
 	if *cfg.PersistenceConfig.SSLMode != "require" {
-		t.Errorf("expected persistence SSL mode to be 'require', got '%s'", cfg.PersistenceConfig.SSLMode)
+		t.Errorf("expected persistence SSL mode to be 'require', got '%s'", *cfg.PersistenceConfig.SSLMode)
 	}
 }
 
