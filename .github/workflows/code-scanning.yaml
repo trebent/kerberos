@@ -15,7 +15,7 @@ permissions:
   security-events: write
 
 jobs:
-  lint:
+  golangci-lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -33,7 +33,7 @@ jobs:
         with:
           sarif_file: golangci-lint-report.sarif
 
-  vulncheck:
+  govulncheck:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
