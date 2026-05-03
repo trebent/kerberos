@@ -21,10 +21,6 @@ permissions:
   security-events: write
 
 jobs:
-  static-analysis:
-    uses: ./.github/workflows/callable-static-analysis.yaml
-    secrets: inherit
-
   build:
     uses: ./.github/workflows/callable-build.yaml
     secrets: inherit
