@@ -4,9 +4,7 @@ on:
   workflow_call:
 
 permissions:
-  checks: write
   contents: read
-  packages: read
 
 jobs:
   unit-test:
