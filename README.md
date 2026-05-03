@@ -4,6 +4,7 @@
 [![Code scanning](https://github.com/trebent/kerberos/actions/workflows/code-scanning.yaml/badge.svg)](https://github.com/trebent/kerberos/actions/workflows/code-scanning.yaml)
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Go Report Card](https://goreportcard.com/badge/github.com/trebent/kerberos)](https://goreportcard.com/report/github.com/trebent/kerberos)
+![tag](https://img.shields.io/github/v/tag/trebent/kerberos?label=latest%20version)
 
 🐶🐶🐶
 
