@@ -26,19 +26,14 @@ jobs:
     uses: ./.github/workflows/callable-image.yaml
     secrets: inherit
     with:
-      version: unstable
       push: true
 
   integration-test:
     needs: image
-    uses: ./.github/workflows/callable-integration-test.yaml
+    uses: ./.github/workflows/callable-test-integration.yaml
     secrets: inherit
-    with:
-      version: unstable
 
   security-test:
     needs: image
-    uses: ./.github/workflows/callable-security-test.yaml
+    uses: ./.github/workflows/callable-test-security.yaml
     secrets: inherit
-    with:
-      version: unstable

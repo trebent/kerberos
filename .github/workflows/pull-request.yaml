@@ -25,5 +25,5 @@ jobs:
     secrets: inherit
 
   unit-test:
-    uses: ./.github/workflows/callable-unit-test.yaml
+    uses: ./.github/workflows/callable-test-unit.yaml
     secrets: inherit
