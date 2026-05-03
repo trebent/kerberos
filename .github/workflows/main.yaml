@@ -14,9 +14,9 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
+  checks: write
   contents: read
   packages: write
-  pull-requests: read
 
 jobs:
   build:
