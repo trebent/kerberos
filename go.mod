@@ -3,14 +3,14 @@ module github.com/trebent/kerberos
 go 1.26.2
 
 require (
-	github.com/getkin/kin-openapi v0.136.0
+	github.com/getkin/kin-openapi v0.137.0
 	github.com/go-logr/logr v1.4.3
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.12.3
 	github.com/oapi-codegen/nethttp-middleware v1.1.2
 	github.com/oapi-codegen/runtime v1.4.0
-	github.com/trebent/envparser v1.0.6
-	github.com/trebent/zerologr v1.0.2
+	github.com/trebent/envparser v1.0.7
+	github.com/trebent/zerologr v1.0.3
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.opentelemetry.io/contrib/exporters/autoexport v0.68.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.68.0
