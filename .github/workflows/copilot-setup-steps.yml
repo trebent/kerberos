@@ -35,7 +35,7 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-mod-${{ hashFiles('go.sum', 'tools/go.sum', 'test/suites/integration/go.sum', 'test/suites/security/go.sum') }}
+          key: copilot-go-mod-${{ runner.os }}-${{ hashFiles('go.sum', 'tools/go.sum', 'test/suites/integration/go.sum', 'test/suites/security/go.sum') }}
 
       - name: Cache Go build cache
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5

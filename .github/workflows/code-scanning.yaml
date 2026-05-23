@@ -63,15 +63,15 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-mod-${{ hashFiles('tools/go.sum') }}
+          key: govulncheck-go-mod-${{ runner.os }}-${{ hashFiles('tools/go.sum') }}
 
       - name: Cache Go build cache
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.cache/go-build
-          key: ${{ runner.os }}-go-build-tools-${{ steps.build-cache-key.outputs.checksum }}
+          key: govulncheck-go-build-${{ runner.os }}-${{ steps.build-cache-key.outputs.checksum }}
           restore-keys: |
-            ${{ runner.os }}-go-build-tools-
+            govulncheck-go-build-${{ runner.os }}-
 
       - name: Run vulnerability scan
         run: make vulncheck-sarif

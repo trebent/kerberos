@@ -39,15 +39,15 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-mod-${{ hashFiles('go.sum') }}
+          key: unit-test-go-mod-${{ runner.os }}-${{ hashFiles('go.sum') }}
 
       - name: Cache Go build cache
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.cache/go-build
-          key: ${{ runner.os }}-go-build-${{ steps.build-cache-key.outputs.checksum }}
+          key: unit-test-go-build-${{ runner.os }}-${{ steps.build-cache-key.outputs.checksum }}
           restore-keys: |
-            ${{ runner.os }}-go-build-
+            unit-test-go-build-${{ runner.os }}-
 
       - name: Run unit tests with coverage
         run: make unittest-json
@@ -108,15 +108,15 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-mod-${{ hashFiles('go.sum') }}
+          key: unit-test-postgres-go-mod-${{ runner.os }}-${{ hashFiles('go.sum') }}
 
       - name: Cache Go build cache
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.cache/go-build
-          key: ${{ runner.os }}-go-build-${{ steps.build-cache-key.outputs.checksum }}
+          key: unit-test-postgres-go-build-${{ runner.os }}-${{ steps.build-cache-key.outputs.checksum }}
           restore-keys: |
-            ${{ runner.os }}-go-build-
+            unit-test-postgres-go-build-${{ runner.os }}-
 
       - name: Run postgres
         run: make run-postgres

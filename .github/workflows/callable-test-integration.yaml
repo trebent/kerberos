@@ -50,15 +50,15 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-mod-${{ hashFiles('test/suites/integration/go.sum') }}
+          key: integration-test-go-mod-${{ runner.os }}-${{ hashFiles('test/suites/integration/go.sum') }}
 
       - name: Cache Go build cache
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.cache/go-build
-          key: ${{ runner.os }}-go-build-integration-${{ steps.build-cache-key.outputs.checksum }}
+          key: integration-test-go-build-${{ runner.os }}-${{ steps.build-cache-key.outputs.checksum }}
           restore-keys: |
-            ${{ runner.os }}-go-build-integration-
+            integration-test-go-build-${{ runner.os }}-
 
       - name: Run test environment
         run: make compose

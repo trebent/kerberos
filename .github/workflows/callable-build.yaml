@@ -39,15 +39,15 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-mod-${{ hashFiles('go.sum') }}
+          key: validate-codegen-go-mod-${{ runner.os }}-${{ hashFiles('go.sum') }}
 
       - name: Cache Go build cache
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.cache/go-build
-          key: ${{ runner.os }}-go-build-${{ steps.build-cache-key.outputs.checksum }}
+          key: validate-codegen-go-build-${{ runner.os }}-${{ steps.build-cache-key.outputs.checksum }}
           restore-keys: |
-            ${{ runner.os }}-go-build-
+            validate-codegen-go-build-${{ runner.os }}-
 
       - name: Codegen
         run: make codegen
@@ -93,15 +93,15 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-mod-${{ hashFiles('go.sum') }}
+          key: go-build-go-mod-${{ runner.os }}-${{ hashFiles('go.sum') }}
 
       - name: Cache Go build cache
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.cache/go-build
-          key: ${{ runner.os }}-go-build-${{ steps.build-cache-key.outputs.checksum }}
+          key: go-build-go-build-${{ runner.os }}-${{ steps.build-cache-key.outputs.checksum }}
           restore-keys: |
-            ${{ runner.os }}-go-build-
+            go-build-go-build-${{ runner.os }}-
 
       - name: Build
         run: make go-build
