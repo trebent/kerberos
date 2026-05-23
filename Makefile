@@ -127,7 +127,7 @@ run:
 
 image:
 	$(call cecho,Building Kerberos Docker image...,$(BOLD_YELLOW))
-	docker build --build-arg VERSION=$(VERSION) -t ghcr.io/trebent/kerberos:$(VERSION) .
+	docker build --build-arg VERSION=$(VERSION) -t ghcr.io/trebent/kerberos:$(VERSION) -f docker/krb.Dockerfile .
 
 docker-run: image docker-stop docker-rm
 	$(call cecho,Running Kerberos Docker container...,$(BOLD_YELLOW))
@@ -254,7 +254,7 @@ echo-run:
 echo-image:
 	$(call cecho,Building Echo Docker image...,$(BOLD_YELLOW))
 	@docker build --build-arg VERSION=$(VERSION) \
-		-f cmd/echo/Dockerfile \
+		-f docker/echo.Dockerfile \
 		-t ghcr.io/trebent/kerberos/echo:$(VERSION) \
 		.
 
