@@ -21,6 +21,8 @@ RESET=\033[0m
 
 LOG_VERBOSITY ?= 20
 VERSION ?= $(shell git describe --tags --always)
+GOPATH ?= $(shell go env GOPATH)
+GOBIN ?= $(GOPATH)/bin
 
 define cecho
 	@printf "${2}${1}${RESET}\n"
@@ -37,6 +39,9 @@ version:
 lint:
 	$(call cecho,Running linter for Kerberos...,$(BOLD_YELLOW))
 	@golangci-lint run --fix
+
+install-lint:
+	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(GOBIN) v2.12.2
 
 install-deps:
 	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.6.0

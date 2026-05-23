@@ -19,7 +19,7 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
-          app-id: ${{ secrets.JEEVES_APP_ID }}
+          client-id: ${{ secrets.JEEVES_APP_ID }}
           private-key: ${{ secrets.JEEVES_APP_PRIVATE_KEY }}
 
       - name: Dependabot metadata
@@ -40,8 +40,14 @@ jobs:
             gh pr merge --auto -s "$PR_URL"
           fi
 
-      - name: Re-approve after force-update if auto-merge was already configured
-        if: steps.metadata.outcome == 'failure' && github.event.action == 'synchronize'
+      - name: Re-approve after branch update if auto-merge was already configured
+        # Runs on synchronize events where step 4 would be skipped — i.e. when fetch-metadata
+        # either failed (outcome=failure) or returned an empty/unexpected update-type.
+        # The auto-merge check inside the script guards against re-approving major updates.
+        if: >-
+          github.event.action == 'synchronize' &&
+          steps.metadata.outputs.update-type != 'version-update:semver-patch' &&
+          steps.metadata.outputs.update-type != 'version-update:semver-minor'
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
