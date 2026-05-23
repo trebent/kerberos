@@ -38,6 +38,9 @@ lint:
 	$(call cecho,Running linter for Kerberos...,$(BOLD_YELLOW))
 	@golangci-lint run --fix
 
+install-lint:
+	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.12.2
+
 install-deps:
 	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.6.0
 
