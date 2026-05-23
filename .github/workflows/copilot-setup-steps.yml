@@ -45,7 +45,7 @@ jobs:
       - name: Install repo tools
         run: |
           go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.6.0
-          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.0
+          make install-lint
 
       - name: Warm up govulncheck
         run: go tool -modfile tools/go.mod govulncheck -version
