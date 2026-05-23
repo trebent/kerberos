@@ -1,6 +1,6 @@
 name: Deploy static content to Pages
 
-run-name: Deploy pages - ${{ github.event.head_commit.message }}
+run-name: Deploy pages - ${{ github.event.head_commit.id || github.sha }}
 
 on:
   workflow_dispatch:
