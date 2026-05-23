@@ -27,14 +27,25 @@ jobs:
           go-version-file: go.mod
           cache: false
 
-      - name: Cache Go modules and build cache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      - name: Compute build cache key
+        id: build-cache-key
+        run: echo "checksum=${{ hashFiles('go.mod', 'go.sum', 'tools/go.mod', 'tools/go.sum', 'test/suites/integration/go.mod', 'test/suites/integration/go.sum', 'test/suites/security/go.mod', 'test/suites/security/go.sum', '**/*.go') }}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Go module cache
+        id: module-cache
+        uses: actions/cache/restore@v4
         with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: copilot-go-${{ hashFiles('go.sum', 'tools/go.sum', 'test/suites/integration/go.sum', 'test/suites/security/go.sum') }}
-          restore-keys: copilot-go-
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-mod-${{ hashFiles('go.sum', 'tools/go.sum', 'test/suites/integration/go.sum', 'test/suites/security/go.sum') }}
+
+      - name: Restore Go build cache
+        id: build-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cache/go-build
+          key: copilot-go-build-${{ runner.os }}-${{ steps.build-cache-key.outputs.checksum }}
+          restore-keys: |
+            copilot-go-build-${{ runner.os }}-
 
       - name: Download Go module dependencies
         run: |
@@ -50,3 +61,17 @@ jobs:
 
       - name: Warm up govulncheck
         run: go tool -modfile tools/go.mod govulncheck -version
+
+      - name: Save Go module cache
+        if: ${{ steps.module-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ steps.module-cache.outputs.cache-primary-key }}
+
+      - name: Save Go build cache
+        if: ${{ steps.build-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.cache/go-build
+          key: ${{ steps.build-cache.outputs.cache-primary-key }}
