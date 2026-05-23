@@ -35,16 +35,14 @@ jobs:
           )
           echo "checksum=$checksum" >> "$GITHUB_OUTPUT"
 
-      - name: Restore Go module cache
-        id: module-cache
-        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      - name: Cache Go module cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-mod-${{ hashFiles('go.sum') }}
 
-      - name: Restore Go build cache
-        id: build-cache
-        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      - name: Cache Go build cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.cache/go-build
           key: ${{ runner.os }}-go-build-${{ steps.build-cache-key.outputs.checksum }}
@@ -77,19 +75,6 @@ jobs:
           name: go-coverage-report-${{ github.sha }}
           path: build/coverage.html
 
-      - name: Save Go module cache
-        if: ${{ steps.module-cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ steps.module-cache.outputs.cache-primary-key }}
-
-      - name: Save Go build cache
-        if: ${{ steps.build-cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
-        with:
-          path: ~/.cache/go-build
-          key: ${{ steps.build-cache.outputs.cache-primary-key }}
 
   unit-test-postgres:
     runs-on: ubuntu-latest
@@ -119,16 +104,14 @@ jobs:
           )
           echo "checksum=$checksum" >> "$GITHUB_OUTPUT"
 
-      - name: Restore Go module cache
-        id: module-cache
-        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      - name: Cache Go module cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-mod-${{ hashFiles('go.sum') }}
 
-      - name: Restore Go build cache
-        id: build-cache
-        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      - name: Cache Go build cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.cache/go-build
           key: ${{ runner.os }}-go-build-${{ steps.build-cache-key.outputs.checksum }}
@@ -143,17 +126,3 @@ jobs:
 
       - name: Stop postgres
         run: make stop-postgres
-
-      - name: Save Go module cache
-        if: ${{ steps.module-cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ steps.module-cache.outputs.cache-primary-key }}
-
-      - name: Save Go build cache
-        if: ${{ steps.build-cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
-        with:
-          path: ~/.cache/go-build
-          key: ${{ steps.build-cache.outputs.cache-primary-key }}
