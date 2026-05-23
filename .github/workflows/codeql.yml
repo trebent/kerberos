@@ -1,6 +1,6 @@
 name: "CodeQL Advanced"
 
-run-name: CodeQL - ${{ github.event.pull_request.title || github.event.head_commit.id || github.sha }}
+run-name: CodeQL - ${{ github.event.pull_request.title || format('{0} #{1}', github.ref_name, github.run_number) }}
 
 on:
   push:
