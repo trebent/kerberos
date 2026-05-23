@@ -44,7 +44,7 @@ jobs:
 
       - name: Install repo tools
         run: |
-          go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.6.0
+          make install-deps
           make install-lint
 
       - name: Warm up govulncheck
