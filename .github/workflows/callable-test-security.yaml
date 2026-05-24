@@ -61,7 +61,7 @@ jobs:
             security-test-go-build-${{ runner.os }}-
 
       - name: Run security tests
-        run: make securitytest-json
+        run: make test/security/json
 
       - name: Publish security test results
         uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
@@ -76,7 +76,7 @@ jobs:
         if: failure()
         run: |
           mkdir -p build
-          make compose-logs > build/security-test.log
+          make compose/logs > build/security-test.log
 
       - name: Upload logs
         if: failure()
@@ -87,4 +87,4 @@ jobs:
 
       - name: Tear down security test environment
         if: always()
-        run: make compose-security-down
+        run: make compose/security/down

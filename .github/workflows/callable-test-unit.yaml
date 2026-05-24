@@ -50,7 +50,7 @@ jobs:
             unit-test-go-build-${{ runner.os }}-
 
       - name: Run unit tests with coverage
-        run: make unittest-json
+        run: make test/unit/json
 
       - name: Publish unit test results
         uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
@@ -65,7 +65,7 @@ jobs:
         if: always()
         run: |
           if [ -f build/coverage.out ]; then
-            make coverage-report | grep "^### Code Coverage:" >> "$GITHUB_STEP_SUMMARY" || true
+            make coverage/report | grep "^### Code Coverage:" >> "$GITHUB_STEP_SUMMARY" || true
           fi
 
       - name: Upload coverage report
@@ -119,10 +119,10 @@ jobs:
             unit-test-postgres-go-build-${{ runner.os }}-
 
       - name: Run postgres
-        run: make run-postgres
+        run: make postgres/run
 
       - name: Run unit tests with PostgreSQL
-        run: make unittest-postgres
+        run: make test/unit/postgres
 
       - name: Stop postgres
-        run: make stop-postgres
+        run: make postgres/stop
