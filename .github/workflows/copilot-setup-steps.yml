@@ -54,8 +54,8 @@ jobs:
 
       - name: Install repo tools
         run: |
-          make install-deps
-          make install-lint
+          make install/deps
+          make install/lint
 
       - name: Warm up govulncheck
         run: go tool -modfile tools/go.mod govulncheck -version

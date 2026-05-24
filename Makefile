@@ -52,7 +52,7 @@ compose/down:
 compose/logs:
 	@docker compose -f test/compose/integration/compose.yaml logs kerberos echo protected-echo
 
-compose/logs-follow:
+compose/logs/follow:
 	@docker compose -f test/compose/integration/compose.yaml logs -f kerberos echo protected-echo
 
 compose/ps:
@@ -65,7 +65,7 @@ compose/security/down:
 compose/security/logs:
 	@docker compose -f test/compose/security/compose.yaml logs kerberos echo
 
-compose/security/logs-follow:
+compose/security/logs/follow:
 	@docker compose -f test/compose/security/compose.yaml logs kerberos echo -f
 
 compose/security/up:
@@ -243,7 +243,7 @@ static-analysis/vulncheck:
 	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
 	@go tool -modfile=./tools/go.mod govulncheck ./...
 
-static-analysis/vulncheck-sarif:
+static-analysis/vulncheck/sarif:
 	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
 	@go tool -modfile=./tools/go.mod govulncheck -format sarif ./... > build/govulncheck-report.sarif
@@ -265,7 +265,7 @@ test/integration:
 	$(call cecho,Running integration tests for Kerberos...,$(BOLD_YELLOW))
 	@cd test/suites/integration && go test -v ./... -count=1 -failfast
 
-test/integration-json:
+test/integration/json:
 	$(call cecho,Running integration tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
 	@cd test/suites/integration && go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/integration-test-output.json
@@ -278,7 +278,7 @@ test/security: compose/security/up
 	$(call cecho,Running security tests for Kerberos...,$(BOLD_YELLOW))
 	@cd test/suites/security && go test -v ./... -count=1 -failfast
 
-test/security-json: compose/security/up
+test/security/json: compose/security/up
 	$(call cecho,Running security tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
 	@cd test/suites/security && go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/security-test-output.json
@@ -288,12 +288,12 @@ test/unit:
 	@mkdir -p build
 	@go test -v ./... -timeout 20s -failfast -coverprofile=build/coverage.out -covermode=atomic
 
-test/unit-json:
+test/unit/json:
 	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
 	@go test -v -json -coverprofile=build/coverage.out -covermode=atomic ./... -timeout 20s -failfast > build/unit-test-output.json
 
-test/unit-postgres:
+test/unit/postgres:
 	$(call cecho,Running unit tests (admin, basic auth) for Kerberos with PostgreSQL...,$(BOLD_YELLOW))
 	cd internal/admin && go test -v ./... -timeout 20s -failfast -tags=postgres_integration
 	cd internal/auth/method/basic && go test -v ./... -timeout 20s -failfast -tags=postgres_integration
