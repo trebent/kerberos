@@ -5,7 +5,7 @@ services:
     pull_policy: if_not_present
     build:
       context: ../../..
-      dockerfile: ./Dockerfile
+      dockerfile: ./docker/krb.Dockerfile
     ports:
       - ${KERBEROS_PORT:-30000}:${KERBEROS_PORT:-30000}
       - ${KERBEROS_ADMIN_PORT:-30001}:${KERBEROS_ADMIN_PORT:-30001}
@@ -27,7 +27,7 @@ services:
     pull_policy: if_not_present
     build:
       context: ../../..
-      dockerfile: ./cmd/echo/Dockerfile
+      dockerfile: ./docker/echo.Dockerfile
     ports:
       - ${ECHO_PORT:-15000}:${ECHO_PORT:-15000}
     environment:
