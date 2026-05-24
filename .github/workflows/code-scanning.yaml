@@ -74,7 +74,7 @@ jobs:
             govulncheck-go-build-${{ runner.os }}-
 
       - name: Run vulnerability scan
-        run: make vulncheck-sarif
+        run: make static-analysis/vulncheck-sarif
 
       - name: Upload vulnerability SARIF
         if: always()

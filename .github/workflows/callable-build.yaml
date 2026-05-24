@@ -104,4 +104,4 @@ jobs:
             go-build-go-build-${{ runner.os }}-
 
       - name: Build
-        run: make go-build
+        run: make build

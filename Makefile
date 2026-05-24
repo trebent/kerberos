@@ -25,298 +25,282 @@ GOPATH ?= $(shell go env GOPATH)
 GOBIN ?= $(GOPATH)/bin
 
 define cecho
-	@printf "${2}${1}${RESET}\n"
+@printf "${2}${1}${RESET}\n"
 endef
 
-default: lint vulncheck go-build unittest
+default: static-analysis/lint static-analysis/vulncheck build test/unit
+
+build:
+$(call cecho,Building Kerberos binary...,$(BOLD_YELLOW))
+@mkdir -p build
+CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/kerberos .
 
 clean:
-	@rm -rf build/
+@rm -rf build/
 
-version:
-	$(call cecho,Kerberos version: $(VERSION),$(BOLD_BLUE))
+codegen: install/deps
+$(call cecho,Running codegen for Kerberos...,$(BOLD_YELLOW))
+@go generate ./...
 
-lint:
-	$(call cecho,Running linter for Kerberos...,$(BOLD_YELLOW))
-	@golangci-lint run --fix
+$(call cecho,Running codegen for integration tests...,$(BOLD_YELLOW))
+@cd test/suites/integration && go generate ./...
 
-install-lint:
-	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(GOBIN) v2.12.2
+compose/down:
+$(call cecho,Tearing down Kerberos test environment...,$(BOLD_YELLOW))
+@docker compose -f test/compose/integration/compose.yaml down
 
-install-deps:
-	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.6.0
+compose/logs:
+@docker compose -f test/compose/integration/compose.yaml logs kerberos echo protected-echo
 
-codegen: install-deps
-	$(call cecho,Running codegen for Kerberos...,$(BOLD_YELLOW))
-	@go generate ./...
-	
-	$(call cecho,Running codegen for integration tests...,$(BOLD_YELLOW))
-	@cd test/suites/integration && go generate ./...
+compose/logs-follow:
+@docker compose -f test/compose/integration/compose.yaml logs -f kerberos echo protected-echo
 
-unittest:
-	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
-	@mkdir -p build
-	@go test -v ./... -timeout 20s -failfast -coverprofile=build/coverage.out -covermode=atomic
+compose/ps:
+@docker compose -f test/compose/integration/compose.yaml ps
 
-unittest-postgres:
-	$(call cecho,Running unit tests (admin, basic auth) for Kerberos with PostgreSQL...,$(BOLD_YELLOW))
-	cd internal/admin && go test -v ./... -timeout 20s -failfast -tags=postgres_integration
-	cd internal/auth/method/basic && go test -v ./... -timeout 20s -failfast -tags=postgres_integration
-	cd internal/db/postgres && go test -v ./... -timeout 20s -failfast -tags=postgres_integration
+compose/security/down:
+$(call cecho,Tearing down Kerberos security test environment...,$(BOLD_YELLOW))
+@docker compose -f test/compose/security/compose.yaml down
 
-unittest-json:
-	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
-	@mkdir -p build
-	@go test -v -json -coverprofile=build/coverage.out -covermode=atomic ./... -timeout 20s -failfast > build/unit-test-output.json
+compose/security/logs:
+@docker compose -f test/compose/security/compose.yaml logs kerberos echo
 
-coverage-report:
-	$(call cecho,Generating coverage report for Kerberos...,$(BOLD_YELLOW))
-	@go tool cover -html=build/coverage.out -o build/coverage.html
-	@echo "### Code Coverage: $$(go tool cover -func=build/coverage.out | awk '/^total:/{print $$3}')"
+compose/security/logs-follow:
+@docker compose -f test/compose/security/compose.yaml logs kerberos echo -f
+
+compose/security/up:
+$(call cecho,Composing Kerberos security test environment...,$(BOLD_YELLOW))
+@VERSION=$(VERSION) \
+KERBEROS_PORT=$(KERBEROS_PORT) \
+KERBEROS_ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
+LOG_VERBOSITY=$(LOG_VERBOSITY) \
+ECHO_PORT=$(ECHO_PORT) \
+ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
+docker compose -f test/compose/security/compose.yaml up -d --force-recreate
+@until [ "$$(curl -s -o /dev/null -w '%{http_code}' --cacert test/certs/ca.crt https://localhost:$(KERBEROS_ADMIN_PORT)/api/admin/flow)" = "401" ]; do \
+echo "Waiting for Kerberos admin API..."; \
+sleep 1; \
+done; \
+echo "Kerberos is ready!"
+
+compose/up:
+$(call cecho,Composing Kerberos test environment...,$(BOLD_YELLOW))
+@VERSION=$(VERSION) \
+KERBEROS_PORT=$(KERBEROS_PORT) \
+KERBEROS_ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
+KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
+LOG_VERBOSITY=$(LOG_VERBOSITY) \
+PROM_PORT=$(PROM_PORT) \
+GRAFANA_PORT=$(GRAFANA_PORT) \
+ECHO_PORT=$(ECHO_PORT) \
+ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
+docker compose -f test/compose/integration/compose.yaml up -d --force-recreate
+
+compose/wait:
+$(call cecho,Waiting for Kerberos to be ready...,$(BOLD_YELLOW))
+@until [ "$$(curl -s -o /dev/null -w '%{http_code}' localhost:$(KERBEROS_ADMIN_PORT)/api/admin/flow)" = "401" ]; do \
+echo "Waiting for Kerberos admin API..."; \
+sleep 1; \
+done; \
+echo "Kerberos is ready!"
 
 coverage:
-	@go tool cover -html=build/coverage.out -o build/coverage.html
-	@go tool cover -func=build/coverage.out | awk 'END {print $$3}'
+@go tool cover -html=build/coverage.out -o build/coverage.html
+@go tool cover -func=build/coverage.out | awk 'END {print $$3}'
 
-integrationtest:
-	$(call cecho,Running integration tests for Kerberos...,$(BOLD_YELLOW))
-	@cd test/suites/integration && go test -v ./... -count=1 -failfast
+coverage/report:
+$(call cecho,Generating coverage report for Kerberos...,$(BOLD_YELLOW))
+@go tool cover -html=build/coverage.out -o build/coverage.html
+@echo "### Code Coverage: $$(go tool cover -func=build/coverage.out | awk '/^total:/{print $$3}')"
 
-integrationtest-json:
-	$(call cecho,Running integration tests for Kerberos...,$(BOLD_YELLOW))
-	@mkdir -p build
-	@cd test/suites/integration && go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/integration-test-output.json
+docker/build:
+$(call cecho,Building Kerberos Docker image...,$(BOLD_YELLOW))
+docker build --build-arg VERSION=$(VERSION) -t ghcr.io/trebent/kerberos:$(VERSION) -f docker/krb.Dockerfile .
 
-securitytest: compose-security
-	$(call cecho,Running security tests for Kerberos...,$(BOLD_YELLOW))
-	@cd test/suites/security && go test -v ./... -count=1 -failfast
+docker/logs:
+@docker logs kerberos
 
-securitytest-json: compose-security
-	$(call cecho,Running security tests for Kerberos...,$(BOLD_YELLOW))
-	@mkdir -p build
-	@cd test/suites/security && go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/security-test-output.json
+docker/rm:
+@docker rm kerberos || true
 
-vulncheck:
-	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
-	@go tool -modfile=./tools/go.mod govulncheck ./...
+docker/run: docker/build docker/stop docker/rm
+$(call cecho,Running Kerberos Docker container...,$(BOLD_YELLOW))
+docker run -d \
+-p $(KERBEROS_PORT):$(KERBEROS_PORT) \
+-p $(KERBEROS_ADMIN_PORT):$(KERBEROS_ADMIN_PORT) \
+-p $(KERBEROS_METRICS_PORT):$(KERBEROS_METRICS_PORT) \
+-e PORT=$(KERBEROS_PORT) \
+-e ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
+-e LOG_TO_CONSOLE=true \
+-e LOG_VERBOSITY=$(LOG_VERBOSITY) \
+-e OAS_DIRECTORY=/krb-oas \
+-v $(PWD)/test/config:/config:ro \
+-v $(PWD)/test/oas:/oas:ro \
+-v $(PWD)/openapi:/krb-oas:ro \
+--name kerberos \
+ghcr.io/trebent/kerberos:$(VERSION) \
+--config /config/docker.json
 
-vulncheck-sarif:
-	$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
-	@mkdir -p build
-	@go tool -modfile=./tools/go.mod govulncheck -format sarif ./... > build/govulncheck-report.sarif
+docker/stop:
+@docker stop kerberos || true
 
-staticcheck: lint unittest vulncheck
-	$(call cecho,Static analysis complete.,$(BOLD_GREEN))
+echo/build:
+$(call cecho,Building Echo binary...,$(BOLD_YELLOW))
+@CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/echo ./cmd/echo
 
-go-build:
-	$(call cecho,Building Kerberos binary...,$(BOLD_YELLOW))
-	@mkdir -p build
-	CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/kerberos .
+echo/docker/build:
+$(call cecho,Building Echo Docker image...,$(BOLD_YELLOW))
+@docker build --build-arg VERSION=$(VERSION) \
+-f docker/echo.Dockerfile \
+-t ghcr.io/trebent/kerberos/echo:$(VERSION) \
+.
+
+echo/docker/logs:
+@docker logs echo
+
+echo/docker/rm:
+@docker rm echo || true
+
+echo/docker/run: echo/docker/build echo/docker/stop echo/docker/rm
+$(call cecho,Running Echo Docker container...,$(BOLD_YELLOW))
+@docker run -d \
+-p $(ECHO_PORT):$(ECHO_PORT) \
+-p $(ECHO_METRICS_PORT):$(ECHO_METRICS_PORT) \
+-e VERSION=$(VERSION) \
+--name echo \
+ghcr.io/trebent/kerberos/echo:$(VERSION)
+
+echo/docker/stop:
+@docker stop echo || true
+
+echo/run:
+$(call cecho,Running echo...,$(BOLD_YELLOW))
+VERSION=$(VERSION) \
+go run ./cmd/echo
+
+install/deps:
+go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.6.0
+
+install/lint:
+curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(GOBIN) v2.12.2
+
+krb/flow:
+$(call cecho,Fetching flow from Kerberos admin API...,$(BOLD_YELLOW))
+@SESSION=$$(curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/admin/superuser/login \
+-H "Content-Type: application/json" \
+-d '{"clientId":"$(SUPERUSER_CLIENT_ID)","clientSecret":"$(SUPERUSER_CLIENT_SECRET)"}' \
+| grep -i '^x-krb-session:' | tr -d '\r' | awk '{print $$2}'); \
+curl -s -H "x-krb-session: $$SESSION" localhost:$(KERBEROS_ADMIN_PORT)/api/admin/flow | jq .
+
+krb/oas-backend:
+$(call cecho,Fetching OAS backend from Kerberos admin API...,$(BOLD_YELLOW))
+@SESSION=$$(curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/admin/superuser/login \
+-H "Content-Type: application/json" \
+-d '{"clientId":"$(SUPERUSER_CLIENT_ID)","clientSecret":"$(SUPERUSER_CLIENT_SECRET)"}' \
+| grep -i '^x-krb-session:' | tr -d '\r' | awk '{print $$2}'); \
+curl -s -H "x-krb-session: $$SESSION" localhost:$(KERBEROS_ADMIN_PORT)/api/admin/oas/echo
+
+krb/permissions:
+$(call cecho,Fetching permissions from Kerberos admin API...,$(BOLD_YELLOW))
+@SESSION=$$(curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/admin/superuser/login \
+-H "Content-Type: application/json" \
+-d '{"clientId":"$(SUPERUSER_CLIENT_ID)","clientSecret":"$(SUPERUSER_CLIENT_SECRET)"}' \
+| grep -i '^x-krb-session:' | tr -d '\r' | awk '{print $$2}'); \
+curl -s -H "x-krb-session: $$SESSION" localhost:$(KERBEROS_ADMIN_PORT)/api/admin/permissions | jq
+
+postgres/run:
+$(call cecho,Running PostgreSQL for Kerberos...,$(BOLD_YELLOW))
+@docker run -d \
+--rm \
+-p 5432:5432 \
+-e POSTGRES_USER=kerberos \
+-e POSTGRES_PASSWORD=kerberos \
+-e POSTGRES_DB=kerberos \
+--name kerberos-postgres \
+postgres:17-alpine
+
+postgres/stop:
+$(call cecho,Stopping PostgreSQL for Kerberos...,$(BOLD_YELLOW))
+@docker stop kerberos-postgres || true
 
 run:
-	$(call cecho,Running Kerberos...,$(BOLD_YELLOW))
-	mkdir -p build
-	PORT=$(KERBEROS_PORT) \
-		ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
-		LOG_TO_CONSOLE=true \
-		LOG_VERBOSITY=$(LOG_VERBOSITY) \
-		DB_DIRECTORY=$(PWD)/build \
-		OAS_DIRECTORY=$(PWD)/openapi \
-		VERSION=$(VERSION) \
-		go run . --config ./test/config/local.json
+$(call cecho,Running Kerberos...,$(BOLD_YELLOW))
+mkdir -p build
+PORT=$(KERBEROS_PORT) \
+ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
+LOG_TO_CONSOLE=true \
+LOG_VERBOSITY=$(LOG_VERBOSITY) \
+DB_DIRECTORY=$(PWD)/build \
+OAS_DIRECTORY=$(PWD)/openapi \
+VERSION=$(VERSION) \
+go run . --config ./test/config/local.json
 
-image:
-	$(call cecho,Building Kerberos Docker image...,$(BOLD_YELLOW))
-	docker build --build-arg VERSION=$(VERSION) -t ghcr.io/trebent/kerberos:$(VERSION) -f docker/krb.Dockerfile .
+static-analysis/lint:
+$(call cecho,Running linter for Kerberos...,$(BOLD_YELLOW))
+@golangci-lint run --fix
 
-docker-run: image docker-stop docker-rm
-	$(call cecho,Running Kerberos Docker container...,$(BOLD_YELLOW))
-	docker run -d \
-		-p $(KERBEROS_PORT):$(KERBEROS_PORT) \
-		-p $(KERBEROS_ADMIN_PORT):$(KERBEROS_ADMIN_PORT) \
-		-p $(KERBEROS_METRICS_PORT):$(KERBEROS_METRICS_PORT) \
-		-e PORT=$(KERBEROS_PORT) \
-		-e ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
-		-e LOG_TO_CONSOLE=true \
-		-e LOG_VERBOSITY=$(LOG_VERBOSITY) \
-		-e OAS_DIRECTORY=/krb-oas \
-		-v $(PWD)/test/config:/config:ro \
-		-v $(PWD)/test/oas:/oas:ro \
-		-v $(PWD)/openapi:/krb-oas:ro \
-		--name kerberos \
-		ghcr.io/trebent/kerberos:$(VERSION) \
-		--config /config/docker.json
+static-analysis/vulncheck:
+$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
+@go tool -modfile=./tools/go.mod govulncheck ./...
 
-docker-stop:
-	@docker stop kerberos || true
+static-analysis/vulncheck-sarif:
+$(call cecho,Running vulnerability check for Kerberos...,$(BOLD_YELLOW))
+@mkdir -p build
+@go tool -modfile=./tools/go.mod govulncheck -format sarif ./... > build/govulncheck-report.sarif
 
-docker-rm:
-	@docker rm kerberos || true
+test/echo:
+$(call cecho,Sending a test request to echo...,$(BOLD_YELLOW))
+curl -X GET -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
 
-docker-logs:
-	@docker logs kerberos
+test/echo-methods:
+$(call cecho,Generating test HTTP requests for the echo backend...,$(BOLD_YELLOW))
+curl -X GET -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
+curl -X PUT -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
+curl -X POST -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
+curl -X PATCH -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
+curl -X DELETE -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
+curl -X OPTIONS -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
 
-#
-# Compose integration test environment
-#
+test/integration:
+$(call cecho,Running integration tests for Kerberos...,$(BOLD_YELLOW))
+@cd test/suites/integration && go test -v ./... -count=1 -failfast
 
-compose:
-	$(call cecho,Composing Kerberos test environment...,$(BOLD_YELLOW))
-	@VERSION=$(VERSION) \
-		KERBEROS_PORT=$(KERBEROS_PORT) \
-		KERBEROS_ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
-		KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
-		LOG_VERBOSITY=$(LOG_VERBOSITY) \
-		PROM_PORT=$(PROM_PORT) \
-		GRAFANA_PORT=$(GRAFANA_PORT) \
-		ECHO_PORT=$(ECHO_PORT) \
-		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
-		docker compose -f test/compose/integration/compose.yaml up -d --force-recreate
+test/integration-json:
+$(call cecho,Running integration tests for Kerberos...,$(BOLD_YELLOW))
+@mkdir -p build
+@cd test/suites/integration && go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/integration-test-output.json
 
-compose-wait:
-	$(call cecho,Waiting for Kerberos to be ready...,$(BOLD_YELLOW))
-	@until [ "$$(curl -s -o /dev/null -w '%{http_code}' localhost:$(KERBEROS_ADMIN_PORT)/api/admin/flow)" = "401" ]; do \
-		echo "Waiting for Kerberos admin API..."; \
-		sleep 1; \
-	done; \
-	echo "Kerberos is ready!"
+test/protected-echo:
+$(call cecho,Sending a test request to protected-echo...,$(BOLD_YELLOW))
+curl -X GET -i localhost:$(KERBEROS_PORT)/gw/backend/protected-echo/hi
 
-compose-logs:
-	@docker compose -f test/compose/integration/compose.yaml logs kerberos echo protected-echo
+test/security: compose/security/up
+$(call cecho,Running security tests for Kerberos...,$(BOLD_YELLOW))
+@cd test/suites/security && go test -v ./... -count=1 -failfast
 
-compose-logs-f:
-	@docker compose -f test/compose/integration/compose.yaml logs -f kerberos echo protected-echo
+test/security-json: compose/security/up
+$(call cecho,Running security tests for Kerberos...,$(BOLD_YELLOW))
+@mkdir -p build
+@cd test/suites/security && go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/security-test-output.json
 
-compose-ps:
-	@docker compose -f test/compose/integration/compose.yaml ps
+test/unit:
+$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
+@mkdir -p build
+@go test -v ./... -timeout 20s -failfast -coverprofile=build/coverage.out -covermode=atomic
 
-compose-down:
-	$(call cecho,Tearing down Kerberos test environment...,$(BOLD_YELLOW))
-	@docker compose -f test/compose/integration/compose.yaml down
+test/unit-json:
+$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
+@mkdir -p build
+@go test -v -json -coverprofile=build/coverage.out -covermode=atomic ./... -timeout 20s -failfast > build/unit-test-output.json
 
-run-postgres:
-	$(call cecho,Running PostgreSQL for Kerberos...,$(BOLD_YELLOW))
-	@docker run -d \
-		--rm \
-		-p 5432:5432 \
-		-e POSTGRES_USER=kerberos \
-		-e POSTGRES_PASSWORD=kerberos \
-		-e POSTGRES_DB=kerberos \
-		--name kerberos-postgres \
-		postgres:17-alpine
+test/unit-postgres:
+$(call cecho,Running unit tests (admin, basic auth) for Kerberos with PostgreSQL...,$(BOLD_YELLOW))
+cd internal/admin && go test -v ./... -timeout 20s -failfast -tags=postgres_integration
+cd internal/auth/method/basic && go test -v ./... -timeout 20s -failfast -tags=postgres_integration
+cd internal/db/postgres && go test -v ./... -timeout 20s -failfast -tags=postgres_integration
 
-stop-postgres:
-	$(call cecho,Stopping PostgreSQL for Kerberos...,$(BOLD_YELLOW))
-	@docker stop kerberos-postgres || true
+validate: static-analysis/lint test/unit static-analysis/vulncheck
+$(call cecho,Static analysis complete.,$(BOLD_GREEN))
 
-#
-# Compose security test environment
-#
-
-compose-security:
-	$(call cecho,Composing Kerberos security test environment...,$(BOLD_YELLOW))
-	@VERSION=$(VERSION) \
-		KERBEROS_PORT=$(KERBEROS_PORT) \
-		KERBEROS_ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
-		LOG_VERBOSITY=$(LOG_VERBOSITY) \
-		ECHO_PORT=$(ECHO_PORT) \
-		ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
-		docker compose -f test/compose/security/compose.yaml up -d --force-recreate
-	@until [ "$$(curl -s -o /dev/null -w '%{http_code}' --cacert test/certs/ca.crt https://localhost:$(KERBEROS_ADMIN_PORT)/api/admin/flow)" = "401" ]; do \
-		echo "Waiting for Kerberos admin API..."; \
-		sleep 1; \
-	done; \
-	echo "Kerberos is ready!"
-
-compose-security-down:
-	$(call cecho,Tearing down Kerberos security test environment...,$(BOLD_YELLOW))
-	@docker compose -f test/compose/security/compose.yaml down
-
-compose-logs-security:
-	@docker compose -f test/compose/security/compose.yaml logs kerberos echo
-
-compose-logs-security-f:
-	@docker compose -f test/compose/security/compose.yaml logs kerberos echo -f
-
-#
-# echo mgmt.
-#
-
-echo-build:
-	$(call cecho,Building Echo binary...,$(BOLD_YELLOW))
-	@CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/echo ./cmd/echo
-
-echo-run:
-	$(call cecho,Running echo...,$(BOLD_YELLOW))
-	VERSION=$(VERSION) \
-		go run ./cmd/echo
-
-echo-image:
-	$(call cecho,Building Echo Docker image...,$(BOLD_YELLOW))
-	@docker build --build-arg VERSION=$(VERSION) \
-		-f docker/echo.Dockerfile \
-		-t ghcr.io/trebent/kerberos/echo:$(VERSION) \
-		.
-
-echo-docker-run: echo-image echo-docker-stop echo-docker-rm
-	$(call cecho,Running Echo Docker container...,$(BOLD_YELLOW))
-	@docker run -d \
-		-p $(ECHO_PORT):$(ECHO_PORT) \
-		-p $(ECHO_METRICS_PORT):$(ECHO_METRICS_PORT) \
-		-e VERSION=$(VERSION) \
-		--name echo \
-		ghcr.io/trebent/kerberos/echo:$(VERSION)
-
-echo-docker-stop:
-	@docker stop echo || true
-
-echo-docker-rm:
-	@docker rm echo || true
-
-echo-docker-logs:
-	@docker logs echo
-
-#
-# TEST
-#
-
-test-echo:
-	$(call cecho,Sending a test request to echo...,$(BOLD_YELLOW))
-	curl -X GET -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
-
-test-protected-echo:
-	$(call cecho,Sending a test request to protected-echo...,$(BOLD_YELLOW))
-	curl -X GET -i localhost:$(KERBEROS_PORT)/gw/backend/protected-echo/hi
-
-get-flow:
-	$(call cecho,Fetching flow from Kerberos admin API...,$(BOLD_YELLOW))
-	@SESSION=$$(curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/admin/superuser/login \
-		-H "Content-Type: application/json" \
-		-d '{"clientId":"$(SUPERUSER_CLIENT_ID)","clientSecret":"$(SUPERUSER_CLIENT_SECRET)"}' \
-		| grep -i '^x-krb-session:' | tr -d '\r' | awk '{print $$2}'); \
-	curl -s -H "x-krb-session: $$SESSION" localhost:$(KERBEROS_ADMIN_PORT)/api/admin/flow | jq .
-
-get-oas-backend:
-	$(call cecho,Fetching OAS backend from Kerberos admin API...,$(BOLD_YELLOW))
-	@SESSION=$$(curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/admin/superuser/login \
-		-H "Content-Type: application/json" \
-		-d '{"clientId":"$(SUPERUSER_CLIENT_ID)","clientSecret":"$(SUPERUSER_CLIENT_SECRET)"}' \
-		| grep -i '^x-krb-session:' | tr -d '\r' | awk '{print $$2}'); \
-	curl -s -H "x-krb-session: $$SESSION" localhost:$(KERBEROS_ADMIN_PORT)/api/admin/oas/echo
-
-get-permissions:
-	$(call cecho,Fetching permissions from Kerberos admin API...,$(BOLD_YELLOW))
-	@SESSION=$$(curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/admin/superuser/login \
-		-H "Content-Type: application/json" \
-		-d '{"clientId":"$(SUPERUSER_CLIENT_ID)","clientSecret":"$(SUPERUSER_CLIENT_SECRET)"}' \
-		| grep -i '^x-krb-session:' | tr -d '\r' | awk '{print $$2}'); \
-	curl -s -H "x-krb-session: $$SESSION" localhost:$(KERBEROS_ADMIN_PORT)/api/admin/permissions | jq
-
-test-echo-methods:
-	$(call cecho,Generating test HTTP requests for the echo backend...,$(BOLD_YELLOW))
-	curl -X GET -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
-	curl -X PUT -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
-	curl -X POST -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
-	curl -X PATCH -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
-	curl -X DELETE -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
-	curl -X OPTIONS -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
+version:
+$(call cecho,Kerberos version: $(VERSION),$(BOLD_BLUE))
