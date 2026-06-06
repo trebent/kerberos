@@ -13,7 +13,8 @@ permissions:
 jobs:
   approve:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'trebent/kerberos'
+    if: github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.repository == 'trebent/kerberos'
     steps:
       - name: Generate GitHub App token
         id: app-token
@@ -30,7 +31,8 @@ jobs:
           github-token: "${{ steps.app-token.outputs.token }}"
 
       - name: Enable auto-merge and approve minor/patch updates
-        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-minor'
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
