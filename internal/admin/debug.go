@@ -22,11 +22,11 @@ func (i *impl) GetDebugSession(
 	panic("unimplemented")
 }
 
-// ListDebugSessionOperations implements [withExtensions].
-func (i *impl) ListDebugSessionOperations(
+// ListDebugSessionCalls implements [withExtensions].
+func (i *impl) ListDebugSessionCalls(
 	_ context.Context,
-	_ adminapi.ListDebugSessionOperationsRequestObject,
-) (adminapi.ListDebugSessionOperationsResponseObject, error) {
+	_ adminapi.ListDebugSessionCallsRequestObject,
+) (adminapi.ListDebugSessionCallsResponseObject, error) {
 	panic("unimplemented")
 }
 

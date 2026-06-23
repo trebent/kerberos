@@ -87,7 +87,6 @@ func TestAdminRequireSessionMiddleware(t *testing.T) {
 		enrichedContext, adminContextSession, &model.Session{UserID: 1, SessionID: "123", Expires: time.Now().Add(time.Hour).UnixMilli()},
 	)
 	_, err := handler(enrichedContext, httptest.NewRecorder(), &http.Request{}, adminapi.LoginSuperuserRequestObject{})
-
 	if err != nil {
 		t.Fatalf("Did not expect error: %v", err)
 	}

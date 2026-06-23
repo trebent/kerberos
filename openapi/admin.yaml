@@ -168,6 +168,9 @@ components:
       type: object
       additionalProperties: false
       properties:
+        id:
+          type: string
+          description: The ID for the call.
         startedAt:
           type: string
           format: date-time
@@ -224,6 +227,7 @@ components:
           description: The flow transitions that occurred during this operation, in
             chronological order.
       required:
+        - id
         - startedAt
         - stoppedAt
         - url
