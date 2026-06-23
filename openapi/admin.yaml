@@ -144,45 +144,48 @@ components:
       type: object
       additionalProperties: false
       properties:
-        sessionId:
+        id:
           type: string
           description: The ID for the debug session.
-        sessionStartedAt:
+        startedAt:
           type: string
           format: date-time
           description: The time when the debug session started.
-        sessionExpiresAt:
+        expiresAt:
           type: string
           format: date-time
           description: The time when the debug session expires.
-        sessionStoppedAt:
+        stoppedAt:
           type: string
           format: date-time
           description: The time when the debug session was stopped. Null if the session is
             still active.
       required:
-        - sessionId
-        - sessionStartedAt
-        - sessionExpiresAt
-    DebugSessionOperation:
+        - id
+        - startedAt
+        - expiresAt
+    DebugSessionCall:
       type: object
       additionalProperties: false
       properties:
         startedAt:
           type: string
           format: date-time
-          description: The time when the operation was started.
+          description: The time when the call was received.
         stoppedAt:
           type: string
           format: date-time
-          description: The time when the operation was stopped. Null if the operation is
-            still active.
+          description: The time when the call was finished being handled. Null if the call is
+            still being handled.
         url:
           type: string
           description: The full URL of the request.
         method:
           type: string
           description: The HTTP method of the operation.
+        statusCode:
+          type: integer
+          description: The HTTP status code of the response.
         flowTransitions:
           type: array
           items:
@@ -192,6 +195,12 @@ components:
               component:
                 type: string
                 description: The flow component that the transition corresponds to.
+              direction:
+                type: string
+                enum: [inbound, outbound]
+                description: |
+                  The direction of the flow transition. Some components handle requests
+                   both coming into the system (inbound) and going out of the system (outbound).
               startedAt:
                 type: string
                 format: date-time
@@ -206,7 +215,7 @@ components:
                 properties:
                   outcome:
                     type: string
-                    enum: [ success, failure ]
+                    enum: [success, failure]
                   cause:
                     type: string
                     description: The cause of the flow transition result, if outcome is 'failure'.
@@ -219,7 +228,8 @@ components:
         - stoppedAt
         - url
         - method
-        - backend
+        - statusCode
+        - flowTransitions
     User:
       type: object
       additionalProperties: false
@@ -1242,7 +1252,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
-    delete:
+    post:
       operationId: StopDebugSession
       parameters:
         - name: backend
@@ -1277,9 +1287,9 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
 
-  /api/admin/debug/{backend}/sessions/{sessionId}/operations:
+  /api/admin/debug/{backend}/sessions/{sessionId}/calls:
     get:
-      operationId: ListDebugSessionOperations
+      operationId: ListDebugSessionCalls
       parameters:
         - name: backend
           in: path
@@ -1298,8 +1308,8 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/DebugSessionOperation"
-          description: Got all debug session operations successfully.
+                  $ref: "#/components/schemas/DebugSessionCall"
+          description: Got all debug session calls successfully.
         "400":
           content:
             application/json:
