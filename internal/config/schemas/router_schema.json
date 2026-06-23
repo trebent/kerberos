@@ -31,7 +31,7 @@
             "properties": {
               "rootCAFile": {
                 "type": "string",
-                "description": "RootCAFile is the path to a PEM-encoded CA bundle used to verify the backend's certificate. When empty, the system certificate pool is used."
+                "description": "RootCAFile is the path to a PEM-encoded CA bundle used to verify the backend's certificate."
               },
               "clientCertFile": {
                 "type": "string",

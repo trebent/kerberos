@@ -1,0 +1,17 @@
+{
+  "gateway": {
+    "router": {
+      "backends": [
+        {
+          "name": "backend1",
+          "host": "localhost",
+          "port": 8080,
+          "tls": {
+            "rootCAFile": "/certs/ca.crt",
+            "clientCertFile": "/certs/client.crt"
+          }
+        }
+      ]
+    }
+  }
+}

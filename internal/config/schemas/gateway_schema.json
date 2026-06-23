@@ -11,11 +11,11 @@
       "properties": {
         "serverCertFile": {
           "type": "string",
-          "description": "ServerCertFile is the path to a PEM-encoded server certificate for mTLS."
+          "description": "ServerCertFile is the path to a PEM-encoded certificate for providing server identity."
         },
         "serverKeyFile": {
           "type": "string",
-          "description": "ServerKeyFile is the path to a PEM-encoded server key for mTLS."
+          "description": "ServerKeyFile is the path to a PEM-encoded key for providing server identity."
         }
       },
       "required": [
