@@ -52,3 +52,54 @@ CREATE TABLE IF NOT EXISTS admin_sessions (
   expires BIGINT NOT NULL,
   FOREIGN KEY(user_id) REFERENCES admin_users(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS admin_debug_sessions (
+  id SERIAL PRIMARY KEY,
+  backend VARCHAR(100) NOT NULL,
+  started_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  expires_at TIMESTAMPTZ NOT NULL,
+  stopped_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS admin_debug_session_calls (
+  id SERIAL PRIMARY KEY,
+  session_id INTEGER,
+  started_at TIMESTAMPTZ NOT NULL,
+  stopped_at TIMESTAMPTZ NOT NULL,
+  url VARCHAR(2048),
+  method VARCHAR(10),
+  status_code INTEGER,
+  FOREIGN KEY(session_id) REFERENCES admin_debug_sessions(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS admin_debug_session_call_flow_transitions (
+  call_id INTEGER,
+  component VARCHAR(100),
+  direction VARCHAR(10),
+  started_at TIMESTAMPTZ NOT NULL,
+  stopped_at TIMESTAMPTZ NOT NULL,
+  result VARCHAR(20),
+  failure_cause VARCHAR(512),
+  FOREIGN KEY(call_id) REFERENCES admin_debug_session_calls(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Trigger function shared by all tables with an `updated` column.
+CREATE OR REPLACE FUNCTION set_updated_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated = CURRENT_TIMESTAMP;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER admin_group_updated
+BEFORE UPDATE ON admin_groups
+FOR EACH ROW EXECUTE FUNCTION set_updated_timestamp();
+
+CREATE OR REPLACE TRIGGER admin_user_updated
+BEFORE UPDATE ON admin_users
+FOR EACH ROW EXECUTE FUNCTION set_updated_timestamp();
+
+CREATE OR REPLACE TRIGGER admin_group_bindings_updated
+BEFORE UPDATE ON admin_group_bindings
+FOR EACH ROW EXECUTE FUNCTION set_updated_timestamp();

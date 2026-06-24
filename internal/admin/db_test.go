@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
+
+	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 )
 
 // --- helpers ---
@@ -32,6 +35,266 @@ func mustCreateAdminGroup(t *testing.T, name string) int64 {
 func uniqueName(t *testing.T, prefix string) string {
 	t.Helper()
 	return fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
+}
+
+// --- Debug session tests ---
+
+func TestDebugSessions(t *testing.T) {
+	t.Run("Create and get/list debug session", func(t *testing.T) {
+		ctx := context.Background()
+
+		// Truncate for postgres tests that automatically trim nanoseconds.
+		expiresAt := time.Now().Add(1 * time.Hour).Truncate(time.Microsecond)
+
+		sessionID, err := dbCreateDebugSession(ctx, testClient, "backend", expiresAt)
+		if err != nil {
+			t.Fatalf("Failed to create debug session: %v", err)
+		}
+		if sessionID <= 0 {
+			t.Fatalf("Invalid session ID returned: %d", sessionID)
+		}
+
+		// one more
+		_, err = dbCreateDebugSession(ctx, testClient, "backend", expiresAt)
+		if err != nil {
+			t.Fatalf("Failed to create debug session: %v", err)
+		}
+
+		session, err := dbGetDebugSession(ctx, testClient, "backend", sessionID)
+		if err != nil {
+			t.Fatalf("Failed to get debug session: %v", err)
+		}
+		if int64(session.Id) != sessionID {
+			t.Fatalf("Expected session ID %d, got %d", sessionID, session.Id)
+		}
+		if session.Backend != "backend" {
+			t.Fatalf("Expected backend 'backend', got '%s'", session.Backend)
+		}
+
+		if !session.ExpiresAt.Equal(expiresAt) {
+			t.Fatalf("Expected expires_at %v, got %v", expiresAt, session.ExpiresAt)
+		}
+
+		sessions, err := dbListDebugSessions(ctx, testClient, "backend")
+		if err != nil {
+			t.Fatalf("Failed to list debug sessions: %v", err)
+		}
+		found := false
+		for _, s := range sessions {
+			if int64(s.Id) == sessionID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("Created debug session ID %d not found in list", sessionID)
+		}
+
+		if len(sessions) < 2 {
+			t.Fatalf("Expected at least 2 debug sessions in list, got %d", len(sessions))
+		}
+	})
+
+	t.Run("Get non-existent debug session", func(t *testing.T) {
+		ctx := context.Background()
+		_, err := dbGetDebugSession(ctx, testClient, "backend", 999999)
+		if !errors.Is(err, errRowNotFound) {
+			t.Fatalf("Expected errNoDebugSession, got %v", err)
+		}
+
+		_, err = dbGetDebugSession(ctx, testClient, "baccckkkkeeennnddddd", 999999)
+		if !errors.Is(err, errRowNotFound) {
+			t.Fatalf("Expected errNoDebugSession, got %v", err)
+		}
+	})
+
+	t.Run("Update debug session", func(t *testing.T) {
+		ctx := context.Background()
+
+		initialExpiresAt := time.Now().Add(1 * time.Hour).Truncate(time.Microsecond)
+		sessionID, err := dbCreateDebugSession(ctx, testClient, "backend", initialExpiresAt)
+		if err != nil {
+			t.Fatalf("Failed to create debug session: %v", err)
+		}
+
+		session, err := dbGetDebugSession(ctx, testClient, "backend", sessionID)
+		if err != nil {
+			t.Fatalf("Failed to get debug session: %v", err)
+		}
+
+		session.ExpiresAt = time.Now().UTC().Add(1 * time.Hour).Truncate(time.Microsecond)
+
+		if err := dbUpdateDebugSession(ctx, testClient, *session); err != nil {
+			t.Fatalf("Failed to update debug session: %v", err)
+		}
+
+		updatedSession, err := dbGetDebugSession(ctx, testClient, "backend", sessionID)
+		if err != nil {
+			t.Fatalf("Failed to get updated debug session: %v", err)
+		}
+		if !updatedSession.ExpiresAt.Equal(session.ExpiresAt) {
+			t.Fatalf("Expected updated expires_at %v, got %v", session.ExpiresAt, updatedSession.ExpiresAt)
+		}
+
+		stoppedAt := time.Now().UTC().Truncate(time.Microsecond)
+		updatedSession.StoppedAt = &stoppedAt
+
+		if err := dbUpdateDebugSession(ctx, testClient, *updatedSession); err != nil {
+			t.Fatalf("Failed to update debug session with stopped_at: %v", err)
+		}
+
+		finalSession, err := dbGetDebugSession(ctx, testClient, "backend", sessionID)
+		if err != nil {
+			t.Fatalf("Failed to get final debug session: %v", err)
+		}
+		if finalSession.StoppedAt == nil || !finalSession.StoppedAt.Equal(stoppedAt) {
+			t.Fatalf("Expected stopped_at %v, got %v", stoppedAt, finalSession.StoppedAt)
+		}
+	})
+
+	t.Run("Delete debug session", func(t *testing.T) {
+		ctx := context.Background()
+		sessionID, err := dbCreateDebugSession(ctx, testClient, "backend", time.Now().Add(1*time.Hour).Truncate(time.Microsecond))
+		if err != nil {
+			t.Fatalf("Failed to create debug session: %v", err)
+		}
+
+		if err := dbDeleteDebugSession(ctx, testClient, "backend", sessionID); err != nil {
+			t.Fatalf("Failed to delete debug session: %v", err)
+		}
+
+		_, err = dbGetDebugSession(ctx, testClient, "backend", sessionID)
+		if !errors.Is(err, errRowNotFound) {
+			t.Fatalf("Expected errNoDebugSession after delete, got %v", err)
+		}
+	})
+}
+
+func TestDebugSessionCalls(t *testing.T) {
+	staticSessionID, err := dbCreateDebugSession(context.Background(), testClient, "backend", time.Now().Add(1*time.Hour).Truncate(time.Microsecond))
+	if err != nil {
+		t.Fatalf("Failed to create debug session: %v", err)
+	}
+
+	t.Run("Create and list debug session calls", func(t *testing.T) {
+		ctx := context.Background()
+
+		callStart := time.Now().UTC().Truncate(time.Microsecond)
+		callStop := callStart.Add(1 * time.Second).UTC().Truncate(time.Microsecond)
+		transitionStart := callStart.Add(100 * time.Millisecond).UTC().Truncate(time.Microsecond)
+		transitionStop := transitionStart.Add(500 * time.Millisecond).UTC().Truncate(time.Microsecond)
+
+		call1 := adminapi.DebugSessionCall{
+			StartedAt:  callStart,
+			StoppedAt:  callStop,
+			Url:        "/test1",
+			Method:     http.MethodGet,
+			StatusCode: http.StatusOK,
+			FlowTransitions: []adminapi.FlowTransition{
+				{
+					Component: "component1",
+					Direction: "inbound",
+					StartedAt: transitionStart,
+					StoppedAt: transitionStop,
+					Result: adminapi.FlowTransitionResult{
+						Outcome: "success",
+					},
+				},
+				{
+					Component: "component1",
+					Direction: "outbound",
+					StartedAt: transitionStart,
+					StoppedAt: transitionStop,
+					Result: adminapi.FlowTransitionResult{
+						Outcome: "success",
+					},
+				},
+			},
+		}
+		if err := dbCreateDebugSessionCall(ctx, testClient, staticSessionID, call1); err != nil {
+			t.Fatalf("Failed to create debug session call 1: %v", err)
+		}
+
+		call2 := adminapi.DebugSessionCall{
+			StartedAt:  callStart,
+			StoppedAt:  callStop,
+			Url:        "/test2",
+			Method:     http.MethodPost,
+			StatusCode: http.StatusCreated,
+			FlowTransitions: []adminapi.FlowTransition{
+				{
+					Component: "component1",
+					Direction: "inbound",
+					StartedAt: transitionStart,
+					StoppedAt: transitionStop,
+					Result: adminapi.FlowTransitionResult{
+						Outcome: "success",
+					},
+				},
+				{
+					Component: "component1",
+					Direction: "outbound",
+					StartedAt: transitionStart,
+					StoppedAt: transitionStop,
+					Result: adminapi.FlowTransitionResult{
+						Outcome: "success",
+					},
+				},
+			},
+		}
+		if err := dbCreateDebugSessionCall(ctx, testClient, staticSessionID, call2); err != nil {
+			t.Fatalf("Failed to create debug session call 2: %v", err)
+		}
+
+		calls, err := dbListDebugSessionCalls(ctx, testClient, staticSessionID)
+		if err != nil {
+			t.Fatalf("Failed to list debug session calls: %v", err)
+		}
+
+		if len(calls) < 2 {
+			t.Fatalf("Expected at least 2 debug session calls, got %d", len(calls))
+		}
+
+		for _, call := range calls {
+			if !call.StartedAt.Equal(callStart) {
+				t.Fatalf("Expected started_at %v, got %v", callStart, call.StartedAt)
+			}
+
+			if !call.StoppedAt.Equal(callStop) {
+				t.Fatalf("Expected stopped_at %v, got %v", callStop, call.StoppedAt)
+			}
+
+			if len(call.FlowTransitions) != 2 {
+				t.Fatal("Expected 2 flow transitions for each call")
+			}
+
+			for _, transition := range call.FlowTransitions {
+				if transition.Component != "component1" {
+					t.Fatalf("Expected transition component 'component1', got '%s'", transition.Component)
+				}
+
+				if transition.Direction != "inbound" && transition.Direction != "outbound" {
+					t.Fatalf("Expected transition direction 'inbound' or 'outbound', got '%s'", transition.Direction)
+				}
+
+				if !transition.StartedAt.Equal(transitionStart) {
+					t.Fatalf("Expected transition started_at %v, got %v", transitionStart, transition.StartedAt)
+				}
+
+				if !transition.StoppedAt.Equal(transitionStop) {
+					t.Fatalf("Expected transition stopped_at %v, got %v", transitionStop, transition.StoppedAt)
+				}
+
+				if transition.Result.Outcome != "success" {
+					t.Fatalf("Expected transition outcome 'success', got '%s'", transition.Result.Outcome)
+				}
+
+				if transition.Result.Cause != nil {
+					t.Fatalf("Expected transition cause '', got '%v'", transition.Result.Cause)
+				}
+			}
+		}
+	})
 }
 
 // --- Superuser ---
@@ -81,7 +344,7 @@ func TestDBSessions(t *testing.T) {
 
 	t.Run("get not found", func(t *testing.T) {
 		_, err := dbGetSession(ctx, testClient, "no-such-session")
-		if !errors.Is(err, errNoSession) {
+		if !errors.Is(err, errRowNotFound) {
 			t.Fatalf("expected errNoSession, got %v", err)
 		}
 	})
@@ -97,7 +360,7 @@ func TestDBSessions(t *testing.T) {
 		}
 
 		_, err := dbGetSession(ctx, testClient, sessionID)
-		if !errors.Is(err, errNoSession) {
+		if !errors.Is(err, errRowNotFound) {
 			t.Fatalf("expected errNoSession after delete, got %v", err)
 		}
 	})
@@ -145,7 +408,7 @@ func TestDBUsers(t *testing.T) {
 
 	t.Run("get not found", func(t *testing.T) {
 		_, err := dbGetUser(ctx, testClient, 999999)
-		if !errors.Is(err, errNoUser) {
+		if !errors.Is(err, errRowNotFound) {
 			t.Fatalf("expected errNoUser, got %v", err)
 		}
 	})
@@ -197,7 +460,7 @@ func TestDBUsers(t *testing.T) {
 		}
 
 		_, err := dbGetUser(ctx, testClient, userID)
-		if !errors.Is(err, errNoUser) {
+		if !errors.Is(err, errRowNotFound) {
 			t.Fatalf("expected errNoUser after delete, got %v", err)
 		}
 	})
@@ -223,7 +486,7 @@ func TestDBUsers(t *testing.T) {
 
 	t.Run("get user auth not found", func(t *testing.T) {
 		_, err := dbGetUserAuth(ctx, testClient, 999999)
-		if !errors.Is(err, errNoUser) {
+		if !errors.Is(err, errRowNotFound) {
 			t.Fatalf("expected errNoUser, got %v", err)
 		}
 	})
@@ -275,7 +538,7 @@ func TestDBUsers(t *testing.T) {
 
 	t.Run("login lookup not found", func(t *testing.T) {
 		_, err := dbLoginLookup(ctx, testClient, "no-such-user")
-		if !errors.Is(err, errNoUser) {
+		if !errors.Is(err, errRowNotFound) {
 			t.Fatalf("expected errNoUser, got %v", err)
 		}
 	})
@@ -323,7 +586,7 @@ func TestDBGroups(t *testing.T) {
 
 	t.Run("get not found", func(t *testing.T) {
 		_, err := dbGetGroup(ctx, testClient, 999999)
-		if !errors.Is(err, errNoGroup) {
+		if !errors.Is(err, errRowNotFound) {
 			t.Fatalf("expected errNoGroup, got %v", err)
 		}
 	})
@@ -375,7 +638,7 @@ func TestDBGroups(t *testing.T) {
 		}
 
 		_, err := dbGetGroup(ctx, testClient, groupID)
-		if !errors.Is(err, errNoGroup) {
+		if !errors.Is(err, errRowNotFound) {
 			t.Fatalf("expected errNoGroup after delete, got %v", err)
 		}
 	})
@@ -406,7 +669,7 @@ func TestDBCascadeDeletes(t *testing.T) {
 		}
 
 		_, err := dbGetSession(ctx, testClient, sessionID)
-		if !errors.Is(err, errNoSession) {
+		if !errors.Is(err, errRowNotFound) {
 			t.Fatalf("expected errNoSession after user cascade delete, got %v", err)
 		}
 	})

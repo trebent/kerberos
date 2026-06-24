@@ -63,13 +63,383 @@ const (
 	// Sessions.
 	deleteAdminSession = "DELETE FROM admin_sessions WHERE session_id = @sessionID;"
 
+	// Debug sessions.
+	insertDebugSession          = "INSERT INTO admin_debug_sessions (backend, expires_at) VALUES(@backend, @expires_at);"
+	insertDebugSessionReturning = "INSERT INTO admin_debug_sessions (backend, expires_at) VALUES(@backend, @expires_at) RETURNING id"
+	selectDebugSessions         = "SELECT id, backend, started_at, expires_at, stopped_at FROM admin_debug_sessions WHERE backend = @backend;"
+	selectDebugSession          = "SELECT id, backend, started_at, expires_at, stopped_at FROM admin_debug_sessions WHERE backend = @backend AND id = @id;"
+	updateDebugSession          = "UPDATE admin_debug_sessions SET stopped_at = @stopped_at, expires_at = @expires_at WHERE backend = @backend AND id = @id;"
+	deleteDebugSession          = "DELETE FROM admin_debug_sessions WHERE backend = @backend AND id = @id;"
+
+	insertDebugSessionCall          = "INSERT INTO admin_debug_session_calls (session_id, started_at, stopped_at, url, method, status_code) VALUES(@session_id, @started_at, @stopped_at, @url, @method, @status_code);"
+	insertDebugSessionCallReturning = "INSERT INTO admin_debug_session_calls (session_id, started_at, stopped_at, url, method, status_code) VALUES(@session_id, @started_at, @stopped_at, @url, @method, @status_code) RETURNING id"
+	selectDebugSessionCalls         = "SELECT id, started_at, stopped_at, url, method, status_code FROM admin_debug_session_calls WHERE session_id = @session_id ORDER BY stopped_at DESC;"
+
+	insertDebugSessionFlowTransition  = "INSERT INTO admin_debug_session_call_flow_transitions (call_id, component, direction, started_at, stopped_at, result, failure_cause) VALUES(@call_id, @component, @direction, @started_at, @stopped_at, @result, @failure_cause);"
+	selectDebugSessionFlowTransitions = "SELECT component, direction, started_at, stopped_at, result, failure_cause FROM admin_debug_session_call_flow_transitions WHERE call_id = @call_id ORDER BY started_at ASC;"
+
 	sessionExpiry = 15 * time.Minute
 )
 
-var (
-	errNoUser  = errors.New("no user found")
-	errNoGroup = errors.New("no group found")
-)
+var errRowNotFound = errors.New("row not found")
+
+func dbListDebugSessions(
+	ctx context.Context,
+	client db.SQLClient,
+	backend string,
+) ([]adminapi.DebugSession, error) {
+	rows, err := client.Query(
+		ctx,
+		selectDebugSessions,
+		sql.NamedArg{Name: "backend", Value: backend},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to query debug sessions")
+		return nil, err
+	}
+	defer rows.Close()
+
+	sessions := make([]adminapi.DebugSession, 0)
+	for rows.Next() {
+		var (
+			session   adminapi.DebugSession
+			startedAt db.TimeString
+			expiresAt db.TimeString
+		)
+		if err := rows.Scan(
+			&session.Id,
+			&session.Backend,
+			&startedAt,
+			&expiresAt,
+			db.NullTimeScanner{T: &session.StoppedAt},
+		); err != nil {
+			zerologr.Error(err, "Failed to scan debug session row")
+			return nil, err
+		}
+		session.StartedAt = startedAt.Time
+		session.ExpiresAt = expiresAt.Time
+		sessions = append(sessions, session)
+	}
+	if err := rows.Err(); err != nil {
+		zerologr.Error(err, "Failed to iterate debug session rows")
+		return nil, err
+	}
+
+	return sessions, nil
+}
+
+func dbCreateDebugSession(
+	ctx context.Context,
+	client db.SQLClient,
+	backend string,
+	expiresAt time.Time,
+) (int64, error) {
+	if client.Dialect() == db.PostgresDialect {
+		return postgres.InsertReturningID(ctx, client, insertDebugSessionReturning,
+			sql.NamedArg{Name: "backend", Value: backend},
+			sql.NamedArg{Name: "expires_at", Value: expiresAt},
+		)
+	}
+
+	res, err := client.Exec(
+		ctx,
+		insertDebugSession,
+		sql.NamedArg{Name: "backend", Value: backend},
+		sql.NamedArg{Name: "expires_at", Value: expiresAt.UTC().Format(time.RFC3339Nano)},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to insert debug session")
+		return 0, err
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		zerologr.Error(err, "Failed to get last insert ID for debug session")
+		return 0, err
+	}
+	return id, nil
+}
+
+func dbGetDebugSession(
+	ctx context.Context,
+	client db.SQLClient,
+	backend string,
+	id int64,
+) (*adminapi.DebugSession, error) {
+	rows, err := client.Query(
+		ctx,
+		selectDebugSession,
+		sql.NamedArg{Name: "backend", Value: backend},
+		sql.NamedArg{Name: "id", Value: id},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to get debug session")
+		return nil, err
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		var (
+			session   = &adminapi.DebugSession{}
+			startedAt db.TimeString
+			expiresAt db.TimeString
+		)
+		if err := rows.Scan(
+			&session.Id,
+			&session.Backend,
+			&startedAt,
+			&expiresAt,
+			db.NullTimeScanner{T: &session.StoppedAt},
+		); err != nil {
+			zerologr.Error(err, "Failed to scan debug session row")
+			return nil, err
+		}
+		session.StartedAt = startedAt.Time
+		session.ExpiresAt = expiresAt.Time
+		return session, nil
+	} else if err := rows.Err(); err != nil {
+		zerologr.Error(err, "Error iterating debug session rows")
+		return nil, err
+	}
+
+	return nil, errRowNotFound
+}
+
+func dbUpdateDebugSession(
+	ctx context.Context,
+	client db.SQLClient,
+	debugSession adminapi.DebugSession,
+) error {
+	expiresAt := any(debugSession.ExpiresAt)
+	stoppedAt := any(debugSession.StoppedAt)
+
+	// Override if SQLite.
+	if client.Dialect() == db.SQLiteDialect {
+		expiresAt = debugSession.ExpiresAt.UTC().Format(time.RFC3339Nano)
+		if debugSession.StoppedAt != nil {
+			stoppedAt = debugSession.StoppedAt.UTC().Format(time.RFC3339Nano)
+		}
+	}
+
+	_, err := client.Exec(
+		ctx,
+		updateDebugSession,
+		sql.NamedArg{Name: "stopped_at", Value: stoppedAt},
+		sql.NamedArg{Name: "expires_at", Value: expiresAt},
+		sql.NamedArg{Name: "backend", Value: debugSession.Backend},
+		sql.NamedArg{Name: "id", Value: debugSession.Id},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to update debug session")
+	}
+	return err
+}
+
+func dbCreateDebugSessionCall(
+	ctx context.Context,
+	client db.SQLClient,
+	sessionID int64,
+	call adminapi.DebugSessionCall,
+) error {
+	startedAt := any(call.StartedAt)
+	stoppedAt := any(call.StoppedAt)
+
+	if client.Dialect() == db.SQLiteDialect {
+		startedAt = call.StartedAt.UTC().Format(time.RFC3339Nano)
+		stoppedAt = call.StoppedAt.UTC().Format(time.RFC3339Nano)
+	}
+
+	// Insert call and record the ID.
+	var (
+		callID int64
+		err    error
+	)
+	if client.Dialect() == db.PostgresDialect {
+		callID, err = postgres.InsertReturningID(ctx, client, insertDebugSessionCallReturning,
+			sql.Named("session_id", sessionID),
+			sql.Named("started_at", startedAt),
+			sql.Named("stopped_at", stoppedAt),
+			sql.Named("url", call.Url),
+			sql.Named("method", call.Method),
+			sql.Named("status_code", call.StatusCode),
+		)
+		if err != nil {
+			return err
+		}
+	} else {
+		res, err := client.Exec(
+			ctx,
+			insertDebugSessionCall,
+			sql.Named("session_id", sessionID),
+			sql.Named("started_at", startedAt),
+			sql.Named("stopped_at", stoppedAt),
+			sql.Named("url", call.Url),
+			sql.Named("method", call.Method),
+			sql.Named("status_code", call.StatusCode),
+		)
+		if err != nil {
+			zerologr.Error(err, "Failed to insert debug session call")
+			return err
+		}
+
+		callID, err = res.LastInsertId()
+		if err != nil {
+			zerologr.Error(err, "Failed to get last insert ID for debug session")
+			return err
+		}
+	}
+
+	// Insert transitions, link them to the recorded call ID.
+	for _, transition := range call.FlowTransitions {
+		startedAt := any(transition.StartedAt)
+		stoppedAt := any(transition.StoppedAt)
+
+		if client.Dialect() == db.SQLiteDialect {
+			startedAt = transition.StartedAt.UTC().Format(time.RFC3339Nano)
+			stoppedAt = transition.StoppedAt.UTC().Format(time.RFC3339Nano)
+		}
+
+		if _, err := client.Exec(
+			ctx,
+			insertDebugSessionFlowTransition,
+			sql.Named("call_id", callID),
+			sql.Named("component", transition.Component),
+			sql.Named("started_at", startedAt),
+			sql.Named("stopped_at", stoppedAt),
+			sql.Named("direction", transition.Direction),
+			sql.Named("result", transition.Result.Outcome),
+			sql.Named("failure_cause", transition.Result.Cause),
+		); err != nil {
+			zerologr.Error(err, "Failed to insert debug session flow transition")
+			return err
+		}
+	}
+
+	return nil
+}
+
+func dbListDebugSessionCalls(
+	ctx context.Context,
+	client db.SQLClient,
+	sessionID int64,
+) ([]adminapi.DebugSessionCall, error) {
+	rows, err := client.Query(
+		ctx,
+		selectDebugSessionCalls,
+		sql.Named("session_id", sessionID),
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to query debug session calls")
+		return nil, err
+	}
+	defer rows.Close()
+
+	calls := make([]adminapi.DebugSessionCall, 0)
+	for rows.Next() {
+		var (
+			call      adminapi.DebugSessionCall
+			startedAt db.TimeString
+			stoppedAt db.TimeString
+		)
+		if err := rows.Scan(
+			&call.Id,
+			&startedAt,
+			&stoppedAt,
+			&call.Url,
+			&call.Method,
+			&call.StatusCode,
+		); err != nil {
+			zerologr.Error(err, "Failed to scan debug session call row")
+		}
+		call.StartedAt = startedAt.Time
+		call.StoppedAt = stoppedAt.Time
+		calls = append(calls, call)
+	}
+	if err := rows.Err(); err != nil {
+		zerologr.Error(err, "Failed to iterate admin user rows")
+		return nil, err
+	}
+
+	// Fetch flow transitions per call.
+	for i, call := range calls {
+		transitions, err := dbListDebugSessionFlowTransitions(ctx, client, int64(call.Id))
+		if err != nil {
+			zerologr.Error(err, "Failed to list debug session flow transitions")
+			return nil, err
+		}
+		calls[i].FlowTransitions = transitions
+	}
+
+	return calls, nil
+}
+
+func dbListDebugSessionFlowTransitions(
+	ctx context.Context,
+	client db.SQLClient,
+	callID int64,
+) ([]adminapi.FlowTransition, error) {
+	rows, err := client.Query(
+		ctx,
+		selectDebugSessionFlowTransitions,
+		sql.Named("call_id", callID),
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to query debug session flow transitions")
+		return nil, err
+	}
+	defer rows.Close()
+
+	transitions := make([]adminapi.FlowTransition, 0)
+	for rows.Next() {
+		var (
+			transition adminapi.FlowTransition
+			startedAt  db.TimeString
+			stoppedAt  db.TimeString
+		)
+		if err := rows.Scan(
+			&transition.Component,
+			&transition.Direction,
+			&startedAt,
+			&stoppedAt,
+			&transition.Result.Outcome,
+			&transition.Result.Cause,
+		); err != nil {
+			zerologr.Error(err, "Failed to scan debug session flow transition row")
+			return nil, err
+		}
+
+		transition.StartedAt = startedAt.Time
+		transition.StoppedAt = stoppedAt.Time
+		transitions = append(transitions, transition)
+	}
+
+	if err := rows.Err(); err != nil {
+		zerologr.Error(err, "Failed to iterate debug session flow transition rows")
+		return nil, err
+	}
+
+	return transitions, nil
+}
+
+func dbDeleteDebugSession(
+	ctx context.Context,
+	client db.SQLClient,
+	backend string,
+	id int64,
+) error {
+	_, err := client.Exec(
+		ctx,
+		deleteDebugSession,
+		sql.Named("backend", backend),
+		sql.Named("id", id),
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to delete debug session")
+		return err
+	}
+
+	return nil
+}
 
 // --- Superuser / session helpers (used by ssi.go, middleware.go) ---
 
@@ -100,7 +470,7 @@ func dbGetSuperuser(ctx context.Context, client db.SQLClient) (*model.User, erro
 		return nil, err
 	}
 
-	return nil, errNoSuperuser
+	return nil, errRowNotFound
 }
 
 // dbGetSession returns a session by its session ID.
@@ -138,7 +508,7 @@ func dbGetSession(
 		return nil, err
 	}
 
-	return nil, errNoSession
+	return nil, errRowNotFound
 }
 
 // --- Users ---
@@ -162,7 +532,7 @@ func dbGetUser(ctx context.Context, client db.SQLClient, userID int64) (*adminap
 			zerologr.Error(err, "Failed to iterate admin user rows")
 			return nil, err
 		}
-		return nil, errNoUser
+		return nil, errRowNotFound
 	}
 
 	var u adminapi.User
@@ -205,7 +575,7 @@ func dbCreateUser(
 	username, salt, hashedPassword string,
 ) (int64, error) {
 	if client.Dialect() == db.PostgresDialect {
-		return postgres.QueryReturningID(ctx, client, insertAdminUserReturning,
+		return postgres.InsertReturningID(ctx, client, insertAdminUserReturning,
 			sql.NamedArg{Name: "name", Value: username},
 			sql.NamedArg{Name: "salt", Value: salt},
 			sql.NamedArg{Name: "hashedPassword", Value: hashedPassword},
@@ -279,7 +649,7 @@ func dbGetUserAuth(
 			zerologr.Error(err, "Failed to iterate admin user auth rows")
 			return nil, err
 		}
-		return nil, errNoUser
+		return nil, errRowNotFound
 	}
 
 	r := &model.UserAuth{}
@@ -333,7 +703,7 @@ func dbLoginLookup(
 			zerologr.Error(err, "Failed to iterate admin login user rows")
 			return nil, err
 		}
-		return nil, errNoUser
+		return nil, errRowNotFound
 	}
 
 	r := &model.SuperuserLoginUser{}
@@ -366,7 +736,7 @@ func dbGetGroup(ctx context.Context, client db.SQLClient, groupID int64) (*admin
 			zerologr.Error(err, "Failed to iterate admin group rows")
 			return nil, err
 		}
-		return nil, errNoGroup
+		return nil, errRowNotFound
 	}
 
 	var g adminapi.Group
@@ -405,7 +775,7 @@ func dbListGroups(ctx context.Context, client db.SQLClient) ([]adminapi.Group, e
 
 func dbCreateGroup(ctx context.Context, client db.SQLClient, name string) (int64, error) {
 	if client.Dialect() == db.PostgresDialect {
-		return postgres.QueryReturningID(ctx, client, insertAdminGroupReturning,
+		return postgres.InsertReturningID(ctx, client, insertAdminGroupReturning,
 			sql.NamedArg{Name: "name", Value: name},
 		)
 	}
@@ -635,6 +1005,7 @@ func dbBootstrapPermissions(client db.SQLClient) error {
 		{PermissionIDBasicAuthOrgViewer, PermissionNameBasicAuthOrgViewer},
 		{PermissionIDAdminUserMgmtAdmin, PermissionNameAdminUserMgmtAdmin},
 		{PermissionIDAdminUserMgmtViewer, PermissionNameAdminUserMgmtViewer},
+		{PermissionIDDebugger, PermissionNameDebugger},
 	}
 
 	for _, p := range perms {
@@ -802,5 +1173,3 @@ func dbGetUserPermissionIDs(
 
 	return ids, nil
 }
-
-// (queryReturningID and queryer have been moved to internal/db.QueryReturningID)

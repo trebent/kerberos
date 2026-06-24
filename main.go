@@ -191,7 +191,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	// Even though the admin configuration is optional, it's always available. The admin initialisation
 	// output is used to configure and prepare other internal components for administration.
 	zerologr.Info("Loading admin")
-	admin, err := admin.New(
+	adm, err := admin.New(
 		&admin.Opts{
 			Cfg:       cfg.AdminConfig,
 			Mux:       adminMux,
@@ -203,10 +203,13 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		return fmt.Errorf("failed to initialize admin: %w", err)
 	}
 
+	debugger := admin.NewDebugger(db)
+
 	zerologr.Info("Loading observability")
 	observability := obs.NewComponent(&obs.Opts{
-		Cfg:     cfg.ObservabilityConfig,
-		Version: internalenv.Version.Value(),
+		Cfg:      cfg.ObservabilityConfig,
+		Version:  internalenv.Version.Value(),
+		Debugger: debugger,
 	})
 
 	zerologr.Info("Loading router")
@@ -228,7 +231,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		customFlowComponents = append(customFlowComponents, authorizer)
 
 		// Register the authorizer with the admin component so that it can serve auth metadata to the admin API.
-		if err := admin.RegisterAPIProvider(authorizer); err != nil {
+		if err := adm.RegisterAPIProvider(authorizer); err != nil {
 			return fmt.Errorf("failed to register auth API provider with admin component: %w", err)
 		}
 	}
@@ -241,7 +244,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		customFlowComponents = append(customFlowComponents, oasValidator)
 
 		// Register the OAS validator with the admin component so that it can serve OAS to the admin API.
-		admin.SetOASBackend(oasValidator)
+		adm.SetOASBackend(oasValidator)
 	}
 
 	custom := custom.NewComponent(customFlowComponents...)
@@ -263,7 +266,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	})
 
 	// Register the flow fetcher with the admin component so that it can serve flow metadata to the admin API.
-	admin.SetFlowFetcher(composer)
+	adm.SetFlowFetcher(composer)
 
 	zerologr.Info("Starting server")
 	gwMux.Handle("/gw/", composer)

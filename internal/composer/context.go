@@ -1,5 +1,7 @@
 package composer
 
+import "github.com/trebent/kerberos/internal/composer/debug"
+
 type ContextKey string
 
 const (
@@ -8,4 +10,7 @@ const (
 
 	// BackendContextKey used to store the backend name.
 	BackendContextKey ContextKey = "krb.backend"
+
+	// DebugContextKey used to store the debug call.
+	DebugContextKey ContextKey = ContextKey(debug.DebugContextKey)
 )

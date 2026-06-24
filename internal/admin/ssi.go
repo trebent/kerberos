@@ -3,7 +3,6 @@ package admin
 import (
 	"bytes"
 	"context"
-	"errors"
 	"net/http"
 
 	adminext "github.com/trebent/kerberos/internal/admin/extensions"
@@ -39,9 +38,6 @@ type (
 
 var (
 	_ withExtensions = (*impl)(nil)
-
-	errNoSuperuser = errors.New("no superuser exists")
-	errNoSession   = errors.New("no valid super session found")
 
 	apiErrInternal     = makeGenAPIError(http.StatusText(http.StatusInternalServerError))
 	apiErrForbidden    = makeGenAPIError(http.StatusText(http.StatusForbidden))

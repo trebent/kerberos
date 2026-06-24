@@ -10,15 +10,21 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "The name of the backend."
+            "description": "The name of the backend.",
+            "minLength": 1,
+            "maxLength": 100
           },
           "host": {
             "type": "string",
-            "description": "The host address of the backend."
+            "description": "The host address of the backend.",
+            "minLength": 1,
+            "maxLength": 256
           },
           "port": {
             "type": "integer",
-            "description": "The port number of the backend."
+            "description": "The port number of the backend.",
+            "minimum": 1,
+            "maximum": 65535
           },
           "timeout": {
             "type": "integer",

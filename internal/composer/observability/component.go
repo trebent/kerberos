@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/trebent/kerberos/internal/composer"
+	"github.com/trebent/kerberos/internal/composer/debug"
 	"github.com/trebent/kerberos/internal/config"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	"github.com/trebent/kerberos/internal/response"
@@ -26,7 +27,9 @@ type (
 		next composer.FlowComponent
 		cfg  *config.ObservabilityConfig
 
-		logger                   logr.Logger
+		logger   logr.Logger
+		debugger debug.Debugger
+
 		spanOpts                 []trace.SpanStartOption
 		requestCounter           metric.Int64Counter
 		requestSizeHistogram     metric.Int64Histogram
@@ -38,6 +41,8 @@ type (
 		Cfg *config.ObservabilityConfig
 
 		Version string
+
+		Debugger debug.Debugger
 	}
 )
 
@@ -62,38 +67,8 @@ func NewComponent(opts *Opts) composer.FlowComponent {
 	logger := zerologr.WithName("request")
 
 	if !opts.Cfg.Enabled {
-		zerologr.Info("Observability has been disabled, setting dummy component for logging")
-		// Observability disabled still logs incoming requests.
-		return &composer.Dummy{CustomHandler: func(
-			next composer.FlowComponent,
-			w http.ResponseWriter,
-			req *http.Request,
-		) {
-			rLogger := logger.WithValues("path", req.URL.Path, "method", req.Method)
-			rLogger.Info(req.Method + " " + req.URL.Path)
-			ctx := logr.NewContext(req.Context(), rLogger)
-
-			// Must set up response wrapper since components down the line depends on it, and to
-			// capture status code.
-			wrapped := response.NewResponseWrapper(w)
-			//nolint:errcheck // no point
-			wrapper := wrapped.(*response.Wrapper)
-			next.ServeHTTP(wrapper, req.WithContext(ctx))
-			rLogger.Info(
-				req.Method+" "+req.URL.Path+" "+strconv.Itoa(wrapper.StatusCode()),
-				string(semconv.HTTPStatusCodeKey), wrapper.StatusCode(),
-			)
-		}}
+		return dummyComponent(logger, opts)
 	}
-
-	o := &obs{
-		spanOpts: []trace.SpanStartOption{
-			trace.WithSpanKind(trace.SpanKindServer),
-		},
-		cfg: opts.Cfg,
-	}
-
-	o.logger = logger
 
 	meter := otel.GetMeterProvider().Meter(
 		"github.com/trebent/kerberos",
@@ -105,7 +80,6 @@ func NewComponent(opts *Opts) composer.FlowComponent {
 		metric.WithDescription("Measures the number of HTTP requests."),
 	)
 	must(err)
-	o.requestCounter = requestCountCounter
 
 	requestSizeHistogram, err := meter.Int64Histogram(
 		requestSizeHistogramName,
@@ -123,7 +97,6 @@ func NewComponent(opts *Opts) composer.FlowComponent {
 		),
 	)
 	must(err)
-	o.requestSizeHistogram = requestSizeHistogram
 
 	requestDurationHistogram, err := meter.Float64Histogram(
 		requestDurationHistogramName,
@@ -132,14 +105,12 @@ func NewComponent(opts *Opts) composer.FlowComponent {
 		metric.WithExplicitBucketBoundaries(1, 10, 100, 1000, 10000),
 	)
 	must(err)
-	o.requestDurationHistogram = requestDurationHistogram
 
 	responseCounter, err := meter.Int64Counter(
 		responseCounterName,
 		metric.WithDescription("Keeps track of HTTP response status code counts."),
 	)
 	must(err)
-	o.responseCounter = responseCounter
 
 	responseSizeHistogram, err := meter.Int64Histogram(
 		responseSizeHistogramName,
@@ -157,9 +128,21 @@ func NewComponent(opts *Opts) composer.FlowComponent {
 		),
 	)
 	must(err)
-	o.responseSizeHistogram = responseSizeHistogram
 
-	return o
+	return &obs{
+		spanOpts: []trace.SpanStartOption{
+			trace.WithSpanKind(trace.SpanKindServer),
+		},
+		cfg:      opts.Cfg,
+		logger:   logger,
+		debugger: opts.Debugger,
+
+		requestCounter:           requestCountCounter,
+		requestSizeHistogram:     requestSizeHistogram,
+		requestDurationHistogram: requestDurationHistogram,
+		responseCounter:          responseCounter,
+		responseSizeHistogram:    responseSizeHistogram,
+	}
 }
 
 // Next implements [composer.FlowComponent].
@@ -271,4 +254,46 @@ func extractKrbAttributes(ctx context.Context) []attribute.KeyValue {
 	}
 
 	return attributes
+}
+
+func dummyComponent(logger logr.Logger, opts *Opts) composer.FlowComponent {
+	logger.Info("Observability has been disabled, setting dummy component for logging")
+
+	// Observability disabled still logs and debugs incoming requests, ensuring that the request
+	// context contains the expected values for downstream components.
+	return &composer.Dummy{CustomHandler: func(
+		next composer.FlowComponent,
+		w http.ResponseWriter,
+		req *http.Request,
+	) {
+		rLogger := logger.WithValues("path", req.URL.Path, "method", req.Method)
+		rLogger.Info(req.Method + " " + req.URL.Path)
+
+		// Debug call is started, but the flow component transition is not logged to denote that
+		// observability is indeed disabled.
+		debugCall, ctx := opts.Debugger.Start(req.Context())
+		defer debugCall.Finalise()
+		defer debug.SetEndTime(debugCall)
+		debugCall.SetStartTime(time.Now())
+		debugCall.SetURL(req.URL.Path)
+		debugCall.SetMethod(req.Method)
+
+		ctx = logr.NewContext(ctx, rLogger)
+
+		// Must set up response wrapper since components down the line depends on it, and to
+		// capture status code.
+		wrapped := response.NewResponseWrapper(w)
+		//nolint:errcheck // no point
+		wrapper := wrapped.(*response.Wrapper)
+
+		// Handle the call by forwarding to the next component in the flow.
+		next.ServeHTTP(wrapper, req.WithContext(ctx))
+
+		// Set debugging metadata for the response, including status code and log the request.
+		debugCall.SetStatusCode(wrapper.StatusCode())
+		rLogger.Info(
+			req.Method+" "+req.URL.Path+" "+strconv.Itoa(wrapper.StatusCode()),
+			string(semconv.HTTPStatusCodeKey), wrapper.StatusCode(),
+		)
+	}}
 }

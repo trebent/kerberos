@@ -145,8 +145,11 @@ components:
       additionalProperties: false
       properties:
         id:
-          type: string
+          type: integer
           description: The ID for the debug session.
+        backend:
+          type: string
+          description: The backend that the call was made to.
         startedAt:
           type: string
           format: date-time
@@ -162,6 +165,7 @@ components:
             still active.
       required:
         - id
+        - backend
         - startedAt
         - expiresAt
     DebugSessionCall:
@@ -169,7 +173,7 @@ components:
       additionalProperties: false
       properties:
         id:
-          type: string
+          type: integer
           description: The ID for the call.
         startedAt:
           type: string
@@ -191,39 +195,9 @@ components:
           description: The HTTP status code of the response.
         flowTransitions:
           type: array
+          minItems: 1
           items:
-            type: object
-            additionalProperties: false
-            properties:
-              component:
-                type: string
-                description: The flow component that the transition corresponds to.
-              direction:
-                type: string
-                enum: [inbound, outbound]
-                description: |
-                  The direction of the flow transition. Some components handle requests
-                   both coming into the system (inbound) and going out of the system (outbound).
-              startedAt:
-                type: string
-                format: date-time
-                description: The time when the flow transition started.
-              stoppedAt:
-                type: string
-                format: date-time
-                description: The time when the flow transition stopped. Null if the transition
-                  is still active.
-              result:
-                type: object
-                properties:
-                  outcome:
-                    type: string
-                    enum: [success, failure]
-                  cause:
-                    type: string
-                    description: The cause of the flow transition result, if outcome is 'failure'.
-                required:
-                  - outcome
+            $ref: "#/components/schemas/FlowTransition"
           description: The flow transitions that occurred during this operation, in
             chronological order.
       required:
@@ -234,6 +208,53 @@ components:
         - method
         - statusCode
         - flowTransitions
+    FlowTransition:
+      type: object
+      description: |
+        A flow transition that occurred during a debug session call. A flow transition represents 
+        a flow component's handling of a request, in both directions.
+      properties:
+        component:
+          type: string
+          description: The flow component that the transition corresponds to.
+        direction:
+          type: string
+          enum: [inbound, outbound]
+          description: |
+            The direction of the flow transition. Some components handle requests
+              both coming into the system (inbound) and going out of the system (outbound).
+        startedAt:
+          type: string
+          format: date-time
+          description: The time when the flow transition started.
+        stoppedAt:
+          type: string
+          format: date-time
+          description: The time when the flow transition stopped. Null if the transition
+            is still active.
+        result:
+          $ref: "#/components/schemas/FlowTransitionResult"
+      additionalProperties: false
+      required:
+        - component
+        - direction
+        - startedAt
+        - stoppedAt
+        - result
+    FlowTransitionResult:
+      type: object
+      description: |
+        The result of a flow transition. A flow transition can either succeed or fail.
+      properties:
+        outcome:
+          type: string
+          enum: [success, failure]
+        cause:
+          type: string
+          description: The cause of the flow transition result, if outcome is 'failure'.
+      additionalProperties: false
+      required:
+        - outcome
     User:
       type: object
       additionalProperties: false
@@ -1110,6 +1131,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Bad request.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "404":
           content:
             application/json:
@@ -1145,6 +1172,12 @@ paths:
                 items:
                   $ref: "#/components/schemas/DebugSession"
           description: Got all debug sessions successfully.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "404":
           content:
             application/json:
@@ -1185,6 +1218,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Bad request.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "404":
           content:
             application/json:
@@ -1238,6 +1277,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Bad request.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "404":
           content:
             application/json:
@@ -1278,6 +1323,52 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Bad request.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Backend or debug session not found.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+    delete:
+      operationId: DeleteDebugSession
+      parameters:
+        - name: backend
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted the backend debug session successfully.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "404":
           content:
             application/json:
@@ -1320,6 +1411,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Bad request.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "404":
           content:
             application/json:

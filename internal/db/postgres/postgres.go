@@ -47,10 +47,16 @@ func New(opts *Opts) db.SQLClient {
 	return &impl{db: sqlDB}
 }
 
-// QueryReturningID executes an INSERT ... RETURNING id query and returns the inserted ID.
-func QueryReturningID(ctx context.Context, q db.Queryer, query string, args ...any) (int64, error) {
+// InsertReturningID executes an INSERT ... RETURNING id query and returns the inserted ID.
+func InsertReturningID(
+	ctx context.Context,
+	q db.Queryer,
+	query string,
+	args ...any,
+) (int64, error) {
 	rows, err := q.Query(ctx, query, args...)
 	if err != nil {
+		zerologr.Error(err, "Failed to insert and return ID")
 		return 0, err
 	}
 	defer rows.Close()

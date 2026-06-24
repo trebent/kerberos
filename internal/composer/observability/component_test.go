@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/trebent/kerberos/internal/composer"
+	"github.com/trebent/kerberos/internal/composer/debug"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/response"
 )
@@ -17,7 +18,7 @@ func TestObservabilityDisabled(t *testing.T) {
 		Enabled: false,
 	}
 
-	opts := &Opts{Cfg: cfg}
+	opts := &Opts{Cfg: cfg, Debugger: debug.NewDummy()}
 	component := NewComponent(opts)
 
 	dummy := &composer.Dummy{

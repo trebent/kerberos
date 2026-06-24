@@ -56,6 +56,7 @@ func SessionMiddleware(
 				return f(ctx, w, r, request)
 			}
 
+			// Current time is after expiry, do NOT populate the context.
 			if time.Now().UnixMilli() > session.Expires {
 				return f(ctx, w, r, request)
 			}

@@ -326,7 +326,7 @@ func dbCreateUser(
 	orgID int64,
 ) (int64, error) {
 	if client.Dialect() == db.PostgresDialect {
-		return postgres.QueryReturningID(ctx, client, insertUserReturning,
+		return postgres.InsertReturningID(ctx, client, insertUserReturning,
 			sql.NamedArg{Name: "name", Value: name},
 			sql.NamedArg{Name: "salt", Value: salt},
 			sql.NamedArg{Name: "hashedPassword", Value: hashedPassword},
@@ -569,7 +569,7 @@ func dbCreateGroup(
 	name string,
 ) (int64, error) {
 	if client.Dialect() == db.PostgresDialect {
-		return postgres.QueryReturningID(ctx, client, insertGroupReturning,
+		return postgres.InsertReturningID(ctx, client, insertGroupReturning,
 			sql.NamedArg{Name: "name", Value: name},
 			sql.NamedArg{Name: "orgID", Value: orgID},
 		)
@@ -680,7 +680,7 @@ func dbCreateOrganisation(
 	zerologr.Info("Creating organisation " + name)
 
 	if client.Dialect() == db.PostgresDialect {
-		orgID, err = postgres.QueryReturningID(
+		orgID, err = postgres.InsertReturningID(
 			ctx,
 			tx,
 			insertOrgReturning,
@@ -703,7 +703,7 @@ func dbCreateOrganisation(
 	adminPassword, salt, hashedAdminPassword := password.Make("")
 
 	if client.Dialect() == db.PostgresDialect {
-		adminUserID, err = postgres.QueryReturningID(ctx, tx, insertUserReturning,
+		adminUserID, err = postgres.InsertReturningID(ctx, tx, insertUserReturning,
 			sql.NamedArg{Name: "name", Value: adminUsername},
 			sql.NamedArg{Name: "salt", Value: salt},
 			sql.NamedArg{Name: "hashedPassword", Value: hashedAdminPassword},

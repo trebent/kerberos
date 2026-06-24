@@ -295,4 +295,30 @@ func TestConfigGateway(t *testing.T) {
 			t.Fatalf("expected error when loading config with invalid router backend TLS, got nil")
 		}
 	})
+
+	t.Run("Invalid backend name", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_gw_router_invalid_backend_name.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		cfg := New()
+		cfg.Load(data)
+		if err := cfg.Parse(); err == nil {
+			t.Fatalf("expected error when loading config with invalid router backend name, got nil")
+		}
+	})
+
+	t.Run("Invalid backend port", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_gw_router_invalid_backend_port.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		cfg := New()
+		cfg.Load(data)
+		if err := cfg.Parse(); err == nil {
+			t.Fatalf("expected error when loading config with invalid router backend port, got nil")
+		}
+	})
 }
