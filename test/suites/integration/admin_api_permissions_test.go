@@ -16,6 +16,7 @@ const (
 	PermissionIDBasicAuthOrgViewer  = 4
 	PermissionIDAdminUserMgmtAdmin  = 5
 	PermissionIDAdminUserMgmtViewer = 6
+	PermissionIDDebugger            = 7
 
 	// Permission names.
 
@@ -25,6 +26,7 @@ const (
 	PermissionNameBasicAuthOrgViewer  = "basic-auth-org-viewer"
 	PermissionNameAdminUserMgmtAdmin  = "admin-user-mgmt-admin"
 	PermissionNameAdminUserMgmtViewer = "admin-user-mgmt-viewer"
+	PermissionNameDebugger            = "debugger"
 )
 
 // createAdminUserInGroup creates a fresh admin user, creates a group with the specified
@@ -97,6 +99,7 @@ func TestPermissionsGetPermissions(t *testing.T) {
 		PermissionIDBasicAuthOrgAdmin:   PermissionNameBasicAuthOrgAdmin,
 		PermissionIDAdminUserMgmtViewer: PermissionNameAdminUserMgmtViewer,
 		PermissionIDAdminUserMgmtAdmin:  PermissionNameAdminUserMgmtAdmin,
+		PermissionIDDebugger:            PermissionNameDebugger,
 	}
 	for id, name := range expected {
 		if nameByID[id] != name {
@@ -165,6 +168,35 @@ func TestPermissionsSuperuserAccessAll(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
+
+	// Debug (GET) — requires debugger.
+	listDebugResp, err := adminClient.ListDebugSessionsWithResponse(
+		t.Context(),
+		"echo",
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(listDebugResp.StatusCode(), http.StatusOK, t)
+
+	// Debug (POST) — requires debugger.
+	startDebugResp, err := adminClient.StartDebugSessionWithResponse(
+		t.Context(),
+		"echo",
+		adminapi.StartDebugSessionJSONRequestBody{},
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(startDebugResp.StatusCode(), http.StatusOK, t)
+
+	// Clean up the debug session started above.
+	deleteDebugResp, err := adminClient.DeleteDebugSessionWithResponse(
+		t.Context(),
+		"echo",
+		startDebugResp.JSON200.Id,
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(deleteDebugResp.StatusCode(), http.StatusNoContent, t)
 }
 
 // --- flowviewer permission ---
@@ -699,4 +731,52 @@ func TestPermissionsAdminUserChangePasswordWrongUser(t *testing.T) {
 	checkErr(err, t)
 	verifyStatusCode(changeResp.StatusCode(), http.StatusForbidden, t)
 	verifyAdminAPIErrorResponse(changeResp.JSON403, t)
+}
+
+// --- debugger permission ---
+
+// TestPermissionsDebuggerAllowed verifies that an admin user with the debugger permission
+// can call StartDebugSession.
+func TestPermissionsDebuggerAllowed(t *testing.T) {
+	t.Parallel()
+	superSession := superLogin(t)
+	session := createAdminUserInGroup(t, superSession, []int{PermissionIDDebugger})
+
+	resp, err := adminClient.StartDebugSessionWithResponse(
+		t.Context(),
+		"echo",
+		adminapi.StartDebugSessionJSONRequestBody{},
+		adminapi.RequestEditorFn(requestEditorSessionID(session)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(resp.StatusCode(), http.StatusOK, t)
+
+	// Clean up.
+	deleteResp, err := adminClient.DeleteDebugSessionWithResponse(
+		t.Context(),
+		"echo",
+		resp.JSON200.Id,
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
+}
+
+// TestPermissionsDebuggerDenied verifies that an admin user without the debugger permission
+// receives 403 when calling StartDebugSession.
+func TestPermissionsDebuggerDenied(t *testing.T) {
+	t.Parallel()
+	superSession := superLogin(t)
+	// Give only flowviewer — no debugger.
+	session := createAdminUserInGroup(t, superSession, []int{PermissionIDFlowViewer})
+
+	resp, err := adminClient.StartDebugSessionWithResponse(
+		t.Context(),
+		"echo",
+		adminapi.StartDebugSessionJSONRequestBody{},
+		adminapi.RequestEditorFn(requestEditorSessionID(session)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(resp.StatusCode(), http.StatusForbidden, t)
+	verifyAdminAPIErrorResponse(resp.JSON403, t)
 }

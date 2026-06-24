@@ -115,7 +115,13 @@ func (i *impl) ExtendDebugSession(
 	)
 
 	i.debugger.EnableBackend(req.Backend, updatedSession.ExpiresAt)
-	return adminapi.ExtendDebugSession200JSONResponse{}, nil
+	return adminapi.ExtendDebugSession200JSONResponse{
+		Id:        updatedSession.Id,
+		Backend:   updatedSession.Backend,
+		StartedAt: updatedSession.StartedAt,
+		ExpiresAt: updatedSession.ExpiresAt,
+		StoppedAt: updatedSession.StoppedAt,
+	}, nil
 }
 
 // GetDebugSession implements [withExtensions].
@@ -169,6 +175,14 @@ func (i *impl) DeleteDebugSession(
 ) (adminapi.DeleteDebugSessionResponseObject, error) {
 	if !ContextIsDebugger(ctx) {
 		return adminapi.DeleteDebugSession403JSONResponse(apiErrForbidden), nil
+	}
+
+	if _, err := dbGetDebugSession(ctx, i.SQLClient, req.Backend, int64(req.SessionId)); err != nil {
+		if errors.Is(err, errRowNotFound) {
+			return adminapi.DeleteDebugSession404JSONResponse(apiErrNotFound), nil
+		}
+
+		return adminapi.DeleteDebugSession500JSONResponse(apiErrInternal), err
 	}
 
 	if err := dbDeleteDebugSession(
