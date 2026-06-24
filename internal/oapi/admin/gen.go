@@ -528,7 +528,7 @@ type ServerInterface interface {
 	ExtendDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int)
 
 	// (GET /api/admin/debug/{backend}/sessions/{sessionId}/calls)
-	ListDebugSessionCalls(w http.ResponseWriter, r *http.Request, backend string, sessionId string)
+	ListDebugSessionCalls(w http.ResponseWriter, r *http.Request, backend string, sessionId int)
 
 	// (GET /api/admin/flow)
 	GetFlow(w http.ResponseWriter, r *http.Request)
@@ -834,9 +834,9 @@ func (siw *ServerInterfaceWrapper) ListDebugSessionCalls(w http.ResponseWriter, 
 	}
 
 	// ------------- Path parameter "sessionId" -------------
-	var sessionId string
+	var sessionId int
 
-	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: ""})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
 		return
@@ -1809,7 +1809,7 @@ func (response ExtendDebugSession500JSONResponse) VisitExtendDebugSessionRespons
 
 type ListDebugSessionCallsRequestObject struct {
 	Backend   string `json:"backend"`
-	SessionId string `json:"sessionId"`
+	SessionId int    `json:"sessionId"`
 }
 
 type ListDebugSessionCallsResponseObject interface {
@@ -3185,7 +3185,7 @@ func (sh *strictHandler) ExtendDebugSession(w http.ResponseWriter, r *http.Reque
 }
 
 // ListDebugSessionCalls operation middleware
-func (sh *strictHandler) ListDebugSessionCalls(w http.ResponseWriter, r *http.Request, backend string, sessionId string) {
+func (sh *strictHandler) ListDebugSessionCalls(w http.ResponseWriter, r *http.Request, backend string, sessionId int) {
 	var request ListDebugSessionCallsRequestObject
 
 	request.Backend = backend

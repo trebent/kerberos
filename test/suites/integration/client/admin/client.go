@@ -603,7 +603,7 @@ type ClientInterface interface {
 	ExtendDebugSession(ctx context.Context, backend string, sessionId int, body ExtendDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListDebugSessionCalls request
-	ListDebugSessionCalls(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListDebugSessionCalls(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetFlow request
 	GetFlow(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -775,7 +775,7 @@ func (c *Client) ExtendDebugSession(ctx context.Context, backend string, session
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListDebugSessionCalls(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListDebugSessionCalls(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListDebugSessionCallsRequest(c.Server, backend, sessionId)
 	if err != nil {
 		return nil, err
@@ -1370,7 +1370,7 @@ func NewExtendDebugSessionRequestWithBody(server string, backend string, session
 }
 
 // NewListDebugSessionCallsRequest generates requests for ListDebugSessionCalls
-func NewListDebugSessionCallsRequest(server string, backend string, sessionId string) (*http.Request, error) {
+func NewListDebugSessionCallsRequest(server string, backend string, sessionId int) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1382,7 +1382,7 @@ func NewListDebugSessionCallsRequest(server string, backend string, sessionId st
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
 	if err != nil {
 		return nil, err
 	}
@@ -2156,7 +2156,7 @@ type ClientWithResponsesInterface interface {
 	ExtendDebugSessionWithResponse(ctx context.Context, backend string, sessionId int, body ExtendDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*ExtendDebugSessionResponse, error)
 
 	// ListDebugSessionCallsWithResponse request
-	ListDebugSessionCallsWithResponse(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*ListDebugSessionCallsResponse, error)
+	ListDebugSessionCallsWithResponse(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*ListDebugSessionCallsResponse, error)
 
 	// GetFlowWithResponse request
 	GetFlowWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetFlowResponse, error)
@@ -2970,7 +2970,7 @@ func (c *ClientWithResponses) ExtendDebugSessionWithResponse(ctx context.Context
 }
 
 // ListDebugSessionCallsWithResponse request returning *ListDebugSessionCallsResponse
-func (c *ClientWithResponses) ListDebugSessionCallsWithResponse(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*ListDebugSessionCallsResponse, error) {
+func (c *ClientWithResponses) ListDebugSessionCallsWithResponse(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*ListDebugSessionCallsResponse, error) {
 	rsp, err := c.ListDebugSessionCalls(ctx, backend, sessionId, reqEditors...)
 	if err != nil {
 		return nil, err

@@ -174,13 +174,19 @@ func (i *impl) DeleteDebugSession(
 	return adminapi.DeleteDebugSession204Response{}, nil
 }
 
-// ListDebugSessionCalls implements [withExtensions].
+// ListDebugSessionCalls implements [withE	xtensions].
 func (i *impl) ListDebugSessionCalls(
 	ctx context.Context,
-	_ adminapi.ListDebugSessionCallsRequestObject,
+	req adminapi.ListDebugSessionCallsRequestObject,
 ) (adminapi.ListDebugSessionCallsResponseObject, error) {
 	if !ContextIsDebugger(ctx) {
 		return adminapi.ListDebugSessionCalls403JSONResponse(apiErrForbidden), nil
 	}
-	panic("unimplemented")
+
+	calls, err := dbListDebugSessionCalls(ctx, i.SQLClient, int64(req.SessionId))
+	if err != nil {
+		return adminapi.ListDebugSessionCalls500JSONResponse(apiErrInternal), err
+	}
+
+	return adminapi.ListDebugSessionCalls200JSONResponse(calls), nil
 }
