@@ -21,8 +21,7 @@ updates:
 
   - package-ecosystem: "docker"
     directories:
-      - "/"
-      - "/cmd/echo"
+      - "/docker"
     schedule:
       interval: "daily"
     groups:
