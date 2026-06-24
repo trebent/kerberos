@@ -1,26 +1,26 @@
-package admin
+package debug
 
 import (
 	"time"
-
-	composerdebug "github.com/trebent/kerberos/internal/composer/debug"
 )
 
 type noopCall struct{}
 
-var noop composerdebug.DebuggedCall = &noopCall{}
+var noop DebuggedCall = &noopCall{}
+
+// NewNoopCall returns a new instance of a DebuggedCall that does not perform any actual debugging.
+func NewNoopCall() DebuggedCall {
+	return noop
+}
 
 // AddTransition implements [debug.DebuggedCall].
 func (n *noopCall) AddTransition(
 	_ string,
-	_ composerdebug.CallDirection,
+	_ CallDirection,
 	_ time.Time, _ time.Time,
-	_ composerdebug.CallResult,
+	_ CallResult,
 	_ string) {
 }
-
-// SetEndTime implements [debug.DebuggedCall].
-func (n *noopCall) SetEndTime(_ time.Time) {}
 
 // SetMethod implements [debug.DebuggedCall].
 func (n *noopCall) SetMethod(_ string) {}

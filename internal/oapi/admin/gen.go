@@ -516,16 +516,16 @@ type ServerInterface interface {
 	StartDebugSession(w http.ResponseWriter, r *http.Request, backend string)
 
 	// (DELETE /api/admin/debug/{backend}/sessions/{sessionId})
-	DeleteDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId string)
+	DeleteDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int)
 
 	// (GET /api/admin/debug/{backend}/sessions/{sessionId})
-	GetDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId string)
+	GetDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int)
 
 	// (POST /api/admin/debug/{backend}/sessions/{sessionId})
-	StopDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId string)
+	StopDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int)
 
 	// (PUT /api/admin/debug/{backend}/sessions/{sessionId})
-	ExtendDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId string)
+	ExtendDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int)
 
 	// (GET /api/admin/debug/{backend}/sessions/{sessionId}/calls)
 	ListDebugSessionCalls(w http.ResponseWriter, r *http.Request, backend string, sessionId string)
@@ -674,9 +674,9 @@ func (siw *ServerInterfaceWrapper) DeleteDebugSession(w http.ResponseWriter, r *
 	}
 
 	// ------------- Path parameter "sessionId" -------------
-	var sessionId string
+	var sessionId int
 
-	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: ""})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
 		return
@@ -714,9 +714,9 @@ func (siw *ServerInterfaceWrapper) GetDebugSession(w http.ResponseWriter, r *htt
 	}
 
 	// ------------- Path parameter "sessionId" -------------
-	var sessionId string
+	var sessionId int
 
-	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: ""})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
 		return
@@ -754,9 +754,9 @@ func (siw *ServerInterfaceWrapper) StopDebugSession(w http.ResponseWriter, r *ht
 	}
 
 	// ------------- Path parameter "sessionId" -------------
-	var sessionId string
+	var sessionId int
 
-	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: ""})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
 		return
@@ -794,9 +794,9 @@ func (siw *ServerInterfaceWrapper) ExtendDebugSession(w http.ResponseWriter, r *
 	}
 
 	// ------------- Path parameter "sessionId" -------------
-	var sessionId string
+	var sessionId int
 
-	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: ""})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
 		return
@@ -1585,7 +1585,7 @@ func (response StartDebugSession500JSONResponse) VisitStartDebugSessionResponse(
 
 type DeleteDebugSessionRequestObject struct {
 	Backend   string `json:"backend"`
-	SessionId string `json:"sessionId"`
+	SessionId int    `json:"sessionId"`
 }
 
 type DeleteDebugSessionResponseObject interface {
@@ -1638,7 +1638,7 @@ func (response DeleteDebugSession500JSONResponse) VisitDeleteDebugSessionRespons
 
 type GetDebugSessionRequestObject struct {
 	Backend   string `json:"backend"`
-	SessionId string `json:"sessionId"`
+	SessionId int    `json:"sessionId"`
 }
 
 type GetDebugSessionResponseObject interface {
@@ -1692,7 +1692,7 @@ func (response GetDebugSession500JSONResponse) VisitGetDebugSessionResponse(w ht
 
 type StopDebugSessionRequestObject struct {
 	Backend   string `json:"backend"`
-	SessionId string `json:"sessionId"`
+	SessionId int    `json:"sessionId"`
 }
 
 type StopDebugSessionResponseObject interface {
@@ -1745,7 +1745,7 @@ func (response StopDebugSession500JSONResponse) VisitStopDebugSessionResponse(w 
 
 type ExtendDebugSessionRequestObject struct {
 	Backend   string `json:"backend"`
-	SessionId string `json:"sessionId"`
+	SessionId int    `json:"sessionId"`
 	Body      *ExtendDebugSessionJSONRequestBody
 }
 
@@ -3070,7 +3070,7 @@ func (sh *strictHandler) StartDebugSession(w http.ResponseWriter, r *http.Reques
 }
 
 // DeleteDebugSession operation middleware
-func (sh *strictHandler) DeleteDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId string) {
+func (sh *strictHandler) DeleteDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int) {
 	var request DeleteDebugSessionRequestObject
 
 	request.Backend = backend
@@ -3097,7 +3097,7 @@ func (sh *strictHandler) DeleteDebugSession(w http.ResponseWriter, r *http.Reque
 }
 
 // GetDebugSession operation middleware
-func (sh *strictHandler) GetDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId string) {
+func (sh *strictHandler) GetDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int) {
 	var request GetDebugSessionRequestObject
 
 	request.Backend = backend
@@ -3124,7 +3124,7 @@ func (sh *strictHandler) GetDebugSession(w http.ResponseWriter, r *http.Request,
 }
 
 // StopDebugSession operation middleware
-func (sh *strictHandler) StopDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId string) {
+func (sh *strictHandler) StopDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int) {
 	var request StopDebugSessionRequestObject
 
 	request.Backend = backend
@@ -3151,7 +3151,7 @@ func (sh *strictHandler) StopDebugSession(w http.ResponseWriter, r *http.Request
 }
 
 // ExtendDebugSession operation middleware
-func (sh *strictHandler) ExtendDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId string) {
+func (sh *strictHandler) ExtendDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int) {
 	var request ExtendDebugSessionRequestObject
 
 	request.Backend = backend

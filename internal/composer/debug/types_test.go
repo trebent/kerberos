@@ -10,7 +10,6 @@ type (
 	testDebugger struct {
 		returnedCall DebuggedCall
 	}
-	noopCall            struct{}
 	testDebugTransition struct {
 		component    string
 		direction    CallDirection
@@ -34,30 +33,9 @@ var (
 	_ DebuggedCall = &testDebuggedCall{}
 )
 
-// all no-ops
-func (d *noopCall) SetStartTime(startTime time.Time) {}
-func (d *noopCall) SetEndTime(endTime time.Time)     {}
-func (d *noopCall) SetURL(url string)                {}
-func (d *noopCall) SetMethod(method string)          {}
-func (d *noopCall) SetStatusCode(statusCode int)     {}
-func (d *noopCall) AddTransition(
-	component string,
-	direction CallDirection,
-	startTime time.Time,
-	endTime time.Time,
-	result CallResult,
-	failureCause string,
-) {
-}
-func (d *noopCall) Finalise() {}
-
-// Implements actuall logging.
+// Implements actual logging.
 func (d *testDebuggedCall) SetStartTime(startTime time.Time) {
 	d.startTime = startTime
-}
-
-func (d *testDebuggedCall) SetEndTime(endTime time.Time) {
-	d.endTime = endTime
 }
 
 func (d *testDebuggedCall) SetURL(url string) {
@@ -104,13 +82,12 @@ func (d *testDebuggedCall) Finalise() {
 
 func BenchmarkCallStart(b *testing.B) {
 	b.Run("Without field set", func(b *testing.B) {
-		d := &testDebugger{}
+		d := &dummy{}
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			call, _ := d.Start(b.Context())
 			call.SetStartTime(time.Now())
-			call.SetEndTime(time.Now())
 			call.SetURL("http://example.com")
 			call.SetMethod("GET")
 			call.SetStatusCode(200)
@@ -126,7 +103,7 @@ func BenchmarkCallStart(b *testing.B) {
 	})
 
 	b.Run("With field set", func(b *testing.B) {
-		d := &testDebugger{
+		d := &dummy{
 			returnedCall: &noopCall{},
 		}
 
@@ -134,7 +111,6 @@ func BenchmarkCallStart(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			call, _ := d.Start(b.Context())
 			call.SetStartTime(time.Now())
-			call.SetEndTime(time.Now())
 			call.SetURL("http://example.com")
 			call.SetMethod("GET")
 			call.SetStatusCode(200)

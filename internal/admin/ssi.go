@@ -27,12 +27,16 @@ type (
 
 		ClientID     string
 		ClientSecret string
+
+		Debugger *debugger
 	}
 	impl struct {
 		sqlClient db.SQLClient
 
 		flowFetcher adminext.FlowFetcher
 		oasBackend  adminext.OASBackend
+
+		*debugger
 	}
 )
 
@@ -52,9 +56,9 @@ func makeGenAPIError(msg string) adminapi.APIErrorResponse {
 
 func newSSI(opts *ssiOpts) (withExtensions, error) {
 	i := &impl{
-		sqlClient: opts.SQLClient,
-
+		sqlClient:  opts.SQLClient,
 		oasBackend: &adminext.DummyOASBackend{},
+		debugger:   opts.Debugger,
 	}
 
 	if err := dbBootstrapSuperuser(i.sqlClient, opts.ClientID, opts.ClientSecret); err != nil {

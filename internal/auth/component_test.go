@@ -16,17 +16,17 @@ func TestFindMethod(t *testing.T) {
 				Mappings: []*config.AuthMapping{
 					{
 						Backend: "backend1",
-						Method:  "basic",
+						Method:  methodBasic,
 						Exempt:  []string{},
 					},
 					{
 						Backend: "backend2",
-						Method:  "basic",
+						Method:  methodBasic,
 						Exempt:  []string{},
 					},
 					{
 						Backend: "backend3",
-						Method:  "basic",
+						Method:  methodBasic,
 						Exempt: []string{
 							"/url/1",
 							"/",

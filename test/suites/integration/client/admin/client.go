@@ -589,18 +589,18 @@ type ClientInterface interface {
 	StartDebugSession(ctx context.Context, backend string, body StartDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteDebugSession request
-	DeleteDebugSession(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteDebugSession(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDebugSession request
-	GetDebugSession(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetDebugSession(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StopDebugSession request
-	StopDebugSession(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	StopDebugSession(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ExtendDebugSessionWithBody request with any body
-	ExtendDebugSessionWithBody(ctx context.Context, backend string, sessionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ExtendDebugSessionWithBody(ctx context.Context, backend string, sessionId int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	ExtendDebugSession(ctx context.Context, backend string, sessionId string, body ExtendDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ExtendDebugSession(ctx context.Context, backend string, sessionId int, body ExtendDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListDebugSessionCalls request
 	ListDebugSessionCalls(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -715,7 +715,7 @@ func (c *Client) StartDebugSession(ctx context.Context, backend string, body Sta
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteDebugSession(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteDebugSession(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteDebugSessionRequest(c.Server, backend, sessionId)
 	if err != nil {
 		return nil, err
@@ -727,7 +727,7 @@ func (c *Client) DeleteDebugSession(ctx context.Context, backend string, session
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetDebugSession(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetDebugSession(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetDebugSessionRequest(c.Server, backend, sessionId)
 	if err != nil {
 		return nil, err
@@ -739,7 +739,7 @@ func (c *Client) GetDebugSession(ctx context.Context, backend string, sessionId 
 	return c.Client.Do(req)
 }
 
-func (c *Client) StopDebugSession(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) StopDebugSession(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStopDebugSessionRequest(c.Server, backend, sessionId)
 	if err != nil {
 		return nil, err
@@ -751,7 +751,7 @@ func (c *Client) StopDebugSession(ctx context.Context, backend string, sessionId
 	return c.Client.Do(req)
 }
 
-func (c *Client) ExtendDebugSessionWithBody(ctx context.Context, backend string, sessionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ExtendDebugSessionWithBody(ctx context.Context, backend string, sessionId int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewExtendDebugSessionRequestWithBody(c.Server, backend, sessionId, contentType, body)
 	if err != nil {
 		return nil, err
@@ -763,7 +763,7 @@ func (c *Client) ExtendDebugSessionWithBody(ctx context.Context, backend string,
 	return c.Client.Do(req)
 }
 
-func (c *Client) ExtendDebugSession(ctx context.Context, backend string, sessionId string, body ExtendDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ExtendDebugSession(ctx context.Context, backend string, sessionId int, body ExtendDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewExtendDebugSessionRequest(c.Server, backend, sessionId, body)
 	if err != nil {
 		return nil, err
@@ -1193,7 +1193,7 @@ func NewStartDebugSessionRequestWithBody(server string, backend string, contentT
 }
 
 // NewDeleteDebugSessionRequest generates requests for DeleteDebugSession
-func NewDeleteDebugSessionRequest(server string, backend string, sessionId string) (*http.Request, error) {
+func NewDeleteDebugSessionRequest(server string, backend string, sessionId int) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1205,7 +1205,7 @@ func NewDeleteDebugSessionRequest(server string, backend string, sessionId strin
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
 	if err != nil {
 		return nil, err
 	}
@@ -1234,7 +1234,7 @@ func NewDeleteDebugSessionRequest(server string, backend string, sessionId strin
 }
 
 // NewGetDebugSessionRequest generates requests for GetDebugSession
-func NewGetDebugSessionRequest(server string, backend string, sessionId string) (*http.Request, error) {
+func NewGetDebugSessionRequest(server string, backend string, sessionId int) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1246,7 +1246,7 @@ func NewGetDebugSessionRequest(server string, backend string, sessionId string) 
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
 	if err != nil {
 		return nil, err
 	}
@@ -1275,7 +1275,7 @@ func NewGetDebugSessionRequest(server string, backend string, sessionId string) 
 }
 
 // NewStopDebugSessionRequest generates requests for StopDebugSession
-func NewStopDebugSessionRequest(server string, backend string, sessionId string) (*http.Request, error) {
+func NewStopDebugSessionRequest(server string, backend string, sessionId int) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1287,7 +1287,7 @@ func NewStopDebugSessionRequest(server string, backend string, sessionId string)
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
 	if err != nil {
 		return nil, err
 	}
@@ -1316,7 +1316,7 @@ func NewStopDebugSessionRequest(server string, backend string, sessionId string)
 }
 
 // NewExtendDebugSessionRequest calls the generic ExtendDebugSession builder with application/json body
-func NewExtendDebugSessionRequest(server string, backend string, sessionId string, body ExtendDebugSessionJSONRequestBody) (*http.Request, error) {
+func NewExtendDebugSessionRequest(server string, backend string, sessionId int, body ExtendDebugSessionJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -1327,7 +1327,7 @@ func NewExtendDebugSessionRequest(server string, backend string, sessionId strin
 }
 
 // NewExtendDebugSessionRequestWithBody generates requests for ExtendDebugSession with any type of body
-func NewExtendDebugSessionRequestWithBody(server string, backend string, sessionId string, contentType string, body io.Reader) (*http.Request, error) {
+func NewExtendDebugSessionRequestWithBody(server string, backend string, sessionId int, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1339,7 +1339,7 @@ func NewExtendDebugSessionRequestWithBody(server string, backend string, session
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
 	if err != nil {
 		return nil, err
 	}
@@ -2142,18 +2142,18 @@ type ClientWithResponsesInterface interface {
 	StartDebugSessionWithResponse(ctx context.Context, backend string, body StartDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*StartDebugSessionResponse, error)
 
 	// DeleteDebugSessionWithResponse request
-	DeleteDebugSessionWithResponse(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*DeleteDebugSessionResponse, error)
+	DeleteDebugSessionWithResponse(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*DeleteDebugSessionResponse, error)
 
 	// GetDebugSessionWithResponse request
-	GetDebugSessionWithResponse(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*GetDebugSessionResponse, error)
+	GetDebugSessionWithResponse(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*GetDebugSessionResponse, error)
 
 	// StopDebugSessionWithResponse request
-	StopDebugSessionWithResponse(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*StopDebugSessionResponse, error)
+	StopDebugSessionWithResponse(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*StopDebugSessionResponse, error)
 
 	// ExtendDebugSessionWithBodyWithResponse request with any body
-	ExtendDebugSessionWithBodyWithResponse(ctx context.Context, backend string, sessionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ExtendDebugSessionResponse, error)
+	ExtendDebugSessionWithBodyWithResponse(ctx context.Context, backend string, sessionId int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ExtendDebugSessionResponse, error)
 
-	ExtendDebugSessionWithResponse(ctx context.Context, backend string, sessionId string, body ExtendDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*ExtendDebugSessionResponse, error)
+	ExtendDebugSessionWithResponse(ctx context.Context, backend string, sessionId int, body ExtendDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*ExtendDebugSessionResponse, error)
 
 	// ListDebugSessionCallsWithResponse request
 	ListDebugSessionCallsWithResponse(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*ListDebugSessionCallsResponse, error)
@@ -2926,7 +2926,7 @@ func (c *ClientWithResponses) StartDebugSessionWithResponse(ctx context.Context,
 }
 
 // DeleteDebugSessionWithResponse request returning *DeleteDebugSessionResponse
-func (c *ClientWithResponses) DeleteDebugSessionWithResponse(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*DeleteDebugSessionResponse, error) {
+func (c *ClientWithResponses) DeleteDebugSessionWithResponse(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*DeleteDebugSessionResponse, error) {
 	rsp, err := c.DeleteDebugSession(ctx, backend, sessionId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -2935,7 +2935,7 @@ func (c *ClientWithResponses) DeleteDebugSessionWithResponse(ctx context.Context
 }
 
 // GetDebugSessionWithResponse request returning *GetDebugSessionResponse
-func (c *ClientWithResponses) GetDebugSessionWithResponse(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*GetDebugSessionResponse, error) {
+func (c *ClientWithResponses) GetDebugSessionWithResponse(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*GetDebugSessionResponse, error) {
 	rsp, err := c.GetDebugSession(ctx, backend, sessionId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -2944,7 +2944,7 @@ func (c *ClientWithResponses) GetDebugSessionWithResponse(ctx context.Context, b
 }
 
 // StopDebugSessionWithResponse request returning *StopDebugSessionResponse
-func (c *ClientWithResponses) StopDebugSessionWithResponse(ctx context.Context, backend string, sessionId string, reqEditors ...RequestEditorFn) (*StopDebugSessionResponse, error) {
+func (c *ClientWithResponses) StopDebugSessionWithResponse(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*StopDebugSessionResponse, error) {
 	rsp, err := c.StopDebugSession(ctx, backend, sessionId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -2953,7 +2953,7 @@ func (c *ClientWithResponses) StopDebugSessionWithResponse(ctx context.Context, 
 }
 
 // ExtendDebugSessionWithBodyWithResponse request with arbitrary body returning *ExtendDebugSessionResponse
-func (c *ClientWithResponses) ExtendDebugSessionWithBodyWithResponse(ctx context.Context, backend string, sessionId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ExtendDebugSessionResponse, error) {
+func (c *ClientWithResponses) ExtendDebugSessionWithBodyWithResponse(ctx context.Context, backend string, sessionId int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ExtendDebugSessionResponse, error) {
 	rsp, err := c.ExtendDebugSessionWithBody(ctx, backend, sessionId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -2961,7 +2961,7 @@ func (c *ClientWithResponses) ExtendDebugSessionWithBodyWithResponse(ctx context
 	return ParseExtendDebugSessionResponse(rsp)
 }
 
-func (c *ClientWithResponses) ExtendDebugSessionWithResponse(ctx context.Context, backend string, sessionId string, body ExtendDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*ExtendDebugSessionResponse, error) {
+func (c *ClientWithResponses) ExtendDebugSessionWithResponse(ctx context.Context, backend string, sessionId int, body ExtendDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*ExtendDebugSessionResponse, error) {
 	rsp, err := c.ExtendDebugSession(ctx, backend, sessionId, body, reqEditors...)
 	if err != nil {
 		return nil, err

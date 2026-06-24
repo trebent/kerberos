@@ -203,13 +203,11 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		return fmt.Errorf("failed to initialize admin: %w", err)
 	}
 
-	debugger := admin.NewDebugger(db)
-
 	zerologr.Info("Loading observability")
 	observability := obs.NewComponent(&obs.Opts{
 		Cfg:      cfg.ObservabilityConfig,
 		Version:  internalenv.Version.Value(),
-		Debugger: debugger,
+		Debugger: adm.GetDebugger(),
 	})
 
 	zerologr.Info("Loading router")

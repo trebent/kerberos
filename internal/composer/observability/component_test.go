@@ -18,7 +18,7 @@ func TestObservabilityDisabled(t *testing.T) {
 		Enabled: false,
 	}
 
-	opts := &Opts{Cfg: cfg, Debugger: debug.NewDummy()}
+	opts := &Opts{Cfg: cfg, Debugger: debug.NewDummy(nil)}
 	component := NewComponent(opts)
 
 	dummy := &composer.Dummy{
@@ -57,7 +57,7 @@ func TestObservability(t *testing.T) {
 		RuntimeMetrics: false,
 	}
 
-	opts := &Opts{Cfg: cfg}
+	opts := &Opts{Cfg: cfg, Debugger: debug.NewDummy(nil)}
 	component := NewComponent(opts)
 
 	dummy := &composer.Dummy{

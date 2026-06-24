@@ -1,6 +1,7 @@
 package router
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -44,7 +45,7 @@ func TestRouter(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	wrapped := response.NewResponseWrapper(recorder)
 	req := httptest.NewRequest(http.MethodGet, "/gw/backend/not-exist/", nil)
-	router.ServeHTTP(wrapped, req)
+	router.ServeHTTP(wrapped, req.WithContext(context.WithValue(req.Context(), composer.BackendContextKey, "not-exist")))
 
 	if recorder.Code != http.StatusNotFound {
 		t.Fatalf("expected status code %d, got %d", http.StatusNotFound, recorder.Code)
@@ -53,18 +54,9 @@ func TestRouter(t *testing.T) {
 	req = httptest.NewRequest(http.MethodGet, "/gw/backend/backend1/some/path", nil)
 	recorder = httptest.NewRecorder()
 	wrapped = response.NewResponseWrapper(recorder)
-	router.ServeHTTP(wrapped, req)
+	router.ServeHTTP(wrapped, req.WithContext(context.WithValue(req.Context(), composer.BackendContextKey, cfg.Backends[0].Name)))
 
 	if recorder.Code != http.StatusNoContent {
 		t.Fatalf("expected status code %d, got %d", http.StatusNoContent, recorder.Code)
-	}
-
-	req = httptest.NewRequest(http.MethodGet, "/gw/backenddddd/backend1/some/path", nil)
-	recorder = httptest.NewRecorder()
-	wrapped = response.NewResponseWrapper(recorder)
-	router.ServeHTTP(wrapped, req)
-
-	if recorder.Code != http.StatusBadRequest {
-		t.Fatalf("expected status code %d, got %d", http.StatusBadRequest, recorder.Code)
 	}
 }

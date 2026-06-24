@@ -15,8 +15,6 @@ type (
 	DebuggedCall interface {
 		// SetStartTime sets the start time of the call.
 		SetStartTime(startTime time.Time)
-		// SetEndTime sets the end time of the call.
-		SetEndTime(endTime time.Time)
 		// SetURL sets the URL of the call.
 		SetURL(url string)
 		// SetMethod sets the HTTP method of the call.
@@ -54,9 +52,3 @@ const (
 	// use this key directly, use [composer.DebugContextKey] instead.
 	DebugContextKey string = "krb.debug"
 )
-
-// SetEndTime sets the end time of a DebuggedCall to the current time. This is a utility
-// to be able to defer setting the end time.
-func SetEndTime(call DebuggedCall) {
-	call.SetEndTime(time.Now())
-}

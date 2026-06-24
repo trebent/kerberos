@@ -45,6 +45,8 @@ type (
 	}
 )
 
+const methodBasic = "basic"
+
 var (
 	_ Authorizer = (*authorizer)(nil)
 
@@ -191,7 +193,7 @@ func (a *authorizer) findMethod(backend string, req *http.Request) (method.Metho
 	for _, mapping := range a.cfg.Scheme.Mappings {
 		if mapping.Backend == backend {
 			switch mapping.Method {
-			case "basic":
+			case methodBasic:
 				zerologr.V(20).Info("Using basic authentication for backend: " + backend)
 				for _, exemption := range mapping.Exempt {
 					match, err := path.Match(exemption, req.URL.Path)

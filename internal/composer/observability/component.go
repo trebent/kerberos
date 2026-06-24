@@ -10,8 +10,10 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/composer/debug"
+	"github.com/trebent/kerberos/internal/composer/router"
 	"github.com/trebent/kerberos/internal/config"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
+	apierror "github.com/trebent/kerberos/internal/oapi/error"
 	"github.com/trebent/kerberos/internal/response"
 	"github.com/trebent/zerologr"
 	"go.opentelemetry.io/otel"
@@ -177,6 +179,9 @@ func (o *obs) spanStartOpts(req *http.Request) []trace.SpanStartOption {
 
 // ServeHTTP implements [types.FlowComponent].
 func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	// This is for debugging.
+	componentStart := time.Now()
+
 	// Check request trace context
 	ctx := otel.GetTextMapPropagator().Extract(req.Context(), propagation.HeaderCarrier(req.Header))
 	ctx, span := tracer.Start(ctx, req.Method, o.spanStartOpts(req)...)
@@ -185,6 +190,36 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	rLogger := o.logger.WithValues("path", req.URL.Path, "method", req.Method)
 	originalPath := req.URL.Path
 	rLogger.Info(req.Method + " " + originalPath)
+
+	// Debug call is started.
+	debugCall, ctx := o.debugger.Start(ctx)
+	defer debugCall.Finalise()
+	debugCall.SetURL(req.URL.Path)
+	debugCall.SetMethod(req.Method)
+
+	// Wrap the response to extract:
+	// - status code
+	// - response body size
+	wrapped := response.NewResponseWrapper(w)
+
+	// Extract the backend name to enable debugging early on.
+	name, err := router.GetBackendName(req)
+	if err != nil {
+		rLogger.Error(err, "Failed to extract backend name from request path")
+		apierror.ErrorHandler(wrapped, req, err)
+		debugCall.SetStatusCode(http.StatusBadRequest)
+		debugCall.AddTransition(
+			"obs",
+			debug.CallDirectionInbound,
+			componentStart,
+			time.Now(),
+			debug.CallResultFailure,
+			err.Error(),
+		)
+		return
+	}
+
+	ctx = context.WithValue(ctx, composer.BackendContextKey, name)
 	ctx = logr.NewContext(ctx, rLogger)
 
 	// Wrap the request body to extract size
@@ -193,29 +228,65 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		req.Body = bw
 	}
 
-	// Wrap the response to extract:
-	// - status code
-	// - response body size
-	wrapped := response.NewResponseWrapper(w)
+	debugCall.AddTransition(
+		"obs",
+		debug.CallDirectionInbound,
+		componentStart,
+		time.Now(),
+		debug.CallResultSuccess,
+		"",
+	)
 
 	// Since the duration metric is directly related to the route forwarded to, keep the time
 	// measurement as close to the forwarding call as possible.
 	start := time.Now()
 	o.next.ServeHTTP(wrapped, req.WithContext(ctx))
+
+	// Keep this as close to the forwarding call as possible to measure
+	// the duration of the request handling.
 	duration := time.Since(start)
 
-	// Process the response, update the span with attributes.
+	// Reset component start to measure response handling.
+	componentStart = time.Now()
+
+	// Process the response, update the span and metrics with attributes.
 	wrapper, _ := wrapped.(*response.Wrapper)
 	krbAttributes := extractKrbAttributes(wrapper.GetRequestContext())
+
+	o.bumpMetrics(ctx, wrapper, bw, req, duration, krbAttributes)
 
 	span.SetStatus(wrapper.SpanStatus())
 	span.SetAttributes(krbAttributes...)
 
+	rLogger.Info(
+		req.Method+" "+originalPath+" "+strconv.Itoa(wrapper.StatusCode()),
+		string(semconv.HTTPStatusCodeKey), wrapper.StatusCode(),
+	)
+
+	debugCall.SetStatusCode(wrapper.StatusCode())
+	debugCall.AddTransition(
+		"obs",
+		debug.CallDirectionOutbound,
+		componentStart,
+		time.Now(),
+		debug.CallResultSuccess,
+		"",
+	)
+}
+
+func (o *obs) bumpMetrics(
+	ctx context.Context,
+	wrapper *response.Wrapper,
+	bw *response.BodyWrapper,
+	req *http.Request,
+	duration time.Duration,
+	attributes []attribute.KeyValue,
+) {
 	// Update metrics, can't separate request and response handling since the handler is
 	// called by ServeHTTP, no
 	statusCodeOpt := metric.WithAttributes(semconv.HTTPStatusCode(wrapper.StatusCode()))
 	requestMeta := metric.WithAttributes(semconv.HTTPMethod(req.Method))
-	krbMetricMeta := metric.WithAttributes(krbAttributes...)
+	krbMetricMeta := metric.WithAttributes(attributes...)
 
 	// Request
 	o.requestCounter.Add(ctx, 1, requestMeta, krbMetricMeta)
@@ -230,11 +301,6 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// Response
 	o.responseCounter.Add(ctx, 1, statusCodeOpt, requestMeta, krbMetricMeta)
 	o.responseSizeHistogram.Record(ctx, wrapper.NumBytes(), requestMeta, krbMetricMeta)
-
-	rLogger.Info(
-		req.Method+" "+originalPath+" "+strconv.Itoa(wrapper.StatusCode()),
-		string(semconv.HTTPStatusCodeKey), wrapper.StatusCode(),
-	)
 }
 
 func must(err error) {
@@ -273,11 +339,17 @@ func dummyComponent(logger logr.Logger, opts *Opts) composer.FlowComponent {
 		// observability is indeed disabled.
 		debugCall, ctx := opts.Debugger.Start(req.Context())
 		defer debugCall.Finalise()
-		defer debug.SetEndTime(debugCall)
-		debugCall.SetStartTime(time.Now())
 		debugCall.SetURL(req.URL.Path)
 		debugCall.SetMethod(req.Method)
 
+		name, err := router.GetBackendName(req)
+		if err != nil {
+			rLogger.Error(err, "Failed to extract backend name from request path")
+			apierror.ErrorHandler(w, req, err)
+			return
+		}
+
+		ctx = context.WithValue(ctx, composer.BackendContextKey, name)
 		ctx = logr.NewContext(ctx, rLogger)
 
 		// Must set up response wrapper since components down the line depends on it, and to

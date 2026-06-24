@@ -63,6 +63,15 @@ const (
 	// Sessions.
 	deleteAdminSession = "DELETE FROM admin_sessions WHERE session_id = @sessionID;"
 
+	// Named arg keys.
+	argBackend        = "backend"
+	argExpiresAt      = "expires_at"
+	argUserID         = "userID"
+	argName           = "name"
+	argSalt           = "salt"
+	argHashedPassword = "hashedPassword"
+	argGroupID        = "groupID"
+
 	// Debug sessions.
 	insertDebugSession          = "INSERT INTO admin_debug_sessions (backend, expires_at) VALUES(@backend, @expires_at);"
 	insertDebugSessionReturning = "INSERT INTO admin_debug_sessions (backend, expires_at) VALUES(@backend, @expires_at) RETURNING id"
@@ -91,7 +100,7 @@ func dbListDebugSessions(
 	rows, err := client.Query(
 		ctx,
 		selectDebugSessions,
-		sql.NamedArg{Name: "backend", Value: backend},
+		sql.NamedArg{Name: argBackend, Value: backend},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query debug sessions")
@@ -136,16 +145,16 @@ func dbCreateDebugSession(
 ) (int64, error) {
 	if client.Dialect() == db.PostgresDialect {
 		return postgres.InsertReturningID(ctx, client, insertDebugSessionReturning,
-			sql.NamedArg{Name: "backend", Value: backend},
-			sql.NamedArg{Name: "expires_at", Value: expiresAt},
+			sql.NamedArg{Name: argBackend, Value: backend},
+			sql.NamedArg{Name: argExpiresAt, Value: expiresAt},
 		)
 	}
 
 	res, err := client.Exec(
 		ctx,
 		insertDebugSession,
-		sql.NamedArg{Name: "backend", Value: backend},
-		sql.NamedArg{Name: "expires_at", Value: expiresAt.UTC().Format(time.RFC3339Nano)},
+		sql.NamedArg{Name: argBackend, Value: backend},
+		sql.NamedArg{Name: argExpiresAt, Value: expiresAt.UTC().Format(time.RFC3339Nano)},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to insert debug session")
@@ -169,7 +178,7 @@ func dbGetDebugSession(
 	rows, err := client.Query(
 		ctx,
 		selectDebugSession,
-		sql.NamedArg{Name: "backend", Value: backend},
+		sql.NamedArg{Name: argBackend, Value: backend},
 		sql.NamedArg{Name: "id", Value: id},
 	)
 	if err != nil {
@@ -225,14 +234,34 @@ func dbUpdateDebugSession(
 		ctx,
 		updateDebugSession,
 		sql.NamedArg{Name: "stopped_at", Value: stoppedAt},
-		sql.NamedArg{Name: "expires_at", Value: expiresAt},
-		sql.NamedArg{Name: "backend", Value: debugSession.Backend},
+		sql.NamedArg{Name: argExpiresAt, Value: expiresAt},
+		sql.NamedArg{Name: argBackend, Value: debugSession.Backend},
 		sql.NamedArg{Name: "id", Value: debugSession.Id},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to update debug session")
 	}
 	return err
+}
+
+func dbDeleteDebugSession(
+	ctx context.Context,
+	client db.SQLClient,
+	backend string,
+	id int64,
+) error {
+	_, err := client.Exec(
+		ctx,
+		deleteDebugSession,
+		sql.Named(argBackend, backend),
+		sql.Named("id", id),
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to delete debug session")
+		return err
+	}
+
+	return nil
 }
 
 func dbCreateDebugSessionCall(
@@ -421,26 +450,6 @@ func dbListDebugSessionFlowTransitions(
 	return transitions, nil
 }
 
-func dbDeleteDebugSession(
-	ctx context.Context,
-	client db.SQLClient,
-	backend string,
-	id int64,
-) error {
-	_, err := client.Exec(
-		ctx,
-		deleteDebugSession,
-		sql.Named("backend", backend),
-		sql.Named("id", id),
-	)
-	if err != nil {
-		zerologr.Error(err, "Failed to delete debug session")
-		return err
-	}
-
-	return nil
-}
-
 // --- Superuser / session helpers (used by ssi.go, middleware.go) ---
 
 // dbGetSuperuser returns the superuser row.
@@ -519,7 +528,7 @@ func dbGetUser(ctx context.Context, client db.SQLClient, userID int64) (*adminap
 	rows, err := client.Query(
 		ctx,
 		selectAdminUser,
-		sql.NamedArg{Name: "userID", Value: userID},
+		sql.NamedArg{Name: argUserID, Value: userID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query admin user")
@@ -576,17 +585,17 @@ func dbCreateUser(
 ) (int64, error) {
 	if client.Dialect() == db.PostgresDialect {
 		return postgres.InsertReturningID(ctx, client, insertAdminUserReturning,
-			sql.NamedArg{Name: "name", Value: username},
-			sql.NamedArg{Name: "salt", Value: salt},
-			sql.NamedArg{Name: "hashedPassword", Value: hashedPassword},
+			sql.NamedArg{Name: argName, Value: username},
+			sql.NamedArg{Name: argSalt, Value: salt},
+			sql.NamedArg{Name: argHashedPassword, Value: hashedPassword},
 		)
 	}
 	res, err := client.Exec(
 		ctx,
 		insertAdminUser,
-		sql.NamedArg{Name: "name", Value: username},
-		sql.NamedArg{Name: "salt", Value: salt},
-		sql.NamedArg{Name: "hashedPassword", Value: hashedPassword},
+		sql.NamedArg{Name: argName, Value: username},
+		sql.NamedArg{Name: argSalt, Value: salt},
+		sql.NamedArg{Name: argHashedPassword, Value: hashedPassword},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to insert admin user")
@@ -605,8 +614,8 @@ func dbUpdateUser(ctx context.Context, client db.SQLClient, userID int64, userna
 	_, err := client.Exec(
 		ctx,
 		updateAdminUser,
-		sql.NamedArg{Name: "name", Value: username},
-		sql.NamedArg{Name: "userID", Value: userID},
+		sql.NamedArg{Name: argName, Value: username},
+		sql.NamedArg{Name: argUserID, Value: userID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to update admin user")
@@ -618,7 +627,7 @@ func dbDeleteUser(ctx context.Context, client db.SQLClient, userID int64) error 
 	_, err := client.Exec(
 		ctx,
 		deleteAdminUser,
-		sql.NamedArg{Name: "userID", Value: userID},
+		sql.NamedArg{Name: argUserID, Value: userID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to delete admin user")
@@ -636,7 +645,7 @@ func dbGetUserAuth(
 	rows, err := client.Query(
 		ctx,
 		selectAdminUserAuth,
-		sql.NamedArg{Name: "userID", Value: userID},
+		sql.NamedArg{Name: argUserID, Value: userID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query admin user auth")
@@ -670,9 +679,9 @@ func dbUpdateUserPassword(
 	_, err := client.Exec(
 		ctx,
 		updateAdminUserPassword,
-		sql.NamedArg{Name: "salt", Value: salt},
-		sql.NamedArg{Name: "hashedPassword", Value: hashedPassword},
-		sql.NamedArg{Name: "userID", Value: userID},
+		sql.NamedArg{Name: argSalt, Value: salt},
+		sql.NamedArg{Name: argHashedPassword, Value: hashedPassword},
+		sql.NamedArg{Name: argUserID, Value: userID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to update admin user password")
@@ -723,7 +732,7 @@ func dbGetGroup(ctx context.Context, client db.SQLClient, groupID int64) (*admin
 	rows, err := client.Query(
 		ctx,
 		selectAdminGroup,
-		sql.NamedArg{Name: "groupID", Value: groupID},
+		sql.NamedArg{Name: argGroupID, Value: groupID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query admin group")
@@ -776,13 +785,13 @@ func dbListGroups(ctx context.Context, client db.SQLClient) ([]adminapi.Group, e
 func dbCreateGroup(ctx context.Context, client db.SQLClient, name string) (int64, error) {
 	if client.Dialect() == db.PostgresDialect {
 		return postgres.InsertReturningID(ctx, client, insertAdminGroupReturning,
-			sql.NamedArg{Name: "name", Value: name},
+			sql.NamedArg{Name: argName, Value: name},
 		)
 	}
 	res, err := client.Exec(
 		ctx,
 		insertAdminGroup,
-		sql.NamedArg{Name: "name", Value: name},
+		sql.NamedArg{Name: argName, Value: name},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to insert admin group")
@@ -801,8 +810,8 @@ func dbUpdateGroup(ctx context.Context, client db.SQLClient, groupID int64, name
 	_, err := client.Exec(
 		ctx,
 		updateAdminGroup,
-		sql.NamedArg{Name: "name", Value: name},
-		sql.NamedArg{Name: "groupID", Value: groupID},
+		sql.NamedArg{Name: argName, Value: name},
+		sql.NamedArg{Name: argGroupID, Value: groupID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to update admin group")
@@ -814,7 +823,7 @@ func dbDeleteGroup(ctx context.Context, client db.SQLClient, groupID int64) erro
 	_, err := client.Exec(
 		ctx,
 		deleteAdminGroup,
-		sql.NamedArg{Name: "groupID", Value: groupID},
+		sql.NamedArg{Name: argGroupID, Value: groupID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to delete admin group")
@@ -832,7 +841,7 @@ func dbListGroupBindings(
 	rows, err := client.Query(
 		ctx,
 		selectAdminUserGroups,
-		sql.NamedArg{Name: "userID", Value: userID},
+		sql.NamedArg{Name: argUserID, Value: userID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query admin user group bindings")
@@ -888,8 +897,8 @@ func dbUpdateUserGroupBindings(
 		if _, err := tx.Exec(
 			ctx,
 			deleteAdminGroupBinding,
-			sql.NamedArg{Name: "userID", Value: userID},
-			sql.NamedArg{Name: "groupID", Value: b.GroupID},
+			sql.NamedArg{Name: argUserID, Value: userID},
+			sql.NamedArg{Name: argGroupID, Value: b.GroupID},
 		); err != nil {
 			zerologr.Error(err, "Failed to delete admin group binding")
 			return err
@@ -908,8 +917,8 @@ func dbUpdateUserGroupBindings(
 			if _, err := tx.Exec(
 				ctx,
 				insertAdminGroupBinding,
-				sql.NamedArg{Name: "userID", Value: userID},
-				sql.NamedArg{Name: "groupID", Value: groupID},
+				sql.NamedArg{Name: argUserID, Value: userID},
+				sql.NamedArg{Name: argGroupID, Value: groupID},
 			); err != nil {
 				zerologr.Error(err, "Failed to insert admin group binding")
 				return err
@@ -980,8 +989,8 @@ func dbBootstrapSuperuser(client db.SQLClient, clientID, clientSecret string) er
 		if _, err := client.Exec(
 			context.TODO(),
 			insertSuperuser,
-			sql.NamedArg{Name: "name", Value: clientID},
-			sql.NamedArg{Name: "salt", Value: salt},
+			sql.NamedArg{Name: argName, Value: clientID},
+			sql.NamedArg{Name: argSalt, Value: salt},
 			sql.NamedArg{Name: "hashed_password", Value: hashedPassword},
 		); err != nil {
 			return err
@@ -1013,7 +1022,7 @@ func dbBootstrapPermissions(client db.SQLClient) error {
 			context.Background(),
 			insertAdminPermission,
 			sql.NamedArg{Name: "id", Value: p.id},
-			sql.NamedArg{Name: "name", Value: p.name},
+			sql.NamedArg{Name: argName, Value: p.name},
 		); err != nil {
 			if errors.Is(err, db.ErrUnique) {
 				// Permission already exists, ignore error.
@@ -1070,7 +1079,7 @@ func dbGetGroupPermissions(
 	rows, err := client.Query(
 		ctx,
 		selectGroupPermissions,
-		sql.NamedArg{Name: "groupID", Value: groupID},
+		sql.NamedArg{Name: argGroupID, Value: groupID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query group permissions")
@@ -1114,7 +1123,7 @@ func dbSetGroupPermissions(
 	if _, err := tx.Exec(
 		ctx,
 		deleteAdminGroupPermBindings,
-		sql.NamedArg{Name: "groupID", Value: groupID},
+		sql.NamedArg{Name: argGroupID, Value: groupID},
 	); err != nil {
 		zerologr.Error(err, "Failed to delete group permission bindings")
 		return err
@@ -1124,7 +1133,7 @@ func dbSetGroupPermissions(
 		if _, err := tx.Exec(
 			ctx,
 			insertAdminGroupPermBinding,
-			sql.NamedArg{Name: "groupID", Value: groupID},
+			sql.NamedArg{Name: argGroupID, Value: groupID},
 			sql.NamedArg{Name: "permissionID", Value: permID},
 		); err != nil {
 			zerologr.Error(err, "Failed to insert group permission binding")
@@ -1149,7 +1158,7 @@ func dbGetUserPermissionIDs(
 	rows, err := client.Query(
 		ctx,
 		selectUserPermissionIDs,
-		sql.NamedArg{Name: "userID", Value: userID},
+		sql.NamedArg{Name: argUserID, Value: userID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query user permission IDs")
