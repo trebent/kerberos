@@ -171,7 +171,12 @@ func TestDebugSessions(t *testing.T) {
 }
 
 func TestDebugSessionCalls(t *testing.T) {
-	staticSessionID, err := dbCreateDebugSession(context.Background(), testClient, "backend", time.Now().Add(1*time.Hour).Truncate(time.Microsecond))
+	staticSessionID, err := dbCreateDebugSession(
+		context.Background(),
+		testClient,
+		"backend",
+		time.Now().Add(1*time.Hour).Truncate(time.Microsecond),
+	)
 	if err != nil {
 		t.Fatalf("Failed to create debug session: %v", err)
 	}
@@ -211,7 +216,7 @@ func TestDebugSessionCalls(t *testing.T) {
 				},
 			},
 		}
-		if err := dbCreateDebugSessionCall(ctx, testClient, staticSessionID, call1); err != nil {
+		if _, err := dbCreateDebugSessionCall(ctx, testClient, staticSessionID, call1); err != nil {
 			t.Fatalf("Failed to create debug session call 1: %v", err)
 		}
 
@@ -242,11 +247,11 @@ func TestDebugSessionCalls(t *testing.T) {
 				},
 			},
 		}
-		if err := dbCreateDebugSessionCall(ctx, testClient, staticSessionID, call2); err != nil {
+		if _, err := dbCreateDebugSessionCall(ctx, testClient, staticSessionID, call2); err != nil {
 			t.Fatalf("Failed to create debug session call 2: %v", err)
 		}
 
-		calls, err := dbListDebugSessionCalls(ctx, testClient, staticSessionID)
+		calls, err := dbListDebugSessionCalls(ctx, testClient, staticSessionID, true)
 		if err != nil {
 			t.Fatalf("Failed to list debug session calls: %v", err)
 		}
@@ -293,6 +298,37 @@ func TestDebugSessionCalls(t *testing.T) {
 					t.Fatalf("Expected transition cause '', got '%v'", transition.Result.Cause)
 				}
 			}
+		}
+	})
+
+	t.Run("Get debug session call by ID", func(t *testing.T) {
+		ctx := context.Background()
+		callID, err := dbCreateDebugSessionCall(ctx, testClient, staticSessionID, adminapi.DebugSessionCall{
+			Method:     http.MethodGet,
+			Url:        "/test-get",
+			StartedAt:  time.Now().UTC().Truncate(time.Microsecond),
+			StoppedAt:  time.Now().UTC().Add(1 * time.Second).Truncate(time.Microsecond),
+			StatusCode: http.StatusOK,
+		})
+		if err != nil {
+			t.Fatalf("Failed to create debug session call: %v", err)
+		}
+
+		call, err := dbGetDebugSessionCall(ctx, testClient, callID)
+		if err != nil {
+			t.Fatalf("Failed to get debug session call by ID: %v", err)
+		}
+
+		if int64(call.Id) != callID {
+			t.Fatalf("Expected call ID %d, got %d", callID, call.Id)
+		}
+
+		if call.Method != http.MethodGet {
+			t.Fatalf("Expected method 'GET', got '%s'", call.Method)
+		}
+
+		if call.Url != "/test-get" {
+			t.Fatalf("Expected URL '/test-get', got '%s'", call.Url)
 		}
 	})
 }

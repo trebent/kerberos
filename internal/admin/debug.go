@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
@@ -51,6 +52,10 @@ func (i *impl) StopDebugSession(
 
 	updatedSession, err := dbGetDebugSession(ctx, i.SQLClient, req.Backend, int64(req.SessionId))
 	if err != nil {
+		if errors.Is(err, errRowNotFound) {
+			return adminapi.StopDebugSession404JSONResponse(apiErrNotFound), nil
+		}
+
 		return adminapi.StopDebugSession500JSONResponse(apiErrInternal), err
 	}
 
@@ -82,6 +87,10 @@ func (i *impl) ExtendDebugSession(
 
 	updatedSession, err := dbGetDebugSession(ctx, i.SQLClient, req.Backend, int64(req.SessionId))
 	if err != nil {
+		if errors.Is(err, errRowNotFound) {
+			return adminapi.ExtendDebugSession404JSONResponse(apiErrNotFound), nil
+		}
+
 		return adminapi.ExtendDebugSession500JSONResponse(apiErrInternal), err
 	}
 
@@ -120,6 +129,10 @@ func (i *impl) GetDebugSession(
 
 	session, err := dbGetDebugSession(ctx, i.SQLClient, req.Backend, int64(req.SessionId))
 	if err != nil {
+		if errors.Is(err, errRowNotFound) {
+			return adminapi.GetDebugSession404JSONResponse(apiErrNotFound), nil
+		}
+
 		return adminapi.GetDebugSession500JSONResponse(apiErrInternal), err
 	}
 
@@ -174,7 +187,7 @@ func (i *impl) DeleteDebugSession(
 	return adminapi.DeleteDebugSession204Response{}, nil
 }
 
-// ListDebugSessionCalls implements [withE	xtensions].
+// ListDebugSessionCalls implements [withExtensions].
 func (i *impl) ListDebugSessionCalls(
 	ctx context.Context,
 	req adminapi.ListDebugSessionCallsRequestObject,
@@ -183,10 +196,39 @@ func (i *impl) ListDebugSessionCalls(
 		return adminapi.ListDebugSessionCalls403JSONResponse(apiErrForbidden), nil
 	}
 
-	calls, err := dbListDebugSessionCalls(ctx, i.SQLClient, int64(req.SessionId))
+	calls, err := dbListDebugSessionCalls(
+		ctx,
+		i.SQLClient,
+		int64(req.SessionId),
+		req.Params.IncludeTransitions,
+	)
 	if err != nil {
 		return adminapi.ListDebugSessionCalls500JSONResponse(apiErrInternal), err
 	}
 
 	return adminapi.ListDebugSessionCalls200JSONResponse(calls), nil
+}
+
+func (i *impl) GetDebugSessionCall(
+	ctx context.Context,
+	req adminapi.GetDebugSessionCallRequestObject,
+) (adminapi.GetDebugSessionCallResponseObject, error) {
+	if !ContextIsDebugger(ctx) {
+		return adminapi.GetDebugSessionCall403JSONResponse(apiErrForbidden), nil
+	}
+
+	call, err := dbGetDebugSessionCall(
+		ctx,
+		i.SQLClient,
+		int64(req.CallId),
+	)
+	if err != nil {
+		if errors.Is(err, errRowNotFound) {
+			return adminapi.GetDebugSessionCall404JSONResponse(apiErrNotFound), nil
+		}
+
+		return adminapi.GetDebugSessionCall500JSONResponse(apiErrInternal), err
+	}
+
+	return adminapi.GetDebugSessionCall200JSONResponse(*call), nil
 }

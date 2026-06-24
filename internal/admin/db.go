@@ -83,6 +83,7 @@ const (
 	insertDebugSessionCall          = "INSERT INTO admin_debug_session_calls (session_id, started_at, stopped_at, url, method, status_code) VALUES(@session_id, @started_at, @stopped_at, @url, @method, @status_code);"
 	insertDebugSessionCallReturning = "INSERT INTO admin_debug_session_calls (session_id, started_at, stopped_at, url, method, status_code) VALUES(@session_id, @started_at, @stopped_at, @url, @method, @status_code) RETURNING id"
 	selectDebugSessionCalls         = "SELECT id, started_at, stopped_at, url, method, status_code FROM admin_debug_session_calls WHERE session_id = @session_id ORDER BY stopped_at DESC;"
+	selectDebugSessionCall          = "SELECT id, started_at, stopped_at, url, method, status_code FROM admin_debug_session_calls WHERE id = @id ORDER BY stopped_at DESC;"
 
 	insertDebugSessionFlowTransition  = "INSERT INTO admin_debug_session_call_flow_transitions (call_id, component, direction, started_at, stopped_at, result, failure_cause) VALUES(@call_id, @component, @direction, @started_at, @stopped_at, @result, @failure_cause);"
 	selectDebugSessionFlowTransitions = "SELECT component, direction, started_at, stopped_at, result, failure_cause FROM admin_debug_session_call_flow_transitions WHERE call_id = @call_id ORDER BY started_at ASC;"
@@ -269,7 +270,7 @@ func dbCreateDebugSessionCall(
 	client db.SQLClient,
 	sessionID int64,
 	call adminapi.DebugSessionCall,
-) error {
+) (int64, error) {
 	startedAt := any(call.StartedAt)
 	stoppedAt := any(call.StoppedAt)
 
@@ -293,7 +294,7 @@ func dbCreateDebugSessionCall(
 			sql.Named("status_code", call.StatusCode),
 		)
 		if err != nil {
-			return err
+			return 0, err
 		}
 	} else {
 		res, err := client.Exec(
@@ -308,13 +309,13 @@ func dbCreateDebugSessionCall(
 		)
 		if err != nil {
 			zerologr.Error(err, "Failed to insert debug session call")
-			return err
+			return 0, err
 		}
 
 		callID, err = res.LastInsertId()
 		if err != nil {
 			zerologr.Error(err, "Failed to get last insert ID for debug session")
-			return err
+			return 0, err
 		}
 	}
 
@@ -340,17 +341,18 @@ func dbCreateDebugSessionCall(
 			sql.Named("failure_cause", transition.Result.Cause),
 		); err != nil {
 			zerologr.Error(err, "Failed to insert debug session flow transition")
-			return err
+			return 0, err
 		}
 	}
 
-	return nil
+	return callID, nil
 }
 
 func dbListDebugSessionCalls(
 	ctx context.Context,
 	client db.SQLClient,
 	sessionID int64,
+	includeTransitions bool,
 ) ([]adminapi.DebugSessionCall, error) {
 	rows, err := client.Query(
 		ctx,
@@ -389,17 +391,74 @@ func dbListDebugSessionCalls(
 		return nil, err
 	}
 
-	// Fetch flow transitions per call.
-	for i, call := range calls {
+	if includeTransitions {
+		// Fetch flow transitions per call.
+		for i, call := range calls {
+			transitions, err := dbListDebugSessionFlowTransitions(ctx, client, int64(call.Id))
+			if err != nil {
+				zerologr.Error(err, "Failed to list debug session flow transitions")
+				return nil, err
+			}
+			calls[i].FlowTransitions = transitions
+		}
+	}
+
+	return calls, nil
+}
+
+func dbGetDebugSessionCall(
+	ctx context.Context,
+	client db.SQLClient,
+	callID int64,
+) (*adminapi.DebugSessionCall, error) {
+	rows, err := client.Query(
+		ctx,
+		selectDebugSessionCall,
+		sql.Named("id", callID),
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to query debug session call")
+		return nil, err
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		var (
+			call      = &adminapi.DebugSessionCall{}
+			startedAt db.TimeString
+			stoppedAt db.TimeString
+		)
+		if err := rows.Scan(
+			&call.Id,
+			&startedAt,
+			&stoppedAt,
+			&call.Url,
+			&call.Method,
+			&call.StatusCode,
+		); err != nil {
+			zerologr.Error(err, "Failed to scan debug session call row")
+			return nil, err
+		}
+		call.StartedAt = startedAt.Time
+		call.StoppedAt = stoppedAt.Time
+		// Close cursor before issuing the nested flow-transitions query.
+		// On SQLite (single connection) an open cursor blocks further queries.
+		_ = rows.Close()
+
 		transitions, err := dbListDebugSessionFlowTransitions(ctx, client, int64(call.Id))
 		if err != nil {
 			zerologr.Error(err, "Failed to list debug session flow transitions")
 			return nil, err
 		}
-		calls[i].FlowTransitions = transitions
+		call.FlowTransitions = transitions
+
+		return call, nil
+	} else if err := rows.Err(); err != nil {
+		zerologr.Error(err, "Failed to iterate debug session call rows")
+		return nil, err
 	}
 
-	return calls, nil
+	return nil, errRowNotFound
 }
 
 func dbListDebugSessionFlowTransitions(
