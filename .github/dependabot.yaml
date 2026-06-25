@@ -35,10 +35,6 @@ updates:
         update-types:
           - "minor"
           - "patch"
-    ignore:
-      - dependency-name: golang
-        versions:
-          - "*rc*"
 
   - package-ecosystem: "github-actions"
     directory: "/"
