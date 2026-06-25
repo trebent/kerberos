@@ -151,11 +151,20 @@ func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	case errors.Is(err, errNoMethod):
 		zerologr.V(20).
 			Info(fmt.Sprintf("Backend %s does not have a defined auth method, calling next", backend))
+		// No debug call here on purpose, since no auth method is configured for the given backend.
 		a.next.ServeHTTP(w, req)
 		return
 	case errors.Is(err, errExempted):
 		zerologr.V(20).
 			Info(fmt.Sprintf("Backend %s path %s is exempted, calling next", backend, req.URL.Path))
+		debugCall.AddTransition(
+			"authorizer",
+			debug.CallDirectionInbound,
+			debugStart,
+			time.Now(),
+			debug.CallResultSuccess,
+			"",
+		)
 		a.next.ServeHTTP(w, req)
 		return
 	case err != nil:
