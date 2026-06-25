@@ -90,12 +90,12 @@ func (r *router) GetMeta() []adminapi.FlowMeta {
 
 // ServeHTTP implements [composer.FlowComponent].
 func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
+	debugStart := time.Now()
+	debuggedCall := composer.DebugFromContext(req.Context())
+
 	logger, _ := logr.FromContext(req.Context())
 	rLogger := logger.WithName("router")
 	rLogger.Info("Routing request", "path", req.URL.Path)
-
-	debugStart := time.Now()
-	debuggedCall := composer.DebugFromContext(req.Context())
 
 	backend, err := r.GetBackend(req)
 	if errors.Is(err, apiErrNoBackendFound) {

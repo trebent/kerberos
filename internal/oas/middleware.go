@@ -41,9 +41,8 @@ func ValidationMiddleware(spec *openapi3.T) func(http.Handler) http.Handler {
 				opts nethttpmiddleware.ErrorHandlerOpts,
 			) {
 				debugStart, _ := r.Context().Value(debugStartKey).(time.Time)
-				debuggedCall := composer.DebugFromContext(r.Context())
-				oasValidationErrorHandler(ctx, err, w, r, opts)
-				debuggedCall.AddTransition(
+				debugCall := composer.DebugFromContext(r.Context())
+				debugCall.AddTransition(
 					"oas-validator",
 					debug.CallDirectionInbound,
 					debugStart,
@@ -51,6 +50,9 @@ func ValidationMiddleware(spec *openapi3.T) func(http.Handler) http.Handler {
 					debug.CallResultFailure,
 					err.Error(),
 				)
+
+				// DO not finalise the debug call after the error handler is called, the error handler is considered OUTBOUND.
+				oasValidationErrorHandler(ctx, err, w, r, opts)
 			},
 		}
 
@@ -58,8 +60,8 @@ func ValidationMiddleware(spec *openapi3.T) func(http.Handler) http.Handler {
 		// This is the success case; the failure case is handled by ErrorHandlerWithOpts above.
 		actualHandler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			debugStart, _ := req.Context().Value(debugStartKey).(time.Time)
-			debuggedCall := composer.DebugFromContext(req.Context())
-			debuggedCall.AddTransition(
+			debugCall := composer.DebugFromContext(req.Context())
+			debugCall.AddTransition(
 				"oas-validator",
 				debug.CallDirectionInbound,
 				debugStart,

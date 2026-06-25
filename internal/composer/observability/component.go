@@ -170,9 +170,10 @@ func (o *obs) GetMeta() []adminapi.FlowMeta {
 }
 
 func (o *obs) spanStartOpts(req *http.Request) []trace.SpanStartOption {
-	opts := make([]trace.SpanStartOption, len(o.spanOpts)+1)
+	opts := make([]trace.SpanStartOption, len(o.spanOpts)+2)
 	copy(opts, o.spanOpts)
 	opts[len(opts)-1] = trace.WithAttributes(semconv.HTTPMethod(req.Method))
+	opts[len(opts)-2] = trace.WithAttributes(semconv.HTTPURL(req.URL.Path))
 
 	return opts
 }
@@ -198,18 +199,24 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// Wrapped body to extract size.
 	bw, _ := response.NewBodyWrapper(req.Body).(*response.BodyWrapper)
 
-	// Extract the backend name to enable debugging early on.
-	name, err := router.GetBackendName(req)
+	// Extract the backend backendName to enable debugging and context enrichment early on.
+	backendName, err := router.GetBackendName(req)
 	if err != nil {
 		rLogger.Error(err, "Failed to extract backend name from request path")
 		apierror.ErrorHandler(wrapped, req, err)
+		krbAttributes := extractKrbAttributes(ctx)
 		//nolint:errcheck // no point
-		o.bumpMetrics(ctx, wrapped.(*response.Wrapper), bw, req, 0, extractKrbAttributes(ctx))
+		o.bumpMetrics(ctx, wrapped.(*response.Wrapper), bw, req, 0, krbAttributes)
+
+		span.SetStatus(http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+		span.SetAttributes(krbAttributes...)
+
+		// Debugging this failure is pointless since the session matching will inevitably
 		return
 	}
 
 	// Make sure this is set prior to debugging, always.
-	ctx = context.WithValue(ctx, composer.BackendContextKey, name)
+	ctx = context.WithValue(ctx, composer.BackendContextKey, backendName)
 
 	// Debug call is started.
 	debugCall, ctx := o.debugger.Start(ctx)
