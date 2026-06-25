@@ -91,7 +91,8 @@ func (d *debugger) Start(ctx context.Context) (composerdebug.DebuggedCall, conte
 	}
 
 	zerologr.V(20).Info("Debugging call", "backend", backend, "session_id", id)
-	return newRealCall(d.SQLClient, id), ctx
+	rc := newRealCall(d.SQLClient, id)
+	return rc, context.WithValue(ctx, composer.DebugContextKey, rc)
 }
 
 func newRealCall(

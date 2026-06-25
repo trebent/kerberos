@@ -596,14 +596,14 @@ func TestDebugFullFlow(t *testing.T) {
 	matches(getResp.JSON200.Id, sessionID, t)
 
 	// Make a gateway request so a call gets recorded.
-	makeGatewayRequest(t, "echo", "/flow-test")
+	makeGatewayRequest(t, "echo", "/hi")
 
 	// List calls with transitions.
 	listCallsResp, err := adminClient.ListDebugSessionCallsWithResponse(
 		t.Context(),
 		"echo",
 		sessionID,
-		&adminapi.ListDebugSessionCallsParams{IncludeTransitions: true},
+		&adminapi.ListDebugSessionCallsParams{IncludeTransitions: false},
 		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
 	)
 	checkErr(err, t)
@@ -624,6 +624,9 @@ func TestDebugFullFlow(t *testing.T) {
 	checkErr(err, t)
 	verifyStatusCode(getCallResp.StatusCode(), http.StatusOK, t)
 	matches(getCallResp.JSON200.Id, callID, t)
+	matches(false, len(getCallResp.JSON200.FlowTransitions) == 0, t)
+	matches(http.MethodGet, getCallResp.JSON200.Method, t)
+	matches("/gw/backend/echo/hi", getCallResp.JSON200.Url, t)
 
 	// Stop.
 	stopResp, err := adminClient.StopDebugSessionWithResponse(
