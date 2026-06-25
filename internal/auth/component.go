@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"time"
 
 	"github.com/go-logr/logr"
 	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
@@ -13,6 +14,7 @@ import (
 	"github.com/trebent/kerberos/internal/auth/method/basic"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/composer/custom"
+	"github.com/trebent/kerberos/internal/composer/debug"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/db"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
@@ -138,6 +140,10 @@ func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	logger, _ := logr.FromContext(ctx)
 	logger = logger.WithName("authorizer")
 	logger.Info("Authorizing request")
+
+	debugStart := time.Now()
+	debugCall := composer.DebugFromContext(req.Context())
+
 	//nolint:errcheck // if this isn't populated the flow chain has been broken.
 	backend := ctx.Value(composer.BackendContextKey).(string)
 
@@ -156,21 +162,32 @@ func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	case err != nil:
 		zerologr.Error(err, "Error during authentication")
 		apierror.ErrorHandler(w, req, apierror.ErrISE)
+		transitionFailure(debugCall, debugStart, apierror.ErrISE.Error())
 		return
 	}
 
 	if err := m.Authenticated(req); err != nil {
 		zerologr.Error(err, "User tried to perform an authenticated action while unauthenticated")
 		apierror.ErrorHandler(w, req, apierror.ErrUnauthenticated)
+		transitionFailure(debugCall, debugStart, http.StatusText(http.StatusUnauthorized))
 		return
 	}
 
 	if err := m.Authorized(req); err != nil {
 		zerologr.Error(err, "User tried to perform an action they were not authorized to do")
 		apierror.ErrorHandler(w, req, apierror.ErrForbidden)
+		transitionFailure(debugCall, debugStart, http.StatusText(http.StatusForbidden))
 		return
 	}
 
+	debugCall.AddTransition(
+		"authorizer",
+		debug.CallDirectionInbound,
+		debugStart,
+		time.Now(),
+		debug.CallResultSuccess,
+		"",
+	)
 	// Forward the request now that it's been auth'd.
 	a.next.ServeHTTP(w, req)
 }
@@ -221,4 +238,15 @@ func makeAuthZMap(mappings []*config.AuthMapping) map[string]*config.AuthZ {
 		m[mapping.Backend] = mapping.Authorization
 	}
 	return m
+}
+
+func transitionFailure(debugCall debug.DebuggedCall, debugStart time.Time, errMsg string) {
+	debugCall.AddTransition(
+		"authorizer",
+		debug.CallDirectionInbound,
+		debugStart,
+		time.Now(),
+		debug.CallResultFailure,
+		errMsg,
+	)
 }

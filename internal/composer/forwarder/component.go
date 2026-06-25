@@ -33,12 +33,7 @@ var (
 	_ composer.FlowComponent = (*forwarder)(nil)
 
 	errFailedTargetExtract = errors.New("could not determine target from context")
-	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
-	apiErrFailedTargetExtract = apierror.New(
-		http.StatusInternalServerError,
-		http.StatusText(http.StatusInternalServerError),
-	)
-	errFailedForwarding = errors.New("failed to forward request")
+	errFailedForwarding    = errors.New("failed to forward request")
 	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
 	apiErrFailedForwarding = apierror.New(
 		http.StatusInternalServerError,
@@ -86,44 +81,79 @@ func (f *forwarder) GetMeta() []adminapi.FlowMeta {
 }
 
 // ServeHTTP implements [composer.FlowComponent].
-//
-//nolint:funlen // welp
 func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
+	debugStart := time.Now()
+	debugCall := composer.DebugFromContext(req.Context())
+
 	// Obtain matching backend to route to.
 	// Forward request and pipe forwarded response into origin response.
 	rLogger, _ := logr.FromContext(req.Context())
 	rLogger = rLogger.WithName("forwarder")
 	rLogger.V(20).Info("Forwarding request")
 
-	debugStart := time.Now()
-	debuggedCall := composer.DebugFromContext(req.Context())
-
-	target, ok := req.Context().Value(f.targetContextKey).(*config.RouterBackend)
-	if !ok {
-		rLogger.Error(
-			fmt.Errorf("%w: %s", errFailedTargetExtract, req.URL.Path),
-			"Target extract failed",
-		)
-		apierror.ErrorHandler(wrapped, req, apiErrFailedTargetExtract)
-		debuggedCall.AddTransition(
+	resp, err := f.handleInbound(req)
+	if err != nil {
+		rLogger.Error(err, "Failed to forward request")
+		apierror.ErrorHandler(wrapped, req, apiErrFailedForwarding)
+		debugCall.AddTransition(
 			"forwarder",
 			composerdebug.CallDirectionInbound,
 			debugStart,
 			time.Now(),
 			composerdebug.CallResultFailure,
-			errFailedTargetExtract.Error(),
+			err.Error(),
+		)
+		return
+	}
+	defer resp.Body.Close()
+
+	debugCall.AddTransition(
+		"forwarder",
+		composerdebug.CallDirectionInbound,
+		debugStart,
+		time.Now(),
+		composerdebug.CallResultSuccess,
+		"",
+	)
+
+	// Reset to track outbound transition time.
+	debugStart = time.Now()
+
+	if err := f.handleOutbound(resp, wrapped, rLogger); err != nil {
+		rLogger.Error(err, "Failed to handle outbound response")
+		apierror.ErrorHandler(wrapped, req, apiErrFailedForwarding)
+		debugCall.AddTransition(
+			"forwarder",
+			composerdebug.CallDirectionOutbound,
+			debugStart,
+			time.Now(),
+			composerdebug.CallResultFailure,
+			err.Error(),
 		)
 		return
 	}
 
+	debugCall.AddTransition(
+		"forwarder",
+		composerdebug.CallDirectionOutbound,
+		debugStart,
+		time.Now(),
+		composerdebug.CallResultSuccess,
+		"",
+	)
+
+	rLogger.V(50).Info("Forwarded request")
+}
+
+func (f *forwarder) handleInbound(req *http.Request) (*http.Response, error) {
+	target, ok := req.Context().Value(f.targetContextKey).(*config.RouterBackend)
+	if !ok {
+		return nil, fmt.Errorf("%w: no target for: %s", errFailedTargetExtract, req.URL.Path)
+	}
+
 	client, ok := f.clients[target.Name]
 	if !ok {
-		rLogger.Error(
-			fmt.Errorf("%w: %s", errFailedTargetExtract, req.URL.Path),
-			"Client not found for target",
-		)
-		apierror.ErrorHandler(wrapped, req, apiErrFailedTargetExtract)
-		return
+		return nil, fmt.Errorf("%w: no client for: %s", errFailedTargetExtract, req.URL.Path)
 	}
 
 	scheme := "http"
@@ -144,44 +174,23 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 		req.Body,
 	)
 	if err != nil {
-		rLogger.Error(err, "Failed to create request")
-		apierror.ErrorHandler(wrapped, req, apiErrFailedForwarding)
-		return
+		return nil, err
 	}
 
 	forwardRequest.Header = req.Header
 	otel.GetTextMapPropagator().
 		Inject(req.Context(), propagation.HeaderCarrier(forwardRequest.Header))
 
-	debuggedCall.AddTransition(
-		"forwarder",
-		composerdebug.CallDirectionInbound,
-		debugStart,
-		time.Now(),
-		composerdebug.CallResultSuccess,
-		"",
-	)
+	//nolint:gosec // ignoring SSRF warning since the target is determined by our own
+	// routing logic and not user input.
+	return client.Do(forwardRequest)
+}
 
-	//nolint:gosec // ignoring SSRF warning since the target is determined by our own routing logic and not user input.
-	resp, err := client.Do(forwardRequest)
-	if err != nil {
-		rLogger.Error(err, "Failed to forward request")
-		apierror.ErrorHandler(wrapped, req, apiErrFailedForwarding)
-		debuggedCall.AddTransition(
-			"forwarder",
-			composerdebug.CallDirectionInbound,
-			debugStart,
-			time.Now(),
-			composerdebug.CallResultFailure,
-			apiErrFailedForwarding.Error(),
-		)
-		return
-	}
-	defer resp.Body.Close()
-
-	// Reset to track outbound transition time.
-	debugStart = time.Now()
-
+func (f *forwarder) handleOutbound(
+	resp *http.Response,
+	wrapped http.ResponseWriter,
+	rLogger logr.Logger,
+) error {
 	for key, values := range resp.Header {
 		rLogger.V(100).Info("Adding header to response", "key", key, "values", values)
 		for _, value := range values {
@@ -191,29 +200,6 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 
 	wrapped.WriteHeader(resp.StatusCode)
 
-	_, err = io.Copy(wrapped, resp.Body)
-	if err != nil {
-		rLogger.Error(err, "Failed to copy response body")
-		apierror.ErrorHandler(wrapped, req, apiErrFailedForwarding)
-		debuggedCall.AddTransition(
-			"forwarder",
-			composerdebug.CallDirectionOutbound,
-			debugStart,
-			time.Now(),
-			composerdebug.CallResultFailure,
-			apiErrFailedForwarding.Error(),
-		)
-		return
-	}
-
-	debuggedCall.AddTransition(
-		"forwarder",
-		composerdebug.CallDirectionOutbound,
-		debugStart,
-		time.Now(),
-		composerdebug.CallResultSuccess,
-		"",
-	)
-
-	rLogger.V(50).Info("Forwarded request")
+	_, err := io.Copy(wrapped, resp.Body)
+	return err
 }

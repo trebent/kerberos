@@ -179,7 +179,6 @@ func (o *obs) spanStartOpts(req *http.Request) []trace.SpanStartOption {
 
 // ServeHTTP implements [types.FlowComponent].
 func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	// This is for debugging.
 	debugStart := time.Now()
 
 	// Check request trace context
@@ -205,7 +204,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		rLogger.Error(err, "Failed to extract backend name from request path")
 		apierror.ErrorHandler(wrapped, req, err)
 		//nolint:errcheck // no point
-		o.bumpMetrics(ctx, wrapped.(*response.Wrapper), bw, req, 0, []attribute.KeyValue{})
+		o.bumpMetrics(ctx, wrapped.(*response.Wrapper), bw, req, 0, extractKrbAttributes(ctx))
 		return
 	}
 
