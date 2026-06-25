@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/trebent/kerberos/internal/composer"
+	composerdebug "github.com/trebent/kerberos/internal/composer/debug"
 	"github.com/trebent/kerberos/internal/config"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
@@ -85,12 +86,17 @@ func (f *forwarder) GetMeta() []adminapi.FlowMeta {
 }
 
 // ServeHTTP implements [composer.FlowComponent].
+//
+//nolint:funlen // welp
 func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	// Obtain matching backend to route to.
 	// Forward request and pipe forwarded response into origin response.
 	rLogger, _ := logr.FromContext(req.Context())
 	rLogger = rLogger.WithName("forwarder")
 	rLogger.V(20).Info("Forwarding request")
+
+	debugStart := time.Now()
+	debuggedCall := composer.DebugFromContext(req.Context())
 
 	target, ok := req.Context().Value(f.targetContextKey).(*config.RouterBackend)
 	if !ok {
@@ -99,6 +105,14 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 			"Target extract failed",
 		)
 		apierror.ErrorHandler(wrapped, req, apiErrFailedTargetExtract)
+		debuggedCall.AddTransition(
+			"forwarder",
+			composerdebug.CallDirectionInbound,
+			debugStart,
+			time.Now(),
+			composerdebug.CallResultFailure,
+			errFailedTargetExtract.Error(),
+		)
 		return
 	}
 
@@ -139,14 +153,34 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	otel.GetTextMapPropagator().
 		Inject(req.Context(), propagation.HeaderCarrier(forwardRequest.Header))
 
+	debuggedCall.AddTransition(
+		"forwarder",
+		composerdebug.CallDirectionInbound,
+		debugStart,
+		time.Now(),
+		composerdebug.CallResultSuccess,
+		"",
+	)
+
 	//nolint:gosec // ignoring SSRF warning since the target is determined by our own routing logic and not user input.
 	resp, err := client.Do(forwardRequest)
 	if err != nil {
 		rLogger.Error(err, "Failed to forward request")
 		apierror.ErrorHandler(wrapped, req, apiErrFailedForwarding)
+		debuggedCall.AddTransition(
+			"forwarder",
+			composerdebug.CallDirectionInbound,
+			debugStart,
+			time.Now(),
+			composerdebug.CallResultFailure,
+			apiErrFailedForwarding.Error(),
+		)
 		return
 	}
 	defer resp.Body.Close()
+
+	// Reset to track outbound transition time.
+	debugStart = time.Now()
 
 	for key, values := range resp.Header {
 		rLogger.V(100).Info("Adding header to response", "key", key, "values", values)
@@ -161,8 +195,25 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		rLogger.Error(err, "Failed to copy response body")
 		apierror.ErrorHandler(wrapped, req, apiErrFailedForwarding)
+		debuggedCall.AddTransition(
+			"forwarder",
+			composerdebug.CallDirectionOutbound,
+			debugStart,
+			time.Now(),
+			composerdebug.CallResultFailure,
+			apiErrFailedForwarding.Error(),
+		)
 		return
 	}
+
+	debuggedCall.AddTransition(
+		"forwarder",
+		composerdebug.CallDirectionOutbound,
+		debugStart,
+		time.Now(),
+		composerdebug.CallResultSuccess,
+		"",
+	)
 
 	rLogger.V(50).Info("Forwarded request")
 }

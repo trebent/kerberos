@@ -23,8 +23,10 @@ type (
 	}
 	validator struct {
 		next composer.FlowComponent
-		// Map of backend name to OAS validator handler.
-		validators map[string]func(http.Handler) http.Handler
+		// Map of backend name to middleware factory, stored at register time.
+		// Converted to ready-to-use handlers in Next() once the downstream is known.
+		factories  map[string]func(http.Handler) http.Handler
+		validators map[string]http.Handler
 		cfg        *config.OASConfig
 	}
 	Opts struct {
@@ -39,7 +41,11 @@ func NewComponent(opts *Opts) Validator {
 	//nolint:reassign // yolo
 	openapi3.SchemaErrorDetailsDisabled = true
 
-	v := &validator{cfg: opts.Cfg, validators: make(map[string]func(http.Handler) http.Handler)}
+	v := &validator{
+		cfg:        opts.Cfg,
+		factories:  make(map[string]func(http.Handler) http.Handler),
+		validators: make(map[string]http.Handler),
+	}
 	for _, mapping := range v.cfg.Mappings {
 		if err := v.register(mapping); err != nil {
 			panic(err)
@@ -54,8 +60,13 @@ func (v *validator) Order() int {
 }
 
 // Next implements [composer.FlowComponent].
+// It also builds the per-backend handler chains now that the downstream is known,
+// so the gorilla/mux router inside each ValidationMiddleware is created once.
 func (v *validator) Next(next composer.FlowComponent) {
 	v.next = next
+	for backend, factory := range v.factories {
+		v.validators[backend] = factory(next)
+	}
 }
 
 // GetMeta implements [composer.FlowComponent].
@@ -89,7 +100,7 @@ func (v *validator) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	oLogger.Info("Running OAS validation", "backend", backend)
 
 	if handler, ok := v.validators[backend]; ok {
-		handler(v.next).ServeHTTP(w, req)
+		handler.ServeHTTP(w, req)
 	} else {
 		v.next.ServeHTTP(w, req)
 	}
@@ -117,7 +128,7 @@ func (v *validator) register(m *config.OASBackendMapping) error {
 		}
 	}
 
-	v.validators[m.Backend] = ValidationMiddleware(spec)
+	v.factories[m.Backend] = ValidationMiddleware(spec)
 
 	return nil
 }

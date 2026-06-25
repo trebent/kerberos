@@ -98,7 +98,7 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 			var validation []error
 			switch operationID {
 			case "CreateOrganisation", "ListOrganisations":
-				zerologr.Info("Validating creating/listing organisations")
+				zerologr.V(20).Info("Validating creating/listing organisations")
 				validation = make([]error, 1)
 				validation[0] = apierror.ErrForbidden
 			case "Logout":

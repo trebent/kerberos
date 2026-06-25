@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/trebent/kerberos/internal/composer"
+	composerdebug "github.com/trebent/kerberos/internal/composer/debug"
 	"github.com/trebent/kerberos/internal/config"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
@@ -92,10 +94,21 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	rLogger := logger.WithName("router")
 	rLogger.Info("Routing request", "path", req.URL.Path)
 
+	debugStart := time.Now()
+	debuggedCall := composer.DebugFromContext(req.Context())
+
 	backend, err := r.GetBackend(req)
 	if errors.Is(err, apiErrNoBackendFound) {
 		rLogger.Error(err, "Failed to route request")
 		apierror.ErrorHandler(wrapped, req, apiErrNoBackendFound)
+		debuggedCall.AddTransition(
+			"router",
+			composerdebug.CallDirectionInbound,
+			debugStart,
+			time.Now(),
+			composerdebug.CallResultFailure,
+			apiErrNoBackendFound.Error(),
+		)
 		return
 	}
 
@@ -109,6 +122,15 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 
 	// Strip the /gw/backend/{backend-name} prefix from the request URL path.
 	req.URL.Path = stripKrbPrefix(req.URL.Path, backend.Name)
+
+	debuggedCall.AddTransition(
+		"router",
+		composerdebug.CallDirectionInbound,
+		debugStart,
+		time.Now(),
+		composerdebug.CallResultSuccess,
+		"",
+	)
 
 	// Serve the request with the updated context.
 	r.next.ServeHTTP(wrapped, req.WithContext(ctx))

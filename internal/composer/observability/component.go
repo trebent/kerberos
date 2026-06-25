@@ -180,7 +180,7 @@ func (o *obs) spanStartOpts(req *http.Request) []trace.SpanStartOption {
 // ServeHTTP implements [types.FlowComponent].
 func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// This is for debugging.
-	componentStart := time.Now()
+	debugStart := time.Now()
 
 	// Check request trace context
 	ctx := otel.GetTextMapPropagator().Extract(req.Context(), propagation.HeaderCarrier(req.Header))
@@ -228,7 +228,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	debugCall.AddTransition(
 		"obs",
 		debug.CallDirectionInbound,
-		componentStart,
+		debugStart,
 		time.Now(),
 		debug.CallResultSuccess,
 		"",
@@ -244,7 +244,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	duration := time.Since(start)
 
 	// Reset component start to measure response handling.
-	componentStart = time.Now()
+	debugStart = time.Now()
 
 	// Process the response, update the span and metrics with attributes.
 	wrapper, _ := wrapped.(*response.Wrapper)
@@ -264,7 +264,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	debugCall.AddTransition(
 		"obs",
 		debug.CallDirectionOutbound,
-		componentStart,
+		debugStart,
 		time.Now(),
 		debug.CallResultSuccess,
 		"",
