@@ -42,7 +42,7 @@ var (
 func newDebugger(sqlClient db.SQLClient) *debugger {
 	return &debugger{
 		SQLClient:       sqlClient,
-		Limiter:         rate.NewLimiter(rate.Every(1*time.Second), 1),
+		Limiter:         rate.NewLimiter(rate.Every(1*time.Second), 100),
 		backendSessions: make(map[string]session),
 	}
 }
@@ -83,13 +83,14 @@ func (d *debugger) Start(ctx context.Context) (composerdebug.DebuggedCall, conte
 	}
 
 	//nolint:errcheck // the API contract is trusted.
-	id, enabled := d.IsEnabled(ctx.Value(composer.BackendContextKey).(string))
+	backend := ctx.Value(composer.BackendContextKey).(string)
+	id, enabled := d.IsEnabled(backend)
 	if !enabled {
 		zerologr.V(20).Info("Backend is not being debugged, returning noop debugger")
 		return composerdebug.NewNoopCall(), ctx
 	}
 
-	zerologr.V(20).Info("Debugging call")
+	zerologr.V(20).Info("Debugging call", "backend", backend, "session_id", id)
 	return newRealCall(d.SQLClient, id), ctx
 }
 

@@ -35,7 +35,6 @@ func makeGatewayRequest(t *testing.T, backend, path string) {
 // TestDebugStartSession verifies that a superuser can start a debug session and
 // the response body contains the correct fields.
 func TestDebugStartSession(t *testing.T) {
-	t.Parallel()
 	superSession := superLogin(t)
 
 	resp, err := adminClient.StartDebugSessionWithResponse(
@@ -140,7 +139,6 @@ func TestDebugListSessionsEmpty(t *testing.T) {
 
 // TestDebugListSessionsContainsCreated verifies that a created session appears in the list.
 func TestDebugListSessionsContainsCreated(t *testing.T) {
-	t.Parallel()
 	superSession := superLogin(t)
 
 	sessionID := startDebugSession(t, superSession, "echo")
@@ -179,7 +177,6 @@ func TestDebugListSessionsContainsCreated(t *testing.T) {
 
 // TestDebugGetSession verifies that an existing session can be retrieved by ID.
 func TestDebugGetSession(t *testing.T) {
-	t.Parallel()
 	superSession := superLogin(t)
 
 	sessionID := startDebugSession(t, superSession, "echo")
@@ -234,7 +231,6 @@ func TestDebugGetSessionNotFound(t *testing.T) {
 
 // TestDebugExtendSession verifies that extending a session updates ExpiresAt.
 func TestDebugExtendSession(t *testing.T) {
-	t.Parallel()
 	superSession := superLogin(t)
 
 	sessionID := startDebugSession(t, superSession, "echo")
@@ -301,7 +297,6 @@ func TestDebugExtendSessionNotFound(t *testing.T) {
 // TestDebugStopSession verifies that stopping an active session returns 204 and marks
 // the session as stopped.
 func TestDebugStopSession(t *testing.T) {
-	t.Parallel()
 	superSession := superLogin(t)
 
 	sessionID := startDebugSession(t, superSession, "echo")
@@ -360,7 +355,6 @@ func TestDebugStopSessionNotFound(t *testing.T) {
 // TestDebugDeleteSession verifies that deleting a session returns 204 and the session
 // is no longer retrievable.
 func TestDebugDeleteSession(t *testing.T) {
-	t.Parallel()
 	superSession := superLogin(t)
 
 	sessionID := startDebugSession(t, superSession, "echo")
@@ -546,7 +540,6 @@ func TestDebugGetSessionCall(t *testing.T) {
 
 // TestDebugGetSessionCallNotFound verifies that requesting a non-existent call returns 404.
 func TestDebugGetSessionCallNotFound(t *testing.T) {
-	t.Parallel()
 	superSession := superLogin(t)
 
 	sessionID := startDebugSession(t, superSession, "echo")

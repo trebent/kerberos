@@ -34,7 +34,11 @@ func (i *impl) StartDebugSession(
 		}
 	}
 
-	expires := time.Now().Add(1 * time.Hour).UTC()
+	expires := time.Now().Add(5 * time.Minute).UTC()
+	if req.Body.DurationSeconds != nil {
+		expires = time.Now().Add(time.Duration(*req.Body.DurationSeconds) * time.Second).UTC()
+	}
+
 	id, err := dbCreateDebugSession(ctx, i.SQLClient, req.Backend, expires)
 	if err != nil {
 		return adminapi.StartDebugSession500JSONResponse(apiErrInternal), err

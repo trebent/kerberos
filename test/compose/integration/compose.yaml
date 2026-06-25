@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: "postgres:17-alpine"
+    image: "postgres:17.10-alpine3.23"
     pull_policy: if_not_present
     environment:
       - POSTGRES_DB=kerberos
