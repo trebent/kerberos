@@ -222,7 +222,7 @@ components:
           enum: [inbound, outbound]
           description: |
             The direction of the flow transition. Some components handle requests
-              both coming into the system (inbound) and going out of the system (outbound).
+            both coming into the system (inbound) and going out of the system (outbound).
         startedAt:
           type: string
           format: date-time

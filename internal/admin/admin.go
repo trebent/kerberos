@@ -115,7 +115,8 @@ func New(opts *Opts) (*Admin, error) {
 
 // GetDebugger returns the debugger used by the admin API to determine if a request should be debugged.
 func (a *Admin) GetDebugger() composerdebug.Debugger {
-	return a.debugger
+	//nolint:errcheck // guaranteed
+	return a.ssi.(*impl).debugger
 }
 
 // SetFlowFetcher sets the flow fetcher for the admin component. This allows the admin API to serve flow metadata

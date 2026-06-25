@@ -18,6 +18,22 @@ func (i *impl) StartDebugSession(
 		return adminapi.StartDebugSession403JSONResponse(apiErrForbidden), nil
 	}
 
+	sessions, err := dbListDebugSessions(ctx, i.SQLClient, req.Backend)
+	if err != nil {
+		return adminapi.StartDebugSession500JSONResponse(apiErrInternal), err
+	}
+
+	// Keep it simple, only allow 1 debug session per backend.
+	if len(sessions) > 0 {
+		for _, s := range sessions {
+			// Need this check since expired/stopped sessions should be ignored.
+			// Check: not expired AND not stopped
+			if time.Now().Before(s.ExpiresAt) && s.StoppedAt == nil {
+				return adminapi.StartDebugSession409JSONResponse(apiErrConflict), nil
+			}
+		}
+	}
+
 	expires := time.Now().Add(1 * time.Hour).UTC()
 	id, err := dbCreateDebugSession(ctx, i.SQLClient, req.Backend, expires)
 	if err != nil {
@@ -31,7 +47,7 @@ func (i *impl) StartDebugSession(
 
 	zerologr.Info("Started debug session", "id", id, "backend", req.Backend, "expires", expires)
 
-	i.debugger.EnableBackend(req.Backend, session.ExpiresAt)
+	i.debugger.EnableBackend(req.Backend, id, session.ExpiresAt)
 	return adminapi.StartDebugSession200JSONResponse{
 		Id:        int(id),
 		Backend:   req.Backend,
@@ -114,7 +130,7 @@ func (i *impl) ExtendDebugSession(
 		"expiresAt", updatedSession.ExpiresAt,
 	)
 
-	i.debugger.EnableBackend(req.Backend, updatedSession.ExpiresAt)
+	i.debugger.EnableBackend(req.Backend, int64(updatedSession.Id), updatedSession.ExpiresAt)
 	return adminapi.ExtendDebugSession200JSONResponse{
 		Id:        updatedSession.Id,
 		Backend:   updatedSession.Backend,
@@ -177,7 +193,12 @@ func (i *impl) DeleteDebugSession(
 		return adminapi.DeleteDebugSession403JSONResponse(apiErrForbidden), nil
 	}
 
-	if _, err := dbGetDebugSession(ctx, i.SQLClient, req.Backend, int64(req.SessionId)); err != nil {
+	if _, err := dbGetDebugSession(
+		ctx,
+		i.SQLClient,
+		req.Backend,
+		int64(req.SessionId),
+	); err != nil {
 		if errors.Is(err, errRowNotFound) {
 			return adminapi.DeleteDebugSession404JSONResponse(apiErrNotFound), nil
 		}

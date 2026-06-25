@@ -78,6 +78,39 @@ func TestDebugStartSession(t *testing.T) {
 	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
 }
 
+// TestDebugStartSessionConflict verifies that starting a second debug session for a
+// backend that already has an active session returns 409 conflict.
+func TestDebugStartSessionConflict(t *testing.T) {
+	t.Parallel()
+	superSession := superLogin(t)
+
+	// Use a backend name unique to this test to avoid conflicts with parallel tests.
+	const conflictBackend = "echo-conflict-test"
+
+	sessionID := startDebugSession(t, superSession, conflictBackend)
+
+	// Attempt to start a second session for the same backend.
+	resp, err := adminClient.StartDebugSessionWithResponse(
+		t.Context(),
+		conflictBackend,
+		adminapi.StartDebugSessionJSONRequestBody{},
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(resp.StatusCode(), http.StatusConflict, t)
+	verifyAdminAPIErrorResponse(resp.JSON409, t)
+
+	// Clean up.
+	deleteResp, err := adminClient.DeleteDebugSessionWithResponse(
+		t.Context(),
+		conflictBackend,
+		sessionID,
+		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+	)
+	checkErr(err, t)
+	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
+}
+
 // --- ListDebugSessions ---
 
 // TestDebugListSessionsEmpty verifies that listing debug sessions for a backend with no

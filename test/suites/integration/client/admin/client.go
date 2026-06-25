@@ -182,7 +182,7 @@ type FlowTransition struct {
 	Component string `json:"component"`
 
 	// Direction The direction of the flow transition. Some components handle requests
-	//   both coming into the system (inbound) and going out of the system (outbound).
+	// both coming into the system (inbound) and going out of the system (outbound).
 	Direction FlowTransitionDirection `json:"direction"`
 
 	// Result The result of a flow transition. A flow transition can either succeed or fail.
@@ -196,8 +196,7 @@ type FlowTransition struct {
 }
 
 // FlowTransitionDirection The direction of the flow transition. Some components handle requests
-//
-//	both coming into the system (inbound) and going out of the system (outbound).
+// both coming into the system (inbound) and going out of the system (outbound).
 type FlowTransitionDirection string
 
 // FlowTransitionResult The result of a flow transition. A flow transition can either succeed or fail.

@@ -7,9 +7,9 @@ services:
       - POSTGRES_USER=kerberos
       - POSTGRES_PASSWORD=kerberos
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kerberos -d kerberos"]
-      interval: 5s
-      timeout: 5s
+      test: ["CMD-SHELL", "psql -U kerberos -d kerberos -c 'SELECT 1' -q -t 2>/dev/null | grep -q 1"]
+      interval: 2s
+      timeout: 1s
       retries: 10
 
   kerberos:

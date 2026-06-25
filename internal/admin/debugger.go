@@ -7,6 +7,7 @@ import (
 	"github.com/trebent/kerberos/internal/composer"
 	composerdebug "github.com/trebent/kerberos/internal/composer/debug"
 	"github.com/trebent/kerberos/internal/db"
+	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	"github.com/trebent/zerologr"
 	"golang.org/x/time/rate"
 )
@@ -17,25 +18,17 @@ type (
 
 		*rate.Limiter
 
-		Backends map[string]time.Time
+		backendSessions map[string]session
+	}
+	session struct {
+		id      int64
+		expires time.Time
 	}
 	realCall struct {
 		sqlClient db.SQLClient
 
-		url             string
-		method          string
-		statusCode      int
-		startTime       time.Time
-		endTime         time.Time
-		flowTransitions []flowTransition
-	}
-	flowTransition struct {
-		component    string
-		direction    composerdebug.CallDirection
-		startTime    time.Time
-		endTime      time.Time
-		result       composerdebug.CallResult
-		failureCause string
+		sessionID int64
+		apiCall   adminapi.DebugSessionCall
 	}
 )
 
@@ -48,27 +41,39 @@ var (
 // The debugger will use the provided SQLClient to store the debugged calls.
 func newDebugger(sqlClient db.SQLClient) *debugger {
 	return &debugger{
-		SQLClient: sqlClient,
-		Limiter:   rate.NewLimiter(rate.Every(1*time.Second), 1),
-		Backends:  make(map[string]time.Time),
+		SQLClient:       sqlClient,
+		Limiter:         rate.NewLimiter(rate.Every(1*time.Second), 1),
+		backendSessions: make(map[string]session),
 	}
 }
 
-func (d *debugger) EnableBackend(backend string, expires time.Time) {
-	d.Backends[backend] = expires
+// EnableBackend enables debugging for the specified backend with the given session ID and expiration time.
+func (d *debugger) EnableBackend(backend string, id int64, expires time.Time) {
+	s, ok := d.backendSessions[backend]
+	if ok {
+		s.expires = expires
+		d.backendSessions[backend] = s
+	} else {
+		d.backendSessions[backend] = session{
+			id:      id,
+			expires: expires,
+		}
+	}
 }
 
+// DisableBackend disables debugging for the specified backend.
 func (d *debugger) DisableBackend(backend string) {
-	delete(d.Backends, backend)
+	delete(d.backendSessions, backend)
 }
 
-func (d *debugger) IsEnabled(backend string) bool {
-	expiry, ok := d.Backends[backend]
+// IsEnabled checks if debugging is enabled for the specified backend and if the session has not expired.
+func (d *debugger) IsEnabled(backend string) (int64, bool) {
+	session, ok := d.backendSessions[backend]
 	if !ok {
-		return false
+		return 0, false
 	}
 
-	return time.Now().Before(expiry)
+	return session.id, time.Now().Before(session.expires)
 }
 
 // Start implements [debug.Debugger].
@@ -78,23 +83,27 @@ func (d *debugger) Start(ctx context.Context) (composerdebug.DebuggedCall, conte
 	}
 
 	//nolint:errcheck // the API contract is trusted.
-	if !d.IsEnabled(ctx.Value(composer.BackendContextKey).(string)) {
+	id, enabled := d.IsEnabled(ctx.Value(composer.BackendContextKey).(string))
+	if !enabled {
+		zerologr.V(20).Info("Backend is not being debugged, returning noop debugger")
 		return composerdebug.NewNoopCall(), ctx
 	}
 
-	zerologr.V(20).Info("No active debug sessions found, returning noop debugger")
-	return newRealCall(d.SQLClient), ctx
+	zerologr.V(20).Info("Debugging call")
+	return newRealCall(d.SQLClient, id), ctx
 }
 
 func newRealCall(
 	sqlClient db.SQLClient,
+	sessionID int64,
 ) *realCall { //nolint:revive // sqlClient will be read in Finalise once persistence is implemented
 	return &realCall{
 		sqlClient: sqlClient,
-		startTime: time.Now().UTC(),
-		// Initialised to a set size of 10 to accomodate a typical flow without having
-		// to expand the supporting array.
-		flowTransitions: make([]flowTransition, 0, 10),
+		sessionID: sessionID,
+		apiCall: adminapi.DebugSessionCall{
+			StartedAt:       time.Now(),
+			FlowTransitions: make([]adminapi.FlowTransition, 0, 10),
+		},
 	}
 }
 
@@ -106,37 +115,44 @@ func (r *realCall) AddTransition(
 	result composerdebug.CallResult,
 	failureCause string,
 ) {
-	r.flowTransitions = append(r.flowTransitions, flowTransition{
-		component:    component,
-		direction:    direction,
-		startTime:    startTime,
-		endTime:      endTime,
-		result:       result,
-		failureCause: failureCause,
+	r.apiCall.FlowTransitions = append(r.apiCall.FlowTransitions, adminapi.FlowTransition{
+		Component: component,
+		Direction: adminapi.FlowTransitionDirection(direction),
+		StartedAt: startTime,
+		StoppedAt: endTime,
+		Result: adminapi.FlowTransitionResult{
+			Outcome: adminapi.FlowTransitionResultOutcome(result),
+			Cause:   new(failureCause),
+		},
 	})
 }
 
 // SetMethod implements [debug.DebuggedCall].
 func (r *realCall) SetMethod(method string) {
-	r.method = method
+	r.apiCall.Method = method
 }
 
 // SetStartTime implements [debug.DebuggedCall].
 func (r *realCall) SetStartTime(startTime time.Time) {
-	r.startTime = startTime
+	r.apiCall.StartedAt = startTime
 }
 
 // SetStatusCode implements [debug.DebuggedCall].
 func (r *realCall) SetStatusCode(statusCode int) {
-	r.statusCode = statusCode
+	r.apiCall.StatusCode = statusCode
 }
 
 // SetURL implements [debug.DebuggedCall].
 func (r *realCall) SetURL(url string) {
-	r.url = url
+	r.apiCall.Url = url
 }
 
 // Finalise implements [debug.DebuggedCall].
 func (r *realCall) Finalise() {
-	r.endTime = time.Now()
+	r.apiCall.StoppedAt = time.Now()
+
+	_, err := dbCreateDebugSessionCall(context.Background(), r.sqlClient, r.sessionID, r.apiCall)
+	if err != nil {
+		zerologr.Error(err, "Failed to persist debug session call")
+	}
 }

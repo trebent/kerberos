@@ -191,39 +191,36 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	originalPath := req.URL.Path
 	rLogger.Info(req.Method + " " + originalPath)
 
-	// Debug call is started.
-	debugCall, ctx := o.debugger.Start(ctx)
-	defer debugCall.Finalise()
-	debugCall.SetURL(req.URL.Path)
-	debugCall.SetMethod(req.Method)
-
 	// Wrap the response to extract:
 	// - status code
 	// - response body size
 	wrapped := response.NewResponseWrapper(w)
+
+	// Wrapped body to extract size.
+	bw, _ := response.NewBodyWrapper(req.Body).(*response.BodyWrapper)
 
 	// Extract the backend name to enable debugging early on.
 	name, err := router.GetBackendName(req)
 	if err != nil {
 		rLogger.Error(err, "Failed to extract backend name from request path")
 		apierror.ErrorHandler(wrapped, req, err)
-		debugCall.SetStatusCode(http.StatusBadRequest)
-		debugCall.AddTransition(
-			"obs",
-			debug.CallDirectionInbound,
-			componentStart,
-			time.Now(),
-			debug.CallResultFailure,
-			err.Error(),
-		)
+		//nolint:errcheck // no point
+		o.bumpMetrics(ctx, wrapped.(*response.Wrapper), bw, req, 0, []attribute.KeyValue{})
 		return
 	}
 
+	// Make sure this is set prior to debugging, always.
 	ctx = context.WithValue(ctx, composer.BackendContextKey, name)
+
+	// Debug call is started.
+	debugCall, ctx := o.debugger.Start(ctx)
+	defer debugCall.Finalise()
+	debugCall.SetURL(req.URL.Path)
+	debugCall.SetMethod(req.Method)
+
 	ctx = logr.NewContext(ctx, rLogger)
 
 	// Wrap the request body to extract size
-	bw, _ := response.NewBodyWrapper(req.Body).(*response.BodyWrapper)
 	if req.Body != nil && req.Body != http.NoBody {
 		req.Body = bw
 	}
