@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"time"
 
 	"github.com/go-logr/logr"
 	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
@@ -13,6 +14,7 @@ import (
 	"github.com/trebent/kerberos/internal/auth/method/basic"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/composer/custom"
+	"github.com/trebent/kerberos/internal/composer/debug"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/db"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
@@ -44,6 +46,8 @@ type (
 		db    db.SQLClient
 	}
 )
+
+const methodBasic = "basic"
 
 var (
 	_ Authorizer = (*authorizer)(nil)
@@ -132,42 +136,66 @@ func (a *authorizer) GetMeta() []adminapi.FlowMeta {
 }
 
 func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	logger, _ := logr.FromContext(ctx)
+	debugStart := time.Now()
+	debugCall := composer.DebugFromContext(req.Context())
+
+	logger, _ := logr.FromContext(req.Context())
 	logger = logger.WithName("authorizer")
 	logger.Info("Authorizing request")
+
 	//nolint:errcheck // if this isn't populated the flow chain has been broken.
-	backend := ctx.Value(composer.BackendContextKey).(string)
+	backend := req.Context().Value(composer.BackendContextKey).(string)
 
 	m, err := a.findMethod(backend, req)
 	switch {
 	case errors.Is(err, errNoMethod):
 		zerologr.V(20).
 			Info(fmt.Sprintf("Backend %s does not have a defined auth method, calling next", backend))
+		// No debug call here on purpose, since no auth method is configured for the given backend.
 		a.next.ServeHTTP(w, req)
 		return
 	case errors.Is(err, errExempted):
 		zerologr.V(20).
 			Info(fmt.Sprintf("Backend %s path %s is exempted, calling next", backend, req.URL.Path))
+		debugCall.AddTransition(
+			"authorizer",
+			debug.CallDirectionInbound,
+			debugStart,
+			time.Now(),
+			debug.CallResultSuccess,
+			"",
+		)
 		a.next.ServeHTTP(w, req)
 		return
 	case err != nil:
 		zerologr.Error(err, "Error during authentication")
 		apierror.ErrorHandler(w, req, apierror.ErrISE)
+		transitionFailure(debugCall, debugStart, apierror.ErrISE.Error())
 		return
 	}
 
 	if err := m.Authenticated(req); err != nil {
 		zerologr.Error(err, "User tried to perform an authenticated action while unauthenticated")
 		apierror.ErrorHandler(w, req, apierror.ErrUnauthenticated)
+		transitionFailure(debugCall, debugStart, http.StatusText(http.StatusUnauthorized))
 		return
 	}
 
 	if err := m.Authorized(req); err != nil {
 		zerologr.Error(err, "User tried to perform an action they were not authorized to do")
 		apierror.ErrorHandler(w, req, apierror.ErrForbidden)
+		transitionFailure(debugCall, debugStart, http.StatusText(http.StatusForbidden))
 		return
 	}
+
+	debugCall.AddTransition(
+		"authorizer",
+		debug.CallDirectionInbound,
+		debugStart,
+		time.Now(),
+		debug.CallResultSuccess,
+		"",
+	)
 
 	// Forward the request now that it's been auth'd.
 	a.next.ServeHTTP(w, req)
@@ -191,7 +219,7 @@ func (a *authorizer) findMethod(backend string, req *http.Request) (method.Metho
 	for _, mapping := range a.cfg.Scheme.Mappings {
 		if mapping.Backend == backend {
 			switch mapping.Method {
-			case "basic":
+			case methodBasic:
 				zerologr.V(20).Info("Using basic authentication for backend: " + backend)
 				for _, exemption := range mapping.Exempt {
 					match, err := path.Match(exemption, req.URL.Path)
@@ -219,4 +247,15 @@ func makeAuthZMap(mappings []*config.AuthMapping) map[string]*config.AuthZ {
 		m[mapping.Backend] = mapping.Authorization
 	}
 	return m
+}
+
+func transitionFailure(debugCall debug.DebuggedCall, debugStart time.Time, errMsg string) {
+	debugCall.AddTransition(
+		"authorizer",
+		debug.CallDirectionInbound,
+		debugStart,
+		time.Now(),
+		debug.CallResultFailure,
+		errMsg,
+	)
 }

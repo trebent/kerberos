@@ -144,82 +144,117 @@ components:
       type: object
       additionalProperties: false
       properties:
-        sessionId:
-          type: string
+        id:
+          type: integer
           description: The ID for the debug session.
-        sessionStartedAt:
+        backend:
+          type: string
+          description: The backend that the call was made to.
+        startedAt:
           type: string
           format: date-time
           description: The time when the debug session started.
-        sessionExpiresAt:
+        expiresAt:
           type: string
           format: date-time
           description: The time when the debug session expires.
-        sessionStoppedAt:
+        stoppedAt:
           type: string
           format: date-time
           description: The time when the debug session was stopped. Null if the session is
             still active.
       required:
-        - sessionId
-        - sessionStartedAt
-        - sessionExpiresAt
-    DebugSessionOperation:
+        - id
+        - backend
+        - startedAt
+        - expiresAt
+    DebugSessionCall:
       type: object
       additionalProperties: false
       properties:
+        id:
+          type: integer
+          description: The ID for the call.
         startedAt:
           type: string
           format: date-time
-          description: The time when the operation was started.
+          description: The time when the call was received.
         stoppedAt:
           type: string
           format: date-time
-          description: The time when the operation was stopped. Null if the operation is
-            still active.
+          description: The time when the call was finished being handled. Null if the call is
+            still being handled.
         url:
           type: string
           description: The full URL of the request.
         method:
           type: string
           description: The HTTP method of the operation.
+        statusCode:
+          type: integer
+          description: The HTTP status code of the response.
         flowTransitions:
           type: array
+          minItems: 1
           items:
-            type: object
-            additionalProperties: false
-            properties:
-              component:
-                type: string
-                description: The flow component that the transition corresponds to.
-              startedAt:
-                type: string
-                format: date-time
-                description: The time when the flow transition started.
-              stoppedAt:
-                type: string
-                format: date-time
-                description: The time when the flow transition stopped. Null if the transition
-                  is still active.
-              result:
-                type: object
-                properties:
-                  outcome:
-                    type: string
-                    enum: [ success, failure ]
-                  cause:
-                    type: string
-                    description: The cause of the flow transition result, if outcome is 'failure'.
-                required:
-                  - outcome
+            $ref: "#/components/schemas/FlowTransition"
           description: The flow transitions that occurred during this operation, in
             chronological order.
       required:
+        - id
         - startedAt
         - stoppedAt
         - url
         - method
-        - backend
+        - statusCode
+        - flowTransitions
+    FlowTransition:
+      type: object
+      description: |
+        A flow transition that occurred during a debug session call. A flow transition represents 
+        a flow component's handling of a request, in both directions.
+      properties:
+        component:
+          type: string
+          description: The flow component that the transition corresponds to.
+        direction:
+          type: string
+          enum: [inbound, outbound]
+          description: |
+            The direction of the flow transition. Some components handle requests
+            both coming into the system (inbound) and going out of the system (outbound).
+        startedAt:
+          type: string
+          format: date-time
+          description: The time when the flow transition started.
+        stoppedAt:
+          type: string
+          format: date-time
+          description: The time when the flow transition stopped. Null if the transition
+            is still active.
+        result:
+          $ref: "#/components/schemas/FlowTransitionResult"
+      additionalProperties: false
+      required:
+        - component
+        - direction
+        - startedAt
+        - stoppedAt
+        - result
+    FlowTransitionResult:
+      type: object
+      description: |
+        The result of a flow transition. A flow transition can either succeed or fail.
+      properties:
+        outcome:
+          type: string
+          enum: [success, failure]
+        cause:
+          type: string
+          description: The cause of the flow transition result, if outcome is 'failure'.
+      additionalProperties: false
+      required:
+        - outcome
     User:
       type: object
       additionalProperties: false
@@ -1096,6 +1131,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Bad request.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "404":
           content:
             application/json:
@@ -1131,6 +1172,12 @@ paths:
                 items:
                   $ref: "#/components/schemas/DebugSession"
           description: Got all debug sessions successfully.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "404":
           content:
             application/json:
@@ -1157,7 +1204,7 @@ paths:
           in: path
           required: true
           schema:
-            type: string
+            type: integer
       responses:
         "200":
           content:
@@ -1171,6 +1218,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Bad request.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "404":
           content:
             application/json:
@@ -1195,7 +1248,7 @@ paths:
           in: path
           required: true
           schema:
-            type: string
+            type: integer
       requestBody:
         required: true
         content:
@@ -1224,6 +1277,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Bad request.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "404":
           content:
             application/json:
@@ -1242,7 +1301,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
-    delete:
+    post:
       operationId: StopDebugSession
       parameters:
         - name: backend
@@ -1254,7 +1313,7 @@ paths:
           in: path
           required: true
           schema:
-            type: string
+            type: integer
       responses:
         "204":
           description: Stopped the backend debug session successfully.
@@ -1264,6 +1323,52 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Bad request.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Backend or debug session not found.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+    delete:
+      operationId: DeleteDebugSession
+      parameters:
+        - name: backend
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted the backend debug session successfully.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "404":
           content:
             application/json:
@@ -1277,9 +1382,9 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
 
-  /api/admin/debug/{backend}/sessions/{sessionId}/operations:
+  /api/admin/debug/{backend}/sessions/{sessionId}/calls:
     get:
-      operationId: ListDebugSessionOperations
+      operationId: ListDebugSessionCalls
       parameters:
         - name: backend
           in: path
@@ -1290,7 +1395,13 @@ paths:
           in: path
           required: true
           schema:
-            type: string
+            type: integer
+        - name: includeTransitions
+          in: query
+          required: true
+          schema:
+            type: boolean
+            default: false
       responses:
         "200":
           content:
@@ -1298,14 +1409,71 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/DebugSessionOperation"
-          description: Got all debug session operations successfully.
+                  $ref: "#/components/schemas/DebugSessionCall"
+          description: Got all debug session calls successfully.
         "400":
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Bad request.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Backend or debug session not found.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+
+  /api/admin/debug/{backend}/sessions/{sessionId}/calls/{callId}:
+    get:
+      operationId: GetDebugSessionCall
+      parameters:
+        - name: backend
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: callId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DebugSessionCall"
+          description: Got debug session call successfully.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
         "404":
           content:
             application/json:

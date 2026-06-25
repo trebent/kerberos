@@ -53,6 +53,36 @@ CREATE TABLE IF NOT EXISTS admin_sessions (
   FOREIGN KEY(user_id) REFERENCES admin_users(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS admin_debug_sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  backend VARCHAR(100) NOT NULL,
+  started_at TEXT NOT NULL DEFAULT current_timestamp,
+  expires_at TEXT NOT NULL,
+  stopped_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS admin_debug_session_calls (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id INTEGER NOT NULL,
+  started_at TEXT NOT NULL,
+  stopped_at TEXT NOT NULL,
+  url VARCHAR(2048) NOT NULL,
+  method VARCHAR(10) NOT NULL,
+  status_code INTEGER NOT NULL,
+  FOREIGN KEY(session_id) REFERENCES admin_debug_sessions(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS admin_debug_session_call_flow_transitions (
+  call_id INTEGER NOT NULL,
+  component VARCHAR(100) NOT NULL,
+  direction VARCHAR(10) NOT NULL,
+  started_at TEXT NOT NULL,
+  stopped_at TEXT NOT NULL,
+  result VARCHAR(20) NOT NULL,
+  failure_cause VARCHAR(512),
+  FOREIGN KEY(call_id) REFERENCES admin_debug_session_calls(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
 CREATE TRIGGER IF NOT EXISTS admin_group_bindings_updated 
 AFTER UPDATE ON admin_group_bindings
 WHEN old.updated = new.updated

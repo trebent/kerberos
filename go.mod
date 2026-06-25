@@ -1,6 +1,6 @@
 module github.com/trebent/kerberos
 
-go 1.26.2
+go 1.26.4
 
 require (
 	github.com/getkin/kin-openapi v0.140.0
@@ -20,6 +20,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.44.0
 	go.opentelemetry.io/otel/trace v1.44.0
 	golang.org/x/crypto v0.53.0
+	golang.org/x/time v0.15.0
 	modernc.org/sqlite v1.53.0
 )
 

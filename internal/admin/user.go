@@ -72,7 +72,7 @@ func (i *impl) Login(
 ) (adminapi.LoginResponseObject, error) {
 	u, err := dbLoginLookup(ctx, i.sqlClient, request.Body.Username)
 	if err != nil {
-		if errors.Is(err, errNoUser) {
+		if errors.Is(err, errRowNotFound) {
 			return adminapi.Login401JSONResponse(apiErrUnauthorized), nil
 		}
 		zerologr.Error(err, "Failed to look up admin user during login")
@@ -181,7 +181,7 @@ func (i *impl) GetUser(
 
 	u, err := dbGetUser(ctx, i.sqlClient, int64(request.UserID))
 	if err != nil {
-		if errors.Is(err, errNoUser) {
+		if errors.Is(err, errRowNotFound) {
 			return adminapi.GetUser404JSONResponse(apiErrNotFound), nil
 		}
 		zerologr.Error(err, "Failed to get admin user")
@@ -244,7 +244,7 @@ func (i *impl) DeleteUser(
 	}
 
 	if _, err := dbGetUser(ctx, i.sqlClient, int64(request.UserID)); err != nil {
-		if errors.Is(err, errNoUser) {
+		if errors.Is(err, errRowNotFound) {
 			return adminapi.DeleteUser404JSONResponse(apiErrNotFound), nil
 		}
 		zerologr.Error(err, "Failed to check admin user before delete")
@@ -274,7 +274,7 @@ func (i *impl) ChangeUserPassword(
 
 	auth, err := dbGetUserAuth(ctx, i.sqlClient, int64(request.UserID))
 	if err != nil {
-		if errors.Is(err, errNoUser) {
+		if errors.Is(err, errRowNotFound) {
 			return adminapi.ChangeUserPassword404JSONResponse(apiErrNotFound), nil
 		}
 		zerologr.Error(err, "Failed to get admin user auth for password change")
@@ -310,7 +310,7 @@ func (i *impl) UpdateUserGroups(
 	}
 
 	if _, err := dbGetUser(ctx, i.sqlClient, int64(request.UserID)); err != nil {
-		if errors.Is(err, errNoUser) {
+		if errors.Is(err, errRowNotFound) {
 			return adminapi.UpdateUserGroups404JSONResponse(apiErrNotFound), nil
 		}
 		zerologr.Error(err, "Failed to check admin user before group update")
@@ -406,7 +406,7 @@ func (i *impl) GetGroup(
 
 	g, err := dbGetGroup(ctx, i.sqlClient, int64(request.GroupID))
 	if err != nil {
-		if errors.Is(err, errNoGroup) {
+		if errors.Is(err, errRowNotFound) {
 			return adminapi.GetGroup404JSONResponse(apiErrNotFound), nil
 		}
 		zerologr.Error(err, "Failed to get admin group")
@@ -433,7 +433,7 @@ func (i *impl) UpdateGroup(
 	}
 
 	if _, err := dbGetGroup(ctx, i.sqlClient, int64(request.GroupID)); err != nil {
-		if errors.Is(err, errNoGroup) {
+		if errors.Is(err, errRowNotFound) {
 			return adminapi.UpdateGroup404JSONResponse(apiErrNotFound), nil
 		}
 
@@ -479,7 +479,7 @@ func (i *impl) DeleteGroup(
 	}
 
 	if _, err := dbGetGroup(ctx, i.sqlClient, int64(request.GroupID)); err != nil {
-		if errors.Is(err, errNoGroup) {
+		if errors.Is(err, errRowNotFound) {
 			return adminapi.DeleteGroup404JSONResponse(apiErrNotFound), nil
 		}
 		zerologr.Error(err, "Failed to check admin group before delete")

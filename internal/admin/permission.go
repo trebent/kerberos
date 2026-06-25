@@ -16,6 +16,7 @@ const (
 	PermissionIDBasicAuthOrgViewer  = int64(4)
 	PermissionIDAdminUserMgmtAdmin  = int64(5)
 	PermissionIDAdminUserMgmtViewer = int64(6)
+	PermissionIDDebugger            = int64(7)
 
 	// Permission names.
 
@@ -25,6 +26,7 @@ const (
 	PermissionNameBasicAuthOrgViewer  = "basic-auth-org-viewer"
 	PermissionNameAdminUserMgmtAdmin  = "admin-user-mgmt-admin"
 	PermissionNameAdminUserMgmtViewer = "admin-user-mgmt-viewer"
+	PermissionNameDebugger            = "debugger"
 )
 
 // ContextSessionValid reports whether the context contains an admin session.
@@ -97,4 +99,9 @@ func ContextIsAdminUserMgmtAdmin(ctx context.Context) bool {
 // ContextIsAdminUserMgmtViewer reports whether the calling admin user has the adminusermgmtviewer permission.
 func ContextIsAdminUserMgmtViewer(ctx context.Context) bool {
 	return ContextHasPermission(ctx, PermissionIDAdminUserMgmtViewer)
+}
+
+// ContextIsDebugger reports whether the calling admin user has the debugger permission.
+func ContextIsDebugger(ctx context.Context) bool {
+	return ContextHasPermission(ctx, PermissionIDDebugger)
 }

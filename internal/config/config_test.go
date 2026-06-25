@@ -194,3 +194,131 @@ func TestConfigPersistence(t *testing.T) {
 		}
 	})
 }
+
+func TestConfigGateway(t *testing.T) {
+	t.Run("Default", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_gw.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		cfg := New()
+		cfg.Load(data)
+		if err := cfg.Parse(); err != nil {
+			t.Fatalf("failed to load config: %v", err)
+		}
+
+		if cfg.GatewayConfig.Router == nil {
+			t.Fatalf("expected router config to be non-nil, got nil")
+		}
+
+		if len(cfg.GatewayConfig.Router.Backends) != 1 {
+			t.Fatalf("expected 1 backend, got %d", len(cfg.GatewayConfig.Router.Backends))
+		}
+
+		if cfg.GatewayConfig.TLS != nil {
+			t.Errorf("expected TLS config to be nil, got non-nil")
+		}
+	})
+
+	t.Run("With TLS", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_gw_tls.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		cfg := New()
+		cfg.Load(data)
+		if err := cfg.Parse(); err != nil {
+			t.Fatalf("failed to load config: %v", err)
+		}
+
+		if cfg.GatewayConfig.TLS == nil {
+			t.Fatalf("expected TLS config to be non-nil, got nil")
+		}
+
+		if cfg.GatewayConfig.TLS.CertFile != "/certs/server.crt" {
+			t.Errorf("expected TLS ServerCertFile to be './certs/server.crt', got '%s'", cfg.GatewayConfig.TLS.CertFile)
+		}
+
+		if cfg.GatewayConfig.TLS.KeyFile != "/certs/server.key" {
+			t.Errorf("expected TLS ServerKeyFile to be './certs/server.key', got '%s'", cfg.GatewayConfig.TLS.KeyFile)
+		}
+	})
+
+	t.Run("Router valid backend TLS", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_gw_router_tls.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		cfg := New()
+		cfg.Load(data)
+		if err := cfg.Parse(); err != nil {
+			t.Fatalf("failed to load config: %v", err)
+		}
+
+		if cfg.GatewayConfig.Router == nil {
+			t.Fatalf("expected router config to be non-nil, got nil")
+		}
+
+		if cfg.GatewayConfig.Router.Backends[0].TLS == nil {
+			t.Fatalf("expected router backend's TLS config to be non-nil, got nil")
+		}
+
+		if cfg.GatewayConfig.Router.Backends[0].TLS.RootCAFile != "/certs/ca.crt" {
+			t.Errorf("expected router backend TLS RootCAFile to be './certs/ca.crt', got '%s'", cfg.GatewayConfig.Router.Backends[0].TLS.RootCAFile)
+		}
+
+		if cfg.GatewayConfig.Router.Backends[0].TLS.ClientCertFile != "/certs/client.crt" {
+			t.Errorf("expected router backend TLS ClientCertFile to be './certs/client.crt', got '%s'", cfg.GatewayConfig.Router.Backends[0].TLS.ClientCertFile)
+		}
+
+		if cfg.GatewayConfig.Router.Backends[0].TLS.ClientKeyFile != "/certs/client.key" {
+			t.Errorf("expected router backend TLS ClientKeyFile to be './certs/client.key', got '%s'", cfg.GatewayConfig.Router.Backends[0].TLS.ClientKeyFile)
+		}
+
+		if cfg.GatewayConfig.Router.Backends[0].TLS.InsecureSkipVerify {
+			t.Errorf("expected router backend TLS InsecureSkipVerify to be false, got true")
+		}
+	})
+
+	t.Run("Router invalid backend TLS", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_gw_router_tls_invalid.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		cfg := New()
+		cfg.Load(data)
+		if err := cfg.Parse(); err == nil {
+			t.Fatalf("expected error when loading config with invalid router backend TLS, got nil")
+		}
+	})
+
+	t.Run("Invalid backend name", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_gw_router_invalid_backend_name.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		cfg := New()
+		cfg.Load(data)
+		if err := cfg.Parse(); err == nil {
+			t.Fatalf("expected error when loading config with invalid router backend name, got nil")
+		}
+	})
+
+	t.Run("Invalid backend port", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_gw_router_invalid_backend_port.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		cfg := New()
+		cfg.Load(data)
+		if err := cfg.Parse(); err == nil {
+			t.Fatalf("expected error when loading config with invalid router backend port, got nil")
+		}
+	})
+}

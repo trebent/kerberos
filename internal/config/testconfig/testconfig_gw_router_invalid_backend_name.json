@@ -1,0 +1,13 @@
+{
+  "gateway": {
+    "router": {
+      "backends": [
+        {
+          "name": "backend",
+          "host": "localhost",
+          "port": 0
+        }
+      ]
+    }
+  }
+}

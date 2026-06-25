@@ -56,6 +56,15 @@ const (
 	selectSession      = "SELECT s.user_id, s.organisation_id, u.administrator, s.expires FROM sessions s INNER JOIN users u ON s.user_id = u.id WHERE session_id = @sessionID;"
 	deleteUserSessions = "DELETE FROM sessions WHERE organisation_id = @orgID AND user_id = @userID;"
 
+	// Named arg keys.
+	argOrgID          = "orgID"
+	argUserID         = "userID"
+	argName           = "name"
+	argSalt           = "salt"
+	argHashedPassword = "hashedPassword"
+	argIsAdmin        = "isAdmin"
+	argGroupID        = "groupID"
+
 	sessionExpiry = 15 * time.Minute
 )
 
@@ -108,8 +117,8 @@ func dbGetUserGroupNames(
 	rows, err := client.Query(
 		ctx,
 		selectUserGroups,
-		sql.NamedArg{Name: "orgID", Value: orgID},
-		sql.NamedArg{Name: "userID", Value: userID},
+		sql.NamedArg{Name: argOrgID, Value: orgID},
+		sql.NamedArg{Name: argUserID, Value: userID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query user groups")
@@ -145,8 +154,8 @@ func dbCreateSession(
 	_, err := client.Exec(
 		ctx,
 		insertSession,
-		sql.NamedArg{Name: "userID", Value: userID},
-		sql.NamedArg{Name: "orgID", Value: orgID},
+		sql.NamedArg{Name: argUserID, Value: userID},
+		sql.NamedArg{Name: argOrgID, Value: orgID},
 		sql.NamedArg{Name: "session", Value: sessionID},
 		sql.NamedArg{Name: "expires", Value: time.Now().Add(sessionExpiry).UnixMilli()},
 	)
@@ -160,8 +169,8 @@ func dbDeleteUserSessions(ctx context.Context, client db.SQLClient, orgID, userI
 	_, err := client.Exec(
 		ctx,
 		deleteUserSessions,
-		sql.NamedArg{Name: "orgID", Value: orgID},
-		sql.NamedArg{Name: "userID", Value: userID},
+		sql.NamedArg{Name: argOrgID, Value: orgID},
+		sql.NamedArg{Name: argUserID, Value: userID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to delete user sessions")
@@ -182,7 +191,7 @@ func dbLoginLookup(
 	rows, err := client.Query(
 		ctx,
 		selectLoginUser,
-		sql.NamedArg{Name: "orgID", Value: orgID},
+		sql.NamedArg{Name: argOrgID, Value: orgID},
 		sql.NamedArg{Name: "username", Value: username},
 	)
 	if err != nil {
@@ -224,8 +233,8 @@ func dbGetUser(
 	rows, err := client.Query(
 		ctx,
 		selectUser,
-		sql.NamedArg{Name: "orgID", Value: orgID},
-		sql.NamedArg{Name: "userID", Value: userID},
+		sql.NamedArg{Name: argOrgID, Value: orgID},
+		sql.NamedArg{Name: argUserID, Value: userID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query user")
@@ -260,8 +269,8 @@ func dbGetUserAuth(
 	rows, err := client.Query(
 		ctx,
 		selectUserAuth,
-		sql.NamedArg{Name: "orgID", Value: orgID},
-		sql.NamedArg{Name: "userID", Value: userID},
+		sql.NamedArg{Name: argOrgID, Value: orgID},
+		sql.NamedArg{Name: argUserID, Value: userID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query full user record")
@@ -294,7 +303,7 @@ func dbListUsers(
 	rows, err := client.Query(
 		ctx,
 		selectUsers,
-		sql.NamedArg{Name: "orgID", Value: orgID},
+		sql.NamedArg{Name: argOrgID, Value: orgID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query users")
@@ -326,23 +335,23 @@ func dbCreateUser(
 	orgID int64,
 ) (int64, error) {
 	if client.Dialect() == db.PostgresDialect {
-		return postgres.QueryReturningID(ctx, client, insertUserReturning,
-			sql.NamedArg{Name: "name", Value: name},
-			sql.NamedArg{Name: "salt", Value: salt},
-			sql.NamedArg{Name: "hashedPassword", Value: hashedPassword},
-			sql.NamedArg{Name: "orgID", Value: orgID},
-			sql.NamedArg{Name: "isAdmin", Value: false},
+		return postgres.InsertReturningID(ctx, client, insertUserReturning,
+			sql.NamedArg{Name: argName, Value: name},
+			sql.NamedArg{Name: argSalt, Value: salt},
+			sql.NamedArg{Name: argHashedPassword, Value: hashedPassword},
+			sql.NamedArg{Name: argOrgID, Value: orgID},
+			sql.NamedArg{Name: argIsAdmin, Value: false},
 		)
 	}
 
 	res, err := client.Exec(
 		ctx,
 		insertUser,
-		sql.NamedArg{Name: "name", Value: name},
-		sql.NamedArg{Name: "salt", Value: salt},
-		sql.NamedArg{Name: "hashedPassword", Value: hashedPassword},
-		sql.NamedArg{Name: "orgID", Value: orgID},
-		sql.NamedArg{Name: "isAdmin", Value: false},
+		sql.NamedArg{Name: argName, Value: name},
+		sql.NamedArg{Name: argSalt, Value: salt},
+		sql.NamedArg{Name: argHashedPassword, Value: hashedPassword},
+		sql.NamedArg{Name: argOrgID, Value: orgID},
+		sql.NamedArg{Name: argIsAdmin, Value: false},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to insert user")
@@ -362,9 +371,9 @@ func dbUpdateUser(
 	_, err := client.Exec(
 		ctx,
 		updateUser,
-		sql.NamedArg{Name: "name", Value: name},
-		sql.NamedArg{Name: "orgID", Value: orgID},
-		sql.NamedArg{Name: "userID", Value: userID},
+		sql.NamedArg{Name: argName, Value: name},
+		sql.NamedArg{Name: argOrgID, Value: orgID},
+		sql.NamedArg{Name: argUserID, Value: userID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to update user")
@@ -376,8 +385,8 @@ func dbDeleteUser(ctx context.Context, client db.SQLClient, orgID, userID int64)
 	_, err := client.Exec(
 		ctx,
 		deleteUser,
-		sql.NamedArg{Name: "orgID", Value: orgID},
-		sql.NamedArg{Name: "userID", Value: userID},
+		sql.NamedArg{Name: argOrgID, Value: orgID},
+		sql.NamedArg{Name: argUserID, Value: userID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to delete user")
@@ -394,8 +403,8 @@ func dbUpdateUserPassword(
 	_, err := client.Exec(
 		ctx,
 		updateUserPassword,
-		sql.NamedArg{Name: "salt", Value: salt},
-		sql.NamedArg{Name: "hashedPassword", Value: hashedPassword},
+		sql.NamedArg{Name: argSalt, Value: salt},
+		sql.NamedArg{Name: argHashedPassword, Value: hashedPassword},
 		sql.NamedArg{Name: "id", Value: userID},
 	)
 	if err != nil {
@@ -416,7 +425,7 @@ func dbGetOrg(
 	rows, err := client.Query(
 		ctx,
 		selectOrg,
-		sql.NamedArg{Name: "orgID", Value: orgID},
+		sql.NamedArg{Name: argOrgID, Value: orgID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query organisation")
@@ -470,8 +479,8 @@ func dbUpdateOrg(ctx context.Context, client db.SQLClient, orgID int64, name str
 	_, err := client.Exec(
 		ctx,
 		updateOrg,
-		sql.NamedArg{Name: "name", Value: name},
-		sql.NamedArg{Name: "orgID", Value: orgID},
+		sql.NamedArg{Name: argName, Value: name},
+		sql.NamedArg{Name: argOrgID, Value: orgID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to update organisation")
@@ -483,7 +492,7 @@ func dbDeleteOrg(ctx context.Context, client db.SQLClient, orgID int64) error {
 	_, err := client.Exec(
 		ctx,
 		deleteOrg,
-		sql.NamedArg{Name: "orgID", Value: orgID},
+		sql.NamedArg{Name: argOrgID, Value: orgID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to delete organisation")
@@ -503,8 +512,8 @@ func dbGetGroup(
 	rows, err := client.Query(
 		ctx,
 		selectGroup,
-		sql.NamedArg{Name: "groupID", Value: groupID},
-		sql.NamedArg{Name: "orgID", Value: orgID},
+		sql.NamedArg{Name: argGroupID, Value: groupID},
+		sql.NamedArg{Name: argOrgID, Value: orgID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query group")
@@ -537,7 +546,7 @@ func dbListGroups(
 	rows, err := client.Query(
 		ctx,
 		selectGroups,
-		sql.NamedArg{Name: "orgID", Value: orgID},
+		sql.NamedArg{Name: argOrgID, Value: orgID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query groups")
@@ -569,16 +578,16 @@ func dbCreateGroup(
 	name string,
 ) (int64, error) {
 	if client.Dialect() == db.PostgresDialect {
-		return postgres.QueryReturningID(ctx, client, insertGroupReturning,
-			sql.NamedArg{Name: "name", Value: name},
-			sql.NamedArg{Name: "orgID", Value: orgID},
+		return postgres.InsertReturningID(ctx, client, insertGroupReturning,
+			sql.NamedArg{Name: argName, Value: name},
+			sql.NamedArg{Name: argOrgID, Value: orgID},
 		)
 	}
 	res, err := client.Exec(
 		ctx,
 		insertGroup,
-		sql.NamedArg{Name: "name", Value: name},
-		sql.NamedArg{Name: "orgID", Value: orgID},
+		sql.NamedArg{Name: argName, Value: name},
+		sql.NamedArg{Name: argOrgID, Value: orgID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to insert group")
@@ -598,9 +607,9 @@ func dbUpdateGroup(
 	_, err := client.Exec(
 		ctx,
 		updateGroup,
-		sql.NamedArg{Name: "name", Value: name},
-		sql.NamedArg{Name: "groupID", Value: groupID},
-		sql.NamedArg{Name: "orgID", Value: orgID},
+		sql.NamedArg{Name: argName, Value: name},
+		sql.NamedArg{Name: argGroupID, Value: groupID},
+		sql.NamedArg{Name: argOrgID, Value: orgID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to update group")
@@ -612,8 +621,8 @@ func dbDeleteGroup(ctx context.Context, client db.SQLClient, orgID, groupID int6
 	_, err := client.Exec(
 		ctx,
 		deleteGroup,
-		sql.NamedArg{Name: "orgID", Value: orgID},
-		sql.NamedArg{Name: "groupID", Value: groupID},
+		sql.NamedArg{Name: argOrgID, Value: orgID},
+		sql.NamedArg{Name: argGroupID, Value: groupID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to delete group")
@@ -631,8 +640,8 @@ func dbListGroupBindings(
 	rows, err := client.Query(
 		ctx,
 		selectGroupBindings,
-		sql.NamedArg{Name: "orgID", Value: orgID},
-		sql.NamedArg{Name: "userID", Value: userID},
+		sql.NamedArg{Name: argOrgID, Value: orgID},
+		sql.NamedArg{Name: argUserID, Value: userID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query group bindings")
@@ -680,15 +689,15 @@ func dbCreateOrganisation(
 	zerologr.Info("Creating organisation " + name)
 
 	if client.Dialect() == db.PostgresDialect {
-		orgID, err = postgres.QueryReturningID(
+		orgID, err = postgres.InsertReturningID(
 			ctx,
 			tx,
 			insertOrgReturning,
-			sql.NamedArg{Name: "name", Value: name},
+			sql.NamedArg{Name: argName, Value: name},
 		)
 	} else {
 		var res sql.Result
-		res, err = tx.Exec(ctx, insertOrg, sql.NamedArg{Name: "name", Value: name})
+		res, err = tx.Exec(ctx, insertOrg, sql.NamedArg{Name: argName, Value: name})
 		if err == nil {
 			orgID, _ = res.LastInsertId()
 		}
@@ -703,23 +712,23 @@ func dbCreateOrganisation(
 	adminPassword, salt, hashedAdminPassword := password.Make("")
 
 	if client.Dialect() == db.PostgresDialect {
-		adminUserID, err = postgres.QueryReturningID(ctx, tx, insertUserReturning,
-			sql.NamedArg{Name: "name", Value: adminUsername},
-			sql.NamedArg{Name: "salt", Value: salt},
-			sql.NamedArg{Name: "hashedPassword", Value: hashedAdminPassword},
-			sql.NamedArg{Name: "orgID", Value: orgID},
-			sql.NamedArg{Name: "isAdmin", Value: true},
+		adminUserID, err = postgres.InsertReturningID(ctx, tx, insertUserReturning,
+			sql.NamedArg{Name: argName, Value: adminUsername},
+			sql.NamedArg{Name: argSalt, Value: salt},
+			sql.NamedArg{Name: argHashedPassword, Value: hashedAdminPassword},
+			sql.NamedArg{Name: argOrgID, Value: orgID},
+			sql.NamedArg{Name: argIsAdmin, Value: true},
 		)
 	} else {
 		var res sql.Result
 		res, err = tx.Exec(
 			ctx,
 			insertUser,
-			sql.NamedArg{Name: "name", Value: adminUsername},
-			sql.NamedArg{Name: "salt", Value: salt},
-			sql.NamedArg{Name: "hashedPassword", Value: hashedAdminPassword},
-			sql.NamedArg{Name: "orgID", Value: orgID},
-			sql.NamedArg{Name: "isAdmin", Value: true},
+			sql.NamedArg{Name: argName, Value: adminUsername},
+			sql.NamedArg{Name: argSalt, Value: salt},
+			sql.NamedArg{Name: argHashedPassword, Value: hashedAdminPassword},
+			sql.NamedArg{Name: argOrgID, Value: orgID},
+			sql.NamedArg{Name: argIsAdmin, Value: true},
 		)
 		if err == nil {
 			adminUserID, _ = res.LastInsertId()
@@ -769,8 +778,8 @@ func dbUpdateUserGroupBindings(
 		if _, err := tx.Exec(
 			ctx,
 			deleteGroupBinding,
-			sql.NamedArg{Name: "userID", Value: userID},
-			sql.NamedArg{Name: "groupID", Value: b.GroupID},
+			sql.NamedArg{Name: argUserID, Value: userID},
+			sql.NamedArg{Name: argGroupID, Value: b.GroupID},
 		); err != nil {
 			zerologr.Error(err, "Failed to delete group binding")
 			return err
@@ -789,8 +798,8 @@ func dbUpdateUserGroupBindings(
 			if _, err := tx.Exec(
 				ctx,
 				insertGroupBinding,
-				sql.NamedArg{Name: "userID", Value: userID},
-				sql.NamedArg{Name: "orgID", Value: orgID},
+				sql.NamedArg{Name: argUserID, Value: userID},
+				sql.NamedArg{Name: argOrgID, Value: orgID},
 				sql.NamedArg{Name: "groupName", Value: groupName},
 			); err != nil {
 				zerologr.Error(err, "Failed to insert group binding")

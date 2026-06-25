@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/trebent/kerberos/internal/composer"
+	composerdebug "github.com/trebent/kerberos/internal/composer/debug"
 	"github.com/trebent/kerberos/internal/config"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
@@ -31,23 +33,14 @@ var (
 	routePattern                        = regexp.MustCompile(`^/gw/backend/([-_a-z0-9]+)?/.*$`)
 	_            composer.FlowComponent = (*router)(nil)
 
-	errFailedPatternMatch = errors.New("bad backend pattern")
 	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
-	apiErrFailedPatternMatch = apierror.New(http.StatusBadRequest, errFailedPatternMatch.Error())
-	errNoBackendFound        = errors.New("no backend found")
-	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
-	apiErrNoBackendFound = apierror.New(http.StatusNotFound, errNoBackendFound.Error())
+	apiErrNoBackendFound = apierror.New(http.StatusNotFound, "no backend found")
 )
 
 const (
 	expectedPatternMatches = 2
 	prefix                 = "/gw/backend/"
 )
-
-func NewBackendContext(ctx context.Context, backend *config.RouterBackend) context.Context {
-	ctx = context.WithValue(ctx, composer.TargetContextKey, backend)
-	return context.WithValue(ctx, composer.BackendContextKey, backend.Name)
-}
 
 func NewComponent(opts *Opts) composer.FlowComponent {
 	for _, backend := range opts.Cfg.Backends {
@@ -97,24 +90,31 @@ func (r *router) GetMeta() []adminapi.FlowMeta {
 
 // ServeHTTP implements [composer.FlowComponent].
 func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
+	debugStart := time.Now()
+	debuggedCall := composer.DebugFromContext(req.Context())
+
 	logger, _ := logr.FromContext(req.Context())
 	rLogger := logger.WithName("router")
 	rLogger.Info("Routing request", "path", req.URL.Path)
 
-	backend, err := r.GetBackend(*req)
-	if errors.Is(err, errNoBackendFound) {
+	backend, err := r.GetBackend(req)
+	if errors.Is(err, apiErrNoBackendFound) {
 		rLogger.Error(err, "Failed to route request")
 		apierror.ErrorHandler(wrapped, req, apiErrNoBackendFound)
-		return
-	} else if errors.Is(err, errFailedPatternMatch) {
-		rLogger.Error(err, "Failed to route request")
-		apierror.ErrorHandler(wrapped, req, apiErrFailedPatternMatch)
+		debuggedCall.AddTransition(
+			"router",
+			composerdebug.CallDirectionInbound,
+			debugStart,
+			time.Now(),
+			composerdebug.CallResultFailure,
+			apiErrNoBackendFound.Error(),
+		)
 		return
 	}
 
 	// Set backend in context logger to forward. Don't append to the name.
 	ctx := logr.NewContext(req.Context(), logger.WithValues("backend", backend.Name))
-	ctx = NewBackendContext(ctx, backend)
+	ctx = context.WithValue(ctx, composer.TargetContextKey, backend)
 
 	// Update the wrapper request context to be able to extract in higher level middleware.
 	wrapper, _ := wrapped.(*response.Wrapper)
@@ -123,24 +123,29 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	// Strip the /gw/backend/{backend-name} prefix from the request URL path.
 	req.URL.Path = stripKrbPrefix(req.URL.Path, backend.Name)
 
+	debuggedCall.AddTransition(
+		"router",
+		composerdebug.CallDirectionInbound,
+		debugStart,
+		time.Now(),
+		composerdebug.CallResultSuccess,
+		"",
+	)
+
 	// Serve the request with the updated context.
 	r.next.ServeHTTP(wrapped, req.WithContext(ctx))
 }
 
-func (r *router) GetBackend(req http.Request) (*config.RouterBackend, error) {
-	reqPath := routePattern.FindStringSubmatch(req.URL.Path)
-
-	if len(reqPath) < expectedPatternMatches {
-		return nil, fmt.Errorf("%w: %s", errFailedPatternMatch, req.URL.Path)
-	}
+func (r *router) GetBackend(req *http.Request) (*config.RouterBackend, error) {
+	backendName := req.Context().Value(composer.BackendContextKey)
 
 	for _, backend := range r.cfg.Backends {
-		if backend.Name == reqPath[1] {
+		if backend.Name == backendName {
 			return backend, nil
 		}
 	}
 
-	return nil, fmt.Errorf("%w: %s", errNoBackendFound, req.URL.Path)
+	return nil, fmt.Errorf("%w: %s", apiErrNoBackendFound, req.URL.Path)
 }
 
 // stripKrbPrefix strips the /gw/backend/{backend-name} prefix from the request URL path.

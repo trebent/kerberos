@@ -9,6 +9,7 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 	adminext "github.com/trebent/kerberos/internal/admin/extensions"
+	composerdebug "github.com/trebent/kerberos/internal/composer/debug"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/db"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
@@ -38,6 +39,9 @@ type (
 		// StrictServerInterface of the admin API. Used to manufacture middleware to late-registered
 		// API providers.
 		ssi withExtensions
+
+		// debugger is the debugger used to determine if a request should be debugged.
+		*debugger
 	}
 )
 
@@ -71,6 +75,7 @@ func New(opts *Opts) (*Admin, error) {
 		SQLClient:    opts.SQLClient,
 		ClientID:     opts.Cfg.SuperUser.ClientID,
 		ClientSecret: opts.Cfg.SuperUser.ClientSecret,
+		Debugger:     newDebugger(opts.SQLClient),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create SSI: %w", err)
@@ -106,6 +111,12 @@ func New(opts *Opts) (*Admin, error) {
 		ssi: ssi,
 		mux: opts.Mux,
 	}, nil
+}
+
+// GetDebugger returns the debugger used by the admin API to determine if a request should be debugged.
+func (a *Admin) GetDebugger() composerdebug.Debugger {
+	//nolint:errcheck // guaranteed
+	return a.ssi.(*impl).debugger
 }
 
 // SetFlowFetcher sets the flow fetcher for the admin component. This allows the admin API to serve flow metadata

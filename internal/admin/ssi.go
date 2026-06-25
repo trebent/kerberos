@@ -3,7 +3,6 @@ package admin
 import (
 	"bytes"
 	"context"
-	"errors"
 	"net/http"
 
 	adminext "github.com/trebent/kerberos/internal/admin/extensions"
@@ -28,20 +27,21 @@ type (
 
 		ClientID     string
 		ClientSecret string
+
+		Debugger *debugger
 	}
 	impl struct {
 		sqlClient db.SQLClient
 
 		flowFetcher adminext.FlowFetcher
 		oasBackend  adminext.OASBackend
+
+		*debugger
 	}
 )
 
 var (
 	_ withExtensions = (*impl)(nil)
-
-	errNoSuperuser = errors.New("no superuser exists")
-	errNoSession   = errors.New("no valid super session found")
 
 	apiErrInternal     = makeGenAPIError(http.StatusText(http.StatusInternalServerError))
 	apiErrForbidden    = makeGenAPIError(http.StatusText(http.StatusForbidden))
@@ -56,9 +56,9 @@ func makeGenAPIError(msg string) adminapi.APIErrorResponse {
 
 func newSSI(opts *ssiOpts) (withExtensions, error) {
 	i := &impl{
-		sqlClient: opts.SQLClient,
-
+		sqlClient:  opts.SQLClient,
 		oasBackend: &adminext.DummyOASBackend{},
+		debugger:   opts.Debugger,
 	}
 
 	if err := dbBootstrapSuperuser(i.sqlClient, opts.ClientID, opts.ClientSecret); err != nil {

@@ -53,20 +53,10 @@ func (d *Dummy) Next(next FlowComponent) {
 	d.next = next
 }
 
+// GetMeta implements [FlowComponent], dummy components will forward the GetMeta call to the next component in the flow without
+// adding any additional metadata.
 func (d *Dummy) GetMeta() []adminapi.FlowMeta {
-	fmd := adminapi.FlowMeta_Data{}
-	if err := fmd.FromNoFlowMetaData(adminapi.NoFlowMetaData{}); err != nil {
-		panic(err)
-	}
-
-	meta := adminapi.FlowMeta{
-		Name: "dummy",
-		Data: fmd,
-	}
-	if d.next != nil {
-		return append([]adminapi.FlowMeta{meta}, d.next.GetMeta()...)
-	}
-	return []adminapi.FlowMeta{meta}
+	return d.next.GetMeta()
 }
 
 func (d *Dummy) defaultHandler(w http.ResponseWriter, req *http.Request) {

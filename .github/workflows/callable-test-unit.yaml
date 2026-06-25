@@ -75,7 +75,6 @@ jobs:
           name: go-coverage-report-${{ github.sha }}
           path: build/coverage.html
 
-
   unit-test-postgres:
     runs-on: ubuntu-latest
     steps:
