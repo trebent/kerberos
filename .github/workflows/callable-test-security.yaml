@@ -76,7 +76,7 @@ jobs:
         if: failure()
         run: |
           mkdir -p build
-          make compose/logs > build/security-test.log
+          make compose/security/logs > build/security-test.log
 
       - name: Upload logs
         if: failure()

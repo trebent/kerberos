@@ -338,13 +338,6 @@ func dummyComponent(logger logr.Logger, opts *Opts) composer.FlowComponent {
 		rLogger := logger.WithValues("path", req.URL.Path, "method", req.Method)
 		rLogger.Info(req.Method + " " + req.URL.Path)
 
-		// Debug call is started, but the flow component transition is not logged to denote that
-		// observability is indeed disabled.
-		debugCall, ctx := opts.Debugger.Start(req.Context())
-		defer debugCall.Finalise()
-		debugCall.SetURL(req.URL.Path)
-		debugCall.SetMethod(req.Method)
-
 		name, err := router.GetBackendName(req)
 		if err != nil {
 			rLogger.Error(err, "Failed to extract backend name from request path")
@@ -352,7 +345,15 @@ func dummyComponent(logger logr.Logger, opts *Opts) composer.FlowComponent {
 			return
 		}
 
-		ctx = context.WithValue(ctx, composer.BackendContextKey, name)
+		ctx := context.WithValue(req.Context(), composer.BackendContextKey, name)
+
+		// Debug call is started, but the flow component transition is not logged to denote that
+		// observability is indeed disabled.
+		debugCall, ctx := opts.Debugger.Start(ctx)
+		defer debugCall.Finalise()
+		debugCall.SetURL(req.URL.Path)
+		debugCall.SetMethod(req.Method)
+
 		ctx = logr.NewContext(ctx, rLogger)
 
 		// Must set up response wrapper since components down the line depends on it, and to
