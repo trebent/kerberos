@@ -12,18 +12,18 @@ Kerberos produces the following request/response metrics:
 
 All bucket types also have a `_sum` and `_total` variant.
 
-
 #### Labelling
 
 Request/response metrics are labelled with the backend they belong to, along with pertinent HTTP information that won't cause too large dimensions. In most cases this includes the HTTP method. The `response_total` metric additionally has the response code as a label added to it.
 
 Request/response labels:
+
 * `krb_backend`
 * `http_method`
 
 Extra label for the `response_total` counter:
-* `http_status_code`
 
+* `http_status_code`
 
 ### Tracing
 

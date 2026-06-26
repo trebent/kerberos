@@ -6,9 +6,6 @@ HTTP handler call order:
 2. Router (fetch backend)
 3. Forward (using router backend)
 
-
-## Routing
-
 Kerberos will forward requests following this format:
 
 URL: `/gw/backend/<backend-name>/<backend-path>`

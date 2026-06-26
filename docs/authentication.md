@@ -94,6 +94,7 @@ In addition to organisation administrators, Kerberos supports super user account
 ### Creating Administrator Accounts
 
 When a new organisation is created, an administrator account is automatically generated with:
+
 - Username: `admin-{organisation-name}`
 - A randomly generated password (returned in the creation response)
 - The `administrator` flag set to `true`
