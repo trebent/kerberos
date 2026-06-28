@@ -134,10 +134,20 @@ components:
 security:
   - sessionid: []
 
+tags:
+  - name: organisations
+    description: Organisation management endpoints.
+  - name: users
+    description: User management endpoints.
+  - name: groups
+    description: Group management endpoints.
+
 paths:
   # Creating a new organisation will automatically create an admin user.
   /api/auth/basic/organisations:
     post:
+      tags:
+        - organisations
       operationId: CreateOrganisation
       requestBody:
         required: true
@@ -197,6 +207,8 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
     get:
+      tags:
+        - organisations
       operationId: ListOrganisations
       responses:
         "200":
@@ -230,6 +242,8 @@ paths:
     parameters:
       - "$ref": "#/components/parameters/orgid"
     put:
+      tags:
+        - organisations
       operationId: UpdateOrganisation
       requestBody:
         required: true
@@ -277,6 +291,8 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
     get:
+      tags:
+        - organisations
       operationId: GetOrganisation
       responses:
         "200":
@@ -306,6 +322,8 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
     delete:
+      tags:
+        - organisations
       operationId: DeleteOrganisation
       responses:
         "204":
@@ -333,6 +351,8 @@ paths:
     parameters:
       - $ref: "#/components/parameters/orgid"
     post:
+      tags:
+        - users
       operationId: Login
       security: []
       requestBody:
@@ -380,6 +400,8 @@ paths:
     parameters:
       - $ref: "#/components/parameters/orgid"
     post:
+      tags:
+        - users
       operationId: Logout
       responses:
         "204":
@@ -404,6 +426,8 @@ paths:
     parameters:
       - $ref: "#/components/parameters/orgid"
     post:
+      tags:
+        - users
       operationId: CreateUser
       requestBody:
         required: true
@@ -449,6 +473,8 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
     get:
+      tags:
+        - users
       operationId: ListUsers
       responses:
         "200":
@@ -483,6 +509,8 @@ paths:
       - $ref: "#/components/parameters/orgid"
       - $ref: "#/components/parameters/userid"
     get:
+      tags:
+        - users
       operationId: GetUser
       responses:
         "200":
@@ -512,6 +540,8 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
     put:
+      tags:
+        - users
       operationId: UpdateUser
       requestBody:
         required: true
@@ -559,6 +589,8 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
     delete:
+      tags:
+        - users
       operationId: DeleteUser
       responses:
         "204":
@@ -587,6 +619,8 @@ paths:
       - $ref: "#/components/parameters/orgid"
       - $ref: "#/components/parameters/userid"
     put:
+      tags:
+        - users
       operationId: UpdateUserGroups
       requestBody:
         required: true
@@ -626,6 +660,8 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
     get:
+      tags:
+        - users
       operationId: GetUserGroups
       responses:
         "200":
@@ -658,6 +694,8 @@ paths:
       - $ref: "#/components/parameters/orgid"
       - $ref: "#/components/parameters/userid"
     put:
+      tags:
+        - users
       operationId: ChangePassword
       requestBody:
         required: true
@@ -701,6 +739,8 @@ paths:
     parameters:
       - "$ref": "#/components/parameters/orgid"
     post:
+      tags:
+        - groups
       operationId: CreateGroup
       requestBody:
         required: true
@@ -746,6 +786,8 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
     get:
+      tags:
+        - groups
       operationId: ListGroups
       responses:
         "200":
@@ -783,6 +825,8 @@ paths:
       - "$ref": "#/components/parameters/orgid"
       - "$ref": "#/components/parameters/groupid"
     put:
+      tags:
+        - groups
       operationId: UpdateGroup
       requestBody:
         required: true
@@ -830,6 +874,8 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
     get:
+      tags:
+        - groups
       operationId: GetGroup
       responses:
         "200":
@@ -859,6 +905,8 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
     delete:
+      tags:
+        - groups
       operationId: DeleteGroup
       responses:
         "204":

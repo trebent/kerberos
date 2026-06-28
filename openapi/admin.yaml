@@ -441,6 +441,16 @@ components:
 security:
   - sessionid: []
 
+tags:
+  - name: users
+    description: User management endpoints.
+  - name: flow
+    description: Flow management endpoints.
+  - name: debug
+    description: Debug management endpoints.
+  - name: oas
+    description: OpenAPI specification management endpoints.
+
 paths:
   #
   # Superuser management endpoints.
@@ -448,6 +458,8 @@ paths:
 
   /api/admin/superuser/login:
     post:
+      tags:
+        - users
       security: []
       operationId: LoginSuperuser
       requestBody:
@@ -499,6 +511,8 @@ paths:
 
   /api/admin/superuser/logout:
     post:
+      tags:
+        - users
       operationId: LogoutSuperuser
       responses:
         "204":
@@ -522,6 +536,8 @@ paths:
 
   /api/admin/users:
     post:
+      tags:
+        - users
       operationId: CreateUser
       requestBody:
         $ref: "#/components/requestBodies/CreateUserRequest"
@@ -563,6 +579,8 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
     get:
+      tags:
+        - users
       operationId: GetUsers
       responses:
         "200":
@@ -594,6 +612,8 @@ paths:
 
   /api/admin/users/{userID}:
     get:
+      tags:
+        - users
       operationId: GetUser
       parameters:
         - name: userID
@@ -639,6 +659,8 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
     put:
+      tags:
+        - users
       operationId: UpdateUser
       parameters:
         - name: userID
@@ -688,6 +710,8 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
     delete:
+      tags:
+        - users
       operationId: DeleteUser
       parameters:
         - name: userID
@@ -731,6 +755,8 @@ paths:
 
   /api/admin/users/{userID}/password:
     put:
+      tags:
+        - users
       operationId: ChangeUserPassword
       parameters:
         - name: userID
@@ -776,6 +802,8 @@ paths:
 
   /api/admin/users/{userID}/groups:
     put:
+      tags:
+        - users
       operationId: UpdateUserGroups
       parameters:
         - name: userID
@@ -821,6 +849,8 @@ paths:
 
   /api/admin/login:
     post:
+      tags:
+        - users
       security: []
       operationId: Login
       requestBody:
@@ -852,6 +882,8 @@ paths:
 
   /api/admin/logout:
     post:
+      tags:
+        - users
       operationId: Logout
       responses:
         "204":
@@ -877,6 +909,8 @@ paths:
 
   /api/admin/groups:
     post:
+      tags:
+        - users
       operationId: CreateGroup
       requestBody:
         $ref: "#/components/requestBodies/CreateGroupRequest"
@@ -918,6 +952,8 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
     get:
+      tags:
+        - users
       operationId: GetGroups
       responses:
         "200":
@@ -949,6 +985,8 @@ paths:
 
   /api/admin/groups/{groupID}:
     get:
+      tags:
+        - users
       operationId: GetGroup
       parameters:
         - name: groupID
@@ -988,6 +1026,8 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
     put:
+      tags:
+        - users
       operationId: UpdateGroup
       parameters:
         - name: groupID
@@ -1037,6 +1077,8 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
     delete:
+      tags:
+        - users
       operationId: DeleteGroup
       parameters:
         - name: groupID
@@ -1080,6 +1122,8 @@ paths:
 
   /api/admin/permissions:
     get:
+      tags:
+        - users
       operationId: GetPermissions
       responses:
         "200":
@@ -1109,6 +1153,8 @@ paths:
 
   /api/admin/debug/{backend}/sessions:
     post:
+      tags:
+        - debug
       operationId: StartDebugSession
       parameters:
         - name: backend
@@ -1156,6 +1202,8 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
     get:
+      tags:
+        - debug
       operationId: ListDebugSessions
       parameters:
         - name: backend
@@ -1193,6 +1241,8 @@ paths:
 
   /api/admin/debug/{backend}/sessions/{sessionId}:
     get:
+      tags:
+        - debug
       operationId: GetDebugSession
       parameters:
         - name: backend
@@ -1237,6 +1287,8 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
     put:
+      tags:
+        - debug
       operationId: ExtendDebugSession
       parameters:
         - name: backend
@@ -1302,6 +1354,8 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
     post:
+      tags:
+        - debug
       operationId: StopDebugSession
       parameters:
         - name: backend
@@ -1342,6 +1396,8 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
     delete:
+      tags:
+        - debug
       operationId: DeleteDebugSession
       parameters:
         - name: backend
@@ -1384,6 +1440,8 @@ paths:
 
   /api/admin/debug/{backend}/sessions/{sessionId}/calls:
     get:
+      tags:
+        - debug
       operationId: ListDebugSessionCalls
       parameters:
         - name: backend
@@ -1438,6 +1496,8 @@ paths:
 
   /api/admin/debug/{backend}/sessions/{sessionId}/calls/{callId}:
     get:
+      tags:
+        - debug
       operationId: GetDebugSessionCall
       parameters:
         - name: backend
@@ -1493,6 +1553,8 @@ paths:
 
   /api/admin/flow:
     get:
+      tags:
+        - flow
       operationId: GetFlow
       responses:
         "200":
@@ -1524,6 +1586,8 @@ paths:
 
   /api/admin/oas/{backend}:
     get:
+      tags:
+        - oas
       operationId: GetBackendOAS
       parameters:
         - name: backend
