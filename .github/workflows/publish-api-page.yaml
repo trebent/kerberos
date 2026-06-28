@@ -1,7 +1,5 @@
 name: Deploy static content to Pages
 
-run-name: "Deploy pages - ${{ format('{0} #{1}', github.ref_name, github.run_number) }}"
-
 on:
   workflow_dispatch:
   push:

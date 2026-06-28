@@ -1,7 +1,5 @@
 name: Main branch protection
 
-run-name: "Main branch protection: ${{ github.run_number }}"
-
 on:
   workflow_dispatch:
   push:
