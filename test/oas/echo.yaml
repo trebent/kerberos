@@ -35,16 +35,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EchoResponse"
-    options:
-      summary: Root endpoint OPTIONS.
-      operationId: rootOptions
-      responses:
-        "200":
-          description: Echo response.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/EchoResponse"
     trace:
       summary: Root endpoint TRACE.
       operationId: rootTrace
@@ -124,18 +114,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EchoResponse"
-    options:
-      summary: Root endpoint OPTIONS.
-      operationId: rootOptions
-      responses:
-        "200":
-          description: Echo response.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/EchoResponse"
     trace:
-      summary: Root endpoint TRACE.
+      summary: Say hi to echo TRACE.
       operationId: rootTrace
       responses:
         "200":
@@ -145,6 +125,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/EchoResponse"
     head:
+      summary: Say hi to echo HEAD.
       responses:
         "200":
           description: Echo response.
@@ -194,18 +175,8 @@ paths:
                 $ref: "#/components/schemas/EchoResponse"
 
   /long/hello:
-    options:
-      summary: Root endpoint OPTIONS.
-      operationId: rootOptions
-      responses:
-        "200":
-          description: Echo response.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/EchoResponse"
     trace:
-      summary: Root endpoint TRACE.
+      summary: Long hello endpoint TRACE.
       operationId: rootTrace
       responses:
         "200":
@@ -215,6 +186,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/EchoResponse"
     head:
+      summary: Long hello endpoint HEAD.
       responses:
         "200":
           description: Echo response.

@@ -81,7 +81,9 @@ func main() {
 	}
 
 	startLogger := zerologr.WithName("start")
-	startLogger.Info("Starting Kerberos API GW server", "port", internalenv.Port.Value())
+	startLogger.Info("Starting Kerberos API GW server",
+		"port", internalenv.Port.Value(),
+		"admin_port", internalenv.AdminPort.Value())
 
 	signalCtx, signalCancel := signal.NotifyContext(
 		context.Background(),

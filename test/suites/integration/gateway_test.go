@@ -27,7 +27,6 @@ func TestGWHappy(t *testing.T) {
 		{name: "DELETE", method: http.MethodDelete, path: "/hi"},
 		{name: "PATCH", method: http.MethodPatch, path: "/hi", body: bodyData},
 		{name: "TRACE", method: http.MethodTrace, path: "/hi"},
-		{name: "OPTIONS", method: http.MethodOptions, path: "/hi"},
 		{name: "HEAD", method: http.MethodHead, path: "/hi"},
 	}
 

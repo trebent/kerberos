@@ -39,6 +39,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
+
 	if orgResp.StatusCode() != http.StatusCreated {
 		if orgResp.StatusCode() == http.StatusConflict {
 			orgListResp, err := basicAuthClient.ListOrganisationsWithResponse(

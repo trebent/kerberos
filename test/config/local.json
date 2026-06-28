@@ -14,7 +14,30 @@
       ]
     }
   },
+  "auth": {
+    "methods": {
+      "basic": {}
+    },
+    "scheme": {
+      "mappings": [
+        {
+          "backend": "${ref:gateway.router.backends[0].name}",
+          "method": "basic"
+        }
+      ]
+    },
+    "order": 1
+  },
   "observability": {
     "enabled": false
+  },
+  "oas": {
+    "mappings": [
+      {
+        "backend": "${ref:gateway.router.backends[0].name}",
+        "specification": "test/oas/echo.yaml"
+      }
+    ],
+    "order": 100
   }
 }

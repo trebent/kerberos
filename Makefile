@@ -118,7 +118,7 @@ docker/build:
 	docker build --build-arg VERSION=$(VERSION) -t ghcr.io/trebent/kerberos:$(VERSION) -f docker/krb.Dockerfile .
 
 docker/logs:
-	@docker logs kerberos
+	@docker logs kerberos -f
 
 docker/rm:
 	@docker rm kerberos || true
@@ -207,6 +207,11 @@ krb/permissions:
 	-d '{"clientId":"$(SUPERUSER_CLIENT_ID)","clientSecret":"$(SUPERUSER_CLIENT_SECRET)"}' \
 	| grep -i '^x-krb-session:' | tr -d '\r' | awk '{print $$2}'); \
 	curl -s -H "x-krb-session: $$SESSION" localhost:$(KERBEROS_ADMIN_PORT)/api/admin/permissions | jq
+
+# This uses the integration test suite to provision Kerberos with test data.
+krb/provision:
+	$(call cecho,Provisioning Kerberos with test data...,$(BOLD_YELLOW))
+	@cd test/suites/integration && go test -v ./... -count=1 -failfast -run NotExist
 
 postgres/run:
 	$(call cecho,Running PostgreSQL for Kerberos...,$(BOLD_YELLOW))
