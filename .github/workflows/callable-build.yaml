@@ -60,7 +60,6 @@ jobs:
             exit 1
           fi
 
-
   go-build:
     runs-on: ubuntu-latest
     steps:

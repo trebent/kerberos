@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"regexp"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -30,8 +29,7 @@ type (
 )
 
 var (
-	routePattern                        = regexp.MustCompile(`^/gw/backend/([-_a-z0-9]+)?/.*$`)
-	_            composer.FlowComponent = (*router)(nil)
+	_ composer.FlowComponent = (*router)(nil)
 
 	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
 	apiErrNoBackendFound = apierror.New(http.StatusNotFound, "no backend found")
