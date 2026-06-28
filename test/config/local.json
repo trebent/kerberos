@@ -1,7 +1,7 @@
 {
   "persistence": {
     "driver": "sqlite",
-    "address": "build/kerberos.db"
+    "address": "build/krb.db"
   },
   "gateway": {
     "router": {

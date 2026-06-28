@@ -77,7 +77,8 @@ const (
 	// Always resource must never be altered or deleted by test cases, and are set up by test main.
 	alwaysOrg          = "always"
 	alwaysUser         = "always"
-	alwaysUserPassword = "alwayspassword"
+	alwaysAdminUser    = "always"
+	alwaysUserPassword = "password123"
 	alwaysGroupStaff   = "staff"
 	alwaysGroupPleb    = "pleb"
 	alwaysGroupDev     = "dev"

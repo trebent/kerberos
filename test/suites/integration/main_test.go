@@ -31,6 +31,21 @@ func TestMain(m *testing.M) {
 	}
 	requestEditorSuper := requestEditorSessionID(loginResp.HTTPResponse.Header.Get("x-krb-session"))
 
+	createAdminUserResp, err := adminClient.CreateUserWithResponse(
+		context.Background(),
+		adminapi.CreateUserJSONRequestBody{
+			Username: alwaysAdminUser,
+			Password: alwaysUserPassword,
+		},
+		adminapi.RequestEditorFn(requestEditorSuper),
+	)
+	if err != nil {
+		panic(err)
+	}
+	if createAdminUserResp.StatusCode() != http.StatusCreated && createAdminUserResp.StatusCode() != http.StatusConflict {
+		panic("create admin user response did not indicate success: " + createAdminUserResp.Status())
+	}
+
 	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		context.Background(),
 		authbasicapi.CreateOrganisationRequest{Name: alwaysOrg},

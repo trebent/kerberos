@@ -15,6 +15,7 @@ import (
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
 	"github.com/trebent/kerberos/internal/oas"
+	"github.com/trebent/kerberos/internal/response"
 	"github.com/trebent/zerologr"
 )
 
@@ -101,7 +102,12 @@ func New(opts *Opts) (*Admin, error) {
 			func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					zerologr.Info(fmt.Sprintf("%s %s", r.Method, r.URL.Path))
-					next.ServeHTTP(w, r)
+					//nolint:errcheck // guaranteed
+					wrapper := response.NewResponseWrapper(w).(*response.Wrapper)
+					next.ServeHTTP(wrapper, r)
+					zerologr.Info(
+						fmt.Sprintf("%s %s %d", r.Method, r.URL.Path, wrapper.StatusCode()),
+					)
 				})
 			},
 		},

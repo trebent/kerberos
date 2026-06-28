@@ -20,6 +20,7 @@ import (
 	"github.com/trebent/kerberos/internal/config"
 	authbasicapi "github.com/trebent/kerberos/internal/oapi/auth/basic"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
+	"github.com/trebent/kerberos/internal/response"
 
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/kerberos/internal/oas"
@@ -228,7 +229,12 @@ func (a *basic) RegisterRoutes(
 			func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					zerologr.Info(fmt.Sprintf("%s %s", r.Method, r.URL.Path))
-					next.ServeHTTP(w, r)
+					//nolint:errcheck // guaranteed
+					wrapper := response.NewResponseWrapper(w).(*response.Wrapper)
+					next.ServeHTTP(wrapper, r)
+					zerologr.Info(
+						fmt.Sprintf("%s %s %d", r.Method, r.URL.Path, wrapper.StatusCode()),
+					)
 				})
 			},
 		},

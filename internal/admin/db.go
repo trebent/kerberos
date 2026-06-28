@@ -1042,6 +1042,7 @@ func dbBootstrapSuperuser(client db.SQLClient, clientID, clientSecret string) er
 		if err := rows.Err(); err != nil {
 			return err
 		}
+		zerologr.Info("No super user found, creating one with the provided credentials")
 
 		// No super user exists, create one with the provided credentials.
 		_, salt, hashedPassword := password.Make(clientSecret)
@@ -1054,6 +1055,8 @@ func dbBootstrapSuperuser(client db.SQLClient, clientID, clientSecret string) er
 		); err != nil {
 			return err
 		}
+	} else {
+		zerologr.Info("Super user already exists, skipping creation")
 	}
 
 	return nil

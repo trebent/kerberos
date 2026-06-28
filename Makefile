@@ -192,6 +192,14 @@ krb/flow:
 	| grep -i '^x-krb-session:' | tr -d '\r' | awk '{print $$2}'); \
 	curl -s -H "x-krb-session: $$SESSION" localhost:$(KERBEROS_ADMIN_PORT)/api/admin/flow | jq .
 
+krb/admin-users:
+	$(call cecho,Fetching admin users from Kerberos admin API...,$(BOLD_YELLOW))
+	@SESSION=$$(curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/admin/superuser/login \
+	-H "Content-Type: application/json" \
+	-d '{"clientId":"$(SUPERUSER_CLIENT_ID)","clientSecret":"$(SUPERUSER_CLIENT_SECRET)"}' \
+	| grep -i '^x-krb-session:' | tr -d '\r' | awk '{print $$2}'); \
+	curl -s -H "x-krb-session: $$SESSION" localhost:$(KERBEROS_ADMIN_PORT)/api/admin/users | jq .
+
 krb/oas-backend:
 	$(call cecho,Fetching OAS backend from Kerberos admin API...,$(BOLD_YELLOW))
 	@SESSION=$$(curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/admin/superuser/login \
