@@ -230,7 +230,6 @@ run:
 	ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
 	LOG_TO_CONSOLE=true \
 	LOG_VERBOSITY=$(LOG_VERBOSITY) \
-	DB_DIRECTORY=$(PWD)/build \
 	OAS_DIRECTORY=$(PWD)/openapi \
 	VERSION=$(VERSION) \
 	go run . --config ./test/config/local.json

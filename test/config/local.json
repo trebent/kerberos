@@ -1,4 +1,8 @@
 {
+  "persistence": {
+    "driver": "sqlite",
+    "address": "build/kerberos.db"
+  },
   "gateway": {
     "router": {
       "backends": [

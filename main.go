@@ -112,7 +112,7 @@ func main() {
 }
 
 // newDBClient constructs a db.SQLClient based on the persistence configuration.
-// When no persistence config is provided, SQLite in DB_DIRECTORY is used (legacy default).
+// When no persistence config is provided, SQLite in current workdir is used (legacy default).
 func newDBClient(cfg *config.PersistenceConfig) db.SQLClient {
 	if cfg.Driver == "sqlite" {
 		zerologr.Info("Using SQLite persistence")
@@ -272,13 +272,13 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		Addr:         fmt.Sprintf(":%d", internalenv.Port.Value()),
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
-		Handler:      gwMux,
+		Handler:      allowCORS(gwMux),
 	}
 	adminServer := http.Server{
 		Addr:         fmt.Sprintf(":%d", internalenv.AdminPort.Value()),
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
-		Handler:      adminMux,
+		Handler:      allowCORS(adminMux),
 	}
 
 	gwErrChan := make(chan error, 1)
@@ -333,4 +333,19 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	}
 
 	return errors.Join(adminSrvErr, gwSrvErr, shutdownErr)
+}
+
+func allowCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
