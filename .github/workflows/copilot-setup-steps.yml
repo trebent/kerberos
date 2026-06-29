@@ -32,13 +32,13 @@ jobs:
         run: echo "checksum=${{ hashFiles('go.mod', 'go.sum', 'tools/go.mod', 'tools/go.sum', 'test/suites/integration/go.mod', 'test/suites/integration/go.sum', 'test/suites/security/go.mod', 'test/suites/security/go.sum', '**/*.go') }}" >> "$GITHUB_OUTPUT"
 
       - name: Cache Go module cache
-        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/go/pkg/mod
           key: copilot-go-mod-${{ runner.os }}-${{ hashFiles('go.sum', 'tools/go.sum', 'test/suites/integration/go.sum', 'test/suites/security/go.sum') }}
 
       - name: Cache Go build cache
-        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/go-build
           key: copilot-go-build-${{ runner.os }}-${{ steps.build-cache-key.outputs.checksum }}
