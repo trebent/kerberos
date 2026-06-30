@@ -6,7 +6,8 @@ updates:
       - "/tools"
       - "/test/integration"
     schedule:
-      interval: "daily"
+      interval: weekly
+      day: monday
     groups:
       go-minor/patch-versions:
         applies-to: version-updates
@@ -23,7 +24,8 @@ updates:
     directories:
       - "/docker"
     schedule:
-      interval: "daily"
+      interval: weekly
+      day: tuesday
     groups:
       docker-minor/patch-versions:
         applies-to: version-updates
@@ -39,7 +41,8 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: weekly
+      day: wednesday
     groups:
       action-minor/patch-versions:
         applies-to: version-updates
