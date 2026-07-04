@@ -26,7 +26,8 @@ updates:
 
   - package-ecosystem: "gomod"
     directories:
-      - "/test/integration"
+      - "/test/suites/integration"
+      - "/test/suites/security"
     schedule:
       interval: weekly
       day: wednesday
