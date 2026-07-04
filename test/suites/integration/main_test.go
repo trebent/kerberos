@@ -29,7 +29,11 @@ func TestMain(m *testing.M) {
 	if loginResp.StatusCode() != http.StatusNoContent {
 		panic("superuser login response did not indicate success: " + loginResp.Status())
 	}
-	requestEditorSuper := requestEditorSessionID(loginResp.HTTPResponse.Header.Get("x-krb-session"))
+	cookie, err := extractSessionCookie(loginResp.HTTPResponse)
+	if err != nil {
+		panic(err)
+	}
+	requestEditorSuper := makeRequestEditorFromCookie(cookie)
 
 	createAdminUserResp, err := adminClient.CreateUserWithResponse(
 		context.Background(),

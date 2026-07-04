@@ -1,47 +1,24 @@
 package integration
 
 import (
-	"fmt"
 	"net/http"
 	"testing"
 
 	adminapi "github.com/trebent/kerberos/test/integration/client/admin"
 )
 
-// startDebugSession is a helper that starts a debug session for the given backend and returns its ID.
-func startDebugSession(t *testing.T, session, backend string) int {
-	t.Helper()
-	resp, err := adminClient.StartDebugSessionWithResponse(
-		t.Context(),
-		backend,
-		adminapi.StartDebugSessionJSONRequestBody{},
-		adminapi.RequestEditorFn(requestEditorSessionID(session)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(resp.StatusCode(), http.StatusOK, t)
-	return resp.JSON200.Id
-}
-
-// makeGatewayRequest sends a GET request through the gateway to the given backend path.
-func makeGatewayRequest(t *testing.T, backend, path string) {
-	t.Helper()
-	url := fmt.Sprintf("http://localhost:%d/gw/backend/%s%s", getPort(), backend, path)
-	resp := get(url, t)
-	defer resp.Body.Close()
-}
-
 // --- StartDebugSession ---
 
 // TestDebugStartSession verifies that a superuser can start a debug session and
 // the response body contains the correct fields.
 func TestDebugStartSession(t *testing.T) {
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	resp, err := adminClient.StartDebugSessionWithResponse(
 		t.Context(),
 		"echo",
 		adminapi.StartDebugSessionJSONRequestBody{},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(resp.StatusCode(), http.StatusOK, t)
@@ -71,7 +48,7 @@ func TestDebugStartSession(t *testing.T) {
 		t.Context(),
 		"echo",
 		session.Id,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
@@ -81,19 +58,19 @@ func TestDebugStartSession(t *testing.T) {
 // backend that already has an active session returns 409 conflict.
 func TestDebugStartSessionConflict(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	// Use a backend name unique to this test to avoid conflicts with parallel tests.
 	const conflictBackend = "echo-conflict-test"
 
-	sessionID := startDebugSession(t, superSession, conflictBackend)
+	sessionID := startDebugSession(t, superRequestEditor, conflictBackend)
 
 	// Attempt to start a second session for the same backend.
 	resp, err := adminClient.StartDebugSessionWithResponse(
 		t.Context(),
 		conflictBackend,
 		adminapi.StartDebugSessionJSONRequestBody{},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(resp.StatusCode(), http.StatusConflict, t)
@@ -104,7 +81,7 @@ func TestDebugStartSessionConflict(t *testing.T) {
 		t.Context(),
 		conflictBackend,
 		sessionID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
@@ -116,7 +93,7 @@ func TestDebugStartSessionConflict(t *testing.T) {
 // sessions returns 200 with an empty list.
 func TestDebugListSessionsEmpty(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	// Use a backend name that no other test will use.
 	const unusedBackend = "no-such-backend-for-list-test"
@@ -124,7 +101,7 @@ func TestDebugListSessionsEmpty(t *testing.T) {
 	resp, err := adminClient.ListDebugSessionsWithResponse(
 		t.Context(),
 		unusedBackend,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(resp.StatusCode(), http.StatusOK, t)
@@ -139,14 +116,14 @@ func TestDebugListSessionsEmpty(t *testing.T) {
 
 // TestDebugListSessionsContainsCreated verifies that a created session appears in the list.
 func TestDebugListSessionsContainsCreated(t *testing.T) {
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
-	sessionID := startDebugSession(t, superSession, "echo")
+	sessionID := startDebugSession(t, superRequestEditor, "echo")
 
 	listResp, err := adminClient.ListDebugSessionsWithResponse(
 		t.Context(),
 		"echo",
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(listResp.StatusCode(), http.StatusOK, t)
@@ -167,7 +144,7 @@ func TestDebugListSessionsContainsCreated(t *testing.T) {
 		t.Context(),
 		"echo",
 		sessionID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
@@ -177,15 +154,15 @@ func TestDebugListSessionsContainsCreated(t *testing.T) {
 
 // TestDebugGetSession verifies that an existing session can be retrieved by ID.
 func TestDebugGetSession(t *testing.T) {
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
-	sessionID := startDebugSession(t, superSession, "echo")
+	sessionID := startDebugSession(t, superRequestEditor, "echo")
 
 	getResp, err := adminClient.GetDebugSessionWithResponse(
 		t.Context(),
 		"echo",
 		sessionID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
@@ -205,7 +182,7 @@ func TestDebugGetSession(t *testing.T) {
 		t.Context(),
 		"echo",
 		sessionID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
@@ -214,13 +191,13 @@ func TestDebugGetSession(t *testing.T) {
 // TestDebugGetSessionNotFound verifies that requesting a non-existent session returns 404.
 func TestDebugGetSessionNotFound(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	resp, err := adminClient.GetDebugSessionWithResponse(
 		t.Context(),
 		"echo",
 		999999999,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(resp.StatusCode(), http.StatusNotFound, t)
@@ -231,16 +208,16 @@ func TestDebugGetSessionNotFound(t *testing.T) {
 
 // TestDebugExtendSession verifies that extending a session updates ExpiresAt.
 func TestDebugExtendSession(t *testing.T) {
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
-	sessionID := startDebugSession(t, superSession, "echo")
+	sessionID := startDebugSession(t, superRequestEditor, "echo")
 
 	// Read original expiry.
 	getResp, err := adminClient.GetDebugSessionWithResponse(
 		t.Context(),
 		"echo",
 		sessionID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
@@ -252,7 +229,7 @@ func TestDebugExtendSession(t *testing.T) {
 		"echo",
 		sessionID,
 		adminapi.ExtendDebugSessionJSONRequestBody{AdditionalDurationSeconds: 60},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(extResp.StatusCode(), http.StatusOK, t)
@@ -269,7 +246,7 @@ func TestDebugExtendSession(t *testing.T) {
 		t.Context(),
 		"echo",
 		sessionID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
@@ -278,14 +255,14 @@ func TestDebugExtendSession(t *testing.T) {
 // TestDebugExtendSessionNotFound verifies that extending a non-existent session returns 404.
 func TestDebugExtendSessionNotFound(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	resp, err := adminClient.ExtendDebugSessionWithResponse(
 		t.Context(),
 		"echo",
 		999999999,
 		adminapi.ExtendDebugSessionJSONRequestBody{AdditionalDurationSeconds: 60},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(resp.StatusCode(), http.StatusNotFound, t)
@@ -297,15 +274,15 @@ func TestDebugExtendSessionNotFound(t *testing.T) {
 // TestDebugStopSession verifies that stopping an active session returns 204 and marks
 // the session as stopped.
 func TestDebugStopSession(t *testing.T) {
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
-	sessionID := startDebugSession(t, superSession, "echo")
+	sessionID := startDebugSession(t, superRequestEditor, "echo")
 
 	stopResp, err := adminClient.StopDebugSessionWithResponse(
 		t.Context(),
 		"echo",
 		sessionID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(stopResp.StatusCode(), http.StatusNoContent, t)
@@ -315,7 +292,7 @@ func TestDebugStopSession(t *testing.T) {
 		t.Context(),
 		"echo",
 		sessionID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
@@ -328,7 +305,7 @@ func TestDebugStopSession(t *testing.T) {
 		t.Context(),
 		"echo",
 		sessionID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
@@ -337,13 +314,13 @@ func TestDebugStopSession(t *testing.T) {
 // TestDebugStopSessionNotFound verifies that stopping a non-existent session returns 404.
 func TestDebugStopSessionNotFound(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	resp, err := adminClient.StopDebugSessionWithResponse(
 		t.Context(),
 		"echo",
 		999999999,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(resp.StatusCode(), http.StatusNotFound, t)
@@ -355,15 +332,15 @@ func TestDebugStopSessionNotFound(t *testing.T) {
 // TestDebugDeleteSession verifies that deleting a session returns 204 and the session
 // is no longer retrievable.
 func TestDebugDeleteSession(t *testing.T) {
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
-	sessionID := startDebugSession(t, superSession, "echo")
+	sessionID := startDebugSession(t, superRequestEditor, "echo")
 
 	deleteResp, err := adminClient.DeleteDebugSessionWithResponse(
 		t.Context(),
 		"echo",
 		sessionID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
@@ -373,7 +350,7 @@ func TestDebugDeleteSession(t *testing.T) {
 		t.Context(),
 		"echo",
 		sessionID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusNotFound, t)
@@ -382,13 +359,13 @@ func TestDebugDeleteSession(t *testing.T) {
 // TestDebugDeleteSessionNotFound verifies that deleting a non-existent session returns 404.
 func TestDebugDeleteSessionNotFound(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	resp, err := adminClient.DeleteDebugSessionWithResponse(
 		t.Context(),
 		"echo",
 		999999999,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(resp.StatusCode(), http.StatusNotFound, t)
@@ -401,15 +378,15 @@ func TestDebugDeleteSessionNotFound(t *testing.T) {
 // during an active debug session, the call is recorded and flow transitions are populated
 // when includeTransitions=true.
 func TestDebugListSessionCallsWithTransitions(t *testing.T) {
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
-	sessionID := startDebugSession(t, superSession, "echo")
+	sessionID := startDebugSession(t, superRequestEditor, "echo")
 	defer func() {
 		deleteResp, err := adminClient.DeleteDebugSessionWithResponse(
 			t.Context(),
 			"echo",
 			sessionID,
-			adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+			adminapi.RequestEditorFn(superRequestEditor),
 		)
 		checkErr(err, t)
 		verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
@@ -422,7 +399,7 @@ func TestDebugListSessionCallsWithTransitions(t *testing.T) {
 		"echo",
 		sessionID,
 		&adminapi.ListDebugSessionCallsParams{IncludeTransitions: true},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(listResp.StatusCode(), http.StatusOK, t)
@@ -442,15 +419,15 @@ func TestDebugListSessionCallsWithTransitions(t *testing.T) {
 // TestDebugListSessionCallsWithoutTransitions verifies that when includeTransitions=false,
 // FlowTransitions are not included in the response.
 func TestDebugListSessionCallsWithoutTransitions(t *testing.T) {
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
-	sessionID := startDebugSession(t, superSession, "echo")
+	sessionID := startDebugSession(t, superRequestEditor, "echo")
 	defer func() {
 		deleteResp, err := adminClient.DeleteDebugSessionWithResponse(
 			t.Context(),
 			"echo",
 			sessionID,
-			adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+			adminapi.RequestEditorFn(superRequestEditor),
 		)
 		checkErr(err, t)
 		verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
@@ -463,7 +440,7 @@ func TestDebugListSessionCallsWithoutTransitions(t *testing.T) {
 		"echo",
 		sessionID,
 		&adminapi.ListDebugSessionCallsParams{IncludeTransitions: false},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(listResp.StatusCode(), http.StatusOK, t)
@@ -483,15 +460,15 @@ func TestDebugListSessionCallsWithoutTransitions(t *testing.T) {
 
 // TestDebugGetSessionCall verifies that a specific recorded call can be retrieved by ID.
 func TestDebugGetSessionCall(t *testing.T) {
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
-	sessionID := startDebugSession(t, superSession, "echo")
+	sessionID := startDebugSession(t, superRequestEditor, "echo")
 	defer func() {
 		deleteResp, err := adminClient.DeleteDebugSessionWithResponse(
 			t.Context(),
 			"echo",
 			sessionID,
-			adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+			adminapi.RequestEditorFn(superRequestEditor),
 		)
 		checkErr(err, t)
 		verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
@@ -504,7 +481,7 @@ func TestDebugGetSessionCall(t *testing.T) {
 		"echo",
 		sessionID,
 		&adminapi.ListDebugSessionCallsParams{IncludeTransitions: false},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(listResp.StatusCode(), http.StatusOK, t)
@@ -519,7 +496,7 @@ func TestDebugGetSessionCall(t *testing.T) {
 		"echo",
 		sessionID,
 		callID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getCallResp.StatusCode(), http.StatusOK, t)
@@ -540,15 +517,15 @@ func TestDebugGetSessionCall(t *testing.T) {
 
 // TestDebugGetSessionCallNotFound verifies that requesting a non-existent call returns 404.
 func TestDebugGetSessionCallNotFound(t *testing.T) {
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
-	sessionID := startDebugSession(t, superSession, "echo")
+	sessionID := startDebugSession(t, superRequestEditor, "echo")
 	defer func() {
 		deleteResp, err := adminClient.DeleteDebugSessionWithResponse(
 			t.Context(),
 			"echo",
 			sessionID,
-			adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+			adminapi.RequestEditorFn(superRequestEditor),
 		)
 		checkErr(err, t)
 		verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
@@ -559,7 +536,7 @@ func TestDebugGetSessionCallNotFound(t *testing.T) {
 		"echo",
 		sessionID,
 		999999999,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(resp.StatusCode(), http.StatusNotFound, t)
@@ -571,14 +548,14 @@ func TestDebugGetSessionCallNotFound(t *testing.T) {
 // TestDebugFullFlow exercises the complete debug session lifecycle end-to-end:
 // start → get → hit gateway (records a call) → list calls → get call → stop → delete.
 func TestDebugFullFlow(t *testing.T) {
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	// Start.
 	startResp, err := adminClient.StartDebugSessionWithResponse(
 		t.Context(),
 		"echo",
 		adminapi.StartDebugSessionJSONRequestBody{},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(startResp.StatusCode(), http.StatusOK, t)
@@ -589,7 +566,7 @@ func TestDebugFullFlow(t *testing.T) {
 		t.Context(),
 		"echo",
 		sessionID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
@@ -604,7 +581,7 @@ func TestDebugFullFlow(t *testing.T) {
 		"echo",
 		sessionID,
 		&adminapi.ListDebugSessionCallsParams{IncludeTransitions: false},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(listCallsResp.StatusCode(), http.StatusOK, t)
@@ -619,7 +596,7 @@ func TestDebugFullFlow(t *testing.T) {
 		"echo",
 		sessionID,
 		callID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getCallResp.StatusCode(), http.StatusOK, t)
@@ -633,7 +610,7 @@ func TestDebugFullFlow(t *testing.T) {
 		t.Context(),
 		"echo",
 		sessionID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(stopResp.StatusCode(), http.StatusNoContent, t)
@@ -643,7 +620,7 @@ func TestDebugFullFlow(t *testing.T) {
 		t.Context(),
 		"echo",
 		sessionID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)

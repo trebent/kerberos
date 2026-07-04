@@ -4,27 +4,20 @@ import (
 	"net/http"
 	"testing"
 
-	adminapi "github.com/trebent/kerberos/test/integration/client/admin"
 	authbasicapi "github.com/trebent/kerberos/test/integration/client/auth/basic"
 )
 
 // TestUserCreate verifies that a new user can be created within an organisation and that
 // the response contains the expected name and a valid ID.
 func TestUserCreate(t *testing.T) {
-	loginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(loginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	name := username()
 	createResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateUserRequest{Name: name, Password: "password123"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -36,19 +29,13 @@ func TestUserCreate(t *testing.T) {
 
 // TestUserList verifies that a newly created user appears in the list response for its organisation.
 func TestUserList(t *testing.T) {
-	loginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(loginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	createResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -57,7 +44,7 @@ func TestUserList(t *testing.T) {
 	listResp, err := basicAuthClient.ListUsersWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(listResp.StatusCode(), http.StatusOK, t)
@@ -71,20 +58,14 @@ func TestUserList(t *testing.T) {
 
 // TestUserGet verifies that a created user can be fetched by ID.
 func TestUserGet(t *testing.T) {
-	loginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(loginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	name := username()
 	createResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateUserRequest{Name: name, Password: "password123"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -93,7 +74,7 @@ func TestUserGet(t *testing.T) {
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		createResp.JSON201.Id,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
@@ -103,18 +84,12 @@ func TestUserGet(t *testing.T) {
 
 // TestUserGetNotFound verifies that fetching a deleted user returns 404.
 func TestUserGetNotFound(t *testing.T) {
-	loginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(loginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
@@ -124,7 +99,7 @@ func TestUserGetNotFound(t *testing.T) {
 		t.Context(),
 		orgID,
 		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
@@ -134,7 +109,7 @@ func TestUserGetNotFound(t *testing.T) {
 		t.Context(),
 		orgID,
 		userID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
@@ -143,7 +118,7 @@ func TestUserGetNotFound(t *testing.T) {
 		t.Context(),
 		orgID,
 		userID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusNotFound, t)
@@ -152,19 +127,13 @@ func TestUserGetNotFound(t *testing.T) {
 // TestUserUpdate verifies that a user's name can be changed and the updated value is
 // reflected in a subsequent get.
 func TestUserUpdate(t *testing.T) {
-	loginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(loginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	createResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -176,7 +145,7 @@ func TestUserUpdate(t *testing.T) {
 		authbasicapi.Orgid(alwaysOrgID),
 		userID,
 		authbasicapi.UpdateUserJSONRequestBody{Name: newName},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateResp.StatusCode(), http.StatusOK, t)
@@ -186,7 +155,7 @@ func TestUserUpdate(t *testing.T) {
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		userID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
@@ -196,19 +165,13 @@ func TestUserUpdate(t *testing.T) {
 // TestUserUpdateConflict verifies that renaming a user to an already-taken name within the
 // same organisation returns a conflict error.
 func TestUserUpdateConflict(t *testing.T) {
-	loginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(loginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	create1Resp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(create1Resp.StatusCode(), http.StatusCreated, t)
@@ -217,7 +180,7 @@ func TestUserUpdateConflict(t *testing.T) {
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(create2Resp.StatusCode(), http.StatusCreated, t)
@@ -227,7 +190,7 @@ func TestUserUpdateConflict(t *testing.T) {
 		authbasicapi.Orgid(alwaysOrgID),
 		create2Resp.JSON201.Id,
 		authbasicapi.UpdateUserJSONRequestBody{Name: create1Resp.JSON201.Name},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateResp.StatusCode(), http.StatusConflict, t)
@@ -237,20 +200,14 @@ func TestUserUpdateConflict(t *testing.T) {
 // TestUserCreateConflict verifies that creating a user whose name already exists within the
 // same organisation returns a conflict error.
 func TestUserCreateConflict(t *testing.T) {
-	loginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(loginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	name := username()
 	createResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateUserRequest{Name: name, Password: "password123"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -259,7 +216,7 @@ func TestUserCreateConflict(t *testing.T) {
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateUserRequest{Name: name, Password: "password123"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(conflictResp.StatusCode(), http.StatusConflict, t)
@@ -268,18 +225,12 @@ func TestUserCreateConflict(t *testing.T) {
 
 // TestUserDelete verifies that a deleted user is no longer accessible.
 func TestUserDelete(t *testing.T) {
-	loginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(loginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
@@ -289,7 +240,7 @@ func TestUserDelete(t *testing.T) {
 		t.Context(),
 		orgID,
 		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
@@ -299,7 +250,7 @@ func TestUserDelete(t *testing.T) {
 		t.Context(),
 		orgID,
 		userID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
@@ -308,7 +259,7 @@ func TestUserDelete(t *testing.T) {
 		t.Context(),
 		orgID,
 		userID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusNotFound, t)
@@ -317,20 +268,14 @@ func TestUserDelete(t *testing.T) {
 // TestUserCreateOASValidation verifies that creating a user with a name that is too short
 // or a password that is outside the allowed length range is rejected with 400.
 func TestUserCreateOASValidation(t *testing.T) {
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	// Name below minLength: 5 — must be rejected.
 	shortNameResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateUserRequest{Name: "ab", Password: "validpassword"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(shortNameResp.StatusCode(), http.StatusBadRequest, t)
@@ -341,7 +286,7 @@ func TestUserCreateOASValidation(t *testing.T) {
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateUserRequest{Name: username(), Password: "short"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(shortPasswordResp.StatusCode(), http.StatusBadRequest, t)
@@ -352,7 +297,7 @@ func TestUserCreateOASValidation(t *testing.T) {
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateUserRequest{Name: username(), Password: "this-password-is-way-too-long-for-the-schema-limits"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(longPasswordResp.StatusCode(), http.StatusBadRequest, t)
@@ -362,18 +307,12 @@ func TestUserCreateOASValidation(t *testing.T) {
 // TestUserChangePassword verifies the full change-password flow: a user can log in,
 // change their password, and then log in again with the new password.
 func TestUserChangePassword(t *testing.T) {
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
@@ -387,7 +326,7 @@ func TestUserChangePassword(t *testing.T) {
 		t.Context(),
 		orgID,
 		authbasicapi.CreateUserRequest{Name: name, Password: oldPassword},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createUserResp2.StatusCode(), http.StatusCreated, t)
@@ -400,14 +339,14 @@ func TestUserChangePassword(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	session := extractSession(loginResp.HTTPResponse, t)
+	orgUserRequestEditor := sessionCookieRequestEditor(loginResp.HTTPResponse, t)
 
 	changeResp, err := basicAuthClient.ChangePasswordWithResponse(
 		t.Context(),
 		orgID,
 		userID2,
 		authbasicapi.ChangePasswordJSONRequestBody{OldPassword: oldPassword, Password: newPassword},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
+		authbasicapi.RequestEditorFn(orgUserRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(changeResp.StatusCode(), http.StatusNoContent, t)
@@ -437,13 +376,7 @@ func TestUserChangePassword(t *testing.T) {
 // Note: the spec does not define a 400 response body for this endpoint, so only the
 // status code is checked.
 func TestUserChangePasswordOASValidation(t *testing.T) {
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	// oldPassword below minLength: 10 — must be rejected before auth checks.
 	shortOldPwResp, err := basicAuthClient.ChangePasswordWithResponse(
@@ -451,7 +384,7 @@ func TestUserChangePasswordOASValidation(t *testing.T) {
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.Userid(alwaysUserID),
 		authbasicapi.ChangePasswordJSONRequestBody{OldPassword: "short", Password: "validpassword123"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(shortOldPwResp.StatusCode(), http.StatusBadRequest, t)
@@ -462,7 +395,7 @@ func TestUserChangePasswordOASValidation(t *testing.T) {
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.Userid(alwaysUserID),
 		authbasicapi.ChangePasswordJSONRequestBody{OldPassword: "validoldpassword", Password: "short"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(shortNewPwResp.StatusCode(), http.StatusBadRequest, t)
@@ -556,18 +489,12 @@ func TestUserNoSession(t *testing.T) {
 
 // TestUserDeleteNotFound verifies deleting an already-deleted user.
 func TestUserDeleteNotFound(t *testing.T) {
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
@@ -577,7 +504,7 @@ func TestUserDeleteNotFound(t *testing.T) {
 		t.Context(),
 		orgID,
 		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
@@ -588,7 +515,7 @@ func TestUserDeleteNotFound(t *testing.T) {
 		t.Context(),
 		orgID,
 		userID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
@@ -598,7 +525,7 @@ func TestUserDeleteNotFound(t *testing.T) {
 		t.Context(),
 		orgID,
 		userID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteAgainResp.StatusCode(), http.StatusNoContent, t)
@@ -607,18 +534,12 @@ func TestUserDeleteNotFound(t *testing.T) {
 // TestUserUpdateNotFound verifies that attempting to update a deleted user returns 404
 // (no body defined in spec).
 func TestUserUpdateNotFound(t *testing.T) {
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
@@ -628,7 +549,7 @@ func TestUserUpdateNotFound(t *testing.T) {
 		t.Context(),
 		orgID,
 		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
@@ -639,7 +560,7 @@ func TestUserUpdateNotFound(t *testing.T) {
 		t.Context(),
 		orgID,
 		userID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
@@ -650,7 +571,7 @@ func TestUserUpdateNotFound(t *testing.T) {
 		orgID,
 		userID,
 		authbasicapi.UpdateUserJSONRequestBody{Id: userID, Name: username()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateResp.StatusCode(), http.StatusNotFound, t)

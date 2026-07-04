@@ -20,12 +20,13 @@ func TestAuthBasicCall(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	session := extractSession(loginResp.HTTPResponse, t)
+	sessionCookie, err := extractSessionCookie(loginResp.HTTPResponse)
+	checkErr(err, t)
 
-	response := get(
+	response := protectedGet(
 		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/hi", getHost(), getPort()),
 		t,
-		map[string][]string{"x-krb-session": {session}},
+		sessionCookie,
 	)
 
 	echoResponse := verifyGWResponse(response, http.StatusOK, t)
@@ -115,12 +116,13 @@ func TestAuthBasicAuthorizedPleb(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	session := extractSession(loginResp.HTTPResponse, t)
+	sessionCookie, err := extractSessionCookie(loginResp.HTTPResponse)
+	checkErr(err, t)
 
-	response := get(
+	response := protectedGet(
 		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/long/hello", getHost(), getPort()),
 		t,
-		map[string][]string{"x-krb-session": {session}},
+		sessionCookie,
 	)
 
 	echoResponse := verifyGWResponse(response, http.StatusOK, t)

@@ -9,33 +9,6 @@ import (
 	authbasicapi "github.com/trebent/kerberos/test/integration/client/auth/basic"
 )
 
-// orgWithSession is a helper that creates a fresh organisation and returns its ID along
-// with an admin session for that organisation. It uses the provided superuser session to
-// create the organisation.
-func orgWithSession(t *testing.T, superSession string) (authbasicapi.Orgid, string) {
-	t.Helper()
-	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
-		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
-
-	loginResp, err := basicAuthClient.LoginWithResponse(
-		t.Context(),
-		createOrgResp.JSON201.Id,
-		authbasicapi.LoginJSONRequestBody{
-			Username: createOrgResp.JSON201.AdminUsername,
-			Password: createOrgResp.JSON201.AdminPassword,
-		},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-
-	return createOrgResp.JSON201.Id, extractSession(loginResp.HTTPResponse, t)
-}
-
 // TestUserGroupBindingAssign verifies that groups can be assigned to a user and are returned
 // by GetUserGroups.
 func TestUserGroupBindingAssign(t *testing.T) {
@@ -45,16 +18,16 @@ func TestUserGroupBindingAssign(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
+	superRequestEditor := sessionCookieRequestEditor(superLoginResp.HTTPResponse, t)
 
-	orgID, session := orgWithSession(t, superSession)
+	orgID, adminRequestEditor := orgWithSession(t, superRequestEditor)
 
 	groupAName := groupName()
 	createGroupA, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
 		orgID,
 		authbasicapi.CreateGroupJSONRequestBody{Name: groupAName},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
+		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createGroupA.StatusCode(), http.StatusCreated, t)
@@ -64,7 +37,7 @@ func TestUserGroupBindingAssign(t *testing.T) {
 		t.Context(),
 		orgID,
 		authbasicapi.CreateGroupJSONRequestBody{Name: groupBName},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
+		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createGroupB.StatusCode(), http.StatusCreated, t)
@@ -73,7 +46,7 @@ func TestUserGroupBindingAssign(t *testing.T) {
 		t.Context(),
 		orgID,
 		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
+		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
@@ -84,7 +57,7 @@ func TestUserGroupBindingAssign(t *testing.T) {
 		orgID,
 		userID,
 		authbasicapi.UpdateUserGroupsJSONRequestBody([]string{groupAName, groupBName}),
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
+		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateResp.StatusCode(), http.StatusOK, t)
@@ -93,7 +66,7 @@ func TestUserGroupBindingAssign(t *testing.T) {
 		t.Context(),
 		orgID,
 		userID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
+		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
@@ -115,16 +88,16 @@ func TestUserGroupBindingReplace(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
+	superRequestEditor := sessionCookieRequestEditor(superLoginResp.HTTPResponse, t)
 
-	orgID, session := orgWithSession(t, superSession)
+	orgID, adminRequestEditor := orgWithSession(t, superRequestEditor)
 
 	groupAName := groupName()
 	createGroupA, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
 		orgID,
 		authbasicapi.CreateGroupJSONRequestBody{Name: groupAName},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
+		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createGroupA.StatusCode(), http.StatusCreated, t)
@@ -134,7 +107,7 @@ func TestUserGroupBindingReplace(t *testing.T) {
 		t.Context(),
 		orgID,
 		authbasicapi.CreateGroupJSONRequestBody{Name: groupBName},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
+		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createGroupB.StatusCode(), http.StatusCreated, t)
@@ -143,7 +116,7 @@ func TestUserGroupBindingReplace(t *testing.T) {
 		t.Context(),
 		orgID,
 		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
+		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
@@ -155,7 +128,7 @@ func TestUserGroupBindingReplace(t *testing.T) {
 		orgID,
 		userID,
 		authbasicapi.UpdateUserGroupsJSONRequestBody([]string{groupAName, groupBName}),
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
+		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(initialUpdateResp.StatusCode(), http.StatusOK, t)
@@ -166,7 +139,7 @@ func TestUserGroupBindingReplace(t *testing.T) {
 		orgID,
 		userID,
 		authbasicapi.UpdateUserGroupsJSONRequestBody([]string{groupBName}),
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
+		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(replaceResp.StatusCode(), http.StatusOK, t)
@@ -175,7 +148,7 @@ func TestUserGroupBindingReplace(t *testing.T) {
 		t.Context(),
 		orgID,
 		userID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
+		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
@@ -197,16 +170,16 @@ func TestUserGroupBindingClear(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
+	superRequestEditor := sessionCookieRequestEditor(superLoginResp.HTTPResponse, t)
 
-	orgID, session := orgWithSession(t, superSession)
+	orgID, adminRequestEditor := orgWithSession(t, superRequestEditor)
 
 	gName := groupName()
 	createGroupResp, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
 		orgID,
 		authbasicapi.CreateGroupJSONRequestBody{Name: gName},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
+		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createGroupResp.StatusCode(), http.StatusCreated, t)
@@ -215,7 +188,7 @@ func TestUserGroupBindingClear(t *testing.T) {
 		t.Context(),
 		orgID,
 		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
+		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
@@ -227,7 +200,7 @@ func TestUserGroupBindingClear(t *testing.T) {
 		orgID,
 		userID,
 		authbasicapi.UpdateUserGroupsJSONRequestBody([]string{gName}),
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
+		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(assignResp.StatusCode(), http.StatusOK, t)
@@ -238,7 +211,7 @@ func TestUserGroupBindingClear(t *testing.T) {
 		orgID,
 		userID,
 		authbasicapi.UpdateUserGroupsJSONRequestBody([]string{}),
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
+		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(clearResp.StatusCode(), http.StatusOK, t)
@@ -247,7 +220,7 @@ func TestUserGroupBindingClear(t *testing.T) {
 		t.Context(),
 		orgID,
 		userID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session)),
+		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
@@ -265,13 +238,13 @@ func TestUserGroupBindingGet(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(loginResp.HTTPResponse, t)
+	superRequestEditor := sessionCookieRequestEditor(loginResp.HTTPResponse, t)
 
 	getResp, err := basicAuthClient.GetUserGroupsWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.Userid(alwaysUserID),
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)

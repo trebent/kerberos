@@ -11,22 +11,22 @@ import (
 // and that those groups are reflected in the GetUser response.
 func TestAdminUserGroupBindingsAssign(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	name := username()
 	createUserResp, err := adminClient.CreateUserWithResponse(
 		t.Context(),
 		adminapi.CreateUserJSONRequestBody{Username: name, Password: "password123"},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
-	userID := mustGetAdminUserID(t, superSession, name)
+	userID := mustGetAdminUserID(t, superRequestEditor, name)
 
 	grp1Resp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
 		adminapi.CreateGroupJSONRequestBody{Name: groupName(), PermissionIDs: allPermissionIDs},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(grp1Resp.StatusCode(), http.StatusCreated, t)
@@ -35,7 +35,7 @@ func TestAdminUserGroupBindingsAssign(t *testing.T) {
 	grp2Resp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
 		adminapi.CreateGroupJSONRequestBody{Name: groupName(), PermissionIDs: allPermissionIDs},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(grp2Resp.StatusCode(), http.StatusCreated, t)
@@ -45,7 +45,7 @@ func TestAdminUserGroupBindingsAssign(t *testing.T) {
 		t.Context(),
 		userID,
 		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int{grp1ID, grp2ID}},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateResp.StatusCode(), http.StatusNoContent, t)
@@ -53,7 +53,7 @@ func TestAdminUserGroupBindingsAssign(t *testing.T) {
 	getResp, err := adminClient.GetUserWithResponse(
 		t.Context(),
 		userID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
@@ -74,22 +74,22 @@ func TestAdminUserGroupBindingsAssign(t *testing.T) {
 // (groups removed and added).
 func TestAdminUserGroupBindingsUpdate(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	name := username()
 	createUserResp, err := adminClient.CreateUserWithResponse(
 		t.Context(),
 		adminapi.CreateUserJSONRequestBody{Username: name, Password: "password123"},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
-	userID := mustGetAdminUserID(t, superSession, name)
+	userID := mustGetAdminUserID(t, superRequestEditor, name)
 
 	grp1Resp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
 		adminapi.CreateGroupJSONRequestBody{Name: groupName(), PermissionIDs: allPermissionIDs},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(grp1Resp.StatusCode(), http.StatusCreated, t)
@@ -98,7 +98,7 @@ func TestAdminUserGroupBindingsUpdate(t *testing.T) {
 	grp2Resp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
 		adminapi.CreateGroupJSONRequestBody{Name: groupName(), PermissionIDs: allPermissionIDs},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(grp2Resp.StatusCode(), http.StatusCreated, t)
@@ -107,7 +107,7 @@ func TestAdminUserGroupBindingsUpdate(t *testing.T) {
 	grp3Resp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
 		adminapi.CreateGroupJSONRequestBody{Name: groupName(), PermissionIDs: allPermissionIDs},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(grp3Resp.StatusCode(), http.StatusCreated, t)
@@ -118,7 +118,7 @@ func TestAdminUserGroupBindingsUpdate(t *testing.T) {
 		t.Context(),
 		userID,
 		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int{grp1ID, grp2ID}},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateResp.StatusCode(), http.StatusNoContent, t)
@@ -128,7 +128,7 @@ func TestAdminUserGroupBindingsUpdate(t *testing.T) {
 		t.Context(),
 		userID,
 		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int{grp2ID, grp3ID}},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateResp.StatusCode(), http.StatusNoContent, t)
@@ -136,7 +136,7 @@ func TestAdminUserGroupBindingsUpdate(t *testing.T) {
 	getResp, err := adminClient.GetUserWithResponse(
 		t.Context(),
 		userID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
@@ -161,22 +161,22 @@ func TestAdminUserGroupBindingsUpdate(t *testing.T) {
 // TestAdminUserGroupBindingsClear verifies that a user's group memberships can be cleared.
 func TestAdminUserGroupBindingsClear(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	name := username()
 	createUserResp, err := adminClient.CreateUserWithResponse(
 		t.Context(),
 		adminapi.CreateUserJSONRequestBody{Username: name, Password: "password123"},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
-	userID := mustGetAdminUserID(t, superSession, name)
+	userID := mustGetAdminUserID(t, superRequestEditor, name)
 
 	grpResp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
 		adminapi.CreateGroupJSONRequestBody{Name: groupName(), PermissionIDs: allPermissionIDs},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(grpResp.StatusCode(), http.StatusCreated, t)
@@ -187,7 +187,7 @@ func TestAdminUserGroupBindingsClear(t *testing.T) {
 		t.Context(),
 		userID,
 		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int{grpID}},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateResp.StatusCode(), http.StatusNoContent, t)
@@ -197,7 +197,7 @@ func TestAdminUserGroupBindingsClear(t *testing.T) {
 		t.Context(),
 		userID,
 		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int{}},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateResp.StatusCode(), http.StatusNoContent, t)
@@ -205,7 +205,7 @@ func TestAdminUserGroupBindingsClear(t *testing.T) {
 	getResp, err := adminClient.GetUserWithResponse(
 		t.Context(),
 		userID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
@@ -217,13 +217,13 @@ func TestAdminUserGroupBindingsClear(t *testing.T) {
 // TestAdminUserGroupBindingsNotFoundUser verifies that updating groups for a non-existent user returns 404.
 func TestAdminUserGroupBindingsNotFoundUser(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	updateResp, err := adminClient.UpdateUserGroupsWithResponse(
 		t.Context(),
 		999999999,
 		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int{}},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateResp.StatusCode(), http.StatusNotFound, t)
