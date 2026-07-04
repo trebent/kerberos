@@ -3,19 +3,46 @@ updates:
   - package-ecosystem: "gomod"
     directories:
       - "/"
-      - "/tools"
-      - "/test/integration"
     schedule:
-      interval: weekly
+      interval: daily
       day: monday
     groups:
-      go-minor/patch-versions:
-        applies-to: version-updates
+      go-updates:
         update-types:
           - "minor"
           - "patch"
-      go-minor/patch-security-versions:
-        applies-to: security-updates
+
+  - package-ecosystem: "gomod"
+    directories:
+      - "/tools"
+    schedule:
+      interval: weekly
+      day: tuesday
+    groups:
+      go-tool-updates:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "gomod"
+    directories:
+      - "/test/integration"
+    schedule:
+      interval: weekly
+      day: wednesday
+    groups:
+      go-test-updates:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: thursday
+    groups:
+      action-updates:
         update-types:
           - "minor"
           - "patch"
@@ -25,32 +52,9 @@ updates:
       - "/docker"
     schedule:
       interval: weekly
-      day: tuesday
+      day: friday
     groups:
-      docker-minor/patch-versions:
-        applies-to: version-updates
-        update-types:
-          - "minor"
-          - "patch"
-      docker-minor/patch-security-versions:
-        applies-to: security-updates
-        update-types:
-          - "minor"
-          - "patch"
-
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: weekly
-      day: wednesday
-    groups:
-      action-minor/patch-versions:
-        applies-to: version-updates
-        update-types:
-          - "minor"
-          - "patch"
-      action-minor/patch-security-versions:
-        applies-to: security-updates
+      docker-updates:
         update-types:
           - "minor"
           - "patch"
