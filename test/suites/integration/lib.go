@@ -274,7 +274,7 @@ func extractSessionCookie(resp *http.Response) (*http.Cookie, error) {
 
 	var sessionCookie *http.Cookie
 	for _, cookie := range cookies {
-		if cookie.Name == "X-KRB-Session" {
+		if cookie.Name == "SESSIONID" {
 			sessionCookie = cookie
 			break
 		}

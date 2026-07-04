@@ -3,6 +3,7 @@ package admin
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/trebent/kerberos/internal/admin/model"
@@ -43,7 +44,9 @@ func (i *impl) LoginSuperuser(
 
 	return adminapi.LoginSuperuser204Response{
 		Headers: adminapi.LoginSuperuser204ResponseHeaders{
-			SetCookie: sessionID,
+			SetCookie: fmt.Sprintf(
+				"SESSIONID=%s; SameSite=None; Path=/; HttpOnly; Secure", sessionID,
+			),
 		},
 	}, nil
 }
@@ -91,7 +94,9 @@ func (i *impl) Login(
 
 	return adminapi.Login204Response{
 		Headers: adminapi.Login204ResponseHeaders{
-			SetCookie: sessionID,
+			SetCookie: fmt.Sprintf(
+				"SESSIONID=%s; SameSite=None; Path=/; HttpOnly; Secure", sessionID,
+			),
 		},
 	}, nil
 }

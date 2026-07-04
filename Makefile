@@ -221,11 +221,17 @@ krb/provision:
 	$(call cecho,Provisioning Kerberos with test data...,$(BOLD_YELLOW))
 	@cd test/suites/integration && go test -v ./... -count=1 -failfast -run NotExist
 
+krb/superuser-login:
+	$(call cecho,Logging in with basic auth to Kerberos...,$(BOLD_YELLOW))
+	curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/admin/superuser/login \
+		-H "Content-Type: application/json" \
+		-d '{"clientId":"$(SUPERUSER_CLIENT_ID)","clientSecret":"$(SUPERUSER_CLIENT_SECRET)"}'
+	
 krb/basic-auth-login:
 	$(call cecho,Logging in with basic auth to Kerberos...,$(BOLD_YELLOW))
-	@SESSION=$$(curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/auth/basic/organisations/1/login \
-	-H "Content-Type: application/json" \
-	-d '{"username":"$(AUTH_BASIC_USER_ALWAYS)","password":"$(AUTH_BASIC_USER_ALWAYS_PASSWORD)"}'
+	curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/auth/basic/organisations/1/login \
+		-H "Content-Type: application/json" \
+		-d '{"username":"$(AUTH_BASIC_USER_ALWAYS)","password":"$(AUTH_BASIC_USER_ALWAYS_PASSWORD)"}'
 
 postgres/run:
 	$(call cecho,Running PostgreSQL for Kerberos...,$(BOLD_YELLOW))

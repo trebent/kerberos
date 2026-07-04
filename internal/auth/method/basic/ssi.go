@@ -3,6 +3,7 @@ package basic
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -60,7 +61,9 @@ func (i *impl) Login(
 
 	return authbasicapi.Login204Response{
 		Headers: authbasicapi.Login204ResponseHeaders{
-			SetCookie: sessionID,
+			SetCookie: fmt.Sprintf(
+				"SESSIONID=%s; SameSite=None; Path=/; HttpOnly; Secure", sessionID,
+			),
 		},
 	}, nil
 }
