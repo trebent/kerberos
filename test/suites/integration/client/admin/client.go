@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	SessionidScopes = "sessionid.Scopes"
+	CookieAuthScopes = "cookieAuth.Scopes"
 )
 
 // Defines values for FlowTransitionDirection.

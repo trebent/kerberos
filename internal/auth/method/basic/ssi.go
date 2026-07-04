@@ -60,7 +60,7 @@ func (i *impl) Login(
 
 	return authbasicapi.Login204Response{
 		Headers: authbasicapi.Login204ResponseHeaders{
-			XKrbSession: sessionID,
+			SetCookie: sessionID,
 		},
 	}, nil
 }

@@ -433,13 +433,13 @@ components:
       schema:
         type: string
   securitySchemes:
-    sessionid:
+    cookieAuth:
       type: apiKey
-      in: header
-      name: x-krb-session
+      in: cookie
+      name: SESSIONID
 
 security:
-  - sessionid: []
+  - cookieAuth: []
 
 tags:
   - name: users
@@ -481,8 +481,10 @@ paths:
       responses:
         "204":
           headers:
-            x-krb-session:
-              $ref: "#/components/headers/sessionid"
+            Set-Cookie:
+              schema:
+                type: string
+                example: SESSIONID=abcde12345; Path=/; HttpOnly
           description: Logged the superuser in.
         "400":
           content:
@@ -858,8 +860,10 @@ paths:
       responses:
         "204":
           headers:
-            x-krb-session:
-              $ref: "#/components/headers/sessionid"
+            Set-Cookie:
+              schema:
+                type: string
+                example: SESSIONID=abcde12345; Path=/; HttpOnly
           description: Logged the user in.
         "400":
           content:

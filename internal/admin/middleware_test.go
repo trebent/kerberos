@@ -59,7 +59,7 @@ func TestAdminSessionMiddleware(t *testing.T) {
 	}
 
 	headers := http.Header{}
-	headers.Add("x-krb-session", decodedResponse.Headers.XKrbSession)
+	headers.Add("x-krb-session", decodedResponse.Headers.SetCookie)
 	_, err = handler(
 		t.Context(),
 		httptest.NewRecorder(),

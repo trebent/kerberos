@@ -43,7 +43,7 @@ func (i *impl) LoginSuperuser(
 
 	return adminapi.LoginSuperuser204Response{
 		Headers: adminapi.LoginSuperuser204ResponseHeaders{
-			XKrbSession: sessionID,
+			SetCookie: sessionID,
 		},
 	}, nil
 }
@@ -91,7 +91,7 @@ func (i *impl) Login(
 
 	return adminapi.Login204Response{
 		Headers: adminapi.Login204ResponseHeaders{
-			XKrbSession: sessionID,
+			SetCookie: sessionID,
 		},
 	}, nil
 }

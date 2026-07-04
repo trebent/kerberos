@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	SessionidScopes = "sessionid.Scopes"
+	CookieAuthScopes = "cookieAuth.Scopes"
 )
 
 // APIErrorResponse defines model for APIErrorResponse.

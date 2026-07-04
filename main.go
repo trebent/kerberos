@@ -230,7 +230,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		}
 		customFlowComponents = append(customFlowComponents, authorizer)
 
-		// Register the authorizer with the admin component so that it can serve auth metadata to the admin API.
+		// Register the authorizer with the admin component so that it can serve auth paths via the admin server mux.
 		if err := adm.RegisterAPIProvider(authorizer); err != nil {
 			return fmt.Errorf("failed to register auth API provider with admin component: %w", err)
 		}
@@ -274,7 +274,8 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		Addr:         fmt.Sprintf(":%d", internalenv.Port.Value()),
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
-		Handler:      allowCORS(gwMux),
+		// TODO: add support for per-backend CORS configuration. For now, allow all origins and methods for all backends.
+		Handler: allowCORS(gwMux),
 	}
 	adminServer := http.Server{
 		Addr:         fmt.Sprintf(":%d", internalenv.AdminPort.Value()),
@@ -341,8 +342,7 @@ func allowCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		w.Header().Set("Access-Control-Expose-Headers", "X-Krb-Session")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-KRB-CSRF-Token")
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)

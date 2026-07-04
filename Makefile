@@ -4,6 +4,8 @@ KERBEROS_PORT ?= 30000
 KERBEROS_ADMIN_PORT ?= 30001
 SUPERUSER_CLIENT_ID ?= admin
 SUPERUSER_CLIENT_SECRET ?= secret
+AUTH_BASIC_USER_ALWAYS ?= always
+AUTH_BASIC_USER_ALWAYS_PASSWORD ?= password123
 KERBEROS_METRICS_PORT ?= 9464
 ECHO_PORT ?= 15000
 ECHO_METRICS_PORT ?= 9463
@@ -95,8 +97,6 @@ compose/up:
 	ECHO_PORT=$(ECHO_PORT) \
 	ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
 	docker compose -f test/compose/integration/compose.yaml up -d --force-recreate
-
-compose/wait:
 	$(call cecho,Waiting for Kerberos to be ready...,$(BOLD_YELLOW))
 	@until [ "$$(curl -s -o /dev/null -w '%{http_code}' localhost:$(KERBEROS_ADMIN_PORT)/api/admin/flow)" = "401" ]; do \
 	echo "Waiting for Kerberos admin API..."; \
@@ -216,10 +216,16 @@ krb/permissions:
 	| grep -i '^x-krb-session:' | tr -d '\r' | awk '{print $$2}'); \
 	curl -s -H "x-krb-session: $$SESSION" localhost:$(KERBEROS_ADMIN_PORT)/api/admin/permissions | jq
 
-# This uses the integration test suite to provision Kerberos with test data.
+# This uses the integration test suite to provision Kerberos with test data created by the main entrypoint of the integration test suite.
 krb/provision:
 	$(call cecho,Provisioning Kerberos with test data...,$(BOLD_YELLOW))
 	@cd test/suites/integration && go test -v ./... -count=1 -failfast -run NotExist
+
+krb/basic-auth-login:
+	$(call cecho,Logging in with basic auth to Kerberos...,$(BOLD_YELLOW))
+	@SESSION=$$(curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/auth/basic/organisations/1/login \
+	-H "Content-Type: application/json" \
+	-d '{"username":"$(AUTH_BASIC_USER_ALWAYS)","password":"$(AUTH_BASIC_USER_ALWAYS_PASSWORD)"}'
 
 postgres/run:
 	$(call cecho,Running PostgreSQL for Kerberos...,$(BOLD_YELLOW))
@@ -286,11 +292,11 @@ test/protected-echo:
 	$(call cecho,Sending a test request to protected-echo...,$(BOLD_YELLOW))
 	curl -X GET -i localhost:$(KERBEROS_PORT)/gw/backend/protected-echo/hi
 
-test/security: compose/security/up
+test/security:
 	$(call cecho,Running security tests for Kerberos...,$(BOLD_YELLOW))
 	@cd test/suites/security && go test -v ./... -count=1 -failfast
 
-test/security/json: compose/security/up
+test/security/json:
 	$(call cecho,Running security tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
 	@cd test/suites/security && go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/security-test-output.json
