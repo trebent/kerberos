@@ -10,7 +10,7 @@ import (
 // TODO: implement whitelist support for allowed origins.
 func CORSMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		zerologr.V(20).Info("CORS middleware: checking request for CORS headers")
+		zerologr.V(20).Info("CORS middleware: attaching CORS headers")
 		if r.Header.Get("Origin") == "" {
 			// No Origin header present, so this is not a browser request.
 			zerologr.V(20).Info("CORS middleware: not a browser request, skipping CORS headers")

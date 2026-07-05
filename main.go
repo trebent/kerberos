@@ -27,6 +27,7 @@ import (
 	"github.com/trebent/kerberos/internal/db/sqlite"
 	internalenv "github.com/trebent/kerberos/internal/env"
 	"github.com/trebent/kerberos/internal/oas"
+	"github.com/trebent/kerberos/internal/response"
 	"github.com/trebent/kerberos/internal/security"
 	"github.com/trebent/zerologr"
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
@@ -278,16 +279,28 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		// TODO: add support for per-backend CORS configuration. For now, skip CORS for backends.
 		Handler: gwMux,
 	}
+
+	loggingMiddleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			//nolint:errcheck // guaranteed
+			wrapper := response.NewResponseWrapper(w).(*response.Wrapper)
+			next.ServeHTTP(wrapper, r)
+			zerologr.Info(
+				fmt.Sprintf("%s %s %d", r.Method, r.URL.Path, wrapper.StatusCode()),
+			)
+		})
+	}
+
 	adminServer := http.Server{
 		Addr:         fmt.Sprintf(":%d", internalenv.AdminPort.Value()),
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
 		// TODO: add support for origin whitelisting for the admin server.
-		Handler: security.CORSMiddleware(
+		Handler: loggingMiddleware(security.CORSMiddleware(
 			security.CSRFMiddlewareWithExemptions(
 				[]string{"/superuser/login", "/admin/login"},
 			)(adminMux),
-		),
+		)),
 	}
 
 	gwErrChan := make(chan error, 1)
