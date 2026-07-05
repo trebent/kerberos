@@ -45,7 +45,8 @@ func (i *impl) LoginSuperuser(
 	return adminapi.LoginSuperuser204Response{
 		Headers: adminapi.LoginSuperuser204ResponseHeaders{
 			SetCookie: fmt.Sprintf(
-				"SESSIONID=%s; SameSite=None; Path=/; HttpOnly; Secure", sessionID,
+				"SESSIONID=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				sessionID, 60*15,
 			),
 		},
 	}, nil
@@ -65,7 +66,14 @@ func (i *impl) LogoutSuperuser(
 		zerologr.Error(err, "Failed to delete super sessions during logout")
 		return adminapi.LogoutSuperuser500JSONResponse(apiErrInternal), nil
 	}
-	return adminapi.LogoutSuperuser204Response{}, nil
+	return adminapi.LogoutSuperuser204Response{
+		Headers: adminapi.LogoutSuperuser204ResponseHeaders{
+			SetCookie: fmt.Sprintf(
+				"SESSIONID=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				"expired", 0,
+			),
+		},
+	}, nil
 }
 
 // Login implements [withExtensions].
@@ -95,7 +103,8 @@ func (i *impl) Login(
 	return adminapi.Login204Response{
 		Headers: adminapi.Login204ResponseHeaders{
 			SetCookie: fmt.Sprintf(
-				"SESSIONID=%s; SameSite=None; Path=/; HttpOnly; Secure", sessionID,
+				"SESSIONID=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				sessionID, 60*15,
 			),
 		},
 	}, nil
@@ -116,7 +125,14 @@ func (i *impl) Logout(
 		return adminapi.Logout500JSONResponse(apiErrInternal), nil
 	}
 
-	return adminapi.Logout204Response{}, nil
+	return adminapi.Logout204Response{
+		Headers: adminapi.Logout204ResponseHeaders{
+			SetCookie: fmt.Sprintf(
+				"SESSIONID=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				"expired", 0,
+			),
+		},
+	}, nil
 }
 
 // CreateUser implements [withExtensions].

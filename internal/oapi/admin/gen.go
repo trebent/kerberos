@@ -2381,10 +2381,16 @@ type LogoutResponseObject interface {
 	VisitLogoutResponse(w http.ResponseWriter) error
 }
 
+type Logout204ResponseHeaders struct {
+	SetCookie string
+}
+
 type Logout204Response struct {
+	Headers Logout204ResponseHeaders
 }
 
 func (response Logout204Response) VisitLogoutResponse(w http.ResponseWriter) error {
+	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
 	w.WriteHeader(204)
 	return nil
 }
@@ -2578,10 +2584,16 @@ type LogoutSuperuserResponseObject interface {
 	VisitLogoutSuperuserResponse(w http.ResponseWriter) error
 }
 
+type LogoutSuperuser204ResponseHeaders struct {
+	SetCookie string
+}
+
 type LogoutSuperuser204Response struct {
+	Headers LogoutSuperuser204ResponseHeaders
 }
 
 func (response LogoutSuperuser204Response) VisitLogoutSuperuserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
 	w.WriteHeader(204)
 	return nil
 }

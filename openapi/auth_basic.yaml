@@ -407,6 +407,11 @@ paths:
       operationId: Logout
       responses:
         "204":
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: SESSIONID=abcde12345; Path=/; HttpOnly
           description: Logged a user out.
         "401":
           content:

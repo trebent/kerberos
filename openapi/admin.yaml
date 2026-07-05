@@ -518,6 +518,11 @@ paths:
       operationId: LogoutSuperuser
       responses:
         "204":
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: SESSIONID=abcde12345; Path=/; HttpOnly
           description: Logged the superuser out.
         "403":
           content:
@@ -891,6 +896,11 @@ paths:
       operationId: Logout
       responses:
         "204":
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: SESSIONID=abcde12345; Path=/; HttpOnly
           description: Logged the user out successfully.
         "400":
           content:
