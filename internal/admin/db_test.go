@@ -550,6 +550,23 @@ func TestDBUsers(t *testing.T) {
 		}
 	})
 
+	t.Run("update superuser password", func(t *testing.T) {
+		if err := dbUpdateSuperuserPassword(ctx, testClient, "supernewsalt", "supernewpassword"); err != nil {
+			t.Fatalf("dbUpdateUserPassword error: %v", err)
+		}
+
+		auth, err := dbGetSuperuser(ctx, testClient)
+		if err != nil {
+			t.Fatalf("dbGetUserAuth after superuser password update error: %v", err)
+		}
+		if auth.Salt != "supernewsalt" {
+			t.Fatalf("expected salt %q after update, got %q", "supernewsalt", auth.Salt)
+		}
+		if auth.HashedPassword != "supernewpassword" {
+			t.Fatalf("expected hashed password %q after update, got %q", "supernewpassword", auth.HashedPassword)
+		}
+	})
+
 	t.Run("login lookup", func(t *testing.T) {
 		name := uniqueName(t, "user-login")
 		userID, err := dbCreateUser(ctx, testClient, name, "salt", "hashed")

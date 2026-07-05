@@ -19,11 +19,12 @@ import (
 
 const (
 	// Superuser / sessions (existing).
-	selectSuperuser     = "SELECT id, name, salt, hashed_password FROM admin_users WHERE superuser = true;"
-	selectAdminSession  = "SELECT s.user_id, s.session_id, u.superuser, s.expires FROM admin_sessions s JOIN admin_users u ON s.user_id = u.id WHERE s.session_id = @session_id;"
-	insertSuperuser     = "INSERT INTO admin_users (name, salt, hashed_password, superuser) VALUES(@name, @salt, @hashed_password, true);"
-	insertSession       = "INSERT INTO admin_sessions (session_id, user_id, expires) VALUES (@session_id, @user_id, @expires);"
-	deleteSuperSessions = "DELETE FROM admin_sessions WHERE user_id = (SELECT id FROM admin_users WHERE superuser = true);"
+	selectSuperuser         = "SELECT id, name, salt, hashed_password FROM admin_users WHERE superuser = true;"
+	selectAdminSession      = "SELECT s.user_id, s.session_id, u.superuser, s.expires FROM admin_sessions s JOIN admin_users u ON s.user_id = u.id WHERE s.session_id = @session_id;"
+	insertSuperuser         = "INSERT INTO admin_users (name, salt, hashed_password, superuser) VALUES(@name, @salt, @hashed_password, true);"
+	insertSession           = "INSERT INTO admin_sessions (session_id, user_id, expires) VALUES (@session_id, @user_id, @expires);"
+	deleteSuperSessions     = "DELETE FROM admin_sessions WHERE user_id = (SELECT id FROM admin_users WHERE superuser = true);"
+	updateSuperuserPassword = "UPDATE admin_users SET salt = @salt, hashed_password = @hashedPassword WHERE superuser = true;"
 
 	// Users.
 	selectAdminUsers         = "SELECT id, name FROM admin_users WHERE superuser = false;"
@@ -744,6 +745,23 @@ func dbUpdateUserPassword(
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to update admin user password")
+	}
+	return err
+}
+
+func dbUpdateSuperuserPassword(
+	ctx context.Context,
+	client db.SQLClient,
+	salt, hashedPassword string,
+) error {
+	_, err := client.Exec(
+		ctx,
+		updateSuperuserPassword,
+		sql.NamedArg{Name: argSalt, Value: salt},
+		sql.NamedArg{Name: argHashedPassword, Value: hashedPassword},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to update superuser password")
 	}
 	return err
 }

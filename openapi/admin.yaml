@@ -537,6 +537,55 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
 
+  /api/admin/superuser/password:
+    put:
+      tags:
+        - users
+      operationId: ChangeSuperuserPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                oldPassword:
+                  type: string
+                  minLength: 1
+                newPassword:
+                  type: string
+                  minLength: 1
+              required:
+                - oldPassword
+                - newPassword
+      responses:
+        "204":
+          description: Changed the superuser's password successfully.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+
   #
   # User management endpoints.
   #

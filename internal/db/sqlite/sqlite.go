@@ -138,9 +138,6 @@ func wrap(err error) error {
 		return fmt.Errorf("%w: %w", db.ErrUnique, err)
 	case 2067:
 		return fmt.Errorf("%w: %w", db.ErrUnique, err)
-		// SQLITE OK
-	case 0:
-		return nil
 	default:
 		zerologr.Info("Unrecognized error code", "code", code)
 	}
