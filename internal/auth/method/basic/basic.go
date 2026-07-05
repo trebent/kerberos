@@ -91,12 +91,12 @@ func (a *basic) Authenticated(req *http.Request) error {
 		return apierror.ErrUnauthenticated
 	}
 
-	if len(req.CookiesNamed("SESSIONID")) == 0 {
+	if len(req.CookiesNamed("session")) == 0 {
 		zerologr.V(20).Info("No session cookie found, denying access")
 		return apierror.ErrUnauthenticated
 	}
 
-	cookie := req.CookiesNamed("SESSIONID")[0]
+	cookie := req.CookiesNamed("session")[0]
 	if cookie.Value == "" {
 		zerologr.V(20).Info("Session cookie is empty, denying access")
 		return apierror.ErrUnauthenticated

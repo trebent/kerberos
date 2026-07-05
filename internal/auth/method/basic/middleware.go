@@ -74,12 +74,12 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 				return nil, apierror.ErrUnauthenticated
 			}
 
-			if len(r.CookiesNamed("SESSIONID")) == 0 {
+			if len(r.CookiesNamed("session")) == 0 {
 				zerologr.V(20).Info("No session cookie found, denying access")
 				return nil, apierror.ErrUnauthenticated
 			}
 
-			cookie := r.CookiesNamed("SESSIONID")[0]
+			cookie := r.CookiesNamed("session")[0]
 			if cookie.Value == "" {
 				zerologr.V(20).Info("Session cookie is empty, denying access")
 				return nil, apierror.ErrUnauthenticated

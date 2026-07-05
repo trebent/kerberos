@@ -45,7 +45,7 @@ func (i *impl) LoginSuperuser(
 	return adminapi.LoginSuperuser204Response{
 		Headers: adminapi.LoginSuperuser204ResponseHeaders{
 			SetCookie: fmt.Sprintf(
-				"SESSIONID=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				"session=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
 				sessionID, 60*15,
 			),
 		},
@@ -69,7 +69,7 @@ func (i *impl) LogoutSuperuser(
 	return adminapi.LogoutSuperuser204Response{
 		Headers: adminapi.LogoutSuperuser204ResponseHeaders{
 			SetCookie: fmt.Sprintf(
-				"SESSIONID=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				"session=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
 				"expired", 0,
 			),
 		},
@@ -103,7 +103,7 @@ func (i *impl) Login(
 	return adminapi.Login204Response{
 		Headers: adminapi.Login204ResponseHeaders{
 			SetCookie: fmt.Sprintf(
-				"SESSIONID=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				"session=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
 				sessionID, 60*15,
 			),
 		},
@@ -128,7 +128,7 @@ func (i *impl) Logout(
 	return adminapi.Logout204Response{
 		Headers: adminapi.Logout204ResponseHeaders{
 			SetCookie: fmt.Sprintf(
-				"SESSIONID=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				"session=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
 				"expired", 0,
 			),
 		},

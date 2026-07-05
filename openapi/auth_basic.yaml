@@ -129,7 +129,7 @@ components:
     cookieAuth:
       type: apiKey
       in: cookie
-      name: SESSIONID
+      name: session
 
 security:
   - cookieAuth: []
@@ -377,7 +377,7 @@ paths:
             Set-Cookie:
               schema:
                 type: string
-                example: SESSIONID=abcde12345; Path=/; HttpOnly
+                example: session=abcde12345; Path=/; HttpOnly
           description: Logged a user in.
         "400":
           content:
@@ -411,7 +411,7 @@ paths:
             Set-Cookie:
               schema:
                 type: string
-                example: SESSIONID=abcde12345; Path=/; HttpOnly
+                example: session=abcde12345; Path=/; HttpOnly
           description: Logged a user out.
         "401":
           content:

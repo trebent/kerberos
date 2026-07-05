@@ -49,7 +49,7 @@ func SessionMiddleware(
 				return f(ctx, w, r, request)
 			}
 
-			if len(r.CookiesNamed("SESSIONID")) == 0 {
+			if len(r.CookiesNamed("session")) == 0 {
 				zerologr.V(20).Info("No session cookie found, continuing without session")
 				return f(ctx, w, r, request)
 			}

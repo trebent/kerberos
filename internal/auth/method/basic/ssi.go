@@ -62,7 +62,7 @@ func (i *impl) Login(
 	return authbasicapi.Login204Response{
 		Headers: authbasicapi.Login204ResponseHeaders{
 			SetCookie: fmt.Sprintf(
-				"SESSIONID=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				"session=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
 				sessionID, 60*15,
 			),
 		},
@@ -83,7 +83,7 @@ func (i *impl) Logout(
 	return authbasicapi.Logout204Response{
 		Headers: authbasicapi.Logout204ResponseHeaders{
 			SetCookie: fmt.Sprintf(
-				"SESSIONID=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				"session=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
 				"expired", 0,
 			),
 		},

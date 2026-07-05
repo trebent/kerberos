@@ -37,7 +37,7 @@ func TestAuthorizer_Authenticated(t *testing.T) {
 	}
 
 	// Add the cookie to the request.
-	req.AddCookie(&http.Cookie{Name: "SESSIONID", Value: "session"})
+	req.AddCookie(&http.Cookie{Name: "session", Value: "session"})
 
 	// Test that the authorizer returns no error when a valid cookie is present.
 	if err := basic.Authenticated(req); err != nil {
@@ -49,7 +49,7 @@ func TestAuthorizer_Authenticated(t *testing.T) {
 	if err != nil {
 		t.Fatal("Expected no error when creating request")
 	}
-	req.AddCookie(&http.Cookie{Name: "SESSIONID", Value: "invalid"})
+	req.AddCookie(&http.Cookie{Name: "session", Value: "invalid"})
 
 	// Test that the authorizer returns an error when an invalid cookie is present.
 	if err := basic.Authenticated(req); err == nil {
@@ -87,7 +87,7 @@ func TestAuthorizer_AuthorizedGroup(t *testing.T) {
 	if err != nil {
 		t.Fatal("Expected no error when creating request")
 	}
-	req.AddCookie(&http.Cookie{Name: "SESSIONID", Value: "session"})
+	req.AddCookie(&http.Cookie{Name: "session", Value: "session"})
 	req.Header.Add("X-Krb-Org", strconv.Itoa(int(orgID)))
 	req.Header.Add("X-Krb-User", strconv.Itoa(int(userID)))
 	req = req.WithContext(context.WithValue(req.Context(), composer.BackendContextKey, "backend"))

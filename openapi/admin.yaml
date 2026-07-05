@@ -436,7 +436,7 @@ components:
     cookieAuth:
       type: apiKey
       in: cookie
-      name: SESSIONID
+      name: session
 
 security:
   - cookieAuth: []
@@ -484,7 +484,7 @@ paths:
             Set-Cookie:
               schema:
                 type: string
-                example: SESSIONID=abcde12345; Path=/; HttpOnly
+                example: session=abcde12345; Path=/; HttpOnly
           description: Logged the superuser in.
         "400":
           content:
@@ -522,7 +522,7 @@ paths:
             Set-Cookie:
               schema:
                 type: string
-                example: SESSIONID=abcde12345; Path=/; HttpOnly
+                example: session=abcde12345; Path=/; HttpOnly
           description: Logged the superuser out.
         "403":
           content:
@@ -868,7 +868,7 @@ paths:
             Set-Cookie:
               schema:
                 type: string
-                example: SESSIONID=abcde12345; Path=/; HttpOnly
+                example: session=abcde12345; Path=/; HttpOnly
           description: Logged the user in.
         "400":
           content:
@@ -900,7 +900,7 @@ paths:
             Set-Cookie:
               schema:
                 type: string
-                example: SESSIONID=abcde12345; Path=/; HttpOnly
+                example: session=abcde12345; Path=/; HttpOnly
           description: Logged the user out successfully.
         "400":
           content:
