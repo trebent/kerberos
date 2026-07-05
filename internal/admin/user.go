@@ -231,6 +231,39 @@ func (i *impl) GetUsers(
 	return adminapi.GetUsers200JSONResponse(users), nil
 }
 
+// GetMe implements [withExtensions].
+func (i *impl) GetMe(
+	ctx context.Context,
+	_ adminapi.GetMeRequestObject,
+) (adminapi.GetMeResponseObject, error) {
+	if IsSuperUserContext(ctx) {
+		return adminapi.GetMe200JSONResponse{IsSuperuser: true}, nil
+	}
+
+	//nolint:errcheck // no need, done in mware
+	session := ctx.Value(adminContextSession).(*model.Session)
+
+	u, err := dbGetUser(ctx, i.sqlClient, session.UserID)
+	if err != nil {
+		zerologr.Error(err, "Failed to get admin user for /me")
+		return adminapi.GetMe500JSONResponse(apiErrInternal), nil
+	}
+
+	groups, err := dbListGroupBindings(ctx, i.sqlClient, int64(u.Id))
+	if err != nil {
+		zerologr.Error(err, "Failed to list admin user group bindings for /me")
+		return adminapi.GetMe500JSONResponse(apiErrInternal), nil
+	}
+
+	apiGroups := make([]adminapi.Group, 0, len(groups))
+	for _, b := range groups {
+		apiGroups = append(apiGroups, adminapi.Group{Id: int(b.GroupID), Name: b.Name})
+	}
+	u.Groups = &apiGroups
+
+	return adminapi.GetMe200JSONResponse{IsSuperuser: false, User: u}, nil
+}
+
 // GetUser implements [withExtensions].
 func (i *impl) GetUser(
 	ctx context.Context,

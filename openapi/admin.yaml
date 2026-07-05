@@ -255,6 +255,16 @@ components:
       additionalProperties: false
       required:
         - outcome
+    MeResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        isSuperuser:
+          type: boolean
+        user:
+          $ref: "#/components/schemas/User"
+      required:
+        - isSuperuser
     User:
       type: object
       additionalProperties: false
@@ -575,6 +585,31 @@ paths:
   #
   # User management endpoints.
   #
+
+  /api/admin/me:
+    get:
+      tags:
+        - users
+      operationId: GetMe
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+          description: Got the current user's information successfully.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
 
   /api/admin/users:
     post:

@@ -215,6 +215,12 @@ type Group struct {
 	Permissions []Permission `json:"permissions"`
 }
 
+// MeResponse defines model for MeResponse.
+type MeResponse struct {
+	IsSuperuser bool  `json:"isSuperuser"`
+	User        *User `json:"user,omitempty"`
+}
+
 // NoFlowMetaData No metadata for the flow component.
 type NoFlowMetaData = map[string]interface{}
 
@@ -569,6 +575,9 @@ type ServerInterface interface {
 
 	// (POST /api/admin/logout)
 	Logout(w http.ResponseWriter, r *http.Request)
+
+	// (GET /api/admin/me)
+	GetMe(w http.ResponseWriter, r *http.Request)
 
 	// (GET /api/admin/oas/{backend})
 	GetBackendOAS(w http.ResponseWriter, r *http.Request, backend string)
@@ -1132,6 +1141,26 @@ func (siw *ServerInterfaceWrapper) Logout(w http.ResponseWriter, r *http.Request
 	handler.ServeHTTP(w, r)
 }
 
+// GetMe operation middleware
+func (siw *ServerInterfaceWrapper) GetMe(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetBackendOAS operation middleware
 func (siw *ServerInterfaceWrapper) GetBackendOAS(w http.ResponseWriter, r *http.Request) {
 
@@ -1568,6 +1597,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("PUT "+options.BaseURL+"/api/admin/groups/{groupID}", wrapper.UpdateGroup)
 	m.HandleFunc("POST "+options.BaseURL+"/api/admin/login", wrapper.Login)
 	m.HandleFunc("POST "+options.BaseURL+"/api/admin/logout", wrapper.Logout)
+	m.HandleFunc("GET "+options.BaseURL+"/api/admin/me", wrapper.GetMe)
 	m.HandleFunc("GET "+options.BaseURL+"/api/admin/oas/{backend}", wrapper.GetBackendOAS)
 	m.HandleFunc("GET "+options.BaseURL+"/api/admin/permissions", wrapper.GetPermissions)
 	m.HandleFunc("POST "+options.BaseURL+"/api/admin/superuser/login", wrapper.LoginSuperuser)
@@ -2455,6 +2485,40 @@ func (response Logout500JSONResponse) VisitLogoutResponse(w http.ResponseWriter)
 	return json.NewEncoder(w).Encode(response)
 }
 
+type GetMeRequestObject struct {
+}
+
+type GetMeResponseObject interface {
+	VisitGetMeResponse(w http.ResponseWriter) error
+}
+
+type GetMe200JSONResponse MeResponse
+
+func (response GetMe200JSONResponse) VisitGetMeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetMe401JSONResponse APIErrorResponse
+
+func (response GetMe401JSONResponse) VisitGetMeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetMe500JSONResponse APIErrorResponse
+
+func (response GetMe500JSONResponse) VisitGetMeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type GetBackendOASRequestObject struct {
 	Backend string `json:"backend"`
 }
@@ -3175,6 +3239,9 @@ type StrictServerInterface interface {
 	// (POST /api/admin/logout)
 	Logout(ctx context.Context, request LogoutRequestObject) (LogoutResponseObject, error)
 
+	// (GET /api/admin/me)
+	GetMe(ctx context.Context, request GetMeRequestObject) (GetMeResponseObject, error)
+
 	// (GET /api/admin/oas/{backend})
 	GetBackendOAS(ctx context.Context, request GetBackendOASRequestObject) (GetBackendOASResponseObject, error)
 
@@ -3686,6 +3753,30 @@ func (sh *strictHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(LogoutResponseObject); ok {
 		if err := validResponse.VisitLogoutResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetMe operation middleware
+func (sh *strictHandler) GetMe(w http.ResponseWriter, r *http.Request) {
+	var request GetMeRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetMe(ctx, request.(GetMeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetMe")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetMeResponseObject); ok {
+		if err := validResponse.VisitGetMeResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

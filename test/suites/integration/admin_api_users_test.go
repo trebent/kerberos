@@ -343,3 +343,71 @@ func TestAdminUserChangePasswordWrongOld(t *testing.T) {
 	verifyStatusCode(changeResp.StatusCode(), http.StatusUnauthorized, t)
 	verifyAdminAPIErrorResponse(changeResp.JSON401, t)
 }
+
+// TestAdminMeNormalUser verifies that a normal admin user receives their own user info from /me.
+func TestAdminMeNormalUser(t *testing.T) {
+	t.Parallel()
+	superRequestEditor := superLogin(t)
+
+	name := username()
+	const pass = "mepassword123"
+	createResp, err := adminClient.CreateUserWithResponse(
+		t.Context(),
+		adminapi.CreateUserJSONRequestBody{Username: name, Password: pass},
+		adminapi.RequestEditorFn(superRequestEditor),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+
+	userRequestEditor := adminUserLogin(t, name, pass)
+
+	meResp, err := adminClient.GetMeWithResponse(
+		t.Context(),
+		adminapi.RequestEditorFn(userRequestEditor),
+	)
+	checkErr(err, t)
+	verifyStatusCode(meResp.StatusCode(), http.StatusOK, t)
+
+	if meResp.JSON200 == nil {
+		t.Fatal("Expected non-nil JSON200 body")
+	}
+	if meResp.JSON200.IsSuperuser {
+		t.Fatal("Expected isSuperuser=false for normal admin user")
+	}
+	if meResp.JSON200.User == nil {
+		t.Fatal("Expected non-nil user field for normal admin user")
+	}
+	matches(meResp.JSON200.User.Username, name, t)
+	matches(meResp.JSON200.User.Id, createResp.JSON201.Id, t)
+}
+
+// TestAdminMeSuperuser verifies that the superuser receives isSuperuser=true and no user field from /me.
+func TestAdminMeSuperuser(t *testing.T) {
+	t.Parallel()
+	superRequestEditor := superLogin(t)
+
+	meResp, err := adminClient.GetMeWithResponse(
+		t.Context(),
+		adminapi.RequestEditorFn(superRequestEditor),
+	)
+	checkErr(err, t)
+	verifyStatusCode(meResp.StatusCode(), http.StatusOK, t)
+
+	if meResp.JSON200 == nil {
+		t.Fatal("Expected non-nil JSON200 body")
+	}
+	if !meResp.JSON200.IsSuperuser {
+		t.Fatal("Expected isSuperuser=true for superuser")
+	}
+	if meResp.JSON200.User != nil {
+		t.Fatal("Expected nil user field for superuser")
+	}
+}
+
+// TestAdminMeUnauthenticated verifies that calling /me without a session returns 401.
+func TestAdminMeUnauthenticated(t *testing.T) {
+	t.Parallel()
+	meResp, err := adminClient.GetMeWithResponse(t.Context())
+	checkErr(err, t)
+	verifyStatusCode(meResp.StatusCode(), http.StatusUnauthorized, t)
+}
