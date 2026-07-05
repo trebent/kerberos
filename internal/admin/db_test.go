@@ -551,19 +551,29 @@ func TestDBUsers(t *testing.T) {
 	})
 
 	t.Run("update superuser password", func(t *testing.T) {
+		oldSuperuser, err := dbGetSuperuser(ctx, testClient)
+		if err != nil {
+			t.Fatalf("dbGetSuperuser error: %v", err)
+		}
+
 		if err := dbUpdateSuperuserPassword(ctx, testClient, "supernewsalt", "supernewpassword"); err != nil {
 			t.Fatalf("dbUpdateUserPassword error: %v", err)
 		}
 
-		auth, err := dbGetSuperuser(ctx, testClient)
+		superuser, err := dbGetSuperuser(ctx, testClient)
 		if err != nil {
 			t.Fatalf("dbGetUserAuth after superuser password update error: %v", err)
 		}
-		if auth.Salt != "supernewsalt" {
-			t.Fatalf("expected salt %q after update, got %q", "supernewsalt", auth.Salt)
+		if superuser.Salt != "supernewsalt" {
+			t.Fatalf("expected salt %q after update, got %q", "supernewsalt", superuser.Salt)
 		}
-		if auth.HashedPassword != "supernewpassword" {
-			t.Fatalf("expected hashed password %q after update, got %q", "supernewpassword", auth.HashedPassword)
+		if superuser.HashedPassword != "supernewpassword" {
+			t.Fatalf("expected hashed password %q after update, got %q", "supernewpassword", superuser.HashedPassword)
+		}
+
+		// Change password back to original for other tests.
+		if err := dbUpdateSuperuserPassword(ctx, testClient, oldSuperuser.Salt, oldSuperuser.HashedPassword); err != nil {
+			t.Fatalf("dbUpdateUserPassword error: %v", err)
 		}
 	})
 
