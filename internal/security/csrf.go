@@ -70,7 +70,7 @@ func CSRFMiddleware(next http.Handler) http.Handler {
 		csrfCookie, err := r.Cookie(CSRFCookieName)
 
 		if err != nil || csrfToken == "" || csrfCookie == nil || csrfToken != csrfCookie.Value {
-			zerologr.Error(nil, "CSRF token validation failed")
+			zerologr.Error(err, "CSRF token validation failed")
 			apierror.ErrorHandler(w, r, apierror.ErrForbidden)
 			return
 		}
