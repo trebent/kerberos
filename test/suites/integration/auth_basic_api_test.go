@@ -35,7 +35,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	createOrg2, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
-		authbasicapi.RequestEditorFn(orgAdmin1RequestEditor),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createOrg2.StatusCode(), http.StatusCreated, t)

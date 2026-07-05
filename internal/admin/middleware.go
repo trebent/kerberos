@@ -22,6 +22,8 @@ const (
 // SessionMiddleware provides context population of administration session information.
 // If put in front of a handler, the context to the handler will contain information that can
 // be used to determine if a KRB admin made the call, or if it was external.
+//
+//nolint:gocognit // it's not that bad
 func SessionMiddleware(
 	ssi adminapigen.StrictServerInterface,
 ) adminapigen.StrictMiddlewareFunc {

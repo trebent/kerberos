@@ -20,7 +20,7 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
-	_ = os.Remove("test.db")
+	//_ = os.Remove("test.db")
 
 	os.Exit(code)
 }

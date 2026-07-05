@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/http"
@@ -58,14 +59,20 @@ func TestAdminSessionMiddleware(t *testing.T) {
 		t.Fatalf("Expected LoginSuperuser204Response, got %T", response)
 	}
 
-	headers := http.Header{}
-	headers.Add("x-krb-session", decodedResponse.Headers.SetCookie)
+	cookie, err := http.ParseSetCookie(decodedResponse.Headers.SetCookie)
+	if err != nil {
+		t.Fatalf("Failed to parse set-cookie header: %v", err)
+	}
+
+	req, err := http.NewRequest(http.MethodGet, "/", bytes.NewReader(nil))
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+	req.AddCookie(cookie)
 	_, err = handler(
 		t.Context(),
 		httptest.NewRecorder(),
-		&http.Request{
-			Header: headers,
-		},
+		req,
 		adminapi.LoginSuperuserRequestObject{},
 	)
 	wg.Wait()
