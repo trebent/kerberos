@@ -543,21 +543,7 @@ paths:
         - users
       operationId: ChangeSuperuserPassword
       requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                oldPassword:
-                  type: string
-                  minLength: 1
-                newPassword:
-                  type: string
-                  minLength: 1
-              required:
-                - oldPassword
-                - newPassword
+        $ref: "#/components/requestBodies/ChangePasswordRequest"
       responses:
         "204":
           description: Changed the superuser's password successfully.
