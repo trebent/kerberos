@@ -13,6 +13,7 @@ import (
 	"github.com/trebent/kerberos/internal/admin/model"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
+	"github.com/trebent/kerberos/internal/security"
 )
 
 func TestAdminSessionMiddleware(t *testing.T) {
@@ -54,21 +55,29 @@ func TestAdminSessionMiddleware(t *testing.T) {
 		t.Fatalf("Failed to login superuser: %v", err)
 	}
 
-	decodedResponse, ok := response.(adminapi.LoginSuperuser204Response)
+	decodedResponse, ok := response.(customSuperLoginResponse)
 	if !ok {
-		t.Fatalf("Expected LoginSuperuser204Response, got %T", response)
+		t.Fatalf("Expected customSuperLoginResponse, got %T", response)
 	}
 
-	cookie, err := http.ParseSetCookie(decodedResponse.Headers.SetCookie)
-	if err != nil {
-		t.Fatalf("Failed to parse set-cookie header: %v", err)
+	var sessionCookie *http.Cookie
+	for _, c := range decodedResponse.cookies {
+		cookie, err := http.ParseSetCookie(c)
+		if err != nil {
+			t.Fatalf("Failed to parse cookie: %v", err)
+		}
+
+		if cookie.Name == security.SessionCookieName {
+			sessionCookie = cookie
+			break
+		}
 	}
 
 	req, err := http.NewRequest(http.MethodGet, "/", bytes.NewReader(nil))
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
 	}
-	req.AddCookie(cookie)
+	req.AddCookie(sessionCookie)
 	_, err = handler(
 		t.Context(),
 		httptest.NewRecorder(),
