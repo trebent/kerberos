@@ -365,6 +365,38 @@ func (i *impl) ChangeUserPassword(
 	return adminapi.ChangeUserPassword204Response{}, nil
 }
 
+func (i *impl) ChangeSuperuserPassword(
+	ctx context.Context,
+	request adminapi.ChangeSuperuserPasswordRequestObject,
+) (adminapi.ChangeSuperuserPasswordResponseObject, error) {
+	if !IsSuperUserContext(ctx) {
+		return adminapi.ChangeSuperuserPassword403JSONResponse(apiErrForbidden), nil
+	}
+
+	superuser, err := dbGetSuperuser(ctx, i.sqlClient)
+	if err != nil {
+		zerologr.Error(err, "Failed to get superuser for password change")
+		return adminapi.ChangeSuperuserPassword500JSONResponse(apiErrInternal), nil
+	}
+
+	if !password.Match(superuser.Salt, superuser.HashedPassword, request.Body.OldPassword) {
+		return adminapi.ChangeSuperuserPassword401JSONResponse(apiErrUnauthorized), nil
+	}
+
+	_, newSalt, newHashed := password.Make(request.Body.NewPassword)
+	if err := dbUpdateSuperuserPassword(
+		ctx,
+		i.sqlClient,
+		newSalt,
+		newHashed,
+	); err != nil {
+		zerologr.Error(err, "Failed to update superuser password")
+		return adminapi.ChangeSuperuserPassword500JSONResponse(apiErrInternal), nil
+	}
+
+	return adminapi.ChangeSuperuserPassword204Response{}, nil
+}
+
 // UpdateUserGroups implements [withExtensions].
 func (i *impl) UpdateUserGroups(
 	ctx context.Context,
