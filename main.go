@@ -27,6 +27,8 @@ import (
 	"github.com/trebent/kerberos/internal/db/sqlite"
 	internalenv "github.com/trebent/kerberos/internal/env"
 	"github.com/trebent/kerberos/internal/oas"
+	"github.com/trebent/kerberos/internal/response"
+	"github.com/trebent/kerberos/internal/security"
 	"github.com/trebent/zerologr"
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 )
@@ -181,7 +183,7 @@ func setupConfig() (*config.RootConfig, error) {
 	return cfg, nil
 }
 
-// startServer starts the HTTP server and listens for incoming requests.
+// startServer starts the HSTTP server and listens for incoming requests.
 // It returns an error if the server fails to start and when stopping. If
 // the server is stopped, it returns http.ErrServerClosed.
 // nolint: funlen,gocognit // welp
@@ -230,7 +232,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		}
 		customFlowComponents = append(customFlowComponents, authorizer)
 
-		// Register the authorizer with the admin component so that it can serve auth metadata to the admin API.
+		// Register the authorizer with the admin component so that it can serve auth paths via the admin server mux.
 		if err := adm.RegisterAPIProvider(authorizer); err != nil {
 			return fmt.Errorf("failed to register auth API provider with admin component: %w", err)
 		}
@@ -274,13 +276,31 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		Addr:         fmt.Sprintf(":%d", internalenv.Port.Value()),
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
-		Handler:      allowCORS(gwMux),
+		// TODO: add support for per-backend CORS configuration. For now, skip CORS for backends.
+		Handler: gwMux,
 	}
+
+	loggingMiddleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			//nolint:errcheck // guaranteed
+			wrapper := response.NewResponseWrapper(w).(*response.Wrapper)
+			next.ServeHTTP(wrapper, r)
+			zerologr.Info(
+				fmt.Sprintf("%s %s %d", r.Method, r.URL.Path, wrapper.StatusCode()),
+			)
+		})
+	}
+
 	adminServer := http.Server{
 		Addr:         fmt.Sprintf(":%d", internalenv.AdminPort.Value()),
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
-		Handler:      allowCORS(adminMux),
+		// TODO: add support for origin whitelisting for the admin server.
+		Handler: loggingMiddleware(security.CORSMiddleware(
+			security.CSRFMiddlewareWithExemptions(
+				[]string{"/superuser/login", "/admin/login"},
+			)(adminMux),
+		)),
 	}
 
 	gwErrChan := make(chan error, 1)
@@ -335,20 +355,4 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	}
 
 	return errors.Join(adminSrvErr, gwSrvErr, shutdownErr)
-}
-
-func allowCORS(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		w.Header().Set("Access-Control-Expose-Headers", "X-Krb-Session")
-
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
 }

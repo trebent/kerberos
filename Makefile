@@ -4,6 +4,10 @@ KERBEROS_PORT ?= 30000
 KERBEROS_ADMIN_PORT ?= 30001
 SUPERUSER_CLIENT_ID ?= admin
 SUPERUSER_CLIENT_SECRET ?= secret
+ADMIN_USER_ALWAYS ?= always
+ADMIN_USER_ALWAYS_PASSWORD ?= password123
+AUTH_BASIC_USER_ALWAYS ?= always
+AUTH_BASIC_USER_ALWAYS_PASSWORD ?= password123
 KERBEROS_METRICS_PORT ?= 9464
 ECHO_PORT ?= 15000
 ECHO_METRICS_PORT ?= 9463
@@ -95,8 +99,6 @@ compose/up:
 	ECHO_PORT=$(ECHO_PORT) \
 	ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
 	docker compose -f test/compose/integration/compose.yaml up -d --force-recreate
-
-compose/wait:
 	$(call cecho,Waiting for Kerberos to be ready...,$(BOLD_YELLOW))
 	@until [ "$$(curl -s -o /dev/null -w '%{http_code}' localhost:$(KERBEROS_ADMIN_PORT)/api/admin/flow)" = "401" ]; do \
 	echo "Waiting for Kerberos admin API..."; \
@@ -184,42 +186,28 @@ install/deps:
 install/lint:
 	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(GOBIN) v2.12.2
 
-krb/flow:
-	$(call cecho,Fetching flow from Kerberos admin API...,$(BOLD_YELLOW))
-	@SESSION=$$(curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/admin/superuser/login \
-	-H "Content-Type: application/json" \
-	-d '{"clientId":"$(SUPERUSER_CLIENT_ID)","clientSecret":"$(SUPERUSER_CLIENT_SECRET)"}' \
-	| grep -i '^x-krb-session:' | tr -d '\r' | awk '{print $$2}'); \
-	curl -s -H "x-krb-session: $$SESSION" localhost:$(KERBEROS_ADMIN_PORT)/api/admin/flow | jq .
-
-krb/admin-users:
-	$(call cecho,Fetching admin users from Kerberos admin API...,$(BOLD_YELLOW))
-	@SESSION=$$(curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/admin/superuser/login \
-	-H "Content-Type: application/json" \
-	-d '{"clientId":"$(SUPERUSER_CLIENT_ID)","clientSecret":"$(SUPERUSER_CLIENT_SECRET)"}' \
-	| grep -i '^x-krb-session:' | tr -d '\r' | awk '{print $$2}'); \
-	curl -s -H "x-krb-session: $$SESSION" localhost:$(KERBEROS_ADMIN_PORT)/api/admin/users | jq .
-
-krb/oas-backend:
-	$(call cecho,Fetching OAS backend from Kerberos admin API...,$(BOLD_YELLOW))
-	@SESSION=$$(curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/admin/superuser/login \
-	-H "Content-Type: application/json" \
-	-d '{"clientId":"$(SUPERUSER_CLIENT_ID)","clientSecret":"$(SUPERUSER_CLIENT_SECRET)"}' \
-	| grep -i '^x-krb-session:' | tr -d '\r' | awk '{print $$2}'); \
-	curl -s -H "x-krb-session: $$SESSION" localhost:$(KERBEROS_ADMIN_PORT)/api/admin/oas/echo
-
-krb/permissions:
-	$(call cecho,Fetching permissions from Kerberos admin API...,$(BOLD_YELLOW))
-	@SESSION=$$(curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/admin/superuser/login \
-	-H "Content-Type: application/json" \
-	-d '{"clientId":"$(SUPERUSER_CLIENT_ID)","clientSecret":"$(SUPERUSER_CLIENT_SECRET)"}' \
-	| grep -i '^x-krb-session:' | tr -d '\r' | awk '{print $$2}'); \
-	curl -s -H "x-krb-session: $$SESSION" localhost:$(KERBEROS_ADMIN_PORT)/api/admin/permissions | jq
-
-# This uses the integration test suite to provision Kerberos with test data.
+# This uses the integration test suite to provision Kerberos with test data created by the main entrypoint of the integration test suite.
 krb/provision:
 	$(call cecho,Provisioning Kerberos with test data...,$(BOLD_YELLOW))
 	@cd test/suites/integration && go test -v ./... -count=1 -failfast -run NotExist
+
+krb/superuser-login:
+	$(call cecho,Logging in with basic auth to Kerberos...,$(BOLD_YELLOW))
+	curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/admin/superuser/login \
+		-H "Content-Type: application/json" \
+		-d '{"clientId":"$(SUPERUSER_CLIENT_ID)","clientSecret":"$(SUPERUSER_CLIENT_SECRET)"}'
+	
+krb/admin-login:
+	$(call cecho,Logging in with basic auth to Kerberos...,$(BOLD_YELLOW))
+	curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/admin/login \
+		-H "Content-Type: application/json" \
+		-d '{"username":"$(ADMIN_USER_ALWAYS)","password":"$(ADMIN_USER_ALWAYS_PASSWORD)"}'
+
+krb/basic-auth-login:
+	$(call cecho,Logging in with basic auth to Kerberos...,$(BOLD_YELLOW))
+	curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/auth/basic/organisations/1/login \
+		-H "Content-Type: application/json" \
+		-d '{"username":"$(AUTH_BASIC_USER_ALWAYS)","password":"$(AUTH_BASIC_USER_ALWAYS_PASSWORD)"}'
 
 postgres/run:
 	$(call cecho,Running PostgreSQL for Kerberos...,$(BOLD_YELLOW))
@@ -286,11 +274,11 @@ test/protected-echo:
 	$(call cecho,Sending a test request to protected-echo...,$(BOLD_YELLOW))
 	curl -X GET -i localhost:$(KERBEROS_PORT)/gw/backend/protected-echo/hi
 
-test/security: compose/security/up
+test/security:
 	$(call cecho,Running security tests for Kerberos...,$(BOLD_YELLOW))
 	@cd test/suites/security && go test -v ./... -count=1 -failfast
 
-test/security/json: compose/security/up
+test/security/json:
 	$(call cecho,Running security tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
 	@cd test/suites/security && go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/security-test-output.json

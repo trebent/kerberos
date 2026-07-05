@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	SessionidScopes = "sessionid.Scopes"
+	CookieAuthScopes = "cookieAuth.Scopes"
 )
 
 // APIErrorResponse defines model for APIErrorResponse.
@@ -187,7 +187,7 @@ func (siw *ServerInterfaceWrapper) ListOrganisations(w http.ResponseWriter, r *h
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -207,7 +207,7 @@ func (siw *ServerInterfaceWrapper) CreateOrganisation(w http.ResponseWriter, r *
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -238,7 +238,7 @@ func (siw *ServerInterfaceWrapper) DeleteOrganisation(w http.ResponseWriter, r *
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -269,7 +269,7 @@ func (siw *ServerInterfaceWrapper) GetOrganisation(w http.ResponseWriter, r *htt
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -300,7 +300,7 @@ func (siw *ServerInterfaceWrapper) UpdateOrganisation(w http.ResponseWriter, r *
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -331,7 +331,7 @@ func (siw *ServerInterfaceWrapper) ListGroups(w http.ResponseWriter, r *http.Req
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -362,7 +362,7 @@ func (siw *ServerInterfaceWrapper) CreateGroup(w http.ResponseWriter, r *http.Re
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -402,7 +402,7 @@ func (siw *ServerInterfaceWrapper) DeleteGroup(w http.ResponseWriter, r *http.Re
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -442,7 +442,7 @@ func (siw *ServerInterfaceWrapper) GetGroup(w http.ResponseWriter, r *http.Reque
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -482,7 +482,7 @@ func (siw *ServerInterfaceWrapper) UpdateGroup(w http.ResponseWriter, r *http.Re
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -538,7 +538,7 @@ func (siw *ServerInterfaceWrapper) Logout(w http.ResponseWriter, r *http.Request
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -569,7 +569,7 @@ func (siw *ServerInterfaceWrapper) ListUsers(w http.ResponseWriter, r *http.Requ
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -600,7 +600,7 @@ func (siw *ServerInterfaceWrapper) CreateUser(w http.ResponseWriter, r *http.Req
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -640,7 +640,7 @@ func (siw *ServerInterfaceWrapper) DeleteUser(w http.ResponseWriter, r *http.Req
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -680,7 +680,7 @@ func (siw *ServerInterfaceWrapper) GetUser(w http.ResponseWriter, r *http.Reques
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -720,7 +720,7 @@ func (siw *ServerInterfaceWrapper) UpdateUser(w http.ResponseWriter, r *http.Req
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -760,7 +760,7 @@ func (siw *ServerInterfaceWrapper) GetUserGroups(w http.ResponseWriter, r *http.
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -800,7 +800,7 @@ func (siw *ServerInterfaceWrapper) UpdateUserGroups(w http.ResponseWriter, r *ht
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -840,7 +840,7 @@ func (siw *ServerInterfaceWrapper) ChangePassword(w http.ResponseWriter, r *http
 
 	ctx := r.Context()
 
-	ctx = context.WithValue(ctx, SessionidScopes, []string{})
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
@@ -1562,7 +1562,7 @@ type LoginResponseObject interface {
 }
 
 type Login204ResponseHeaders struct {
-	XKrbSession string
+	SetCookie string
 }
 
 type Login204Response struct {
@@ -1570,7 +1570,7 @@ type Login204Response struct {
 }
 
 func (response Login204Response) VisitLoginResponse(w http.ResponseWriter) error {
-	w.Header().Set("x-krb-session", fmt.Sprint(response.Headers.XKrbSession))
+	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
 	w.WriteHeader(204)
 	return nil
 }
@@ -1610,10 +1610,16 @@ type LogoutResponseObject interface {
 	VisitLogoutResponse(w http.ResponseWriter) error
 }
 
+type Logout204ResponseHeaders struct {
+	SetCookie string
+}
+
 type Logout204Response struct {
+	Headers Logout204ResponseHeaders
 }
 
 func (response Logout204Response) VisitLogoutResponse(w http.ResponseWriter) error {
+	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
 	w.WriteHeader(204)
 	return nil
 }

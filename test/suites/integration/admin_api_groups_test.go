@@ -10,13 +10,13 @@ import (
 // TestAdminGroupCreate verifies that a new admin group can be created.
 func TestAdminGroupCreate(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	name := groupName()
 	createResp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
 		adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: allPermissionIDs},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -34,13 +34,13 @@ func TestAdminGroupCreate(t *testing.T) {
 // TestAdminGroupCreateConflict verifies that creating a duplicate admin group name is rejected.
 func TestAdminGroupCreateConflict(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	name := groupName()
 	createResp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
 		adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: allPermissionIDs},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -48,7 +48,7 @@ func TestAdminGroupCreateConflict(t *testing.T) {
 	dupResp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
 		adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: allPermissionIDs},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(dupResp.StatusCode(), http.StatusConflict, t)
@@ -58,13 +58,13 @@ func TestAdminGroupCreateConflict(t *testing.T) {
 // TestAdminGroupList verifies that a newly created admin group appears in the list response.
 func TestAdminGroupList(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	name := groupName()
 	createResp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
 		adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: allPermissionIDs},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -72,7 +72,7 @@ func TestAdminGroupList(t *testing.T) {
 
 	listResp, err := adminClient.GetGroupsWithResponse(
 		t.Context(),
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(listResp.StatusCode(), http.StatusOK, t)
@@ -88,13 +88,13 @@ func TestAdminGroupList(t *testing.T) {
 // TestAdminGroupGet verifies that a created admin group can be fetched by ID.
 func TestAdminGroupGet(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	name := groupName()
 	createResp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
 		adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: allPermissionIDs},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -103,7 +103,7 @@ func TestAdminGroupGet(t *testing.T) {
 	getResp, err := adminClient.GetGroupWithResponse(
 		t.Context(),
 		groupID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
@@ -114,12 +114,12 @@ func TestAdminGroupGet(t *testing.T) {
 // TestAdminGroupGetNotFound verifies that fetching a non-existent admin group returns 404.
 func TestAdminGroupGetNotFound(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	getResp, err := adminClient.GetGroupWithResponse(
 		t.Context(),
 		999999999,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusNotFound, t)
@@ -129,13 +129,13 @@ func TestAdminGroupGetNotFound(t *testing.T) {
 // TestAdminGroupUpdate verifies that an admin group's name can be updated.
 func TestAdminGroupUpdate(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	name := groupName()
 	createResp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
 		adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: allPermissionIDs},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -146,7 +146,7 @@ func TestAdminGroupUpdate(t *testing.T) {
 		t.Context(),
 		groupID,
 		adminapi.UpdateGroupJSONRequestBody{Name: newName, PermissionIDs: allPermissionIDs},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateResp.StatusCode(), http.StatusNoContent, t)
@@ -154,7 +154,7 @@ func TestAdminGroupUpdate(t *testing.T) {
 	getResp, err := adminClient.GetGroupWithResponse(
 		t.Context(),
 		groupID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
@@ -164,13 +164,13 @@ func TestAdminGroupUpdate(t *testing.T) {
 // TestAdminGroupUpdateConflict verifies that updating an admin group's name to an existing name returns a conflict.
 func TestAdminGroupUpdateConflict(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	name := groupName()
 	createResp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
 		adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: allPermissionIDs},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -179,7 +179,7 @@ func TestAdminGroupUpdateConflict(t *testing.T) {
 	createResp2, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
 		adminapi.CreateGroupJSONRequestBody{Name: name2, PermissionIDs: allPermissionIDs},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp2.StatusCode(), http.StatusCreated, t)
@@ -190,7 +190,7 @@ func TestAdminGroupUpdateConflict(t *testing.T) {
 		t.Context(),
 		groupID,
 		adminapi.UpdateGroupJSONRequestBody{Name: name2, PermissionIDs: allPermissionIDs},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateResp.StatusCode(), http.StatusConflict, t)
@@ -200,13 +200,13 @@ func TestAdminGroupUpdateConflict(t *testing.T) {
 // TestAdminGroupDelete verifies that an admin group can be deleted and is no longer retrievable.
 func TestAdminGroupDelete(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	name := groupName()
 	createResp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
 		adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: allPermissionIDs},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -215,7 +215,7 @@ func TestAdminGroupDelete(t *testing.T) {
 	deleteResp, err := adminClient.DeleteGroupWithResponse(
 		t.Context(),
 		groupID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
@@ -223,7 +223,7 @@ func TestAdminGroupDelete(t *testing.T) {
 	getResp, err := adminClient.GetGroupWithResponse(
 		t.Context(),
 		groupID,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusNotFound, t)
@@ -232,12 +232,12 @@ func TestAdminGroupDelete(t *testing.T) {
 // TestAdminGroupDeleteNotFound verifies that deleting a non-existent admin group returns 404.
 func TestAdminGroupDeleteNotFound(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	deleteResp, err := adminClient.DeleteGroupWithResponse(
 		t.Context(),
 		999999999,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteResp.StatusCode(), http.StatusNotFound, t)

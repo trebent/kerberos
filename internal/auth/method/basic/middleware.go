@@ -69,19 +69,23 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 				return f(ctx, w, r, request)
 			}
 
-			sessionID := r.Header.Get("X-Krb-Session")
-			if sessionID == "" {
-				zerologr.V(20).Info("Failed to find a session header")
-
-				if zerologr.V(30).Enabled() {
-					for key, values := range r.Header {
-						zerologr.V(30).Info("Header "+key, "values", values)
-					}
-				}
+			if len(r.Cookies()) == 0 {
+				zerologr.V(20).Info("No cookies found, denying access")
 				return nil, apierror.ErrUnauthenticated
 			}
 
-			session, err := dbGetSessionRow(ctx, apiImpl.db, sessionID)
+			if len(r.CookiesNamed("session")) == 0 {
+				zerologr.V(20).Info("No session cookie found, denying access")
+				return nil, apierror.ErrUnauthenticated
+			}
+
+			cookie := r.CookiesNamed("session")[0]
+			if cookie.Value == "" {
+				zerologr.V(20).Info("Session cookie is empty, denying access")
+				return nil, apierror.ErrUnauthenticated
+			}
+
+			session, err := dbGetSessionRow(ctx, apiImpl.db, cookie.Value)
 			if errors.Is(err, errNoSession) {
 				zerologr.Error(apierror.ErrUnauthenticated, "Failed to find a matching session")
 				return nil, apierror.ErrUnauthenticated

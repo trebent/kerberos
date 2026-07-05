@@ -12,18 +12,12 @@ import (
 var allPermissionIDs = []int{1, 2, 3, 4, 5, 6, 7}
 
 func TestAdminLoginSuperuser(t *testing.T) {
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	t.Log("Logging the superuser out")
 	superLogoutResp, err := adminClient.LogoutSuperuserWithResponse(
 		t.Context(),
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(superLogoutResp.StatusCode(), http.StatusNoContent, t)
@@ -32,7 +26,7 @@ func TestAdminLoginSuperuser(t *testing.T) {
 	// Verify the old session is truly invalidated by attempting to access a protected endpoint with it.
 	getFlowResp, err := adminClient.GetFlowWithResponse(
 		t.Context(),
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getFlowResp.StatusCode(), http.StatusUnauthorized, t)
@@ -59,17 +53,11 @@ func TestAdminOASFailure(t *testing.T) {
 
 func TestAdminGetFlow(t *testing.T) {
 	t.Parallel()
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	getFlowResp, err := adminClient.GetFlowWithResponse(
 		t.Context(),
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getFlowResp.StatusCode(), http.StatusOK, t)
@@ -126,18 +114,12 @@ func TestAdminGetFlow(t *testing.T) {
 
 func TestAdminGetBackendOASNotFound(t *testing.T) {
 	t.Parallel()
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	resp, err := adminClient.GetBackendOASWithResponse(
 		t.Context(),
 		"nonexistent-backend",
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(resp.StatusCode(), http.StatusNotFound, t)
@@ -146,18 +128,12 @@ func TestAdminGetBackendOASNotFound(t *testing.T) {
 
 func TestAdminGetBackendOAS(t *testing.T) {
 	t.Parallel()
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	getBackendOASResp, err := adminClient.GetBackendOASWithResponse(
 		t.Context(),
 		"echo",
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getBackendOASResp.StatusCode(), http.StatusOK, t)
@@ -165,25 +141,25 @@ func TestAdminGetBackendOAS(t *testing.T) {
 
 // TestAdminGetFlowAsAdminUser verifies that a non-superuser admin user can also access the GetFlow endpoint.
 func TestAdminGetFlowAsAdminUser(t *testing.T) {
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	name := username()
 	const pass = "password123"
 	createResp, err := adminClient.CreateUserWithResponse(
 		t.Context(),
 		adminapi.CreateUserJSONRequestBody{Username: name, Password: pass},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
 
-	userID := mustGetAdminUserID(t, superSession, name)
+	userID := mustGetAdminUserID(t, superRequestEditor, name)
 
 	// Create a group with the flowviewer permission and assign the user to it.
 	grpResp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
 		adminapi.CreateGroupJSONRequestBody{Name: groupName(), PermissionIDs: allPermissionIDs},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(grpResp.StatusCode(), http.StatusCreated, t)
@@ -192,16 +168,16 @@ func TestAdminGetFlowAsAdminUser(t *testing.T) {
 		t.Context(),
 		userID,
 		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int{grpResp.JSON201.Id}},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateResp.StatusCode(), http.StatusNoContent, t)
 
-	adminSession := adminUserLogin(t, name, pass)
+	adminRequestEditor := adminUserLogin(t, name, pass)
 
 	getFlowResp, err := adminClient.GetFlowWithResponse(
 		t.Context(),
-		adminapi.RequestEditorFn(requestEditorSessionID(adminSession)),
+		adminapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getFlowResp.StatusCode(), http.StatusOK, t)
@@ -209,25 +185,25 @@ func TestAdminGetFlowAsAdminUser(t *testing.T) {
 
 // TestAdminGetBackendOASAsAdminUser verifies that a non-superuser admin user can also access the GetBackendOAS endpoint.
 func TestAdminGetBackendOASAsAdminUser(t *testing.T) {
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	name := username()
 	const pass = "password123"
 	createResp, err := adminClient.CreateUserWithResponse(
 		t.Context(),
 		adminapi.CreateUserJSONRequestBody{Username: name, Password: pass},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
 
-	userID := mustGetAdminUserID(t, superSession, name)
+	userID := mustGetAdminUserID(t, superRequestEditor, name)
 
 	// Create a group with the oasviewer permission and assign the user to it.
 	grpResp, err := adminClient.CreateGroupWithResponse(
 		t.Context(),
 		adminapi.CreateGroupJSONRequestBody{Name: groupName(), PermissionIDs: allPermissionIDs},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(grpResp.StatusCode(), http.StatusCreated, t)
@@ -236,17 +212,17 @@ func TestAdminGetBackendOASAsAdminUser(t *testing.T) {
 		t.Context(),
 		userID,
 		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int{grpResp.JSON201.Id}},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateResp.StatusCode(), http.StatusNoContent, t)
 
-	adminSession := adminUserLogin(t, name, pass)
+	adminRequestEditor := adminUserLogin(t, name, pass)
 
 	getBackendOASResp, err := adminClient.GetBackendOASWithResponse(
 		t.Context(),
 		"echo",
-		adminapi.RequestEditorFn(requestEditorSessionID(adminSession)),
+		adminapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getBackendOASResp.StatusCode(), http.StatusOK, t)

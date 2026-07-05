@@ -3,14 +3,51 @@ package admin
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/trebent/kerberos/internal/admin/model"
 	"github.com/trebent/kerberos/internal/db"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
+	"github.com/trebent/kerberos/internal/security"
 	"github.com/trebent/kerberos/internal/util/password"
 	"github.com/trebent/zerologr"
 )
+
+type (
+	// customLoginResponse is a custom implementation of the [adminapi.LoginResponseObject] interface,
+	// indicating a successful login and setting > 1 header on the response.
+	customLoginResponse struct {
+		cookies []string
+	}
+	// customLoginResponse is a custom implementation of the [adminapi.LoginSuperuserResponseObject] interface,
+	// indicating a successful login and setting > 1 header on the response.
+	customSuperLoginResponse struct {
+		cookies []string
+	}
+)
+
+var (
+	_ adminapi.LoginResponseObject          = customLoginResponse{}
+	_ adminapi.LoginSuperuserResponseObject = customSuperLoginResponse{}
+)
+
+func (r customLoginResponse) VisitLoginResponse(w http.ResponseWriter) error {
+	for _, c := range r.cookies {
+		w.Header().Add("Set-Cookie", c)
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+func (r customSuperLoginResponse) VisitLoginSuperuserResponse(w http.ResponseWriter) error {
+	for _, c := range r.cookies {
+		w.Header().Add("Set-Cookie", c)
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
 
 // LoginSuperuser implements [StrictServerInterface].
 func (i *impl) LoginSuperuser(
@@ -41,9 +78,16 @@ func (i *impl) LoginSuperuser(
 		return adminapi.LoginSuperuser500JSONResponse(apiErrInternal), nil
 	}
 
-	return adminapi.LoginSuperuser204Response{
-		Headers: adminapi.LoginSuperuser204ResponseHeaders{
-			XKrbSession: sessionID,
+	return customSuperLoginResponse{
+		cookies: []string{
+			fmt.Sprintf(
+				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				security.SessionCookieName, sessionID, 60*15,
+			),
+			fmt.Sprintf(
+				"%s=%s; SameSite=None; Path=/; Secure; Max-Age=%d",
+				security.CSRFCookieName, sessionID, 60*15,
+			),
 		},
 	}, nil
 }
@@ -62,7 +106,14 @@ func (i *impl) LogoutSuperuser(
 		zerologr.Error(err, "Failed to delete super sessions during logout")
 		return adminapi.LogoutSuperuser500JSONResponse(apiErrInternal), nil
 	}
-	return adminapi.LogoutSuperuser204Response{}, nil
+	return adminapi.LogoutSuperuser204Response{
+		Headers: adminapi.LogoutSuperuser204ResponseHeaders{
+			SetCookie: fmt.Sprintf(
+				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				security.SessionCookieName, "expired", 0,
+			),
+		},
+	}, nil
 }
 
 // Login implements [withExtensions].
@@ -89,9 +140,16 @@ func (i *impl) Login(
 		return adminapi.Login500JSONResponse(apiErrInternal), nil
 	}
 
-	return adminapi.Login204Response{
-		Headers: adminapi.Login204ResponseHeaders{
-			XKrbSession: sessionID,
+	return customLoginResponse{
+		cookies: []string{
+			fmt.Sprintf(
+				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				security.SessionCookieName, sessionID, 60*15,
+			),
+			fmt.Sprintf(
+				"%s=%s; SameSite=None; Path=/; Secure; Max-Age=%d",
+				security.CSRFCookieName, sessionID, 60*15,
+			),
 		},
 	}, nil
 }
@@ -111,7 +169,14 @@ func (i *impl) Logout(
 		return adminapi.Logout500JSONResponse(apiErrInternal), nil
 	}
 
-	return adminapi.Logout204Response{}, nil
+	return adminapi.Logout204Response{
+		Headers: adminapi.Logout204ResponseHeaders{
+			SetCookie: fmt.Sprintf(
+				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				security.SessionCookieName, "expired", 0,
+			),
+		},
+	}, nil
 }
 
 // CreateUser implements [withExtensions].

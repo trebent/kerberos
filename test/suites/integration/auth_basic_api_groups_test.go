@@ -4,27 +4,20 @@ import (
 	"net/http"
 	"testing"
 
-	adminapi "github.com/trebent/kerberos/test/integration/client/admin"
 	authbasicapi "github.com/trebent/kerberos/test/integration/client/auth/basic"
 )
 
 // TestGroupCreate verifies that a new group can be created within an organisation and that
 // the response contains the expected name and a valid ID.
 func TestGroupCreate(t *testing.T) {
-	loginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(loginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	name := groupName()
 	createResp, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateGroupJSONRequestBody{Name: name},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -36,19 +29,13 @@ func TestGroupCreate(t *testing.T) {
 
 // TestGroupList verifies that a newly created group appears in the list response for its organisation.
 func TestGroupList(t *testing.T) {
-	loginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(loginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	createResp, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateGroupJSONRequestBody{Name: groupName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -57,7 +44,7 @@ func TestGroupList(t *testing.T) {
 	listResp, err := basicAuthClient.ListGroupsWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(listResp.StatusCode(), http.StatusOK, t)
@@ -71,20 +58,14 @@ func TestGroupList(t *testing.T) {
 
 // TestGroupGet verifies that a created group can be fetched by ID.
 func TestGroupGet(t *testing.T) {
-	loginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(loginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	name := groupName()
 	createResp, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateGroupJSONRequestBody{Name: name},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -93,7 +74,7 @@ func TestGroupGet(t *testing.T) {
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		createResp.JSON201.Id,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
@@ -103,18 +84,12 @@ func TestGroupGet(t *testing.T) {
 
 // TestGroupGetNotFound verifies that fetching a deleted group returns 404.
 func TestGroupGetNotFound(t *testing.T) {
-	loginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(loginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
@@ -124,7 +99,7 @@ func TestGroupGetNotFound(t *testing.T) {
 		t.Context(),
 		orgID,
 		authbasicapi.CreateGroupJSONRequestBody{Name: groupName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createGroupResp.StatusCode(), http.StatusCreated, t)
@@ -134,7 +109,7 @@ func TestGroupGetNotFound(t *testing.T) {
 		t.Context(),
 		orgID,
 		groupID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
@@ -143,7 +118,7 @@ func TestGroupGetNotFound(t *testing.T) {
 		t.Context(),
 		orgID,
 		groupID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusNotFound, t)
@@ -152,19 +127,13 @@ func TestGroupGetNotFound(t *testing.T) {
 // TestGroupUpdate verifies that a group's name can be changed and the updated value is
 // reflected in a subsequent get.
 func TestGroupUpdate(t *testing.T) {
-	loginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(loginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	createResp, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateGroupJSONRequestBody{Name: groupName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -176,7 +145,7 @@ func TestGroupUpdate(t *testing.T) {
 		authbasicapi.Orgid(alwaysOrgID),
 		groupID,
 		authbasicapi.UpdateGroupJSONRequestBody{Name: newName},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateResp.StatusCode(), http.StatusOK, t)
@@ -186,7 +155,7 @@ func TestGroupUpdate(t *testing.T) {
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		groupID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
@@ -196,19 +165,13 @@ func TestGroupUpdate(t *testing.T) {
 // TestGroupUpdateConflict verifies that renaming a group to an already-taken name within the
 // same organisation returns a conflict error.
 func TestGroupUpdateConflict(t *testing.T) {
-	loginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(loginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	create1Resp, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateGroupJSONRequestBody{Name: groupName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(create1Resp.StatusCode(), http.StatusCreated, t)
@@ -217,7 +180,7 @@ func TestGroupUpdateConflict(t *testing.T) {
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateGroupJSONRequestBody{Name: groupName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(create2Resp.StatusCode(), http.StatusCreated, t)
@@ -227,7 +190,7 @@ func TestGroupUpdateConflict(t *testing.T) {
 		authbasicapi.Orgid(alwaysOrgID),
 		create2Resp.JSON201.Id,
 		authbasicapi.UpdateGroupJSONRequestBody{Name: create1Resp.JSON201.Name},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateResp.StatusCode(), http.StatusConflict, t)
@@ -237,20 +200,14 @@ func TestGroupUpdateConflict(t *testing.T) {
 // TestGroupCreateConflict verifies that creating a group whose name already exists within the
 // same organisation returns a conflict error.
 func TestGroupCreateConflict(t *testing.T) {
-	loginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(loginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	name := groupName()
 	createResp, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateGroupJSONRequestBody{Name: name},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -259,7 +216,7 @@ func TestGroupCreateConflict(t *testing.T) {
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateGroupJSONRequestBody{Name: name},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(conflictResp.StatusCode(), http.StatusConflict, t)
@@ -268,18 +225,12 @@ func TestGroupCreateConflict(t *testing.T) {
 
 // TestGroupDelete verifies that a deleted group is no longer accessible.
 func TestGroupDelete(t *testing.T) {
-	loginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(loginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
@@ -289,7 +240,7 @@ func TestGroupDelete(t *testing.T) {
 		t.Context(),
 		orgID,
 		authbasicapi.CreateGroupJSONRequestBody{Name: groupName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createGroupResp.StatusCode(), http.StatusCreated, t)
@@ -299,7 +250,7 @@ func TestGroupDelete(t *testing.T) {
 		t.Context(),
 		orgID,
 		groupID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
@@ -308,7 +259,7 @@ func TestGroupDelete(t *testing.T) {
 		t.Context(),
 		orgID,
 		groupID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusNotFound, t)
@@ -317,20 +268,14 @@ func TestGroupDelete(t *testing.T) {
 // TestGroupCreateOASValidation verifies that creating a group with an empty name is
 // rejected with 400 by the OAS validator (name has minLength: 1).
 func TestGroupCreateOASValidation(t *testing.T) {
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	// Name below minLength: 1 — must be rejected.
 	createResp, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateGroupJSONRequestBody{Name: ""},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusBadRequest, t)
@@ -340,19 +285,13 @@ func TestGroupCreateOASValidation(t *testing.T) {
 // TestGroupUpdateOASValidation verifies that updating a group with an empty name is
 // rejected with 400 by the OAS validator (Group.name has minLength: 1).
 func TestGroupUpdateOASValidation(t *testing.T) {
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	createResp, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateGroupJSONRequestBody{Name: groupName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -363,7 +302,7 @@ func TestGroupUpdateOASValidation(t *testing.T) {
 		authbasicapi.Orgid(alwaysOrgID),
 		createResp.JSON201.Id,
 		authbasicapi.UpdateGroupJSONRequestBody{Name: ""},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateResp.StatusCode(), http.StatusBadRequest, t)
@@ -426,18 +365,12 @@ func TestGroupNoSession(t *testing.T) {
 
 // TestGroupDeleteNotFound verifies deleting an already-deleted group.
 func TestGroupDeleteNotFound(t *testing.T) {
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
@@ -447,7 +380,7 @@ func TestGroupDeleteNotFound(t *testing.T) {
 		t.Context(),
 		orgID,
 		authbasicapi.CreateGroupJSONRequestBody{Name: groupName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createGroupResp.StatusCode(), http.StatusCreated, t)
@@ -458,7 +391,7 @@ func TestGroupDeleteNotFound(t *testing.T) {
 		t.Context(),
 		orgID,
 		groupID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
@@ -468,7 +401,7 @@ func TestGroupDeleteNotFound(t *testing.T) {
 		t.Context(),
 		orgID,
 		groupID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteAgainResp.StatusCode(), http.StatusNoContent, t)
@@ -477,18 +410,12 @@ func TestGroupDeleteNotFound(t *testing.T) {
 // TestGroupUpdateNotFound verifies that attempting to update a deleted group returns 404
 // (no body defined in spec).
 func TestGroupUpdateNotFound(t *testing.T) {
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
@@ -498,7 +425,7 @@ func TestGroupUpdateNotFound(t *testing.T) {
 		t.Context(),
 		orgID,
 		authbasicapi.CreateGroupJSONRequestBody{Name: groupName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createGroupResp.StatusCode(), http.StatusCreated, t)
@@ -509,7 +436,7 @@ func TestGroupUpdateNotFound(t *testing.T) {
 		t.Context(),
 		orgID,
 		groupID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
@@ -520,7 +447,7 @@ func TestGroupUpdateNotFound(t *testing.T) {
 		orgID,
 		groupID,
 		authbasicapi.UpdateGroupJSONRequestBody{Id: groupID, Name: groupName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateResp.StatusCode(), http.StatusNotFound, t)

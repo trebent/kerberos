@@ -7,33 +7,15 @@ import (
 	adminapi "github.com/trebent/kerberos/test/integration/client/admin"
 )
 
-// mustGetAdminUserID fetches the admin user list and returns the ID of the user with the given username.
-func mustGetAdminUserID(t *testing.T, superSession, name string) int {
-	t.Helper()
-	resp, err := adminClient.GetUsersWithResponse(
-		t.Context(),
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
-	)
-	checkErr(err, t)
-	verifyStatusCode(resp.StatusCode(), http.StatusOK, t)
-	for _, u := range *resp.JSON200 {
-		if u.Username == name {
-			return u.Id
-		}
-	}
-	t.Fatalf("admin user %q not found in list", name)
-	return 0
-}
-
 // TestAdminUserCreate verifies that a new admin user can be created via a superuser session.
 func TestAdminUserCreate(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	createResp, err := adminClient.CreateUserWithResponse(
 		t.Context(),
 		adminapi.CreateUserJSONRequestBody{Username: username(), Password: "password123"},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -42,13 +24,13 @@ func TestAdminUserCreate(t *testing.T) {
 // TestAdminUserCreateConflict verifies that creating a duplicate admin username is rejected.
 func TestAdminUserCreateConflict(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	name := username()
 	createResp, err := adminClient.CreateUserWithResponse(
 		t.Context(),
 		adminapi.CreateUserJSONRequestBody{Username: name, Password: "password123"},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -56,7 +38,7 @@ func TestAdminUserCreateConflict(t *testing.T) {
 	dupResp, err := adminClient.CreateUserWithResponse(
 		t.Context(),
 		adminapi.CreateUserJSONRequestBody{Username: name, Password: "other-password"},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(dupResp.StatusCode(), http.StatusConflict, t)
@@ -66,20 +48,20 @@ func TestAdminUserCreateConflict(t *testing.T) {
 // TestAdminUserList verifies that a newly created admin user appears in the list response.
 func TestAdminUserList(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	name := username()
 	createResp, err := adminClient.CreateUserWithResponse(
 		t.Context(),
 		adminapi.CreateUserJSONRequestBody{Username: name, Password: "password123"},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
 
 	listResp, err := adminClient.GetUsersWithResponse(
 		t.Context(),
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(listResp.StatusCode(), http.StatusOK, t)
@@ -94,13 +76,13 @@ func TestAdminUserList(t *testing.T) {
 // TestAdminUserGet verifies that a created admin user can be fetched by ID.
 func TestAdminUserGet(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	name := username()
 	createResp, err := adminClient.CreateUserWithResponse(
 		t.Context(),
 		adminapi.CreateUserJSONRequestBody{Username: name, Password: "password123"},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -108,7 +90,7 @@ func TestAdminUserGet(t *testing.T) {
 	getResp, err := adminClient.GetUserWithResponse(
 		t.Context(),
 		createResp.JSON201.Id,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
@@ -119,12 +101,12 @@ func TestAdminUserGet(t *testing.T) {
 // TestAdminUserGetNotFound verifies that fetching a non-existent admin user returns 404.
 func TestAdminUserGetNotFound(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	getResp, err := adminClient.GetUserWithResponse(
 		t.Context(),
 		999999999,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusNotFound, t)
@@ -134,13 +116,13 @@ func TestAdminUserGetNotFound(t *testing.T) {
 // TestAdminUserUpdate verifies that an admin user's username can be updated.
 func TestAdminUserUpdate(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	name := username()
 	createResp, err := adminClient.CreateUserWithResponse(
 		t.Context(),
 		adminapi.CreateUserJSONRequestBody{Username: name, Password: "password123"},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -150,7 +132,7 @@ func TestAdminUserUpdate(t *testing.T) {
 		t.Context(),
 		createResp.JSON201.Id,
 		adminapi.UpdateUserJSONRequestBody{Username: newName},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateResp.StatusCode(), http.StatusNoContent, t)
@@ -158,7 +140,7 @@ func TestAdminUserUpdate(t *testing.T) {
 	getResp, err := adminClient.GetUserWithResponse(
 		t.Context(),
 		createResp.JSON201.Id,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
@@ -168,13 +150,13 @@ func TestAdminUserUpdate(t *testing.T) {
 // TestAdminUserUpdateConflict verifies that updating an admin user's username to an existing username returns a conflict.
 func TestAdminUserUpdateConflict(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	name := username()
 	createResp, err := adminClient.CreateUserWithResponse(
 		t.Context(),
 		adminapi.CreateUserJSONRequestBody{Username: name, Password: "password123"},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -183,7 +165,7 @@ func TestAdminUserUpdateConflict(t *testing.T) {
 	createResp2, err := adminClient.CreateUserWithResponse(
 		t.Context(),
 		adminapi.CreateUserJSONRequestBody{Username: name2, Password: "password123"},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp2.StatusCode(), http.StatusCreated, t)
@@ -192,7 +174,7 @@ func TestAdminUserUpdateConflict(t *testing.T) {
 		t.Context(),
 		createResp.JSON201.Id,
 		adminapi.UpdateUserJSONRequestBody{Username: name2},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateResp.StatusCode(), http.StatusConflict, t)
@@ -201,13 +183,13 @@ func TestAdminUserUpdateConflict(t *testing.T) {
 // TestAdminUserDelete verifies that an admin user can be deleted and is no longer retrievable.
 func TestAdminUserDelete(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	name := username()
 	createResp, err := adminClient.CreateUserWithResponse(
 		t.Context(),
 		adminapi.CreateUserJSONRequestBody{Username: name, Password: "password123"},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -215,7 +197,7 @@ func TestAdminUserDelete(t *testing.T) {
 	deleteResp, err := adminClient.DeleteUserWithResponse(
 		t.Context(),
 		createResp.JSON201.Id,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
@@ -223,7 +205,7 @@ func TestAdminUserDelete(t *testing.T) {
 	getResp, err := adminClient.GetUserWithResponse(
 		t.Context(),
 		createResp.JSON201.Id,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusNotFound, t)
@@ -232,12 +214,12 @@ func TestAdminUserDelete(t *testing.T) {
 // TestAdminUserDeleteNotFound verifies that deleting a non-existent admin user returns 404.
 func TestAdminUserDeleteNotFound(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	deleteResp, err := adminClient.DeleteUserWithResponse(
 		t.Context(),
 		999999999,
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteResp.StatusCode(), http.StatusNotFound, t)
@@ -247,38 +229,38 @@ func TestAdminUserDeleteNotFound(t *testing.T) {
 // TestAdminUserLoginLogout verifies that an admin user can log in, access protected endpoints,
 // log out, and that their session is invalidated afterwards.
 func TestAdminUserLoginLogout(t *testing.T) {
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	name := username()
 	const pass = "loginpassword123"
 	createResp, err := adminClient.CreateUserWithResponse(
 		t.Context(),
 		adminapi.CreateUserJSONRequestBody{Username: name, Password: pass},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
 
-	adminSession := adminUserLogin(t, name, pass)
+	adminRequestEditor := adminUserLogin(t, name, pass)
 
 	// GetPermissions is accessible to any authenticated admin user (no specific permission required).
 	getPermsResp, err := adminClient.GetPermissionsWithResponse(
 		t.Context(),
-		adminapi.RequestEditorFn(requestEditorSessionID(adminSession)),
+		adminapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getPermsResp.StatusCode(), http.StatusOK, t)
 
 	logoutResp, err := adminClient.LogoutWithResponse(
 		t.Context(),
-		adminapi.RequestEditorFn(requestEditorSessionID(adminSession)),
+		adminapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(logoutResp.StatusCode(), http.StatusNoContent, t)
 
 	getPermsResp, err = adminClient.GetPermissionsWithResponse(
 		t.Context(),
-		adminapi.RequestEditorFn(requestEditorSessionID(adminSession)),
+		adminapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getPermsResp.StatusCode(), http.StatusUnauthorized, t)
@@ -300,7 +282,7 @@ func TestAdminUserLoginFailure(t *testing.T) {
 // that the old credentials are rejected, and that the new credentials work.
 func TestAdminUserChangePassword(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	name := username()
 	const oldPass = "oldpassword123"
@@ -309,18 +291,18 @@ func TestAdminUserChangePassword(t *testing.T) {
 	createResp, err := adminClient.CreateUserWithResponse(
 		t.Context(),
 		adminapi.CreateUserJSONRequestBody{Username: name, Password: oldPass},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
 
-	session := adminUserLogin(t, name, oldPass)
+	adminRequestEditor := adminUserLogin(t, name, oldPass)
 
 	changeResp, err := adminClient.ChangeUserPasswordWithResponse(
 		t.Context(),
 		createResp.JSON201.Id,
 		adminapi.ChangeUserPasswordJSONRequestBody{OldPassword: oldPass, NewPassword: newPass},
-		adminapi.RequestEditorFn(requestEditorSessionID(session)),
+		adminapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(changeResp.StatusCode(), http.StatusNoContent, t)
@@ -338,7 +320,7 @@ func TestAdminUserChangePassword(t *testing.T) {
 // TestAdminUserChangePasswordWrongOld verifies that providing the wrong old password is rejected.
 func TestAdminUserChangePasswordWrongOld(t *testing.T) {
 	t.Parallel()
-	superSession := superLogin(t)
+	superRequestEditor := superLogin(t)
 
 	name := username()
 	const pass = "correctpassword123"
@@ -346,7 +328,7 @@ func TestAdminUserChangePasswordWrongOld(t *testing.T) {
 	createResp, err := adminClient.CreateUserWithResponse(
 		t.Context(),
 		adminapi.CreateUserJSONRequestBody{Username: name, Password: pass},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
@@ -355,7 +337,7 @@ func TestAdminUserChangePasswordWrongOld(t *testing.T) {
 		t.Context(),
 		createResp.JSON201.Id,
 		adminapi.ChangeUserPasswordJSONRequestBody{OldPassword: "wrong-old-pass", NewPassword: "newpass"},
-		adminapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(changeResp.StatusCode(), http.StatusUnauthorized, t)

@@ -4,25 +4,18 @@ import (
 	"net/http"
 	"testing"
 
-	adminapi "github.com/trebent/kerberos/test/integration/client/admin"
 	authbasicapi "github.com/trebent/kerberos/test/integration/client/auth/basic"
 )
 
 // TestAuthBasicAPIOrganisationIsolation verifies that a session from one organisation
 // cannot read or mutate any resource that belongs to a different organisation.
 func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
-	adminLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(adminLoginResp.StatusCode(), http.StatusNoContent, t)
-	adminSession := extractSession(adminLoginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	createOrg1, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(adminSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createOrg1.StatusCode(), http.StatusCreated, t)
@@ -37,12 +30,12 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(loginResp1.StatusCode(), http.StatusNoContent, t)
-	session1 := extractSession(loginResp1.HTTPResponse, t)
+	orgAdmin1RequestEditor := sessionCookieRequestEditor(loginResp1.HTTPResponse, t)
 
 	createOrg2, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(adminSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createOrg2.StatusCode(), http.StatusCreated, t)
@@ -57,13 +50,13 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(loginResp2.StatusCode(), http.StatusNoContent, t)
-	session2 := extractSession(loginResp2.HTTPResponse, t)
+	orgAdmin2RequestEditor := sessionCookieRequestEditor(loginResp2.HTTPResponse, t)
 
 	// All read operations below target org1 but use session2 (org2) — all must be 403.
 	listGroupsResp, err := basicAuthClient.ListGroupsWithResponse(
 		t.Context(),
 		createOrg1.JSON201.Id,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session2)),
+		authbasicapi.RequestEditorFn(orgAdmin2RequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(listGroupsResp.StatusCode(), http.StatusForbidden, t)
@@ -72,7 +65,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	listUsersResp, err := basicAuthClient.ListUsersWithResponse(
 		t.Context(),
 		createOrg1.JSON201.Id,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session2)),
+		authbasicapi.RequestEditorFn(orgAdmin2RequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(listUsersResp.StatusCode(), http.StatusForbidden, t)
@@ -82,7 +75,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 		t.Context(),
 		createOrg1.JSON201.Id,
 		createOrg1.JSON201.AdminUserId,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session2)),
+		authbasicapi.RequestEditorFn(orgAdmin2RequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getUserResp.StatusCode(), http.StatusForbidden, t)
@@ -93,7 +86,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 		t.Context(),
 		createOrg1.JSON201.Id,
 		authbasicapi.CreateGroupJSONRequestBody{Name: groupName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session1)),
+		authbasicapi.RequestEditorFn(orgAdmin1RequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createGroup1Resp.StatusCode(), http.StatusCreated, t)
@@ -102,7 +95,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 		t.Context(),
 		createOrg1.JSON201.Id,
 		createGroup1Resp.JSON201.Id,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session2)),
+		authbasicapi.RequestEditorFn(orgAdmin2RequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getGroupResp.StatusCode(), http.StatusForbidden, t)
@@ -113,7 +106,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 		t.Context(),
 		createOrg1.JSON201.Id,
 		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session1)),
+		authbasicapi.RequestEditorFn(orgAdmin1RequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createUser1Resp.StatusCode(), http.StatusCreated, t)
@@ -123,7 +116,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 		t.Context(),
 		createOrg1.JSON201.Id,
 		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session2)),
+		authbasicapi.RequestEditorFn(orgAdmin2RequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createUserCrossResp.StatusCode(), http.StatusForbidden, t)
@@ -133,7 +126,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 		t.Context(),
 		createOrg1.JSON201.Id,
 		authbasicapi.CreateGroupJSONRequestBody{Name: groupName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session2)),
+		authbasicapi.RequestEditorFn(orgAdmin2RequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createGroupCrossResp.StatusCode(), http.StatusForbidden, t)
@@ -144,7 +137,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 		createOrg1.JSON201.Id,
 		user1ID,
 		authbasicapi.UpdateUserJSONRequestBody{Name: username()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session2)),
+		authbasicapi.RequestEditorFn(orgAdmin2RequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateUserCrossResp.StatusCode(), http.StatusForbidden, t)
@@ -155,7 +148,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 		createOrg1.JSON201.Id,
 		createGroup1Resp.JSON201.Id,
 		authbasicapi.UpdateGroupJSONRequestBody{Name: groupName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session2)),
+		authbasicapi.RequestEditorFn(orgAdmin2RequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateGroupCrossResp.StatusCode(), http.StatusForbidden, t)
@@ -165,7 +158,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 		t.Context(),
 		createOrg1.JSON201.Id,
 		user1ID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session2)),
+		authbasicapi.RequestEditorFn(orgAdmin2RequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteUserCrossResp.StatusCode(), http.StatusForbidden, t)
@@ -175,7 +168,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 		t.Context(),
 		createOrg1.JSON201.Id,
 		createGroup1Resp.JSON201.Id,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session2)),
+		authbasicapi.RequestEditorFn(orgAdmin2RequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteGroupCrossResp.StatusCode(), http.StatusForbidden, t)
@@ -186,7 +179,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 		createOrg1.JSON201.Id,
 		user1ID,
 		authbasicapi.UpdateUserGroupsJSONRequestBody([]string{}),
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session2)),
+		authbasicapi.RequestEditorFn(orgAdmin2RequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateUserGroupsCrossResp.StatusCode(), http.StatusForbidden, t)
@@ -196,7 +189,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 		t.Context(),
 		createOrg1.JSON201.Id,
 		user1ID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session2)),
+		authbasicapi.RequestEditorFn(orgAdmin2RequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getUserGroupsCrossResp.StatusCode(), http.StatusForbidden, t)
@@ -210,7 +203,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 			OldPassword: "password123",
 			Password:    "newpassword456",
 		},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(session2)),
+		authbasicapi.RequestEditorFn(orgAdmin2RequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(changePasswordCrossResp.StatusCode(), http.StatusForbidden, t)
@@ -221,18 +214,12 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 // organisation cannot list organisations (superuser-only operation).
 // The spec does not define a 403 body for ListOrganisations, so only the status is checked.
 func TestAuthBasicAPIOrgAdminListOrganisationsForbidden(t *testing.T) {
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(superSession)),
+		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
@@ -247,11 +234,11 @@ func TestAuthBasicAPIOrgAdminListOrganisationsForbidden(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(orgLoginResp.StatusCode(), http.StatusNoContent, t)
-	orgSession := extractSession(orgLoginResp.HTTPResponse, t)
+	orgAdminRequestEditor := sessionCookieRequestEditor(orgLoginResp.HTTPResponse, t)
 
 	listResp, err := basicAuthClient.ListOrganisationsWithResponse(
 		t.Context(),
-		authbasicapi.RequestEditorFn(requestEditorSessionID(orgSession)),
+		authbasicapi.RequestEditorFn(orgAdminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(listResp.StatusCode(), http.StatusForbidden, t)
@@ -260,7 +247,7 @@ func TestAuthBasicAPIOrgAdminListOrganisationsForbidden(t *testing.T) {
 	createResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(orgSession)),
+		authbasicapi.RequestEditorFn(orgAdminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusForbidden, t)
@@ -271,23 +258,17 @@ func TestAuthBasicAPIOrgAdminListOrganisationsForbidden(t *testing.T) {
 // 403 (with populated error body) for all admin-only operations, and can still successfully
 // retrieve their own user record.
 func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
-	superLoginResp, err := adminClient.LoginSuperuserWithResponse(
-		t.Context(),
-		adminapi.LoginSuperuserJSONRequestBody{ClientId: superUserClientID, ClientSecret: superUserClientSecret},
-	)
-	checkErr(err, t)
-	verifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
-	superSession := extractSession(superLoginResp.HTTPResponse, t)
+	superRequestEditor := superLogin(t)
 
 	// Create a dedicated org for this test.
-	orgID, adminSession := orgWithSession(t, superSession)
+	orgID, orgAdminRequestEditor := orgWithSession(t, superRequestEditor)
 
 	// Create a group to use in group-level checks.
 	createGroupResp, err := basicAuthClient.CreateGroupWithResponse(
 		t.Context(),
 		orgID,
 		authbasicapi.CreateGroupJSONRequestBody{Name: groupName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(adminSession)),
+		authbasicapi.RequestEditorFn(orgAdminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createGroupResp.StatusCode(), http.StatusCreated, t)
@@ -300,7 +281,7 @@ func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
 		t.Context(),
 		orgID,
 		authbasicapi.CreateUserRequest{Name: regularUserName, Password: regularPassword},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(adminSession)),
+		authbasicapi.RequestEditorFn(orgAdminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createRegularResp.StatusCode(), http.StatusCreated, t)
@@ -311,7 +292,7 @@ func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
 		t.Context(),
 		orgID,
 		authbasicapi.CreateUserRequest{Name: username(), Password: "otherpass123"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(adminSession)),
+		authbasicapi.RequestEditorFn(orgAdminRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createOtherResp.StatusCode(), http.StatusCreated, t)
@@ -325,7 +306,7 @@ func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(regularLoginResp.StatusCode(), http.StatusNoContent, t)
-	regularSession := extractSession(regularLoginResp.HTTPResponse, t)
+	orgUserRequestEditor := sessionCookieRequestEditor(regularLoginResp.HTTPResponse, t)
 
 	// --- Admin-only operations that must be denied (403 + body) ---
 
@@ -334,7 +315,7 @@ func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
 		t.Context(),
 		orgID,
 		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+		authbasicapi.RequestEditorFn(orgUserRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createUserDenyResp.StatusCode(), http.StatusForbidden, t)
@@ -344,7 +325,7 @@ func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
 	listUsersDenyResp, err := basicAuthClient.ListUsersWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+		authbasicapi.RequestEditorFn(orgUserRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(listUsersDenyResp.StatusCode(), http.StatusForbidden, t)
@@ -355,7 +336,7 @@ func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
 		t.Context(),
 		orgID,
 		otherUserID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+		authbasicapi.RequestEditorFn(orgUserRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getUserOtherDenyResp.StatusCode(), http.StatusForbidden, t)
@@ -365,7 +346,7 @@ func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
 	getOrgDenyResp, err := basicAuthClient.GetOrganisationWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+		authbasicapi.RequestEditorFn(orgUserRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getOrgDenyResp.StatusCode(), http.StatusForbidden, t)
@@ -375,7 +356,7 @@ func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
 	deleteOrgDenyResp, err := basicAuthClient.DeleteOrganisationWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+		authbasicapi.RequestEditorFn(orgUserRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteOrgDenyResp.StatusCode(), http.StatusForbidden, t)
@@ -386,7 +367,7 @@ func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
 		t.Context(),
 		orgID,
 		authbasicapi.CreateGroupJSONRequestBody{Name: groupName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+		authbasicapi.RequestEditorFn(orgUserRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(createGroupDenyResp.StatusCode(), http.StatusForbidden, t)
@@ -396,7 +377,7 @@ func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
 	listGroupsDenyResp, err := basicAuthClient.ListGroupsWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+		authbasicapi.RequestEditorFn(orgUserRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(listGroupsDenyResp.StatusCode(), http.StatusForbidden, t)
@@ -407,7 +388,7 @@ func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
 		t.Context(),
 		orgID,
 		groupID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+		authbasicapi.RequestEditorFn(orgUserRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getGroupDenyResp.StatusCode(), http.StatusForbidden, t)
@@ -419,7 +400,7 @@ func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
 		orgID,
 		groupID,
 		authbasicapi.UpdateGroupJSONRequestBody{Id: groupID, Name: groupName()},
-		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+		authbasicapi.RequestEditorFn(orgUserRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateGroupDenyResp.StatusCode(), http.StatusForbidden, t)
@@ -430,7 +411,7 @@ func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
 		t.Context(),
 		orgID,
 		groupID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+		authbasicapi.RequestEditorFn(orgUserRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(deleteGroupDenyResp.StatusCode(), http.StatusForbidden, t)
@@ -442,7 +423,7 @@ func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
 		orgID,
 		regularUserID,
 		authbasicapi.UpdateUserGroupsJSONRequestBody([]string{}),
-		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+		authbasicapi.RequestEditorFn(orgUserRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateUserGroupsDenyResp.StatusCode(), http.StatusForbidden, t)
@@ -455,7 +436,7 @@ func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
 		t.Context(),
 		orgID,
 		regularUserID,
-		authbasicapi.RequestEditorFn(requestEditorSessionID(regularSession)),
+		authbasicapi.RequestEditorFn(orgUserRequestEditor),
 	)
 	checkErr(err, t)
 	verifyStatusCode(getUserSelfResp.StatusCode(), http.StatusOK, t)

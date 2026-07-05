@@ -22,6 +22,8 @@ const (
 // SessionMiddleware provides context population of administration session information.
 // If put in front of a handler, the context to the handler will contain information that can
 // be used to determine if a KRB admin made the call, or if it was external.
+//
+//nolint:gocognit // it's not that bad
 func SessionMiddleware(
 	ssi adminapigen.StrictServerInterface,
 ) adminapigen.StrictMiddlewareFunc {
@@ -42,14 +44,24 @@ func SessionMiddleware(
 		) (any, error) {
 			zerologr.V(20).Info("Running admin session middleware")
 
-			sessionID := r.Header.Get("X-Krb-Session")
-
-			// No session at all to verify.
-			if sessionID == "" {
+			if len(r.Cookies()) == 0 {
+				zerologr.V(20).Info("No cookies found, continuing without session")
 				return f(ctx, w, r, request)
 			}
 
-			session, err := dbGetSession(ctx, apiImpl.sqlClient, sessionID)
+			if len(r.CookiesNamed("session")) == 0 {
+				zerologr.V(20).Info("No session cookie found, continuing without session")
+				return f(ctx, w, r, request)
+			}
+
+			cookie := r.Cookies()[0]
+
+			// No session at all to verify.
+			if cookie.Value == "" {
+				return f(ctx, w, r, request)
+			}
+
+			session, err := dbGetSession(ctx, apiImpl.sqlClient, cookie.Value)
 			// Not found among sessions, just continue. Remember this middleware does NOT enforce
 			// auth, it only populates metadata.
 			if err != nil {

@@ -3,11 +3,13 @@ package basic
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/trebent/kerberos/internal/db"
 	authbasicapi "github.com/trebent/kerberos/internal/oapi/auth/basic"
+	"github.com/trebent/kerberos/internal/security"
 	"github.com/trebent/kerberos/internal/util/password"
 	"github.com/trebent/zerologr"
 )
@@ -60,7 +62,10 @@ func (i *impl) Login(
 
 	return authbasicapi.Login204Response{
 		Headers: authbasicapi.Login204ResponseHeaders{
-			XKrbSession: sessionID,
+			SetCookie: fmt.Sprintf(
+				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				security.SessionCookieName, sessionID, 60*15,
+			),
 		},
 	}, nil
 }
@@ -76,7 +81,14 @@ func (i *impl) Logout(
 		return authbasicapi.Logout500JSONResponse(apiErrInternal), nil
 	}
 
-	return authbasicapi.Logout204Response{}, nil
+	return authbasicapi.Logout204Response{
+		Headers: authbasicapi.Logout204ResponseHeaders{
+			SetCookie: fmt.Sprintf(
+				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				security.SessionCookieName, "expired", 0,
+			),
+		},
+	}, nil
 }
 
 // ChangePassword implements [StrictServerInterface].

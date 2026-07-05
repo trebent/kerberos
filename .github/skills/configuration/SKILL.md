@@ -14,7 +14,7 @@ argument-hint: 'Optional: the config section to work on (gateway, observability,
 - Understanding how config is parsed and validated at startup
 - Debugging config validation errors
 
-See [`docs/configuration.md`](../../docs/configuration.md) for a full reference including annotated examples.
+See [`docs/configuration.md`](../../../docs/configuration.md) for a full reference including annotated examples.
 
 ---
 

@@ -60,6 +60,10 @@ jobs:
           restore-keys: |
             security-test-go-build-${{ runner.os }}-
 
+      - name: Run test environment
+        timeout-minutes: 2
+        run: make compose/security/up
+
       - name: Run security tests
         run: make test/security/json
 

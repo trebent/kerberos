@@ -100,11 +100,6 @@ components:
       description: A session ID.
       schema:
         type: string
-  securitySchemes:
-    sessionid:
-      type: apiKey
-      in: header
-      name: x-krb-session
   parameters:
     userid:
       name: userID
@@ -130,9 +125,14 @@ components:
       schema:
         type: integer
         format: int64
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: session
 
 security:
-  - sessionid: []
+  - cookieAuth: []
 
 tags:
   - name: organisations
@@ -374,8 +374,10 @@ paths:
       responses:
         "204":
           headers:
-            x-krb-session:
-              $ref: "#/components/headers/sessionid"
+            Set-Cookie:
+              schema:
+                type: string
+                example: session=abcde12345; Path=/; HttpOnly
           description: Logged a user in.
         "400":
           content:
@@ -405,6 +407,11 @@ paths:
       operationId: Logout
       responses:
         "204":
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: session=abcde12345; Path=/; HttpOnly
           description: Logged a user out.
         "401":
           content:

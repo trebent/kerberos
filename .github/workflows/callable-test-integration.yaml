@@ -61,11 +61,8 @@ jobs:
             integration-test-go-build-${{ runner.os }}-
 
       - name: Run test environment
-        run: make compose/up
-
-      - name: Wait for Kerberos to be ready
         timeout-minutes: 2
-        run: make compose/wait
+        run: make compose/up
 
       - name: Run integration tests
         run: make test/integration/json

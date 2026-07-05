@@ -86,8 +86,23 @@ func New(opts *Opts) (Basic, error) {
 func (a *basic) Authenticated(req *http.Request) error {
 	zerologr.V(50).Info("Authenticating request " + req.URL.Path)
 
-	sessionID := req.Header.Get("X-Krb-Session")
-	if sessionID == "" {
+	if len(req.Cookies()) == 0 {
+		zerologr.V(20).Info("No cookies found, denying access")
+		return apierror.ErrUnauthenticated
+	}
+
+	if len(req.CookiesNamed("session")) == 0 {
+		zerologr.V(20).Info("No session cookie found, denying access")
+		return apierror.ErrUnauthenticated
+	}
+
+	cookie := req.CookiesNamed("session")[0]
+	if cookie.Value == "" {
+		zerologr.V(20).Info("Session cookie is empty, denying access")
+		return apierror.ErrUnauthenticated
+	}
+
+	if cookie.Value == "" {
 		zerologr.V(20).Info("Failed to find a session header")
 
 		if zerologr.V(30).Enabled() {
@@ -99,7 +114,7 @@ func (a *basic) Authenticated(req *http.Request) error {
 	}
 
 	// Read session info from the DB and compare it to the incoming request.
-	session, err := dbGetSessionRow(req.Context(), a.sqlClient, sessionID)
+	session, err := dbGetSessionRow(req.Context(), a.sqlClient, cookie.Value)
 	if errors.Is(err, errNoSession) {
 		zerologr.Error(apierror.ErrUnauthenticated, "Failed to find a matching session")
 		return apierror.ErrUnauthenticated

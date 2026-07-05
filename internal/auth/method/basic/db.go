@@ -57,6 +57,7 @@ const (
 	deleteUserSessions = "DELETE FROM sessions WHERE organisation_id = @orgID AND user_id = @userID;"
 
 	// Named arg keys.
+	argSession        = "session"
 	argOrgID          = "orgID"
 	argUserID         = "userID"
 	argName           = "name"
@@ -156,7 +157,7 @@ func dbCreateSession(
 		insertSession,
 		sql.NamedArg{Name: argUserID, Value: userID},
 		sql.NamedArg{Name: argOrgID, Value: orgID},
-		sql.NamedArg{Name: "session", Value: sessionID},
+		sql.NamedArg{Name: argSession, Value: sessionID},
 		sql.NamedArg{Name: "expires", Value: time.Now().Add(sessionExpiry).UnixMilli()},
 	)
 	if err != nil {

@@ -100,6 +100,18 @@ func get(url string, t *testing.T, headers ...http.Header) *http.Response {
 	return do(req, t, headers...)
 }
 
+func protectedGet(url string, t *testing.T, session *http.Cookie) *http.Response {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+
+	req.AddCookie(session)
+
+	return do(req, t)
+}
+
 func post(url string, body []byte, t *testing.T, headers ...http.Header) *http.Response {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
@@ -254,11 +266,41 @@ func containsAll[T comparable](source, reference []T, t *testing.T) {
 	}
 }
 
-func requestEditorSessionID(sessionID string) RequestEditorFn {
+func extractSessionCookie(resp *http.Response) (*http.Cookie, error) {
+	cookies := resp.Cookies()
+	if len(cookies) == 0 {
+		return nil, fmt.Errorf("no cookies found in response")
+	}
+
+	var sessionCookie *http.Cookie
+	for _, cookie := range cookies {
+		if cookie.Name == "session" {
+			sessionCookie = cookie
+			break
+		}
+	}
+
+	if sessionCookie == nil {
+		return nil, fmt.Errorf("session cookie not found in response")
+	}
+
+	return sessionCookie, nil
+}
+
+func makeRequestEditorFromCookie(cookie *http.Cookie) RequestEditorFn {
 	return func(ctx context.Context, req *http.Request) error {
-		req.Header.Set("x-krb-session", sessionID)
+		req.AddCookie(cookie)
 		return nil
 	}
+}
+
+func sessionCookieRequestEditor(response *http.Response, t *testing.T) RequestEditorFn {
+	sessionCookie, err := extractSessionCookie(response)
+	if err != nil {
+		t.Fatalf("failed to extract session cookie: %v", err)
+	}
+
+	return makeRequestEditorFromCookie(sessionCookie)
 }
 
 func getAdminPort() int {
@@ -326,18 +368,8 @@ func getJaegerAPIPort() int {
 	}
 }
 
-func extractSession(resp *http.Response, t *testing.T) string {
-	t.Helper()
-	session := resp.Header.Get("x-krb-session")
-	if session == "" {
-		t.Fatalf("missing session header in response")
-	}
-
-	return session
-}
-
-// superLogin logs in as the superuser and returns the session ID.
-func superLogin(t *testing.T) string {
+// superLogin logs in as the superuser and returns a request editor to use.
+func superLogin(t *testing.T) RequestEditorFn {
 	t.Helper()
 	resp, err := adminClient.LoginSuperuserWithResponse(
 		t.Context(),
@@ -345,11 +377,11 @@ func superLogin(t *testing.T) string {
 	)
 	checkErr(err, t)
 	verifyStatusCode(resp.StatusCode(), http.StatusNoContent, t)
-	return extractSession(resp.HTTPResponse, t)
+	return sessionCookieRequestEditor(resp.HTTPResponse, t)
 }
 
-// adminUserLogin logs in as a non-superuser admin and returns the session ID.
-func adminUserLogin(t *testing.T, name, pass string) string {
+// adminUserLogin logs in as a non-superuser admin and returns the request editor to use.
+func adminUserLogin(t *testing.T, name, pass string) RequestEditorFn {
 	t.Helper()
 	resp, err := adminClient.LoginWithResponse(
 		t.Context(),
@@ -357,5 +389,5 @@ func adminUserLogin(t *testing.T, name, pass string) string {
 	)
 	checkErr(err, t)
 	verifyStatusCode(resp.StatusCode(), http.StatusNoContent, t)
-	return extractSession(resp.HTTPResponse, t)
+	return sessionCookieRequestEditor(resp.HTTPResponse, t)
 }
