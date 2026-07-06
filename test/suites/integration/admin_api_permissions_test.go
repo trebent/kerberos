@@ -289,7 +289,7 @@ func TestPermissionsBasicAuthOrgAdminAllowed(t *testing.T) {
 	createUserResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
@@ -369,7 +369,7 @@ func TestPermissionsBasicAuthOrgViewerWriteDenied(t *testing.T) {
 	createUserResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
@@ -414,12 +414,12 @@ func TestPermissionsGroupResponseIncludesPermissions(t *testing.T) {
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
 
-	if len(createResp.JSON201.Permissions) == 0 {
+	if createResp.JSON201.Permissions == nil || len(*createResp.JSON201.Permissions) == 0 {
 		t.Fatal("expected permissions in create group response, got empty slice")
 	}
 
-	returnedIDs := make([]int, 0, len(createResp.JSON201.Permissions))
-	for _, p := range createResp.JSON201.Permissions {
+	returnedIDs := make([]int, 0, len(*createResp.JSON201.Permissions))
+	for _, p := range *createResp.JSON201.Permissions {
 		returnedIDs = append(returnedIDs, p.Id)
 	}
 	containsAll(permIDs, returnedIDs, t)
@@ -434,12 +434,12 @@ func TestPermissionsGroupResponseIncludesPermissions(t *testing.T) {
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
 
-	if len(getResp.JSON200.Permissions) == 0 {
+	if getResp.JSON200.Permissions == nil || len(*getResp.JSON200.Permissions) == 0 {
 		t.Fatal("expected permissions in get group response, got empty slice")
 	}
 
-	getReturnedIDs := make([]int, 0, len(getResp.JSON200.Permissions))
-	for _, p := range getResp.JSON200.Permissions {
+	getReturnedIDs := make([]int, 0, len(*getResp.JSON200.Permissions))
+	for _, p := range *getResp.JSON200.Permissions {
 		getReturnedIDs = append(getReturnedIDs, p.Id)
 	}
 	containsAll(permIDs, getReturnedIDs, t)

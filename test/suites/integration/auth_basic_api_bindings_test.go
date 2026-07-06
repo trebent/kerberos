@@ -45,7 +45,7 @@ func TestUserGroupBindingAssign(t *testing.T) {
 	createUserResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
@@ -56,7 +56,10 @@ func TestUserGroupBindingAssign(t *testing.T) {
 		t.Context(),
 		orgID,
 		userID,
-		authbasicapi.UpdateUserGroupsJSONRequestBody([]string{groupAName, groupBName}),
+		authbasicapi.UpdateUserGroupsJSONRequestBody{
+			{Id: createGroupA.JSON201.Id, Name: groupAName},
+			{Id: createGroupB.JSON201.Id, Name: groupBName},
+		},
 		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
@@ -70,11 +73,11 @@ func TestUserGroupBindingAssign(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
-	groups := []string(*getResp.JSON200)
-	if !slices.Contains(groups, groupAName) {
+	groups := *getResp.JSON200
+	if !slices.ContainsFunc(groups, func(g authbasicapi.Group) bool { return g.Name == groupAName }) {
 		t.Fatalf("expected group %q in user groups, got %v", groupAName, groups)
 	}
-	if !slices.Contains(groups, groupBName) {
+	if !slices.ContainsFunc(groups, func(g authbasicapi.Group) bool { return g.Name == groupBName }) {
 		t.Fatalf("expected group %q in user groups, got %v", groupBName, groups)
 	}
 }
@@ -115,7 +118,7 @@ func TestUserGroupBindingReplace(t *testing.T) {
 	createUserResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
@@ -127,7 +130,10 @@ func TestUserGroupBindingReplace(t *testing.T) {
 		t.Context(),
 		orgID,
 		userID,
-		authbasicapi.UpdateUserGroupsJSONRequestBody([]string{groupAName, groupBName}),
+		authbasicapi.UpdateUserGroupsJSONRequestBody{
+			{Id: createGroupA.JSON201.Id, Name: groupAName},
+			{Id: createGroupB.JSON201.Id, Name: groupBName},
+		},
 		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
@@ -138,7 +144,9 @@ func TestUserGroupBindingReplace(t *testing.T) {
 		t.Context(),
 		orgID,
 		userID,
-		authbasicapi.UpdateUserGroupsJSONRequestBody([]string{groupBName}),
+		authbasicapi.UpdateUserGroupsJSONRequestBody{
+			{Id: createGroupB.JSON201.Id, Name: groupBName},
+		},
 		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
@@ -152,11 +160,11 @@ func TestUserGroupBindingReplace(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
-	groups := []string(*getResp.JSON200)
-	if slices.Contains(groups, groupAName) {
+	groups := *getResp.JSON200
+	if slices.ContainsFunc(groups, func(g authbasicapi.Group) bool { return g.Name == groupAName }) {
 		t.Fatalf("group %q should have been removed after replace, got %v", groupAName, groups)
 	}
-	if !slices.Contains(groups, groupBName) {
+	if !slices.ContainsFunc(groups, func(g authbasicapi.Group) bool { return g.Name == groupBName }) {
 		t.Fatalf("expected group %q to remain after replace, got %v", groupBName, groups)
 	}
 }
@@ -187,7 +195,7 @@ func TestUserGroupBindingClear(t *testing.T) {
 	createUserResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
@@ -199,7 +207,9 @@ func TestUserGroupBindingClear(t *testing.T) {
 		t.Context(),
 		orgID,
 		userID,
-		authbasicapi.UpdateUserGroupsJSONRequestBody([]string{gName}),
+		authbasicapi.UpdateUserGroupsJSONRequestBody{
+			{Id: createGroupResp.JSON201.Id, Name: gName},
+		},
 		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
@@ -210,7 +220,7 @@ func TestUserGroupBindingClear(t *testing.T) {
 		t.Context(),
 		orgID,
 		userID,
-		authbasicapi.UpdateUserGroupsJSONRequestBody([]string{}),
+		authbasicapi.UpdateUserGroupsJSONRequestBody{},
 		authbasicapi.RequestEditorFn(adminRequestEditor),
 	)
 	checkErr(err, t)
@@ -225,7 +235,7 @@ func TestUserGroupBindingClear(t *testing.T) {
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
 	if len(*getResp.JSON200) != 0 {
-		t.Fatalf("expected empty groups after clear, got %v", []string(*getResp.JSON200))
+		t.Fatalf("expected empty groups after clear, got %v", *getResp.JSON200)
 	}
 }
 
@@ -248,9 +258,9 @@ func TestUserGroupBindingGet(t *testing.T) {
 	)
 	checkErr(err, t)
 	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
-	groups := []string(*getResp.JSON200)
+	groups := *getResp.JSON200
 	for _, expected := range []string{alwaysGroupStaff, alwaysGroupPleb, alwaysGroupDev} {
-		if !slices.Contains(groups, expected) {
+		if !slices.ContainsFunc(groups, func(g authbasicapi.Group) bool { return g.Name == expected }) {
 			t.Fatalf("expected group %q in always-user groups, got %v", expected, groups)
 		}
 	}

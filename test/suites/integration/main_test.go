@@ -52,7 +52,7 @@ func TestMain(m *testing.M) {
 
 	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
 		context.Background(),
-		authbasicapi.CreateOrganisationRequest{Name: alwaysOrg},
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: alwaysOrg},
 		authbasicapi.RequestEditorFn(requestEditorSuper),
 	)
 	if err != nil {
@@ -90,7 +90,7 @@ func TestMain(m *testing.M) {
 	userResp, err := basicAuthClient.CreateUserWithResponse(
 		context.Background(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserRequest{Name: alwaysUser, Password: alwaysUserPassword},
+		authbasicapi.CreateUserJSONRequestBody{Name: alwaysUser, Password: alwaysUserPassword},
 		authbasicapi.RequestEditorFn(requestEditorSuper),
 	)
 	if err != nil {
@@ -142,7 +142,11 @@ func TestMain(m *testing.M) {
 		context.Background(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.Userid(alwaysUserID),
-		authbasicapi.UpdateUserGroupsJSONRequestBody{alwaysGroupStaff, alwaysGroupPleb, alwaysGroupDev},
+		authbasicapi.UpdateUserGroupsJSONRequestBody{
+			{Id: int64(alwaysGroupStaffID), Name: alwaysGroupStaff},
+			{Id: int64(alwaysGroupPlebID), Name: alwaysGroupPleb},
+			{Id: int64(alwaysGroupDevID), Name: alwaysGroupDev},
+		},
 		authbasicapi.RequestEditorFn(requestEditorSuper),
 	)
 	if err != nil {
@@ -162,7 +166,7 @@ func createOrGetGroup(name string, requestEditor authbasicapi.RequestEditorFn) i
 	groupCreateResp, err := basicAuthClient.CreateGroupWithResponse(
 		context.Background(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateGroupRequest{Name: name},
+		authbasicapi.CreateGroupJSONRequestBody{Name: name},
 		requestEditor,
 	)
 	if err != nil {

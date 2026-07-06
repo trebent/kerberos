@@ -16,7 +16,7 @@ func TestUserCreate(t *testing.T) {
 	createResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserRequest{Name: name, Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: name, Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
@@ -34,7 +34,7 @@ func TestUserList(t *testing.T) {
 	createResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
@@ -64,7 +64,7 @@ func TestUserGet(t *testing.T) {
 	createResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserRequest{Name: name, Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: name, Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
@@ -98,7 +98,7 @@ func TestUserGetNotFound(t *testing.T) {
 	createUserResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
@@ -132,7 +132,7 @@ func TestUserUpdate(t *testing.T) {
 	createResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
@@ -170,7 +170,7 @@ func TestUserUpdateConflict(t *testing.T) {
 	create1Resp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
@@ -179,7 +179,7 @@ func TestUserUpdateConflict(t *testing.T) {
 	create2Resp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
@@ -206,7 +206,7 @@ func TestUserCreateConflict(t *testing.T) {
 	createResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserRequest{Name: name, Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: name, Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
@@ -215,7 +215,7 @@ func TestUserCreateConflict(t *testing.T) {
 	conflictResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserRequest{Name: name, Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: name, Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
@@ -239,7 +239,7 @@ func TestUserDelete(t *testing.T) {
 	createUserResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
@@ -274,7 +274,7 @@ func TestUserCreateOASValidation(t *testing.T) {
 	shortNameResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserRequest{Name: "ab", Password: "validpassword"},
+		authbasicapi.CreateUserJSONRequestBody{Name: "ab", Password: "validpassword"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
@@ -285,7 +285,7 @@ func TestUserCreateOASValidation(t *testing.T) {
 	shortPasswordResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserRequest{Name: username(), Password: "short"},
+		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "short"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
@@ -296,7 +296,7 @@ func TestUserCreateOASValidation(t *testing.T) {
 	longPasswordResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserRequest{Name: username(), Password: "this-password-is-way-too-long-for-the-schema-limits"},
+		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "this-password-is-way-too-long-for-the-schema-limits"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
@@ -325,7 +325,7 @@ func TestUserChangePassword(t *testing.T) {
 	createUserResp2, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.CreateUserRequest{Name: name, Password: oldPassword},
+		authbasicapi.CreateUserJSONRequestBody{Name: name, Password: oldPassword},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
@@ -408,7 +408,7 @@ func TestUserNoSession(t *testing.T) {
 	createResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
 	)
 	checkErr(err, t)
 	verifyStatusCode(createResp.StatusCode(), http.StatusUnauthorized, t)
@@ -459,7 +459,7 @@ func TestUserNoSession(t *testing.T) {
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.Userid(alwaysUserID),
-		authbasicapi.UpdateUserGroupsJSONRequestBody([]string{}),
+		authbasicapi.UpdateUserGroupsJSONRequestBody{},
 	)
 	checkErr(err, t)
 	verifyStatusCode(updateGroupsResp.StatusCode(), http.StatusUnauthorized, t)
@@ -503,7 +503,7 @@ func TestUserDeleteNotFound(t *testing.T) {
 	createUserResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
@@ -548,7 +548,7 @@ func TestUserUpdateNotFound(t *testing.T) {
 	createUserResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
