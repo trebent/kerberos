@@ -228,6 +228,21 @@ func (i *impl) GetUsers(
 		return adminapi.GetUsers500JSONResponse(apiErrInternal), nil
 	}
 
+	for index, u := range users {
+		groups, err := dbListGroupBindings(ctx, i.sqlClient, int64(u.Id))
+		if err != nil {
+			zerologr.Error(err, "Failed to list admin user group bindings")
+			return adminapi.GetUsers500JSONResponse(apiErrInternal), nil
+		}
+
+		apiGroups := make([]adminapi.Group, 0, len(groups))
+		for _, b := range groups {
+			apiGroups = append(apiGroups, adminapi.Group{Id: int(b.GroupID), Name: b.Name})
+		}
+		u.Groups = &apiGroups
+		users[index] = u
+	}
+
 	return adminapi.GetUsers200JSONResponse(users), nil
 }
 
