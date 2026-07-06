@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://spec.openapis.org/oas/3.0/schema/2024-10-18
 openapi: "3.0.4"
 info:
-  version: 0.1.0
+  version: 0.2.0
   title: Kerberos basic authentication API.
   description: |
     The Kerberos basic authentication API provides support for managing user accounts, groups,
@@ -16,6 +16,66 @@ info:
 
     The basic authentication API provides user group support, allowing for role-based authorization.
 components:
+  requestBodies:
+    LoginUserRequest:
+      description: A request to log a user in.
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              username:
+                type: string
+              password:
+                type: string
+            required:
+              - username
+              - password
+    CreateUserRequest:
+      description: A request to create a new user.
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+                minLength: 5
+              password:
+                type: string
+                minLength: 10
+                maxLength: 40
+            required:
+              - name
+              - password
+    CreateGroupRequest:
+      description: A request to create a new group.
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+                minLength: 1
+            required:
+              - name
+    CreateOrganisationRequest:
+      description: A request to create a new organisation.
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+                minLength: 1
+            required:
+              - name
   schemas:
     APIErrorResponse:
       type: object
@@ -27,19 +87,6 @@ components:
           minItems: 1
       required:
         - errors
-    CreateUserRequest:
-      type: object
-      properties:
-        name:
-          type: string
-          minLength: 5
-        password:
-          type: string
-          minLength: 10
-          maxLength: 40
-      required:
-        - name
-        - password
     User:
       type: object
       properties:
@@ -48,17 +95,15 @@ components:
           format: int64
         name:
           type: string
+        groups:
+          $ref: "#/components/schemas/UserGroups"
       required:
         - id
         - name
-    CreateGroupRequest:
-      type: object
-      properties:
-        name:
-          type: string
-          minLength: 1
-      required:
-        - name
+    UserGroups:
+      type: array
+      items:
+        $ref: "#/components/schemas/Group"
     Group:
       type: object
       properties:
@@ -70,18 +115,6 @@ components:
           minLength: 1
       required:
         - id
-        - name
-    UserGroups:
-      type: array
-      items:
-        type: string
-    CreateOrganisationRequest:
-      type: object
-      properties:
-        name:
-          type: string
-          minLength: 1
-      required:
         - name
     Organisation:
       type: object
@@ -150,11 +183,7 @@ paths:
         - organisations
       operationId: CreateOrganisation
       requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateOrganisationRequest"
+        $ref: "#/components/requestBodies/CreateOrganisationRequest"
       responses:
         "201":
           content:
@@ -356,21 +385,7 @@ paths:
       operationId: Login
       security: []
       requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                username:
-                  type: string
-                  minLength: 5
-                password:
-                  type: string
-                  minLength: 10
-              required:
-                - username
-                - password
+        $ref: "#/components/requestBodies/LoginUserRequest"
       responses:
         "204":
           headers:
@@ -437,11 +452,7 @@ paths:
         - users
       operationId: CreateUser
       requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateUserRequest"
+        $ref: "#/components/requestBodies/CreateUserRequest"
       responses:
         "201":
           content:
@@ -750,11 +761,7 @@ paths:
         - groups
       operationId: CreateGroup
       requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateGroupRequest"
+        $ref: "#/components/requestBodies/CreateGroupRequest"
       responses:
         "201":
           content:

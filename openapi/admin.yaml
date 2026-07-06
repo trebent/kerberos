@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://spec.openapis.org/oas/3.0/schema/2024-10-18
 openapi: "3.0.4"
 info:
-  version: 0.3.0
+  version: 0.4.0
   title: Kerberos administration API.
   description: |
     The Kerberos administration API allows administrators manage a Kerberos deployment.
@@ -288,14 +288,16 @@ components:
           type: integer
         name:
           type: string
+          minLength: 1
         permissions:
           type: array
+          description: |
+            The permissions that the group has. This may or may not be set depending on the endpoint.
           items:
             $ref: "#/components/schemas/Permission"
       required:
         - id
         - name
-        - permissions
     Permission:
       type: object
       additionalProperties: false

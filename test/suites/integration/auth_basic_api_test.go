@@ -105,7 +105,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	createUser1Resp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		createOrg1.JSON201.Id,
-		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(orgAdmin1RequestEditor),
 	)
 	checkErr(err, t)
@@ -115,7 +115,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	createUserCrossResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		createOrg1.JSON201.Id,
-		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(orgAdmin2RequestEditor),
 	)
 	checkErr(err, t)
@@ -178,7 +178,7 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 		t.Context(),
 		createOrg1.JSON201.Id,
 		user1ID,
-		authbasicapi.UpdateUserGroupsJSONRequestBody([]string{}),
+		authbasicapi.UpdateUserGroupsJSONRequestBody{},
 		authbasicapi.RequestEditorFn(orgAdmin2RequestEditor),
 	)
 	checkErr(err, t)
@@ -280,7 +280,7 @@ func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
 	createRegularResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.CreateUserRequest{Name: regularUserName, Password: regularPassword},
+		authbasicapi.CreateUserJSONRequestBody{Name: regularUserName, Password: regularPassword},
 		authbasicapi.RequestEditorFn(orgAdminRequestEditor),
 	)
 	checkErr(err, t)
@@ -291,7 +291,7 @@ func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
 	createOtherResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.CreateUserRequest{Name: username(), Password: "otherpass123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "otherpass123"},
 		authbasicapi.RequestEditorFn(orgAdminRequestEditor),
 	)
 	checkErr(err, t)
@@ -314,7 +314,7 @@ func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
 	createUserDenyResp, err := basicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.CreateUserRequest{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(orgUserRequestEditor),
 	)
 	checkErr(err, t)
@@ -422,7 +422,7 @@ func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
 		t.Context(),
 		orgID,
 		regularUserID,
-		authbasicapi.UpdateUserGroupsJSONRequestBody([]string{}),
+		authbasicapi.UpdateUserGroupsJSONRequestBody{},
 		authbasicapi.RequestEditorFn(orgUserRequestEditor),
 	)
 	checkErr(err, t)

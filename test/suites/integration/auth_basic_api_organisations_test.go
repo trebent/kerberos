@@ -328,37 +328,6 @@ func TestOrganisationLoginInvalidCredentials(t *testing.T) {
 	verifyAuthBasicAPIErrorResponse(loginResp.JSON401, t)
 }
 
-// TestOrganisationLoginOASValidation verifies that login requests with credentials that
-// violate schema constraints (too-short username or password) are rejected with 400.
-// The Login endpoint has no session requirement, so no prior auth is needed.
-func TestOrganisationLoginOASValidation(t *testing.T) {
-	// Username below minLength: 5.
-	shortUsernameResp, err := basicAuthClient.LoginWithResponse(
-		t.Context(),
-		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.LoginJSONRequestBody{
-			Username: "ab",
-			Password: "validpassword",
-		},
-	)
-	checkErr(err, t)
-	verifyStatusCode(shortUsernameResp.StatusCode(), http.StatusBadRequest, t)
-	verifyAuthBasicAPIErrorResponse(shortUsernameResp.JSON400, t)
-
-	// Password below minLength: 10.
-	shortPasswordResp, err := basicAuthClient.LoginWithResponse(
-		t.Context(),
-		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.LoginJSONRequestBody{
-			Username: "validusername",
-			Password: "short",
-		},
-	)
-	checkErr(err, t)
-	verifyStatusCode(shortPasswordResp.StatusCode(), http.StatusBadRequest, t)
-	verifyAuthBasicAPIErrorResponse(shortPasswordResp.JSON400, t)
-}
-
 // TestOrganisationLogout verifies that logging out invalidates the session token so that
 // subsequent authenticated requests are rejected with 401.
 func TestOrganisationLogout(t *testing.T) {

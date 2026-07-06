@@ -25,9 +25,13 @@ func TestAdminGroupCreate(t *testing.T) {
 		t.Fatal("expected non-zero group ID in create response")
 	}
 
-	if len(createResp.JSON201.Permissions) != len(allPermissionIDs) {
+	if createResp.JSON201.Permissions == nil || len(*createResp.JSON201.Permissions) != len(allPermissionIDs) {
+		got := 0
+		if createResp.JSON201.Permissions != nil {
+			got = len(*createResp.JSON201.Permissions)
+		}
 		t.Fatalf("expected %d permissions in create response, got %d",
-			len(allPermissionIDs), len(createResp.JSON201.Permissions))
+			len(allPermissionIDs), got)
 	}
 }
 

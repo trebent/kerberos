@@ -211,9 +211,11 @@ type FlowTransitionResultOutcome string
 
 // Group defines model for Group.
 type Group struct {
-	Id          int          `json:"id"`
-	Name        string       `json:"name"`
-	Permissions []Permission `json:"permissions"`
+	Id   int    `json:"id"`
+	Name string `json:"name"`
+
+	// Permissions The permissions that the group has. This may or may not be set depending on the endpoint.
+	Permissions *[]Permission `json:"permissions,omitempty"`
 }
 
 // MeResponse defines model for MeResponse.

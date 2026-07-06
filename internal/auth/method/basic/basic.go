@@ -20,7 +20,6 @@ import (
 	"github.com/trebent/kerberos/internal/config"
 	authbasicapi "github.com/trebent/kerberos/internal/oapi/auth/basic"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
-	"github.com/trebent/kerberos/internal/response"
 
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/kerberos/internal/oas"
@@ -186,17 +185,17 @@ func (a *basic) Authorized(req *http.Request) error {
 		return apierror.ErrISE
 	}
 
-	userGroups, err := dbGetUserGroupNames(req.Context(), a.sqlClient, orgID, userID)
+	userGroups, err := dbGetUserGroups(req.Context(), a.sqlClient, orgID, userID)
 	if err != nil {
 		return apierror.ErrISE
 	}
 
 	for _, g := range userGroups {
-		req.Header.Add("X-Krb-Groups", g)
+		req.Header.Add("X-Krb-Groups", g.Name)
 	}
 
 	for _, usergroup := range userGroups {
-		if slices.Contains(groupsToValidate, usergroup) {
+		if slices.Contains(groupsToValidate, usergroup.Name) {
 			return nil
 		}
 	}
@@ -241,17 +240,6 @@ func (a *basic) RegisterRoutes(
 		BaseRouter: mux,
 		Middlewares: []authbasicapi.MiddlewareFunc{
 			oas.ValidationMiddleware(spec),
-			func(next http.Handler) http.Handler {
-				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					zerologr.Info(fmt.Sprintf("%s %s", r.Method, r.URL.Path))
-					//nolint:errcheck // guaranteed
-					wrapper := response.NewResponseWrapper(w).(*response.Wrapper)
-					next.ServeHTTP(wrapper, r)
-					zerologr.Info(
-						fmt.Sprintf("%s %s %d", r.Method, r.URL.Path, wrapper.StatusCode()),
-					)
-				})
-			},
 		},
 	})
 
