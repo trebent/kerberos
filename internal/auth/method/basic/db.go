@@ -319,6 +319,7 @@ func dbListUsers(
 			zerologr.Error(err, "Failed to scan user row")
 			return nil, err
 		}
+
 		users = append(users, u)
 	}
 	if err := rows.Err(); err != nil {

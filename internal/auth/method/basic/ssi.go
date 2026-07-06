@@ -274,7 +274,13 @@ func (i *impl) GetUser(
 		return authbasicapi.GetUser500JSONResponse(apiErrInternal), nil
 	}
 
-	return authbasicapi.GetUser200JSONResponse{Id: u.Id, Name: u.Name}, nil
+	groups, err := dbGetUserGroups(ctx, i.db, req.OrgID, req.UserID)
+	if err != nil {
+		zerologr.Error(err, "Failed to get user groups")
+		return authbasicapi.GetUser500JSONResponse(apiErrInternal), nil
+	}
+
+	return authbasicapi.GetUser200JSONResponse{Id: u.Id, Name: u.Name, Groups: &groups}, nil
 }
 
 // GetUserGroups implements [StrictServerInterface].
@@ -328,6 +334,15 @@ func (i *impl) ListUsers(
 	if err != nil {
 		zerologr.Error(err, "Failed to list users")
 		return authbasicapi.ListUsers500JSONResponse(apiErrInternal), nil
+	}
+
+	for idx := range users {
+		groups, err := dbGetUserGroups(ctx, i.db, req.OrgID, users[idx].Id)
+		if err != nil {
+			zerologr.Error(err, "Failed to get user groups")
+			return authbasicapi.ListUsers500JSONResponse(apiErrInternal), nil
+		}
+		users[idx].Groups = &groups
 	}
 
 	return authbasicapi.ListUsers200JSONResponse(users), nil
