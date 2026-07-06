@@ -25,6 +25,37 @@ type APIErrorResponse struct {
 	Errors []string `json:"errors"`
 }
 
+// Group defines model for Group.
+type Group struct {
+	Id   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+// Organisation defines model for Organisation.
+type Organisation struct {
+	Id   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+// User defines model for User.
+type User struct {
+	Groups *UserGroups `json:"groups,omitempty"`
+	Id     int64       `json:"id"`
+	Name   string      `json:"name"`
+}
+
+// UserGroups defines model for UserGroups.
+type UserGroups = []Group
+
+// Groupid defines model for groupid.
+type Groupid = int64
+
+// Orgid defines model for orgid.
+type Orgid = int64
+
+// Userid defines model for userid.
+type Userid = int64
+
 // CreateGroupRequest defines model for CreateGroupRequest.
 type CreateGroupRequest struct {
 	Name string `json:"name"`
@@ -41,40 +72,32 @@ type CreateUserRequest struct {
 	Password string `json:"password"`
 }
 
-// Group defines model for Group.
-type Group struct {
-	Id   int64  `json:"id"`
+// LoginUserRequest defines model for LoginUserRequest.
+type LoginUserRequest struct {
+	Password string `json:"password"`
+	Username string `json:"username"`
+}
+
+// CreateOrganisationJSONBody defines parameters for CreateOrganisation.
+type CreateOrganisationJSONBody struct {
 	Name string `json:"name"`
 }
 
-// Organisation defines model for Organisation.
-type Organisation struct {
-	Id   int64  `json:"id"`
+// CreateGroupJSONBody defines parameters for CreateGroup.
+type CreateGroupJSONBody struct {
 	Name string `json:"name"`
 }
-
-// User defines model for User.
-type User struct {
-	Id   int64  `json:"id"`
-	Name string `json:"name"`
-}
-
-// UserGroups defines model for UserGroups.
-type UserGroups = []string
-
-// Groupid defines model for groupid.
-type Groupid = int64
-
-// Orgid defines model for orgid.
-type Orgid = int64
-
-// Userid defines model for userid.
-type Userid = int64
 
 // LoginJSONBody defines parameters for Login.
 type LoginJSONBody struct {
 	Password string `json:"password"`
 	Username string `json:"username"`
+}
+
+// CreateUserJSONBody defines parameters for CreateUser.
+type CreateUserJSONBody struct {
+	Name     string `json:"name"`
+	Password string `json:"password"`
 }
 
 // ChangePasswordJSONBody defines parameters for ChangePassword.
@@ -84,13 +107,13 @@ type ChangePasswordJSONBody struct {
 }
 
 // CreateOrganisationJSONRequestBody defines body for CreateOrganisation for application/json ContentType.
-type CreateOrganisationJSONRequestBody = CreateOrganisationRequest
+type CreateOrganisationJSONRequestBody CreateOrganisationJSONBody
 
 // UpdateOrganisationJSONRequestBody defines body for UpdateOrganisation for application/json ContentType.
 type UpdateOrganisationJSONRequestBody = Organisation
 
 // CreateGroupJSONRequestBody defines body for CreateGroup for application/json ContentType.
-type CreateGroupJSONRequestBody = CreateGroupRequest
+type CreateGroupJSONRequestBody CreateGroupJSONBody
 
 // UpdateGroupJSONRequestBody defines body for UpdateGroup for application/json ContentType.
 type UpdateGroupJSONRequestBody = Group
@@ -99,7 +122,7 @@ type UpdateGroupJSONRequestBody = Group
 type LoginJSONRequestBody LoginJSONBody
 
 // CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
-type CreateUserJSONRequestBody = CreateUserRequest
+type CreateUserJSONRequestBody CreateUserJSONBody
 
 // UpdateUserJSONRequestBody defines body for UpdateUser for application/json ContentType.
 type UpdateUserJSONRequestBody = User

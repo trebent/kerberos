@@ -186,17 +186,17 @@ func (a *basic) Authorized(req *http.Request) error {
 		return apierror.ErrISE
 	}
 
-	userGroups, err := dbGetUserGroupNames(req.Context(), a.sqlClient, orgID, userID)
+	userGroups, err := dbGetUserGroups(req.Context(), a.sqlClient, orgID, userID)
 	if err != nil {
 		return apierror.ErrISE
 	}
 
 	for _, g := range userGroups {
-		req.Header.Add("X-Krb-Groups", g)
+		req.Header.Add("X-Krb-Groups", g.Name)
 	}
 
 	for _, usergroup := range userGroups {
-		if slices.Contains(groupsToValidate, usergroup) {
+		if slices.Contains(groupsToValidate, usergroup.Name) {
 			return nil
 		}
 	}

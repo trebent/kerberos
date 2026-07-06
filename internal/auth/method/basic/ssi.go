@@ -282,7 +282,7 @@ func (i *impl) GetUserGroups(
 	ctx context.Context,
 	req authbasicapi.GetUserGroupsRequestObject,
 ) (authbasicapi.GetUserGroupsResponseObject, error) {
-	groups, err := dbGetUserGroupNames(ctx, i.db, req.OrgID, req.UserID)
+	groups, err := dbGetUserGroups(ctx, i.db, req.OrgID, req.UserID)
 	if err != nil {
 		zerologr.Error(err, "Failed to get user groups")
 		return authbasicapi.GetUserGroups500JSONResponse(apiErrInternal), nil

@@ -8,6 +8,7 @@ import (
 
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/config"
+	authbasicapi "github.com/trebent/kerberos/internal/oapi/auth/basic"
 )
 
 func TestAuthorizer_Authenticated(t *testing.T) {
@@ -74,8 +75,13 @@ func TestAuthorizer_AuthorizedGroup(t *testing.T) {
 
 	orgID, _ := mustCreateOrg(t, uniqueName(t, "authZ-test-org"))
 	userID := mustCreateUser(t, orgID, uniqueName(t, "authZ-test-user"))
-	_ = mustCreateGroup(t, orgID, groupName)
-	if err := dbUpdateUserGroupBindings(t.Context(), testClient, orgID, userID, []string{groupName}); err != nil {
+	groupID := mustCreateGroup(t, orgID, groupName)
+	if err := dbUpdateUserGroupBindings(
+		t.Context(),
+		testClient,
+		orgID,
+		userID,
+		[]authbasicapi.Group{{Id: groupID, Name: groupName}}); err != nil {
 		t.Fatalf("dbUpdateUserGroupBindings error: %v", err)
 	}
 
@@ -96,7 +102,13 @@ func TestAuthorizer_AuthorizedGroup(t *testing.T) {
 		t.Fatal("Expected no error when user is authorized")
 	}
 
-	if err := dbUpdateUserGroupBindings(t.Context(), testClient, orgID, userID, []string{}); err != nil {
+	if err := dbUpdateUserGroupBindings(
+		t.Context(),
+		testClient,
+		orgID,
+		userID,
+		[]authbasicapi.Group{},
+	); err != nil {
 		t.Fatalf("dbUpdateUserGroupBindings error: %v", err)
 	}
 

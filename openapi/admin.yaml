@@ -288,14 +288,16 @@ components:
           type: integer
         name:
           type: string
+          minLength: 1
         permissions:
           type: array
+          description: |
+            The permissions that the group has. This may or may not be set depending on the endpoint.
           items:
             $ref: "#/components/schemas/Permission"
       required:
         - id
         - name
-        - permissions
     Permission:
       type: object
       additionalProperties: false

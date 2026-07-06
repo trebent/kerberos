@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	authbasicapi "github.com/trebent/kerberos/internal/oapi/auth/basic"
 )
 
 // --- helpers ---
@@ -452,8 +454,8 @@ func TestDBGroupBindings(t *testing.T) {
 	userID := mustCreateUser(t, orgID, uniqueName(t, "user-bindings"))
 	group1Name := uniqueName(t, "group-bind-1")
 	group2Name := uniqueName(t, "group-bind-2")
-	mustCreateGroup(t, orgID, group1Name)
-	mustCreateGroup(t, orgID, group2Name)
+	group1ID := mustCreateGroup(t, orgID, group1Name)
+	group2ID := mustCreateGroup(t, orgID, group2Name)
 
 	t.Run("list empty", func(t *testing.T) {
 		bindings, err := dbListGroupBindings(ctx, testClient, orgID, userID)
@@ -466,7 +468,13 @@ func TestDBGroupBindings(t *testing.T) {
 	})
 
 	t.Run("update adds bindings", func(t *testing.T) {
-		if err := dbUpdateUserGroupBindings(ctx, testClient, orgID, userID, []string{group1Name, group2Name}); err != nil {
+		if err := dbUpdateUserGroupBindings(
+			ctx,
+			testClient,
+			orgID,
+			userID,
+			[]authbasicapi.Group{{Id: group1ID, Name: group1Name}, {Id: group2ID, Name: group2Name}},
+		); err != nil {
 			t.Fatalf("dbUpdateUserGroupBindings error: %v", err)
 		}
 
@@ -488,7 +496,13 @@ func TestDBGroupBindings(t *testing.T) {
 
 	t.Run("update removes bindings", func(t *testing.T) {
 		// Remove group2, keep only group1.
-		if err := dbUpdateUserGroupBindings(ctx, testClient, orgID, userID, []string{group1Name}); err != nil {
+		if err := dbUpdateUserGroupBindings(
+			ctx,
+			testClient,
+			orgID,
+			userID,
+			[]authbasicapi.Group{{Id: group1ID, Name: group1Name}},
+		); err != nil {
 			t.Fatalf("dbUpdateUserGroupBindings error: %v", err)
 		}
 
@@ -505,7 +519,7 @@ func TestDBGroupBindings(t *testing.T) {
 	})
 
 	t.Run("update clears all bindings", func(t *testing.T) {
-		if err := dbUpdateUserGroupBindings(ctx, testClient, orgID, userID, []string{}); err != nil {
+		if err := dbUpdateUserGroupBindings(ctx, testClient, orgID, userID, []authbasicapi.Group{}); err != nil {
 			t.Fatalf("dbUpdateUserGroupBindings error: %v", err)
 		}
 
@@ -519,11 +533,17 @@ func TestDBGroupBindings(t *testing.T) {
 	})
 
 	t.Run("get user group names", func(t *testing.T) {
-		if err := dbUpdateUserGroupBindings(ctx, testClient, orgID, userID, []string{group1Name, group2Name}); err != nil {
+		if err := dbUpdateUserGroupBindings(
+			ctx,
+			testClient,
+			orgID,
+			userID,
+			[]authbasicapi.Group{{Id: group1ID, Name: group1Name}, {Id: group2ID, Name: group2Name}},
+		); err != nil {
 			t.Fatalf("dbUpdateUserGroupBindings error: %v", err)
 		}
 
-		names, err := dbGetUserGroupNames(ctx, testClient, orgID, userID)
+		names, err := dbGetUserGroups(ctx, testClient, orgID, userID)
 		if err != nil {
 			t.Fatalf("dbGetUserGroupNames error: %v", err)
 		}
@@ -531,8 +551,8 @@ func TestDBGroupBindings(t *testing.T) {
 			t.Fatalf("expected 2 group names, got %d", len(names))
 		}
 		nameSet := make(map[string]bool)
-		for _, n := range names {
-			nameSet[n] = true
+		for _, group := range names {
+			nameSet[group.Name] = true
 		}
 		if !nameSet[group1Name] || !nameSet[group2Name] {
 			t.Fatalf("expected group names %q and %q", group1Name, group2Name)
@@ -591,7 +611,6 @@ func TestDBSessions(t *testing.T) {
 			t.Fatalf("expected errNoSession after delete, got %v", err)
 		}
 	})
-
 }
 
 // --- Cascade Deletes ---
@@ -606,7 +625,13 @@ func TestDBCascadeDeleteOrg(t *testing.T) {
 	groupName := uniqueName(t, "group-cascade-org")
 	groupID := mustCreateGroup(t, orgID, groupName)
 
-	if err := dbUpdateUserGroupBindings(ctx, testClient, orgID, userID, []string{groupName}); err != nil {
+	if err := dbUpdateUserGroupBindings(
+		ctx,
+		testClient,
+		orgID,
+		userID,
+		[]authbasicapi.Group{{Id: groupID, Name: groupName}},
+	); err != nil {
 		t.Fatalf("dbUpdateUserGroupBindings error: %v", err)
 	}
 
@@ -659,9 +684,15 @@ func TestDBCascadeDeleteUser(t *testing.T) {
 	orgID, _ := mustCreateOrg(t, uniqueName(t, "org-cascade-user"))
 	userID := mustCreateUser(t, orgID, uniqueName(t, "user-cascade-user"))
 	groupName := uniqueName(t, "group-cascade-user")
-	mustCreateGroup(t, orgID, groupName)
+	groupID := mustCreateGroup(t, orgID, groupName)
 
-	if err := dbUpdateUserGroupBindings(ctx, testClient, orgID, userID, []string{groupName}); err != nil {
+	if err := dbUpdateUserGroupBindings(
+		ctx,
+		testClient,
+		orgID,
+		userID,
+		[]authbasicapi.Group{{Id: groupID, Name: groupName}},
+	); err != nil {
 		t.Fatalf("dbUpdateUserGroupBindings error: %v", err)
 	}
 
@@ -702,7 +733,13 @@ func TestDBCascadeDeleteGroup(t *testing.T) {
 	groupName := uniqueName(t, "group-cascade-group")
 	groupID := mustCreateGroup(t, orgID, groupName)
 
-	if err := dbUpdateUserGroupBindings(ctx, testClient, orgID, userID, []string{groupName}); err != nil {
+	if err := dbUpdateUserGroupBindings(
+		ctx,
+		testClient,
+		orgID,
+		userID,
+		[]authbasicapi.Group{{Id: groupID, Name: groupName}},
+	); err != nil {
 		t.Fatalf("dbUpdateUserGroupBindings error: %v", err)
 	}
 

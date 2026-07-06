@@ -46,10 +46,10 @@ const (
 	selectLoginUser    = "SELECT id, name, salt, hashed_password, organisation_id FROM users WHERE organisation_id = @orgID AND name = @username;"
 
 	// Group bindings.
-	selectUserGroups    = "SELECT name FROM groups WHERE id IN (SELECT group_id FROM group_bindings WHERE user_id = @userID) AND organisation_id = @orgID;"
+	selectUserGroups    = "SELECT id, name FROM groups WHERE id IN (SELECT group_id FROM group_bindings WHERE user_id = @userID) AND organisation_id = @orgID;"
 	selectGroupBindings = "SELECT g.id, g.name FROM group_bindings gb INNER JOIN groups g ON gb.group_id = g.id WHERE user_id = @userID AND organisation_id = @orgID;"
 	deleteGroupBinding  = "DELETE FROM group_bindings WHERE user_id = @userID AND group_id = @groupID;"
-	insertGroupBinding  = "INSERT INTO group_bindings (user_id, group_id) VALUES (@userID, (SELECT id FROM groups WHERE organisation_id = @orgID AND name = @groupName));"
+	insertGroupBinding  = "INSERT INTO group_bindings (user_id, group_id) VALUES (@userID, @groupID);"
 
 	// Sessions.
 	insertSession      = "INSERT INTO sessions (user_id, organisation_id, session_id, expires) VALUES(@userID, @orgID, @session, @expires);"
@@ -109,12 +109,12 @@ func dbGetSessionRow(
 	return r, nil
 }
 
-// dbGetUserGroupNames returns the names of all groups a user belongs to within an organisation.
-func dbGetUserGroupNames(
+// dbGetUserGroups returns the names of all groups a user belongs to within an organisation.
+func dbGetUserGroups(
 	ctx context.Context,
 	client db.SQLClient,
 	orgID, userID int64,
-) ([]string, error) {
+) ([]authbasicapi.Group, error) {
 	rows, err := client.Query(
 		ctx,
 		selectUserGroups,
@@ -127,14 +127,14 @@ func dbGetUserGroupNames(
 	}
 	defer rows.Close()
 
-	groups := make([]string, 0)
+	groups := make([]authbasicapi.Group, 0)
 	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
+		group := authbasicapi.Group{}
+		if err := rows.Scan(&group.Id, &group.Name); err != nil {
 			zerologr.Error(err, "Failed to scan user group row")
 			return nil, err
 		}
-		groups = append(groups, name)
+		groups = append(groups, group)
 	}
 	if err := rows.Err(); err != nil {
 		zerologr.Error(err, "Failed to iterate user group rows")
@@ -753,7 +753,7 @@ func dbUpdateUserGroupBindings(
 	ctx context.Context,
 	client db.SQLClient,
 	orgID, userID int64,
-	desiredGroups []string,
+	desiredGroups []authbasicapi.Group,
 ) error {
 	bindings, err := dbListGroupBindings(ctx, client, orgID, userID)
 	if err != nil {
@@ -762,7 +762,10 @@ func dbUpdateUserGroupBindings(
 
 	toDelete := make([]*models.GroupBinding, 0)
 	for _, b := range bindings {
-		if !slices.Contains(desiredGroups, b.Name) {
+		if !slices.ContainsFunc(
+			desiredGroups,
+			func(g authbasicapi.Group) bool { return b.GroupID == g.Id },
+		) {
 			toDelete = append(toDelete, b)
 		}
 	}
@@ -787,21 +790,20 @@ func dbUpdateUserGroupBindings(
 		}
 		bindings = slices.DeleteFunc(
 			bindings,
-			func(gb *models.GroupBinding) bool { return gb.Name == b.Name },
+			func(gb *models.GroupBinding) bool { return gb.GroupID == b.GroupID },
 		)
 	}
 
-	for _, groupName := range desiredGroups {
+	for _, group := range desiredGroups {
 		if !slices.ContainsFunc(
 			bindings,
-			func(b *models.GroupBinding) bool { return b.Name == groupName },
+			func(b *models.GroupBinding) bool { return b.GroupID == group.Id },
 		) {
 			if _, err := tx.Exec(
 				ctx,
 				insertGroupBinding,
 				sql.NamedArg{Name: argUserID, Value: userID},
-				sql.NamedArg{Name: argOrgID, Value: orgID},
-				sql.NamedArg{Name: "groupName", Value: groupName},
+				sql.NamedArg{Name: argGroupID, Value: group.Id},
 			); err != nil {
 				zerologr.Error(err, "Failed to insert group binding")
 				return err
