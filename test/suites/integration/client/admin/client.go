@@ -2460,6 +2460,7 @@ type ListDebugSessionsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]DebugSession
+	JSON401      *APIErrorResponse
 	JSON403      *APIErrorResponse
 	JSON404      *APIErrorResponse
 	JSON500      *APIErrorResponse
@@ -2486,6 +2487,7 @@ type StartDebugSessionResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *DebugSession
 	JSON400      *APIErrorResponse
+	JSON401      *APIErrorResponse
 	JSON403      *APIErrorResponse
 	JSON404      *APIErrorResponse
 	JSON409      *APIErrorResponse
@@ -2512,6 +2514,7 @@ type DeleteDebugSessionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON400      *APIErrorResponse
+	JSON401      *APIErrorResponse
 	JSON403      *APIErrorResponse
 	JSON404      *APIErrorResponse
 	JSON500      *APIErrorResponse
@@ -2538,6 +2541,7 @@ type GetDebugSessionResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *DebugSession
 	JSON400      *APIErrorResponse
+	JSON401      *APIErrorResponse
 	JSON403      *APIErrorResponse
 	JSON404      *APIErrorResponse
 	JSON500      *APIErrorResponse
@@ -2563,6 +2567,7 @@ type StopDebugSessionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON400      *APIErrorResponse
+	JSON401      *APIErrorResponse
 	JSON403      *APIErrorResponse
 	JSON404      *APIErrorResponse
 	JSON500      *APIErrorResponse
@@ -2589,6 +2594,7 @@ type ExtendDebugSessionResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *DebugSession
 	JSON400      *APIErrorResponse
+	JSON401      *APIErrorResponse
 	JSON403      *APIErrorResponse
 	JSON404      *APIErrorResponse
 	JSON409      *APIErrorResponse
@@ -2616,6 +2622,7 @@ type ListDebugSessionCallsResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *[]DebugSessionCall
 	JSON400      *APIErrorResponse
+	JSON401      *APIErrorResponse
 	JSON403      *APIErrorResponse
 	JSON404      *APIErrorResponse
 	JSON500      *APIErrorResponse
@@ -2642,6 +2649,7 @@ type GetDebugSessionCallResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *DebugSessionCall
 	JSON400      *APIErrorResponse
+	JSON401      *APIErrorResponse
 	JSON403      *APIErrorResponse
 	JSON404      *APIErrorResponse
 	JSON500      *APIErrorResponse
@@ -3568,6 +3576,13 @@ func ParseListDebugSessionsResponse(rsp *http.Response) (*ListDebugSessionsRespo
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
 		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -3621,6 +3636,13 @@ func ParseStartDebugSessionResponse(rsp *http.Response) (*StartDebugSessionRespo
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
 		var dest APIErrorResponse
@@ -3676,6 +3698,13 @@ func ParseDeleteDebugSessionResponse(rsp *http.Response) (*DeleteDebugSessionRes
 		}
 		response.JSON400 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
 		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -3730,6 +3759,13 @@ func ParseGetDebugSessionResponse(rsp *http.Response) (*GetDebugSessionResponse,
 		}
 		response.JSON400 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
 		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -3776,6 +3812,13 @@ func ParseStopDebugSessionResponse(rsp *http.Response) (*StopDebugSessionRespons
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
 		var dest APIErrorResponse
@@ -3830,6 +3873,13 @@ func ParseExtendDebugSessionResponse(rsp *http.Response) (*ExtendDebugSessionRes
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
 		var dest APIErrorResponse
@@ -3892,6 +3942,13 @@ func ParseListDebugSessionCallsResponse(rsp *http.Response) (*ListDebugSessionCa
 		}
 		response.JSON400 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
 		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -3945,6 +4002,13 @@ func ParseGetDebugSessionCallResponse(rsp *http.Response) (*GetDebugSessionCallR
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
 		var dest APIErrorResponse

@@ -10,6 +10,11 @@
           "name": "echo",
           "host": "localhost",
           "port": 15000
+        },
+        {
+          "name": "missing",
+          "host": "localhost",
+          "port": 17000
         }
       ]
     }

@@ -1633,6 +1633,15 @@ func (response ListDebugSessions200JSONResponse) VisitListDebugSessionsResponse(
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ListDebugSessions401JSONResponse APIErrorResponse
+
+func (response ListDebugSessions401JSONResponse) VisitListDebugSessionsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type ListDebugSessions403JSONResponse APIErrorResponse
 
 func (response ListDebugSessions403JSONResponse) VisitListDebugSessionsResponse(w http.ResponseWriter) error {
@@ -1683,6 +1692,15 @@ type StartDebugSession400JSONResponse APIErrorResponse
 func (response StartDebugSession400JSONResponse) VisitStartDebugSessionResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type StartDebugSession401JSONResponse APIErrorResponse
+
+func (response StartDebugSession401JSONResponse) VisitStartDebugSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -1749,6 +1767,15 @@ func (response DeleteDebugSession400JSONResponse) VisitDeleteDebugSessionRespons
 	return json.NewEncoder(w).Encode(response)
 }
 
+type DeleteDebugSession401JSONResponse APIErrorResponse
+
+func (response DeleteDebugSession401JSONResponse) VisitDeleteDebugSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type DeleteDebugSession403JSONResponse APIErrorResponse
 
 func (response DeleteDebugSession403JSONResponse) VisitDeleteDebugSessionResponse(w http.ResponseWriter) error {
@@ -1799,6 +1826,15 @@ type GetDebugSession400JSONResponse APIErrorResponse
 func (response GetDebugSession400JSONResponse) VisitGetDebugSessionResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetDebugSession401JSONResponse APIErrorResponse
+
+func (response GetDebugSession401JSONResponse) VisitGetDebugSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -1856,6 +1892,15 @@ func (response StopDebugSession400JSONResponse) VisitStopDebugSessionResponse(w 
 	return json.NewEncoder(w).Encode(response)
 }
 
+type StopDebugSession401JSONResponse APIErrorResponse
+
+func (response StopDebugSession401JSONResponse) VisitStopDebugSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type StopDebugSession403JSONResponse APIErrorResponse
 
 func (response StopDebugSession403JSONResponse) VisitStopDebugSessionResponse(w http.ResponseWriter) error {
@@ -1907,6 +1952,15 @@ type ExtendDebugSession400JSONResponse APIErrorResponse
 func (response ExtendDebugSession400JSONResponse) VisitExtendDebugSessionResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ExtendDebugSession401JSONResponse APIErrorResponse
+
+func (response ExtendDebugSession401JSONResponse) VisitExtendDebugSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -1975,6 +2029,15 @@ func (response ListDebugSessionCalls400JSONResponse) VisitListDebugSessionCallsR
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ListDebugSessionCalls401JSONResponse APIErrorResponse
+
+func (response ListDebugSessionCalls401JSONResponse) VisitListDebugSessionCallsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type ListDebugSessionCalls403JSONResponse APIErrorResponse
 
 func (response ListDebugSessionCalls403JSONResponse) VisitListDebugSessionCallsResponse(w http.ResponseWriter) error {
@@ -2026,6 +2089,15 @@ type GetDebugSessionCall400JSONResponse APIErrorResponse
 func (response GetDebugSessionCall400JSONResponse) VisitGetDebugSessionCallResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetDebugSessionCall401JSONResponse APIErrorResponse
+
+func (response GetDebugSessionCall401JSONResponse) VisitGetDebugSessionCallResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
 
 	return json.NewEncoder(w).Encode(response)
 }
