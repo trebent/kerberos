@@ -35,7 +35,7 @@ func (i *impl) StartDebugSession(
 	}
 
 	expires := time.Now().Add(5 * time.Minute).UTC()
-	if req.Body.DurationSeconds != nil {
+	if req.Body != nil && req.Body.DurationSeconds != nil {
 		expires = time.Now().Add(time.Duration(*req.Body.DurationSeconds) * time.Second).UTC()
 	}
 
