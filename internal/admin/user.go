@@ -395,7 +395,7 @@ func (i *impl) ChangeUserPassword(
 	}
 
 	if !password.Match(auth.Salt, auth.HashedPassword, request.Body.OldPassword) {
-		return adminapi.ChangeUserPassword401JSONResponse(apiErrUnauthorized), nil
+		return adminapi.ChangeUserPassword400JSONResponse(apiErrUnauthorized), nil
 	}
 
 	_, newSalt, newHashed := password.Make(request.Body.NewPassword)
@@ -428,7 +428,7 @@ func (i *impl) ChangeSuperuserPassword(
 	}
 
 	if !password.Match(superuser.Salt, superuser.HashedPassword, request.Body.OldPassword) {
-		return adminapi.ChangeSuperuserPassword401JSONResponse(apiErrUnauthorized), nil
+		return adminapi.ChangeSuperuserPassword400JSONResponse(apiErrUnauthorized), nil
 	}
 
 	_, newSalt, newHashed := password.Make(request.Body.NewPassword)

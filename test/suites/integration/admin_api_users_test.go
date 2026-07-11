@@ -340,8 +340,8 @@ func TestAdminUserChangePasswordWrongOld(t *testing.T) {
 		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	checkErr(err, t)
-	verifyStatusCode(changeResp.StatusCode(), http.StatusUnauthorized, t)
-	verifyAdminAPIErrorResponse(changeResp.JSON401, t)
+	verifyStatusCode(changeResp.StatusCode(), http.StatusBadRequest, t)
+	verifyAdminAPIErrorResponse(changeResp.JSON400, t)
 }
 
 // TestAdminMeNormalUser verifies that a normal admin user receives their own user info from /me.
