@@ -39,10 +39,10 @@ jobs:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
         run: |
           docker pull ghcr.io/${{ github.repository }}:${{ inputs.version }}
-          # docker pull ghcr.io/${{ github.repository }}/echo:${{ inputs.version }}
+          docker pull ghcr.io/${{ github.repository }}/echo:${{ inputs.version }}
 
           docker tag ghcr.io/${{ github.repository }}:${{ inputs.version }} $ECR_REGISTRY/${{ vars.POC_AWS_REPO }}:${{ inputs.version }}
-          # docker tag ghcr.io/${{ github.repository }}/echo:${{ inputs.version }} "$ECR_REGISTRY/${{ vars.POC_AWS_REPO }}/echo:${{ inputs.version }}"
+          docker tag ghcr.io/${{ github.repository }}/echo:${{ inputs.version }} "$ECR_REGISTRY/${{ vars.POC_AWS_REPO }}/echo:${{ inputs.version }}"
 
           docker push $ECR_REGISTRY/${{ vars.POC_AWS_REPO }}:${{ inputs.version }}
-          # docker push $ECR_REGISTRY/${{ vars.POC_AWS_REPO }}:${{ inputs.version }}
+          docker push $ECR_REGISTRY/${{ vars.POC_AWS_REPO }}/echo:${{ inputs.version }}
