@@ -15,8 +15,6 @@ permissions:
 
 jobs:
   push-images:
-    environment:
-      name: aws-poc
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
