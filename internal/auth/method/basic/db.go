@@ -53,9 +53,9 @@ const (
 
 	// Sessions.
 	insertSession          = "INSERT INTO sessions (user_id, organisation_id, refresh_id, session_id, expires) VALUES(@userID, @orgID, @refresh, @session, @expires);"
-	selectSession          = "SELECT s.refresh_id, s.user_id, s.organisation_id, u.administrator, s.expires FROM sessions s INNER JOIN users u ON s.user_id = u.id WHERE session_id = @sessionID;"
-	selectSessionByRefresh = "SELECT s.refresh_id, s.user_id, s.organisation_id, u.administrator, s.expires FROM sessions s INNER JOIN users u ON s.user_id = u.id WHERE refresh_id = @refreshID;"
-	deleteUserSessions     = "DELETE FROM sessions WHERE organisation_id = @orgID AND user_id = @userID;"
+	selectSession          = "SELECT s.session_id, s.refresh_id, s.user_id, s.organisation_id, u.administrator, s.expires FROM sessions s INNER JOIN users u ON s.user_id = u.id WHERE session_id = @sessionID;"
+	selectSessionByRefresh = "SELECT s.session_id, s.refresh_id, s.user_id, s.organisation_id, u.administrator, s.expires FROM sessions s INNER JOIN users u ON s.user_id = u.id WHERE refresh_id = @refreshID AND s.organisation_id = @orgID;"
+	deleteUserSession      = "DELETE FROM sessions WHERE organisation_id = @orgID AND user_id = @userID AND session_id = @sessionID;"
 
 	// Named arg keys.
 	argSession        = "session"
@@ -87,7 +87,11 @@ func dbGetSessionRow(
 	client db.SQLClient,
 	sessionID string,
 ) (*models.Session, error) {
-	rows, err := client.Query(ctx, selectSession, sql.NamedArg{Name: "sessionID", Value: sessionID})
+	rows, err := client.Query(
+		ctx,
+		selectSession,
+		sql.NamedArg{Name: "sessionID", Value: sessionID},
+	)
 	if err != nil {
 		zerologr.Error(err, "Failed to query session")
 		return nil, err
@@ -104,7 +108,7 @@ func dbGetSessionRow(
 
 	r := &models.Session{}
 	if err := rows.Scan(
-		&r.RefreshID, &r.UserID, &r.OrgID, &r.Administrator, &r.Expires,
+		&r.SessionID, &r.RefreshID, &r.UserID, &r.OrgID, &r.Administrator, &r.Expires,
 	); err != nil {
 		zerologr.Error(err, "Failed to scan session row")
 		return nil, err
@@ -118,11 +122,13 @@ func dbGetSessionRow(
 func dbGetSessionByRefresh(
 	ctx context.Context,
 	client db.SQLClient,
+	orgID int64,
 	refreshID string,
 ) (*models.Session, error) {
 	rows, err := client.Query(
 		ctx,
 		selectSessionByRefresh,
+		sql.NamedArg{Name: "orgID", Value: orgID},
 		sql.NamedArg{Name: "refreshID", Value: refreshID},
 	)
 	if err != nil {
@@ -141,7 +147,7 @@ func dbGetSessionByRefresh(
 
 	r := &models.Session{}
 	if err := rows.Scan(
-		&r.RefreshID, &r.UserID, &r.OrgID, &r.Administrator, &r.Expires,
+		&r.SessionID, &r.RefreshID, &r.UserID, &r.OrgID, &r.Administrator, &r.Expires,
 	); err != nil {
 		zerologr.Error(err, "Failed to scan session row")
 		return nil, err
@@ -209,12 +215,18 @@ func dbCreateSession(
 	return err
 }
 
-func dbDeleteUserSessions(ctx context.Context, client db.SQLClient, orgID, userID int64) error {
+func dbDeleteUserSession(
+	ctx context.Context,
+	client db.SQLClient,
+	orgID, userID int64,
+	sessionID string,
+) error {
 	_, err := client.Exec(
 		ctx,
-		deleteUserSessions,
+		deleteUserSession,
 		sql.NamedArg{Name: argOrgID, Value: orgID},
 		sql.NamedArg{Name: argUserID, Value: userID},
+		sql.NamedArg{Name: "sessionID", Value: sessionID},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to delete user sessions")

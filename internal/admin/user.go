@@ -193,12 +193,12 @@ func (i *impl) RefreshSuperuserSession(
 	// Normal session handling rules do not apply here, it's really only the refresh cookie that's interesting.
 	// By checking if the refresh cookie is present and linked to a superuser session, we can determine if the
 	// request is valid.
-	refresh, ok := ctx.Value(adminContextRefresh).(string)
+	oldRefreshID, ok := ctx.Value(adminContextRefresh).(string)
 	if !ok {
 		return adminapi.RefreshSuperuserSession401JSONResponse(apiErrUnauthorized), nil
 	}
 
-	session, err := dbGetSessionByRefresh(ctx, i.sqlClient, refresh)
+	session, err := dbGetSessionByRefresh(ctx, i.sqlClient, oldRefreshID)
 	if errors.Is(err, errRowNotFound) {
 		return adminapi.RefreshSuperuserSession401JSONResponse(apiErrUnauthorized), nil
 	}
@@ -213,6 +213,11 @@ func (i *impl) RefreshSuperuserSession(
 
 	if time.Since(time.UnixMilli(session.Expires)) > (sessionRefreshExpiry - sessionExpiry) {
 		return adminapi.RefreshSuperuserSession401JSONResponse(apiErrUnauthorized), nil
+	}
+
+	if err := dbDeleteSession(ctx, i.sqlClient, session.SessionID); err != nil {
+		zerologr.Error(err, "Failed to delete old session during refresh")
+		return adminapi.RefreshSuperuserSession500JSONResponse(apiErrInternal), nil
 	}
 
 	// Refresh token is valid, create a new session and refresh token.
@@ -323,12 +328,12 @@ func (i *impl) RefreshUserSession(
 ) (adminapi.RefreshUserSessionResponseObject, error) {
 	// Same as for superusers, we need to check if a refresh cookie is present and linked to a valid session.
 	// If so, we can issue a new session and refresh cookie.
-	refresh, ok := ctx.Value(adminContextRefresh).(string)
+	oldRefreshID, ok := ctx.Value(adminContextRefresh).(string)
 	if !ok {
 		return adminapi.RefreshUserSession401JSONResponse(apiErrUnauthorized), nil
 	}
 
-	session, err := dbGetSessionByRefresh(ctx, i.sqlClient, refresh)
+	session, err := dbGetSessionByRefresh(ctx, i.sqlClient, oldRefreshID)
 	if errors.Is(err, errRowNotFound) {
 		return adminapi.RefreshUserSession401JSONResponse(apiErrUnauthorized), nil
 	}
@@ -339,6 +344,11 @@ func (i *impl) RefreshUserSession(
 
 	if time.Since(time.UnixMilli(session.Expires)) > (sessionRefreshExpiry - sessionExpiry) {
 		return adminapi.RefreshUserSession401JSONResponse(apiErrUnauthorized), nil
+	}
+
+	if err := dbDeleteSession(ctx, i.sqlClient, session.SessionID); err != nil {
+		zerologr.Error(err, "Failed to delete old session during refresh")
+		return adminapi.RefreshUserSession500JSONResponse(apiErrInternal), nil
 	}
 
 	// Refresh token is valid, create a new session and refresh token.

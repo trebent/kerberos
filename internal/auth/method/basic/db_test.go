@@ -602,7 +602,7 @@ func TestDBSessions(t *testing.T) {
 			t.Fatalf("dbCreateSession error: %v", err)
 		}
 
-		if err := dbDeleteUserSessions(ctx, testClient, orgID, userID); err != nil {
+		if err := dbDeleteUserSession(ctx, testClient, orgID, userID, sessionID); err != nil {
 			t.Fatalf("dbDeleteUserSessions error: %v", err)
 		}
 

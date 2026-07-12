@@ -3,6 +3,7 @@ package models
 type (
 	// Session holds the fields scanned from a session query.
 	Session struct {
+		SessionID     string
 		RefreshID     string
 		UserID        int64
 		OrgID         int64

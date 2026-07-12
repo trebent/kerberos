@@ -20,6 +20,7 @@ type contextKey string
 
 var (
 	userContextKey    contextKey = "user"
+	sessionContextKey contextKey = "session"
 	refreshContextKey contextKey = "refresh"
 
 	errMalformedOrgID  = errors.New("malformed organisation ID")
@@ -194,6 +195,7 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 			}
 
 			ctx = withUser(ctx, session.UserID)
+			ctx = withSession(ctx, session.SessionID)
 			return f(ctx, w, r, request)
 		}
 	}
@@ -206,6 +208,15 @@ func withUser(ctx context.Context, userID int64) context.Context {
 func userFromContext(ctx context.Context) int64 {
 	//nolint:errcheck // welp
 	return ctx.Value(userContextKey).(int64)
+}
+
+func withSession(ctx context.Context, sessionID string) context.Context {
+	return context.WithValue(ctx, sessionContextKey, sessionID)
+}
+
+func sessionFromContext(ctx context.Context) string {
+	//nolint:errcheck // welp
+	return ctx.Value(sessionContextKey).(string)
 }
 
 func orgValidator(orgID int64, r *http.Request) error {

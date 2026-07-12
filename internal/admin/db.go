@@ -1083,7 +1083,7 @@ func dbDeleteSession(ctx context.Context, client db.SQLClient, sessionID string)
 		sql.NamedArg{Name: "sessionID", Value: sessionID},
 	)
 	if err != nil {
-		zerologr.Error(err, "Failed to delete admin session")
+		zerologr.Error(err, "Failed to delete admin sessions")
 	}
 	return err
 }

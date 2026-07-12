@@ -126,7 +126,9 @@ func (i *impl) Logout(
 	req authbasicapi.LogoutRequestObject,
 ) (authbasicapi.LogoutResponseObject, error) {
 	userID := userFromContext(ctx)
-	if err := dbDeleteUserSessions(ctx, i.db, req.OrgID, userID); err != nil {
+	sessionID := sessionFromContext(ctx)
+
+	if err := dbDeleteUserSession(ctx, i.db, req.OrgID, userID, sessionID); err != nil {
 		zerologr.Error(err, "Failed to delete user sessions")
 		return authbasicapi.Logout500JSONResponse(apiErrInternal), nil
 	}
@@ -147,15 +149,15 @@ func (i *impl) Logout(
 
 func (i *impl) Refresh(
 	ctx context.Context,
-	_ authbasicapi.RefreshRequestObject,
+	req authbasicapi.RefreshRequestObject,
 ) (authbasicapi.RefreshResponseObject, error) {
 	// Validate the incoming refresh token is linked to a session that's not too old.
-	refresh, ok := ctx.Value(refreshContextKey).(string)
+	oldRefreshID, ok := ctx.Value(refreshContextKey).(string)
 	if !ok {
 		return authbasicapi.Refresh401JSONResponse(apiErrUnauthorized), nil
 	}
 
-	session, err := dbGetSessionByRefresh(ctx, i.db, refresh)
+	session, err := dbGetSessionByRefresh(ctx, i.db, req.OrgID, oldRefreshID)
 	if errors.Is(err, errNoSession) {
 		return authbasicapi.Refresh401JSONResponse(apiErrUnauthorized), nil
 	}
@@ -166,6 +168,17 @@ func (i *impl) Refresh(
 
 	if time.Since(time.UnixMilli(session.Expires)) > (sessionRefreshExpiry - sessionExpiry) {
 		return authbasicapi.Refresh401JSONResponse(apiErrUnauthorized), nil
+	}
+
+	if err := dbDeleteUserSession(
+		ctx,
+		i.db,
+		req.OrgID,
+		session.UserID,
+		session.SessionID,
+	); err != nil {
+		zerologr.Error(err, "Failed to delete old session during refresh")
+		return authbasicapi.Refresh500JSONResponse(apiErrInternal), nil
 	}
 
 	sessionID := uuid.NewString()
