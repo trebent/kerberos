@@ -20,9 +20,11 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 
 FROM gcr.io/distroless/static-debian12:nonroot@sha256:b7bb25d9f7c31d2bdd1982feb4dafcaf137703c7075dbe2febb41c24212b946f AS runtime
 
-COPY --from=build /kerberos /kerberos
-COPY --from=build openapi/ /krb-oas/
-COPY --from=build poc/poc.json /poc.json
+USER nonroot:nonroot
+
+COPY --chown=nonroot:nonroot --from=build /kerberos /kerberos
+COPY --chown=nonroot:nonroot --from=build openapi/ /krb-oas/
+COPY --chown=nonroot:nonroot --from=build poc/poc.json /poc.json
 
 ARG VERSION="unset"
 

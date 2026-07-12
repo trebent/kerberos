@@ -125,6 +125,9 @@ docker/logs:
 docker/rm:
 	@docker rm kerberos || true
 
+poc/run:
+	docker run -d --name kerberos ghcr.io/trebent/kerberos:$(VERSION) --config /poc.json
+
 docker/run: docker/build docker/stop docker/rm
 	$(call cecho,Running Kerberos Docker container...,$(BOLD_YELLOW))
 	docker run -d \
