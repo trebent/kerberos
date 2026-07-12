@@ -146,7 +146,8 @@ func (i *impl) LoginSuperuser(
 				security.SessionCookieName, sessionID, int(sessionExpiry.Seconds()),
 			),
 			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				"%s=%s; SameSite=None; Path=/api/admin/superuser/refresh; HttpOnly; Secure; Max-Age=%d",
+				//nolint:golines // welp
 				security.RefreshCookieName, refreshID, int(sessionRefreshExpiry.Seconds()),
 			),
 			fmt.Sprintf(
@@ -178,7 +179,8 @@ func (i *impl) LogoutSuperuser(
 				security.SessionCookieName, "expired", 0,
 			),
 			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				"%s=%s; SameSite=None; Path=/api/admin/superuser/refresh; HttpOnly; Secure; Max-Age=%d",
+				//nolint:golines // welp
 				security.RefreshCookieName, "expired", 0,
 			),
 		},
@@ -239,7 +241,8 @@ func (i *impl) RefreshSuperuserSession(
 				security.SessionCookieName, sessionID, int(sessionExpiry.Seconds()),
 			),
 			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				"%s=%s; SameSite=None; Path=/api/admin/superuser/refresh; HttpOnly; Secure; Max-Age=%d",
+				//nolint:golines // welp
 				security.RefreshCookieName, refreshID, int(sessionRefreshExpiry.Seconds()),
 			),
 			fmt.Sprintf(
@@ -282,7 +285,7 @@ func (i *impl) Login(
 				security.SessionCookieName, sessionID, int(sessionExpiry.Seconds()),
 			),
 			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				"%s=%s; SameSite=None; Path=/api/admin/refresh; HttpOnly; Secure; Max-Age=%d",
 				security.RefreshCookieName, refreshID, int(sessionRefreshExpiry.Seconds()),
 			),
 			fmt.Sprintf(
@@ -315,7 +318,7 @@ func (i *impl) Logout(
 				security.SessionCookieName, "expired", 0,
 			),
 			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				"%s=%s; SameSite=None; Path=/api/admin/refresh; HttpOnly; Secure; Max-Age=%d",
 				security.RefreshCookieName, "expired", 0,
 			),
 		},
@@ -370,7 +373,7 @@ func (i *impl) RefreshUserSession(
 				security.SessionCookieName, sessionID, int(sessionExpiry.Seconds()),
 			),
 			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				"%s=%s; SameSite=None; Path=/api/admin/refresh; HttpOnly; Secure; Max-Age=%d",
 				security.RefreshCookieName, refreshID, int(sessionRefreshExpiry.Seconds()),
 			),
 			fmt.Sprintf(
