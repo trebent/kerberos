@@ -252,6 +252,9 @@ type ClientInterface interface {
 	// Logout request
 	Logout(ctx context.Context, orgID Orgid, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// Refresh request
+	Refresh(ctx context.Context, orgID Orgid, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListUsers request
 	ListUsers(ctx context.Context, orgID Orgid, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -479,6 +482,18 @@ func (c *Client) Login(ctx context.Context, orgID Orgid, body LoginJSONRequestBo
 
 func (c *Client) Logout(ctx context.Context, orgID Orgid, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewLogoutRequest(c.Server, orgID)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) Refresh(ctx context.Context, orgID Orgid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRefreshRequest(c.Server, orgID)
 	if err != nil {
 		return nil, err
 	}
@@ -1113,6 +1128,40 @@ func NewLogoutRequest(server string, orgID Orgid) (*http.Request, error) {
 	return req, nil
 }
 
+// NewRefreshRequest generates requests for Refresh
+func NewRefreshRequest(server string, orgID Orgid) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "orgID", orgID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/auth/basic/organisations/%s/refresh", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListUsersRequest generates requests for ListUsers
 func NewListUsersRequest(server string, orgID Orgid) (*http.Request, error) {
 	var err error
@@ -1568,6 +1617,9 @@ type ClientWithResponsesInterface interface {
 	// LogoutWithResponse request
 	LogoutWithResponse(ctx context.Context, orgID Orgid, reqEditors ...RequestEditorFn) (*LogoutResponse, error)
 
+	// RefreshWithResponse request
+	RefreshWithResponse(ctx context.Context, orgID Orgid, reqEditors ...RequestEditorFn) (*RefreshResponse, error)
+
 	// ListUsersWithResponse request
 	ListUsersWithResponse(ctx context.Context, orgID Orgid, reqEditors ...RequestEditorFn) (*ListUsersResponse, error)
 
@@ -1904,6 +1956,30 @@ func (r LogoutResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r LogoutResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type RefreshResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *APIErrorResponse
+	JSON401      *APIErrorResponse
+	JSON500      *APIErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r RefreshResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RefreshResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -2259,6 +2335,15 @@ func (c *ClientWithResponses) LogoutWithResponse(ctx context.Context, orgID Orgi
 		return nil, err
 	}
 	return ParseLogoutResponse(rsp)
+}
+
+// RefreshWithResponse request returning *RefreshResponse
+func (c *ClientWithResponses) RefreshWithResponse(ctx context.Context, orgID Orgid, reqEditors ...RequestEditorFn) (*RefreshResponse, error) {
+	rsp, err := c.Refresh(ctx, orgID, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRefreshResponse(rsp)
 }
 
 // ListUsersWithResponse request returning *ListUsersResponse
@@ -2937,6 +3022,46 @@ func ParseLogoutResponse(rsp *http.Response) (*LogoutResponse, error) {
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRefreshResponse parses an HTTP response from a RefreshWithResponse call
+func ParseRefreshResponse(rsp *http.Response) (*RefreshResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RefreshResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

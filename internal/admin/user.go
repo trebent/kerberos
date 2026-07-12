@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/trebent/kerberos/internal/admin/model"
@@ -21,9 +22,34 @@ type (
 	customLoginResponse struct {
 		cookies []string
 	}
+
 	// customLoginResponse is a custom implementation of the [adminapi.LoginSuperuserResponseObject] interface,
 	// indicating a successful login and setting > 1 header on the response.
 	customSuperLoginResponse struct {
+		cookies []string
+	}
+
+	// customLogoutResponse is a custom implementation of the [adminapi.LogoutResponseObject] interface,
+	// indicating a successful logout and setting > 1 header on the response.
+	customLogoutResponse struct {
+		cookies []string
+	}
+
+	// customSuperLogoutResponse is a custom implementation of the [adminapi.LogoutSuperuserResponseObject] interface,
+	// indicating a successful logout and setting > 1 header on the response.
+	customSuperLogoutResponse struct {
+		cookies []string
+	}
+
+	// customRefreshSessionResponse is a custom implementation of the [adminapi.RefreshSessionResponseObject] interface,
+	// indicating a successful session refresh and setting > 1 header on the response.
+	customRefreshSessionResponse struct {
+		cookies []string
+	}
+
+	// customRefreshSuperuserSessionResponse is a custom implementation of the [adminapi.RefreshSuperuserSessionResponseObject] interface,
+	// indicating a successful superuser session refresh and setting > 1 header on the response.
+	customRefreshSuperuserSessionResponse struct {
 		cookies []string
 	}
 )
@@ -42,6 +68,40 @@ func (r customLoginResponse) VisitLoginResponse(w http.ResponseWriter) error {
 }
 
 func (r customSuperLoginResponse) VisitLoginSuperuserResponse(w http.ResponseWriter) error {
+	for _, c := range r.cookies {
+		w.Header().Add("Set-Cookie", c)
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+func (r customLogoutResponse) VisitLogoutResponse(w http.ResponseWriter) error {
+	for _, c := range r.cookies {
+		w.Header().Add("Set-Cookie", c)
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+func (r customSuperLogoutResponse) VisitLogoutSuperuserResponse(w http.ResponseWriter) error {
+	for _, c := range r.cookies {
+		w.Header().Add("Set-Cookie", c)
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+func (r customRefreshSessionResponse) VisitRefreshUserSessionResponse(w http.ResponseWriter) error {
+	for _, c := range r.cookies {
+		w.Header().Add("Set-Cookie", c)
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+func (r customRefreshSuperuserSessionResponse) VisitRefreshSuperuserSessionResponse(
+	w http.ResponseWriter,
+) error {
 	for _, c := range r.cookies {
 		w.Header().Add("Set-Cookie", c)
 	}
@@ -73,7 +133,8 @@ func (i *impl) LoginSuperuser(
 	}
 
 	sessionID := uuid.NewString()
-	if err := dbCreateSession(ctx, i.sqlClient, superuser.ID, sessionID); err != nil {
+	refreshID := uuid.NewString()
+	if err := dbCreateSession(ctx, i.sqlClient, superuser.ID, refreshID, sessionID); err != nil {
 		zerologr.Error(err, "Failed to store super-session")
 		return adminapi.LoginSuperuser500JSONResponse(apiErrInternal), nil
 	}
@@ -82,11 +143,15 @@ func (i *impl) LoginSuperuser(
 		cookies: []string{
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
-				security.SessionCookieName, sessionID, 60*15,
+				security.SessionCookieName, sessionID, int(sessionExpiry.Seconds()),
+			),
+			fmt.Sprintf(
+				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				security.RefreshCookieName, refreshID, int(sessionRefreshExpiry.Seconds()),
 			),
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/; Secure; Max-Age=%d",
-				security.CSRFCookieName, sessionID, 60*15,
+				security.CSRFCookieName, sessionID, int(sessionRefreshExpiry.Seconds()),
 			),
 		},
 	}, nil
@@ -106,11 +171,75 @@ func (i *impl) LogoutSuperuser(
 		zerologr.Error(err, "Failed to delete super sessions during logout")
 		return adminapi.LogoutSuperuser500JSONResponse(apiErrInternal), nil
 	}
-	return adminapi.LogoutSuperuser204Response{
-		Headers: adminapi.LogoutSuperuser204ResponseHeaders{
-			SetCookie: fmt.Sprintf(
+	return customSuperLogoutResponse{
+		cookies: []string{
+			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
 				security.SessionCookieName, "expired", 0,
+			),
+			fmt.Sprintf(
+				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				security.RefreshCookieName, "expired", 0,
+			),
+		},
+	}, nil
+}
+
+//nolint:dupl // welp
+func (i *impl) RefreshSuperuserSession(
+	ctx context.Context,
+	_ adminapi.RefreshSuperuserSessionRequestObject,
+) (adminapi.RefreshSuperuserSessionResponseObject, error) {
+	// Normal session handling rules do not apply here, it's really only the refresh cookie that's interesting.
+	// By checking if the refresh cookie is present and linked to a superuser session, we can determine if the
+	// request is valid.
+	refresh, ok := ctx.Value(adminContextRefresh).(string)
+	if !ok {
+		return adminapi.RefreshSuperuserSession401JSONResponse(apiErrUnauthorized), nil
+	}
+
+	session, err := dbGetSessionByRefresh(ctx, i.sqlClient, refresh)
+	if errors.Is(err, errRowNotFound) {
+		return adminapi.RefreshSuperuserSession401JSONResponse(apiErrUnauthorized), nil
+	}
+	if err != nil {
+		zerologr.Error(err, "Failed to get session by refresh token")
+		return adminapi.RefreshSuperuserSession500JSONResponse(apiErrInternal), nil
+	}
+
+	if !session.IsSuper {
+		return adminapi.RefreshSuperuserSession403JSONResponse(apiErrForbidden), nil
+	}
+
+	if time.Since(time.UnixMilli(session.Expires)) > (sessionRefreshExpiry - sessionExpiry) {
+		return adminapi.RefreshSuperuserSession401JSONResponse(apiErrUnauthorized), nil
+	}
+
+	// Refresh token is valid, create a new session and refresh token.
+	sessionID := uuid.NewString()
+	refreshID := uuid.NewString()
+	if err := dbCreateSession(
+		ctx,
+		i.sqlClient,
+		session.UserID, refreshID, sessionID,
+	); err != nil {
+		zerologr.Error(err, "Failed to store admin session")
+		return adminapi.RefreshSuperuserSession500JSONResponse(apiErrInternal), nil
+	}
+
+	return customRefreshSuperuserSessionResponse{
+		cookies: []string{
+			fmt.Sprintf(
+				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				security.SessionCookieName, sessionID, int(sessionExpiry.Seconds()),
+			),
+			fmt.Sprintf(
+				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				security.RefreshCookieName, refreshID, int(sessionRefreshExpiry.Seconds()),
+			),
+			fmt.Sprintf(
+				"%s=%s; SameSite=None; Path=/; Secure; Max-Age=%d",
+				security.CSRFCookieName, sessionID, int(sessionRefreshExpiry.Seconds()),
 			),
 		},
 	}, nil
@@ -135,7 +264,8 @@ func (i *impl) Login(
 	}
 
 	sessionID := uuid.NewString()
-	if err := dbCreateSession(ctx, i.sqlClient, u.ID, sessionID); err != nil {
+	refreshID := uuid.NewString()
+	if err := dbCreateSession(ctx, i.sqlClient, u.ID, refreshID, sessionID); err != nil {
 		zerologr.Error(err, "Failed to store admin session")
 		return adminapi.Login500JSONResponse(apiErrInternal), nil
 	}
@@ -144,11 +274,15 @@ func (i *impl) Login(
 		cookies: []string{
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
-				security.SessionCookieName, sessionID, 60*15,
+				security.SessionCookieName, sessionID, int(sessionExpiry.Seconds()),
+			),
+			fmt.Sprintf(
+				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				security.RefreshCookieName, refreshID, int(sessionRefreshExpiry.Seconds()),
 			),
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/; Secure; Max-Age=%d",
-				security.CSRFCookieName, sessionID, 60*15,
+				security.CSRFCookieName, sessionID, int(sessionRefreshExpiry.Seconds()),
 			),
 		},
 	}, nil
@@ -169,11 +303,69 @@ func (i *impl) Logout(
 		return adminapi.Logout500JSONResponse(apiErrInternal), nil
 	}
 
-	return adminapi.Logout204Response{
-		Headers: adminapi.Logout204ResponseHeaders{
-			SetCookie: fmt.Sprintf(
+	return customLogoutResponse{
+		cookies: []string{
+			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
 				security.SessionCookieName, "expired", 0,
+			),
+			fmt.Sprintf(
+				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				security.RefreshCookieName, "expired", 0,
+			),
+		},
+	}, nil
+}
+
+func (i *impl) RefreshUserSession(
+	ctx context.Context,
+	_ adminapi.RefreshUserSessionRequestObject,
+) (adminapi.RefreshUserSessionResponseObject, error) {
+	// Same as for superusers, we need to check if a refresh cookie is present and linked to a valid session.
+	// If so, we can issue a new session and refresh cookie.
+	refresh, ok := ctx.Value(adminContextRefresh).(string)
+	if !ok {
+		return adminapi.RefreshUserSession401JSONResponse(apiErrUnauthorized), nil
+	}
+
+	session, err := dbGetSessionByRefresh(ctx, i.sqlClient, refresh)
+	if errors.Is(err, errRowNotFound) {
+		return adminapi.RefreshUserSession401JSONResponse(apiErrUnauthorized), nil
+	}
+	if err != nil {
+		zerologr.Error(err, "Failed to get session by refresh token")
+		return adminapi.RefreshUserSession500JSONResponse(apiErrInternal), nil
+	}
+
+	if time.Since(time.UnixMilli(session.Expires)) > (sessionRefreshExpiry - sessionExpiry) {
+		return adminapi.RefreshUserSession401JSONResponse(apiErrUnauthorized), nil
+	}
+
+	// Refresh token is valid, create a new session and refresh token.
+	sessionID := uuid.NewString()
+	refreshID := uuid.NewString()
+	if err := dbCreateSession(
+		ctx,
+		i.sqlClient,
+		session.UserID, refreshID, sessionID,
+	); err != nil {
+		zerologr.Error(err, "Failed to store admin session")
+		return adminapi.RefreshUserSession500JSONResponse(apiErrInternal), nil
+	}
+
+	return customRefreshSessionResponse{
+		cookies: []string{
+			fmt.Sprintf(
+				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				security.SessionCookieName, sessionID, int(sessionExpiry.Seconds()),
+			),
+			fmt.Sprintf(
+				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				security.RefreshCookieName, refreshID, int(sessionRefreshExpiry.Seconds()),
+			),
+			fmt.Sprintf(
+				"%s=%s; SameSite=None; Path=/; Secure; Max-Age=%d",
+				security.CSRFCookieName, sessionID, int(sessionRefreshExpiry.Seconds()),
 			),
 		},
 	}, nil

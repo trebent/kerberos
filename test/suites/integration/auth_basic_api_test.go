@@ -442,3 +442,56 @@ func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
 	verifyStatusCode(getUserSelfResp.StatusCode(), http.StatusOK, t)
 	matches(getUserSelfResp.JSON200.Id, regularUserID, t)
 }
+
+// TestAuthBasicRefreshNoRefreshCookie verifies that calling the refresh endpoint without a
+// refresh cookie returns 401. A missing session cookie alone does not cause a 401 — only the
+// missing refresh cookie matters here.
+func TestAuthBasicRefreshNoRefreshCookie(t *testing.T) {
+	t.Parallel()
+	resp, err := basicAuthClient.RefreshWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+	)
+	checkErr(err, t)
+	verifyStatusCode(resp.StatusCode(), http.StatusUnauthorized, t)
+	verifyAuthBasicAPIErrorResponse(resp.JSON401, t)
+}
+
+// TestAuthBasicRefresh verifies that the refresh endpoint issues a new session when called
+// with only the refresh cookie (no session cookie required).
+func TestAuthBasicRefresh(t *testing.T) {
+	t.Parallel()
+	superRequestEditor := superLogin(t)
+
+	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
+		t.Context(),
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.RequestEditorFn(superRequestEditor),
+	)
+	checkErr(err, t)
+	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
+
+	orgID := createOrgResp.JSON201.Id
+
+	loginResp, err := basicAuthClient.LoginWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.LoginJSONRequestBody{
+			Username: createOrgResp.JSON201.AdminUsername,
+			Password: createOrgResp.JSON201.AdminPassword,
+		},
+	)
+	checkErr(err, t)
+	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
+
+	// Use only the refresh cookie — deliberately omit the session cookie to prove it is not required.
+	refreshEditor := refreshCookieRequestEditor(loginResp.HTTPResponse, t)
+
+	refreshResp, err := basicAuthClient.RefreshWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.RequestEditorFn(refreshEditor),
+	)
+	checkErr(err, t)
+	verifyStatusCode(refreshResp.StatusCode(), http.StatusNoContent, t)
+}

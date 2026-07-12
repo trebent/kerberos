@@ -570,7 +570,7 @@ func TestDBSessions(t *testing.T) {
 
 	t.Run("create and get", func(t *testing.T) {
 		sessionID := fmt.Sprintf("test-session-%d", time.Now().UnixNano())
-		if err := dbCreateSession(ctx, testClient, userID, orgID, sessionID); err != nil {
+		if err := dbCreateSession(ctx, testClient, userID, orgID, "refresh", sessionID); err != nil {
 			t.Fatalf("dbCreateSession error: %v", err)
 		}
 
@@ -598,7 +598,7 @@ func TestDBSessions(t *testing.T) {
 
 	t.Run("delete user sessions", func(t *testing.T) {
 		sessionID := fmt.Sprintf("test-session-del-%d", time.Now().UnixNano())
-		if err := dbCreateSession(ctx, testClient, userID, orgID, sessionID); err != nil {
+		if err := dbCreateSession(ctx, testClient, userID, orgID, "refresh", sessionID); err != nil {
 			t.Fatalf("dbCreateSession error: %v", err)
 		}
 
@@ -636,7 +636,7 @@ func TestDBCascadeDeleteOrg(t *testing.T) {
 	}
 
 	sessionID := fmt.Sprintf("cascade-org-session-%d", time.Now().UnixNano())
-	if err := dbCreateSession(ctx, testClient, userID, orgID, sessionID); err != nil {
+	if err := dbCreateSession(ctx, testClient, userID, orgID, "refresh", sessionID); err != nil {
 		t.Fatalf("dbCreateSession error: %v", err)
 	}
 
@@ -697,7 +697,7 @@ func TestDBCascadeDeleteUser(t *testing.T) {
 	}
 
 	sessionID := fmt.Sprintf("cascade-user-session-%d", time.Now().UnixNano())
-	if err := dbCreateSession(ctx, testClient, userID, orgID, sessionID); err != nil {
+	if err := dbCreateSession(ctx, testClient, userID, orgID, "refresh", sessionID); err != nil {
 		t.Fatalf("dbCreateSession error: %v", err)
 	}
 

@@ -12,13 +12,15 @@ import (
 	"github.com/trebent/kerberos/internal/admin"
 	authbasicapi "github.com/trebent/kerberos/internal/oapi/auth/basic"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
+	"github.com/trebent/kerberos/internal/security"
 	"github.com/trebent/zerologr"
 )
 
 type contextKey string
 
 var (
-	userContextKey contextKey = "user"
+	userContextKey    contextKey = "user"
+	refreshContextKey contextKey = "refresh"
 
 	errMalformedOrgID  = errors.New("malformed organisation ID")
 	errMalformedUserID = errors.New("malformed user ID")
@@ -72,6 +74,21 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 			if len(r.Cookies()) == 0 {
 				zerologr.V(20).Info("No cookies found, denying access")
 				return nil, apierror.ErrUnauthenticated
+			}
+
+			if len(r.CookiesNamed(security.RefreshCookieName)) == 0 {
+				zerologr.V(20).Info("No refresh cookie found")
+			} else {
+				ctx = context.WithValue(
+					ctx,
+					refreshContextKey,
+					r.CookiesNamed(security.RefreshCookieName)[0].Value,
+				)
+			}
+
+			if operationID == "Refresh" {
+				zerologr.V(20).Info("Permitting refresh path access")
+				return f(ctx, w, r, request)
 			}
 
 			if len(r.CookiesNamed("session")) == 0 {

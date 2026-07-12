@@ -49,6 +49,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS admin_user_groups ON admin_group_bindings(user
 CREATE TABLE IF NOT EXISTS admin_sessions (
   user_id INTEGER,
   session_id VARCHAR(100),
+  refresh_id VARCHAR(100),
   expires INTEGER NOT NULL,
   FOREIGN KEY(user_id) REFERENCES admin_users(id) ON DELETE CASCADE ON UPDATE CASCADE
 );

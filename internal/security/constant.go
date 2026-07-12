@@ -6,5 +6,6 @@ const (
 	CSRFTokenHeader = "X-Krb-Csrf-Token"
 
 	SessionCookieName = "session"
+	RefreshCookieName = "refresh"
 	CSRFCookieName    = "csrf"
 )

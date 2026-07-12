@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/trebent/kerberos/internal/db"
@@ -14,17 +15,59 @@ import (
 	"github.com/trebent/zerologr"
 )
 
-type impl struct {
-	db db.SQLClient
-}
+type (
+	impl struct {
+		db db.SQLClient
+	}
+
+	// customLoginResponse is a custom implementation of [authbasicapi.LoginResponseObject] that allows us to set cookies in the response.
+	customLoginResponse struct {
+		cookies []string
+	}
+
+	// customLogoutResponse is a custom implementation of [authbasicapi.LogoutResponseObject] that allows us to set cookies in the response.
+	customLogoutResponse struct {
+		cookies []string
+	}
+
+	// customRefreshSessionResponse is a custom implementation of [authbasicapi.RefreshResponseObject] that allows us to set cookies in the response.
+	customRefreshSessionResponse struct {
+		cookies []string
+	}
+)
 
 var (
 	_ authbasicapi.StrictServerInterface = (*impl)(nil)
+	_ authbasicapi.LoginResponseObject   = customLoginResponse{}
 
 	apiErrInternal     = makeGenAPIError(http.StatusText(http.StatusInternalServerError))
 	apiErrConflict     = makeGenAPIError(http.StatusText(http.StatusConflict))
 	apiErrUnauthorized = makeGenAPIError(http.StatusText(http.StatusUnauthorized))
 )
+
+func (r customLoginResponse) VisitLoginResponse(w http.ResponseWriter) error {
+	for _, c := range r.cookies {
+		w.Header().Add("Set-Cookie", c)
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+func (r customLogoutResponse) VisitLogoutResponse(w http.ResponseWriter) error {
+	for _, c := range r.cookies {
+		w.Header().Add("Set-Cookie", c)
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+func (r customRefreshSessionResponse) VisitRefreshResponse(w http.ResponseWriter) error {
+	for _, c := range r.cookies {
+		w.Header().Add("Set-Cookie", c)
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
 
 func makeGenAPIError(msg string) authbasicapi.APIErrorResponse {
 	return authbasicapi.APIErrorResponse{Errors: []string{msg}}
@@ -55,16 +98,23 @@ func (i *impl) Login(
 	zerologr.V(10).Info("User has logged in successfully", "username", req.Body.Username)
 
 	sessionID := uuid.NewString()
-	if err := dbCreateSession(ctx, i.db, user.ID, user.OrganisationID, sessionID); err != nil {
+	refreshID := uuid.NewString()
+	if err := dbCreateSession(
+		ctx, i.db, user.ID, user.OrganisationID, refreshID, sessionID,
+	); err != nil {
 		zerologr.Error(err, "Failed to create session for user")
 		return authbasicapi.Login500JSONResponse(apiErrInternal), nil
 	}
 
-	return authbasicapi.Login204Response{
-		Headers: authbasicapi.Login204ResponseHeaders{
-			SetCookie: fmt.Sprintf(
+	return customLoginResponse{
+		cookies: []string{
+			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
-				security.SessionCookieName, sessionID, 60*15,
+				security.SessionCookieName, sessionID, int(sessionExpiry.Seconds()),
+			),
+			fmt.Sprintf(
+				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				security.RefreshCookieName, refreshID, int(sessionRefreshExpiry.Seconds()),
 			),
 		},
 	}, nil
@@ -81,11 +131,61 @@ func (i *impl) Logout(
 		return authbasicapi.Logout500JSONResponse(apiErrInternal), nil
 	}
 
-	return authbasicapi.Logout204Response{
-		Headers: authbasicapi.Logout204ResponseHeaders{
-			SetCookie: fmt.Sprintf(
+	return customLogoutResponse{
+		cookies: []string{
+			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
 				security.SessionCookieName, "expired", 0,
+			),
+			fmt.Sprintf(
+				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				security.RefreshCookieName, "expired", 0,
+			),
+		},
+	}, nil
+}
+
+func (i *impl) Refresh(
+	ctx context.Context,
+	_ authbasicapi.RefreshRequestObject,
+) (authbasicapi.RefreshResponseObject, error) {
+	// Validate the incoming refresh token is linked to a session that's not too old.
+	refresh, ok := ctx.Value(refreshContextKey).(string)
+	if !ok {
+		return authbasicapi.Refresh401JSONResponse(apiErrUnauthorized), nil
+	}
+
+	session, err := dbGetSessionByRefresh(ctx, i.db, refresh)
+	if errors.Is(err, errNoSession) {
+		return authbasicapi.Refresh401JSONResponse(apiErrUnauthorized), nil
+	}
+	if err != nil {
+		zerologr.Error(err, "Failed to get session by refresh token")
+		return authbasicapi.Refresh500JSONResponse(apiErrInternal), nil
+	}
+
+	if time.Since(time.UnixMilli(session.Expires)) > (sessionRefreshExpiry - sessionExpiry) {
+		return authbasicapi.Refresh401JSONResponse(apiErrUnauthorized), nil
+	}
+
+	sessionID := uuid.NewString()
+	refreshID := uuid.NewString()
+	if err := dbCreateSession(
+		ctx, i.db, session.UserID, session.OrgID, refreshID, sessionID,
+	); err != nil {
+		zerologr.Error(err, "Failed to store new session")
+		return authbasicapi.Refresh500JSONResponse(apiErrInternal), nil
+	}
+
+	return customRefreshSessionResponse{
+		cookies: []string{
+			fmt.Sprintf(
+				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				security.SessionCookieName, sessionID, int(sessionExpiry.Seconds()),
+			),
+			fmt.Sprintf(
+				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
+				security.RefreshCookieName, refreshID, int(sessionRefreshExpiry.Seconds()),
 			),
 		},
 	}, nil

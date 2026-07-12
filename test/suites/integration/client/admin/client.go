@@ -668,6 +668,9 @@ type ClientInterface interface {
 	// GetPermissions request
 	GetPermissions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// RefreshUserSession request
+	RefreshUserSession(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// LoginSuperuserWithBody request with any body
 	LoginSuperuserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -680,6 +683,9 @@ type ClientInterface interface {
 	ChangeSuperuserPasswordWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	ChangeSuperuserPassword(ctx context.Context, body ChangeSuperuserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RefreshSuperuserSession request
+	RefreshSuperuserSession(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetUsers request
 	GetUsers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -999,6 +1005,18 @@ func (c *Client) GetPermissions(ctx context.Context, reqEditors ...RequestEditor
 	return c.Client.Do(req)
 }
 
+func (c *Client) RefreshUserSession(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRefreshUserSessionRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) LoginSuperuserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewLoginSuperuserRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -1049,6 +1067,18 @@ func (c *Client) ChangeSuperuserPasswordWithBody(ctx context.Context, contentTyp
 
 func (c *Client) ChangeSuperuserPassword(ctx context.Context, body ChangeSuperuserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewChangeSuperuserPasswordRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RefreshSuperuserSession(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRefreshSuperuserSessionRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -1920,6 +1950,33 @@ func NewGetPermissionsRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewRefreshUserSessionRequest generates requests for RefreshUserSession
+func NewRefreshUserSessionRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/admin/refresh")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewLoginSuperuserRequest calls the generic LoginSuperuser builder with application/json body
 func NewLoginSuperuserRequest(server string, body LoginSuperuserJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -2023,6 +2080,33 @@ func NewChangeSuperuserPasswordRequestWithBody(server string, contentType string
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRefreshSuperuserSessionRequest generates requests for RefreshSuperuserSession
+func NewRefreshSuperuserSessionRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/admin/superuser/refresh")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -2413,6 +2497,9 @@ type ClientWithResponsesInterface interface {
 	// GetPermissionsWithResponse request
 	GetPermissionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetPermissionsResponse, error)
 
+	// RefreshUserSessionWithResponse request
+	RefreshUserSessionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RefreshUserSessionResponse, error)
+
 	// LoginSuperuserWithBodyWithResponse request with any body
 	LoginSuperuserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginSuperuserResponse, error)
 
@@ -2425,6 +2512,9 @@ type ClientWithResponsesInterface interface {
 	ChangeSuperuserPasswordWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ChangeSuperuserPasswordResponse, error)
 
 	ChangeSuperuserPasswordWithResponse(ctx context.Context, body ChangeSuperuserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ChangeSuperuserPasswordResponse, error)
+
+	// RefreshSuperuserSessionWithResponse request
+	RefreshSuperuserSessionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RefreshSuperuserSessionResponse, error)
 
 	// GetUsersWithResponse request
 	GetUsersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetUsersResponse, error)
@@ -2854,7 +2944,6 @@ func (r LoginResponse) StatusCode() int {
 type LogoutResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON400      *APIErrorResponse
 	JSON401      *APIErrorResponse
 	JSON500      *APIErrorResponse
 }
@@ -2949,12 +3038,34 @@ func (r GetPermissionsResponse) StatusCode() int {
 	return 0
 }
 
+type RefreshUserSessionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *APIErrorResponse
+	JSON500      *APIErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r RefreshUserSessionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RefreshUserSessionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type LoginSuperuserResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON400      *APIErrorResponse
 	JSON401      *APIErrorResponse
-	JSON429      *APIErrorResponse
 	JSON500      *APIErrorResponse
 }
 
@@ -2977,6 +3088,7 @@ func (r LoginSuperuserResponse) StatusCode() int {
 type LogoutSuperuserResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON401      *APIErrorResponse
 	JSON403      *APIErrorResponse
 	JSON500      *APIErrorResponse
 }
@@ -3016,6 +3128,30 @@ func (r ChangeSuperuserPasswordResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r ChangeSuperuserPasswordResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type RefreshSuperuserSessionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *APIErrorResponse
+	JSON403      *APIErrorResponse
+	JSON500      *APIErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r RefreshSuperuserSessionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RefreshSuperuserSessionResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -3417,6 +3553,15 @@ func (c *ClientWithResponses) GetPermissionsWithResponse(ctx context.Context, re
 	return ParseGetPermissionsResponse(rsp)
 }
 
+// RefreshUserSessionWithResponse request returning *RefreshUserSessionResponse
+func (c *ClientWithResponses) RefreshUserSessionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RefreshUserSessionResponse, error) {
+	rsp, err := c.RefreshUserSession(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRefreshUserSessionResponse(rsp)
+}
+
 // LoginSuperuserWithBodyWithResponse request with arbitrary body returning *LoginSuperuserResponse
 func (c *ClientWithResponses) LoginSuperuserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginSuperuserResponse, error) {
 	rsp, err := c.LoginSuperuserWithBody(ctx, contentType, body, reqEditors...)
@@ -3458,6 +3603,15 @@ func (c *ClientWithResponses) ChangeSuperuserPasswordWithResponse(ctx context.Co
 		return nil, err
 	}
 	return ParseChangeSuperuserPasswordResponse(rsp)
+}
+
+// RefreshSuperuserSessionWithResponse request returning *RefreshSuperuserSessionResponse
+func (c *ClientWithResponses) RefreshSuperuserSessionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RefreshSuperuserSessionResponse, error) {
+	rsp, err := c.RefreshSuperuserSession(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRefreshSuperuserSessionResponse(rsp)
 }
 
 // GetUsersWithResponse request returning *GetUsersResponse
@@ -4414,13 +4568,6 @@ func ParseLogoutResponse(rsp *http.Response) (*LogoutResponse, error) {
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest APIErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -4574,6 +4721,39 @@ func ParseGetPermissionsResponse(rsp *http.Response) (*GetPermissionsResponse, e
 	return response, nil
 }
 
+// ParseRefreshUserSessionResponse parses an HTTP response from a RefreshUserSessionWithResponse call
+func ParseRefreshUserSessionResponse(rsp *http.Response) (*RefreshUserSessionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RefreshUserSessionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseLoginSuperuserResponse parses an HTTP response from a LoginSuperuserWithResponse call
 func ParseLoginSuperuserResponse(rsp *http.Response) (*LoginSuperuserResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -4602,13 +4782,6 @@ func ParseLoginSuperuserResponse(rsp *http.Response) (*LoginSuperuserResponse, e
 		}
 		response.JSON401 = &dest
 
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest APIErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON429 = &dest
-
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -4635,6 +4808,13 @@ func ParseLogoutSuperuserResponse(rsp *http.Response) (*LogoutSuperuserResponse,
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
 		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -4675,6 +4855,46 @@ func ParseChangeSuperuserPasswordResponse(rsp *http.Response) (*ChangeSuperuserP
 		}
 		response.JSON400 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRefreshSuperuserSessionResponse parses an HTTP response from a RefreshSuperuserSessionWithResponse call
+func ParseRefreshSuperuserSessionResponse(rsp *http.Response) (*RefreshSuperuserSessionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RefreshSuperuserSessionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest APIErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

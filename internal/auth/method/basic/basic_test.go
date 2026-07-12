@@ -33,7 +33,7 @@ func TestAuthorizer_Authenticated(t *testing.T) {
 
 	// Create a known session in the database.
 	orgId, adminId := mustCreateOrg(t, uniqueName(t, "authN-test-org"))
-	if err := dbCreateSession(req.Context(), testClient, adminId, orgId, "session"); err != nil {
+	if err := dbCreateSession(req.Context(), testClient, adminId, orgId, "refresh", "session"); err != nil {
 		t.Fatal("Expected no error when creating session")
 	}
 
@@ -85,7 +85,7 @@ func TestAuthorizer_AuthorizedGroup(t *testing.T) {
 		t.Fatalf("dbUpdateUserGroupBindings error: %v", err)
 	}
 
-	if err := dbCreateSession(t.Context(), testClient, userID, orgID, "session"); err != nil {
+	if err := dbCreateSession(t.Context(), testClient, userID, orgID, "refresh", "session"); err != nil {
 		t.Fatal("Expected no error when creating session")
 	}
 

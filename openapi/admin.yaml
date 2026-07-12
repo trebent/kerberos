@@ -1,10 +1,10 @@
 # yaml-language-server: $schema=https://spec.openapis.org/oas/3.0/schema/2024-10-18
 openapi: "3.0.4"
 info:
-  version: 0.4.0
+  version: 0.5.0
   title: Kerberos administration API.
   description: |
-    The Kerberos administration API allows administrators manage a Kerberos deployment.
+    The Kerberos administration API allows administrators to manage a Kerberos deployment.
 components:
   requestBodies:
     CreateUserRequest:
@@ -438,12 +438,6 @@ components:
           minItems: 1
       required:
         - errors
-  headers:
-    sessionid:
-      required: true
-      description: A session ID.
-      schema:
-        type: string
   securitySchemes:
     cookieAuth:
       type: apiKey
@@ -510,12 +504,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Failed to log the superuser in.
-        "429":
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/APIErrorResponse"
-          description: Rate limited.
         "500":
           content:
             application/json:
@@ -536,6 +524,44 @@ paths:
                 type: string
                 example: session=abcde12345; Path=/; HttpOnly
           description: Logged the superuser out.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+
+  /api/admin/superuser/refresh:
+    post:
+      tags:
+        - users
+      operationId: RefreshSuperuserSession
+      responses:
+        "204":
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: session=abcde12345; Path=/; HttpOnly
+          description: Refreshed the superuser's session.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
         "403":
           content:
             application/json:
@@ -974,12 +1000,32 @@ paths:
                 type: string
                 example: session=abcde12345; Path=/; HttpOnly
           description: Logged the user out successfully.
-        "400":
+        "401":
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/APIErrorResponse"
-          description: Bad request.
+          description: Unauthorized.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+
+  /api/admin/refresh:
+    post:
+      tags:
+        - users
+      operationId: RefreshUserSession
+      responses:
+        "204":
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: session=abcde12345; Path=/; HttpOnly
+          description: Refreshed the user's session.
         "401":
           content:
             application/json:

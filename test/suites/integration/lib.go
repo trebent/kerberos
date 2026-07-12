@@ -287,6 +287,24 @@ func extractSessionCookie(resp *http.Response) (*http.Cookie, error) {
 	return sessionCookie, nil
 }
 
+func extractRefreshCookie(resp *http.Response) (*http.Cookie, error) {
+	for _, cookie := range resp.Cookies() {
+		if cookie.Name == "refresh" {
+			return cookie, nil
+		}
+	}
+	return nil, fmt.Errorf("refresh cookie not found in response")
+}
+
+func refreshCookieRequestEditor(response *http.Response, t *testing.T) RequestEditorFn {
+	t.Helper()
+	refreshCookie, err := extractRefreshCookie(response)
+	if err != nil {
+		t.Fatalf("failed to extract refresh cookie: %v", err)
+	}
+	return makeRequestEditorFromCookie(refreshCookie)
+}
+
 func makeRequestEditorFromCookie(cookie *http.Cookie) RequestEditorFn {
 	return func(ctx context.Context, req *http.Request) error {
 		req.AddCookie(cookie)

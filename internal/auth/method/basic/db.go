@@ -52,9 +52,10 @@ const (
 	insertGroupBinding  = "INSERT INTO group_bindings (user_id, group_id) VALUES (@userID, @groupID);"
 
 	// Sessions.
-	insertSession      = "INSERT INTO sessions (user_id, organisation_id, session_id, expires) VALUES(@userID, @orgID, @session, @expires);"
-	selectSession      = "SELECT s.user_id, s.organisation_id, u.administrator, s.expires FROM sessions s INNER JOIN users u ON s.user_id = u.id WHERE session_id = @sessionID;"
-	deleteUserSessions = "DELETE FROM sessions WHERE organisation_id = @orgID AND user_id = @userID;"
+	insertSession          = "INSERT INTO sessions (user_id, organisation_id, refresh_id, session_id, expires) VALUES(@userID, @orgID, @refresh, @session, @expires);"
+	selectSession          = "SELECT s.refresh_id, s.user_id, s.organisation_id, u.administrator, s.expires FROM sessions s INNER JOIN users u ON s.user_id = u.id WHERE session_id = @sessionID;"
+	selectSessionByRefresh = "SELECT s.refresh_id, s.user_id, s.organisation_id, u.administrator, s.expires FROM sessions s INNER JOIN users u ON s.user_id = u.id WHERE refresh_id = @refreshID;"
+	deleteUserSessions     = "DELETE FROM sessions WHERE organisation_id = @orgID AND user_id = @userID;"
 
 	// Named arg keys.
 	argSession        = "session"
@@ -66,7 +67,8 @@ const (
 	argIsAdmin        = "isAdmin"
 	argGroupID        = "groupID"
 
-	sessionExpiry = 15 * time.Minute
+	sessionExpiry        = 15 * time.Minute
+	sessionRefreshExpiry = 15 * time.Minute
 )
 
 var (
@@ -101,7 +103,46 @@ func dbGetSessionRow(
 	}
 
 	r := &models.Session{}
-	if err := rows.Scan(&r.UserID, &r.OrgID, &r.Administrator, &r.Expires); err != nil {
+	if err := rows.Scan(
+		&r.RefreshID, &r.UserID, &r.OrgID, &r.Administrator, &r.Expires,
+	); err != nil {
+		zerologr.Error(err, "Failed to scan session row")
+		return nil, err
+	}
+
+	return r, nil
+}
+
+// dbGetSessionByRefresh queries a session by its refresh ID and returns the scanned result.
+// Returns (nil, errNoSession) when no matching session row exists.
+func dbGetSessionByRefresh(
+	ctx context.Context,
+	client db.SQLClient,
+	refreshID string,
+) (*models.Session, error) {
+	rows, err := client.Query(
+		ctx,
+		selectSessionByRefresh,
+		sql.NamedArg{Name: "refreshID", Value: refreshID},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to query session")
+		return nil, err
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		if err := rows.Err(); err != nil {
+			zerologr.Error(err, "Failed to iterate session rows")
+			return nil, err
+		}
+		return nil, errNoSession
+	}
+
+	r := &models.Session{}
+	if err := rows.Scan(
+		&r.RefreshID, &r.UserID, &r.OrgID, &r.Administrator, &r.Expires,
+	); err != nil {
 		zerologr.Error(err, "Failed to scan session row")
 		return nil, err
 	}
@@ -150,6 +191,7 @@ func dbCreateSession(
 	ctx context.Context,
 	client db.SQLClient,
 	userID, orgID int64,
+	refreshID string,
 	sessionID string,
 ) error {
 	_, err := client.Exec(
@@ -157,6 +199,7 @@ func dbCreateSession(
 		insertSession,
 		sql.NamedArg{Name: argUserID, Value: userID},
 		sql.NamedArg{Name: argOrgID, Value: orgID},
+		sql.NamedArg{Name: "refresh", Value: refreshID},
 		sql.NamedArg{Name: argSession, Value: sessionID},
 		sql.NamedArg{Name: "expires", Value: time.Now().Add(sessionExpiry).UnixMilli()},
 	)

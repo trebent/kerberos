@@ -19,12 +19,13 @@ import (
 
 const (
 	// Superuser / sessions (existing).
-	selectSuperuser         = "SELECT id, name, salt, hashed_password FROM admin_users WHERE superuser = true;"
-	selectAdminSession      = "SELECT s.user_id, s.session_id, u.superuser, s.expires FROM admin_sessions s JOIN admin_users u ON s.user_id = u.id WHERE s.session_id = @session_id;"
-	insertSuperuser         = "INSERT INTO admin_users (name, salt, hashed_password, superuser) VALUES(@name, @salt, @hashed_password, true);"
-	insertSession           = "INSERT INTO admin_sessions (session_id, user_id, expires) VALUES (@session_id, @user_id, @expires);"
-	deleteSuperSessions     = "DELETE FROM admin_sessions WHERE user_id = (SELECT id FROM admin_users WHERE superuser = true);"
-	updateSuperuserPassword = "UPDATE admin_users SET salt = @salt, hashed_password = @hashedPassword WHERE superuser = true;"
+	selectSuperuser             = "SELECT id, name, salt, hashed_password FROM admin_users WHERE superuser = true;"
+	selectAdminSession          = "SELECT s.user_id, s.refresh_id, s.session_id, u.superuser, s.expires FROM admin_sessions s JOIN admin_users u ON s.user_id = u.id WHERE s.session_id = @session_id;"
+	selectAdminSessionByRefresh = "SELECT s.user_id, s.refresh_id, s.session_id, u.superuser, s.expires FROM admin_sessions s JOIN admin_users u ON s.user_id = u.id WHERE s.refresh_id = @refresh_id;"
+	insertSuperuser             = "INSERT INTO admin_users (name, salt, hashed_password, superuser) VALUES(@name, @salt, @hashed_password, true);"
+	insertSession               = "INSERT INTO admin_sessions (refresh_id, session_id, user_id, expires) VALUES (@refresh_id, @session_id, @user_id, @expires);"
+	deleteSuperSessions         = "DELETE FROM admin_sessions WHERE user_id = (SELECT id FROM admin_users WHERE superuser = true);"
+	updateSuperuserPassword     = "UPDATE admin_users SET salt = @salt, hashed_password = @hashedPassword WHERE superuser = true;"
 
 	// Users.
 	selectAdminUsers         = "SELECT id, name FROM admin_users WHERE superuser = false;"
@@ -89,7 +90,8 @@ const (
 	insertDebugSessionFlowTransition  = "INSERT INTO admin_debug_session_call_flow_transitions (call_id, component, direction, started_at, stopped_at, result, failure_cause) VALUES(@call_id, @component, @direction, @started_at, @stopped_at, @result, @failure_cause);"
 	selectDebugSessionFlowTransitions = "SELECT component, direction, started_at, stopped_at, result, failure_cause FROM admin_debug_session_call_flow_transitions WHERE call_id = @call_id ORDER BY started_at ASC;"
 
-	sessionExpiry = 15 * time.Minute
+	sessionExpiry        = 15 * time.Minute
+	sessionRefreshExpiry = 60 * time.Minute
 )
 
 var errRowNotFound = errors.New("row not found")
@@ -564,6 +566,46 @@ func dbGetSession(
 		var session model.Session
 		if err := rows.Scan(
 			&session.UserID,
+			&session.RefreshID,
+			&session.SessionID,
+			&session.IsSuper,
+			&session.Expires,
+		); err != nil {
+			zerologr.Error(err, "Failed to scan session row")
+			return nil, err
+		}
+		return &session, nil
+	} else if err := rows.Err(); err != nil {
+		zerologr.Error(err, "Error iterating session rows")
+		return nil, err
+	}
+
+	return nil, errRowNotFound
+}
+
+// dbGetSessionByRefresh returns when the session associated with the given refresh ID expires.
+// Returns (0, errNoSession) when no matching session exists.
+func dbGetSessionByRefresh(
+	ctx context.Context,
+	client db.SQLClient,
+	refreshID string,
+) (*model.Session, error) {
+	rows, err := client.Query(
+		ctx,
+		selectAdminSessionByRefresh,
+		sql.NamedArg{Name: "refresh_id", Value: refreshID},
+	)
+	if err != nil {
+		zerologr.Error(err, "Failed to query for session")
+		return nil, err
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		var session model.Session
+		if err := rows.Scan(
+			&session.UserID,
+			&session.RefreshID,
 			&session.SessionID,
 			&session.IsSuper,
 			&session.Expires,
@@ -1017,12 +1059,14 @@ func dbCreateSession(
 	ctx context.Context,
 	client db.SQLClient,
 	userID int64,
+	refreshID string,
 	sessionID string,
 ) error {
 	_, err := client.Exec(
 		ctx,
 		insertSession,
 		sql.NamedArg{Name: "user_id", Value: userID},
+		sql.NamedArg{Name: "refresh_id", Value: refreshID},
 		sql.NamedArg{Name: "session_id", Value: sessionID},
 		sql.NamedArg{Name: "expires", Value: time.Now().Add(sessionExpiry).UnixMilli()},
 	)

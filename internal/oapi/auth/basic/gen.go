@@ -171,6 +171,9 @@ type ServerInterface interface {
 	// (POST /api/auth/basic/organisations/{orgID}/logout)
 	Logout(w http.ResponseWriter, r *http.Request, orgID Orgid)
 
+	// (POST /api/auth/basic/organisations/{orgID}/refresh)
+	Refresh(w http.ResponseWriter, r *http.Request, orgID Orgid)
+
 	// (GET /api/auth/basic/organisations/{orgID}/users)
 	ListUsers(w http.ResponseWriter, r *http.Request, orgID Orgid)
 
@@ -567,6 +570,37 @@ func (siw *ServerInterfaceWrapper) Logout(w http.ResponseWriter, r *http.Request
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.Logout(w, r, orgID)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// Refresh operation middleware
+func (siw *ServerInterfaceWrapper) Refresh(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "orgID" -------------
+	var orgID Orgid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "orgID", r.PathValue("orgID"), &orgID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "orgID", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.Refresh(w, r, orgID)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1010,6 +1044,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("PUT "+options.BaseURL+"/api/auth/basic/organisations/{orgID}/groups/{groupID}", wrapper.UpdateGroup)
 	m.HandleFunc("POST "+options.BaseURL+"/api/auth/basic/organisations/{orgID}/login", wrapper.Login)
 	m.HandleFunc("POST "+options.BaseURL+"/api/auth/basic/organisations/{orgID}/logout", wrapper.Logout)
+	m.HandleFunc("POST "+options.BaseURL+"/api/auth/basic/organisations/{orgID}/refresh", wrapper.Refresh)
 	m.HandleFunc("GET "+options.BaseURL+"/api/auth/basic/organisations/{orgID}/users", wrapper.ListUsers)
 	m.HandleFunc("POST "+options.BaseURL+"/api/auth/basic/organisations/{orgID}/users", wrapper.CreateUser)
 	m.HandleFunc("DELETE "+options.BaseURL+"/api/auth/basic/organisations/{orgID}/users/{userID}", wrapper.DeleteUser)
@@ -1665,6 +1700,55 @@ func (response Logout500JSONResponse) VisitLogoutResponse(w http.ResponseWriter)
 	return json.NewEncoder(w).Encode(response)
 }
 
+type RefreshRequestObject struct {
+	OrgID Orgid `json:"orgID"`
+}
+
+type RefreshResponseObject interface {
+	VisitRefreshResponse(w http.ResponseWriter) error
+}
+
+type Refresh204ResponseHeaders struct {
+	SetCookie string
+}
+
+type Refresh204Response struct {
+	Headers Refresh204ResponseHeaders
+}
+
+func (response Refresh204Response) VisitRefreshResponse(w http.ResponseWriter) error {
+	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
+	w.WriteHeader(204)
+	return nil
+}
+
+type Refresh400JSONResponse APIErrorResponse
+
+func (response Refresh400JSONResponse) VisitRefreshResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type Refresh401JSONResponse APIErrorResponse
+
+func (response Refresh401JSONResponse) VisitRefreshResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type Refresh500JSONResponse APIErrorResponse
+
+func (response Refresh500JSONResponse) VisitRefreshResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type ListUsersRequestObject struct {
 	OrgID Orgid `json:"orgID"`
 }
@@ -2125,6 +2209,9 @@ type StrictServerInterface interface {
 	// (POST /api/auth/basic/organisations/{orgID}/logout)
 	Logout(ctx context.Context, request LogoutRequestObject) (LogoutResponseObject, error)
 
+	// (POST /api/auth/basic/organisations/{orgID}/refresh)
+	Refresh(ctx context.Context, request RefreshRequestObject) (RefreshResponseObject, error)
+
 	// (GET /api/auth/basic/organisations/{orgID}/users)
 	ListUsers(ctx context.Context, request ListUsersRequestObject) (ListUsersResponseObject, error)
 
@@ -2518,6 +2605,32 @@ func (sh *strictHandler) Logout(w http.ResponseWriter, r *http.Request, orgID Or
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(LogoutResponseObject); ok {
 		if err := validResponse.VisitLogoutResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// Refresh operation middleware
+func (sh *strictHandler) Refresh(w http.ResponseWriter, r *http.Request, orgID Orgid) {
+	var request RefreshRequestObject
+
+	request.OrgID = orgID
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.Refresh(ctx, request.(RefreshRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "Refresh")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RefreshResponseObject); ok {
+		if err := validResponse.VisitRefreshResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

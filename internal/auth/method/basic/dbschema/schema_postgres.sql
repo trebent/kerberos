@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   user_id INTEGER,
   organisation_id INTEGER,
   session_id VARCHAR(100),
+  refresh_id VARCHAR(100),
   expires BIGINT NOT NULL,
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY(organisation_id) REFERENCES organisations(id) ON DELETE CASCADE ON UPDATE CASCADE

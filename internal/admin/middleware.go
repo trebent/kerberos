@@ -8,6 +8,7 @@ import (
 	"github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
 	adminapigen "github.com/trebent/kerberos/internal/oapi/admin"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
+	"github.com/trebent/kerberos/internal/security"
 	"github.com/trebent/zerologr"
 )
 
@@ -15,8 +16,13 @@ type adminContextKey int
 
 const (
 	adminContextIsSuperUser adminContextKey = 0
+
+	// adminContextSession contains the admin session object, if present.
 	adminContextSession     adminContextKey = 1
 	adminContextPermissions adminContextKey = 2
+
+	// adminContextRefresh contains the raw refresh token ID.
+	adminContextRefresh adminContextKey = 3
 )
 
 // SessionMiddleware provides context population of administration session information.
@@ -49,7 +55,17 @@ func SessionMiddleware(
 				return f(ctx, w, r, request)
 			}
 
-			if len(r.CookiesNamed("session")) == 0 {
+			if len(r.CookiesNamed(security.RefreshCookieName)) == 0 {
+				zerologr.V(20).Info("No refresh cookie found")
+			} else {
+				ctx = context.WithValue(
+					ctx,
+					adminContextRefresh,
+					r.CookiesNamed(security.RefreshCookieName)[0].Value,
+				)
+			}
+
+			if len(r.CookiesNamed(security.SessionCookieName)) == 0 {
 				zerologr.V(20).Info("No session cookie found, continuing without session")
 				return f(ctx, w, r, request)
 			}
@@ -112,8 +128,11 @@ func RequireSessionMiddleware() adminapigen.StrictMiddlewareFunc {
 		) (any, error) {
 			zerologr.V(20).Info("Running admin require session middleware")
 
-			// auto-approve since no session exists.
-			if operationID == "LoginSuperuser" || operationID == "Login" {
+			// auto-approve since no session exists, or isn't required.
+			if operationID == "LoginSuperuser" ||
+				operationID == "Login" ||
+				operationID == "RefreshSuperuserSession" ||
+				operationID == "RefreshUserSession" {
 				return f(ctx, w, r, request)
 			}
 

@@ -362,7 +362,7 @@ func TestDBSessions(t *testing.T) {
 
 	t.Run("create and get", func(t *testing.T) {
 		sessionID := uniqueName(t, "session")
-		if err := dbCreateSession(ctx, testClient, userID, sessionID); err != nil {
+		if err := dbCreateSession(ctx, testClient, userID, "refresh", sessionID); err != nil {
 			t.Fatalf("dbCreateSession error: %v", err)
 		}
 
@@ -387,7 +387,7 @@ func TestDBSessions(t *testing.T) {
 
 	t.Run("delete", func(t *testing.T) {
 		sessionID := uniqueName(t, "session-del")
-		if err := dbCreateSession(ctx, testClient, userID, sessionID); err != nil {
+		if err := dbCreateSession(ctx, testClient, userID, "refresh", sessionID); err != nil {
 			t.Fatalf("dbCreateSession error: %v", err)
 		}
 
@@ -717,7 +717,7 @@ func TestDBCascadeDeletes(t *testing.T) {
 	t.Run("delete user cascades sessions", func(t *testing.T) {
 		userID := mustCreateAdminUser(t, uniqueName(t, "cascade-sess-user"))
 		sessionID := uniqueName(t, "cascade-sess")
-		if err := dbCreateSession(ctx, testClient, userID, sessionID); err != nil {
+		if err := dbCreateSession(ctx, testClient, userID, "refresh", sessionID); err != nil {
 			t.Fatalf("dbCreateSession error: %v", err)
 		}
 

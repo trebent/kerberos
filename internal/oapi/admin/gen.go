@@ -587,6 +587,9 @@ type ServerInterface interface {
 	// (GET /api/admin/permissions)
 	GetPermissions(w http.ResponseWriter, r *http.Request)
 
+	// (POST /api/admin/refresh)
+	RefreshUserSession(w http.ResponseWriter, r *http.Request)
+
 	// (POST /api/admin/superuser/login)
 	LoginSuperuser(w http.ResponseWriter, r *http.Request)
 
@@ -595,6 +598,9 @@ type ServerInterface interface {
 
 	// (PUT /api/admin/superuser/password)
 	ChangeSuperuserPassword(w http.ResponseWriter, r *http.Request)
+
+	// (POST /api/admin/superuser/refresh)
+	RefreshSuperuserSession(w http.ResponseWriter, r *http.Request)
 
 	// (GET /api/admin/users)
 	GetUsers(w http.ResponseWriter, r *http.Request)
@@ -1214,6 +1220,26 @@ func (siw *ServerInterfaceWrapper) GetPermissions(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
+// RefreshUserSession operation middleware
+func (siw *ServerInterfaceWrapper) RefreshUserSession(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RefreshUserSession(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // LoginSuperuser operation middleware
 func (siw *ServerInterfaceWrapper) LoginSuperuser(w http.ResponseWriter, r *http.Request) {
 
@@ -1259,6 +1285,26 @@ func (siw *ServerInterfaceWrapper) ChangeSuperuserPassword(w http.ResponseWriter
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ChangeSuperuserPassword(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RefreshSuperuserSession operation middleware
+func (siw *ServerInterfaceWrapper) RefreshSuperuserSession(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, CookieAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RefreshSuperuserSession(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1602,9 +1648,11 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("GET "+options.BaseURL+"/api/admin/me", wrapper.GetMe)
 	m.HandleFunc("GET "+options.BaseURL+"/api/admin/oas/{backend}", wrapper.GetBackendOAS)
 	m.HandleFunc("GET "+options.BaseURL+"/api/admin/permissions", wrapper.GetPermissions)
+	m.HandleFunc("POST "+options.BaseURL+"/api/admin/refresh", wrapper.RefreshUserSession)
 	m.HandleFunc("POST "+options.BaseURL+"/api/admin/superuser/login", wrapper.LoginSuperuser)
 	m.HandleFunc("POST "+options.BaseURL+"/api/admin/superuser/logout", wrapper.LogoutSuperuser)
 	m.HandleFunc("PUT "+options.BaseURL+"/api/admin/superuser/password", wrapper.ChangeSuperuserPassword)
+	m.HandleFunc("POST "+options.BaseURL+"/api/admin/superuser/refresh", wrapper.RefreshSuperuserSession)
 	m.HandleFunc("GET "+options.BaseURL+"/api/admin/users", wrapper.GetUsers)
 	m.HandleFunc("POST "+options.BaseURL+"/api/admin/users", wrapper.CreateUser)
 	m.HandleFunc("DELETE "+options.BaseURL+"/api/admin/users/{userID}", wrapper.DeleteUser)
@@ -2532,15 +2580,6 @@ func (response Logout204Response) VisitLogoutResponse(w http.ResponseWriter) err
 	return nil
 }
 
-type Logout400JSONResponse APIErrorResponse
-
-func (response Logout400JSONResponse) VisitLogoutResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
 type Logout401JSONResponse APIErrorResponse
 
 func (response Logout401JSONResponse) VisitLogoutResponse(w http.ResponseWriter) error {
@@ -2690,6 +2729,45 @@ func (response GetPermissions500JSONResponse) VisitGetPermissionsResponse(w http
 	return json.NewEncoder(w).Encode(response)
 }
 
+type RefreshUserSessionRequestObject struct {
+}
+
+type RefreshUserSessionResponseObject interface {
+	VisitRefreshUserSessionResponse(w http.ResponseWriter) error
+}
+
+type RefreshUserSession204ResponseHeaders struct {
+	SetCookie string
+}
+
+type RefreshUserSession204Response struct {
+	Headers RefreshUserSession204ResponseHeaders
+}
+
+func (response RefreshUserSession204Response) VisitRefreshUserSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
+	w.WriteHeader(204)
+	return nil
+}
+
+type RefreshUserSession401JSONResponse APIErrorResponse
+
+func (response RefreshUserSession401JSONResponse) VisitRefreshUserSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type RefreshUserSession500JSONResponse APIErrorResponse
+
+func (response RefreshUserSession500JSONResponse) VisitRefreshUserSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type LoginSuperuserRequestObject struct {
 	Body *LoginSuperuserJSONRequestBody
 }
@@ -2730,15 +2808,6 @@ func (response LoginSuperuser401JSONResponse) VisitLoginSuperuserResponse(w http
 	return json.NewEncoder(w).Encode(response)
 }
 
-type LoginSuperuser429JSONResponse APIErrorResponse
-
-func (response LoginSuperuser429JSONResponse) VisitLoginSuperuserResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(429)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
 type LoginSuperuser500JSONResponse APIErrorResponse
 
 func (response LoginSuperuser500JSONResponse) VisitLoginSuperuserResponse(w http.ResponseWriter) error {
@@ -2767,6 +2836,15 @@ func (response LogoutSuperuser204Response) VisitLogoutSuperuserResponse(w http.R
 	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
 	w.WriteHeader(204)
 	return nil
+}
+
+type LogoutSuperuser401JSONResponse APIErrorResponse
+
+func (response LogoutSuperuser401JSONResponse) VisitLogoutSuperuserResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
 }
 
 type LogoutSuperuser403JSONResponse APIErrorResponse
@@ -2833,6 +2911,54 @@ func (response ChangeSuperuserPassword403JSONResponse) VisitChangeSuperuserPassw
 type ChangeSuperuserPassword500JSONResponse APIErrorResponse
 
 func (response ChangeSuperuserPassword500JSONResponse) VisitChangeSuperuserPasswordResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type RefreshSuperuserSessionRequestObject struct {
+}
+
+type RefreshSuperuserSessionResponseObject interface {
+	VisitRefreshSuperuserSessionResponse(w http.ResponseWriter) error
+}
+
+type RefreshSuperuserSession204ResponseHeaders struct {
+	SetCookie string
+}
+
+type RefreshSuperuserSession204Response struct {
+	Headers RefreshSuperuserSession204ResponseHeaders
+}
+
+func (response RefreshSuperuserSession204Response) VisitRefreshSuperuserSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
+	w.WriteHeader(204)
+	return nil
+}
+
+type RefreshSuperuserSession401JSONResponse APIErrorResponse
+
+func (response RefreshSuperuserSession401JSONResponse) VisitRefreshSuperuserSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type RefreshSuperuserSession403JSONResponse APIErrorResponse
+
+func (response RefreshSuperuserSession403JSONResponse) VisitRefreshSuperuserSessionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type RefreshSuperuserSession500JSONResponse APIErrorResponse
+
+func (response RefreshSuperuserSession500JSONResponse) VisitRefreshSuperuserSessionResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
 
@@ -3322,6 +3448,9 @@ type StrictServerInterface interface {
 	// (GET /api/admin/permissions)
 	GetPermissions(ctx context.Context, request GetPermissionsRequestObject) (GetPermissionsResponseObject, error)
 
+	// (POST /api/admin/refresh)
+	RefreshUserSession(ctx context.Context, request RefreshUserSessionRequestObject) (RefreshUserSessionResponseObject, error)
+
 	// (POST /api/admin/superuser/login)
 	LoginSuperuser(ctx context.Context, request LoginSuperuserRequestObject) (LoginSuperuserResponseObject, error)
 
@@ -3330,6 +3459,9 @@ type StrictServerInterface interface {
 
 	// (PUT /api/admin/superuser/password)
 	ChangeSuperuserPassword(ctx context.Context, request ChangeSuperuserPasswordRequestObject) (ChangeSuperuserPasswordResponseObject, error)
+
+	// (POST /api/admin/superuser/refresh)
+	RefreshSuperuserSession(ctx context.Context, request RefreshSuperuserSessionRequestObject) (RefreshSuperuserSessionResponseObject, error)
 
 	// (GET /api/admin/users)
 	GetUsers(ctx context.Context, request GetUsersRequestObject) (GetUsersResponseObject, error)
@@ -3908,6 +4040,30 @@ func (sh *strictHandler) GetPermissions(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+// RefreshUserSession operation middleware
+func (sh *strictHandler) RefreshUserSession(w http.ResponseWriter, r *http.Request) {
+	var request RefreshUserSessionRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RefreshUserSession(ctx, request.(RefreshUserSessionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RefreshUserSession")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RefreshUserSessionResponseObject); ok {
+		if err := validResponse.VisitRefreshUserSessionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // LoginSuperuser operation middleware
 func (sh *strictHandler) LoginSuperuser(w http.ResponseWriter, r *http.Request) {
 	var request LoginSuperuserRequestObject
@@ -3987,6 +4143,30 @@ func (sh *strictHandler) ChangeSuperuserPassword(w http.ResponseWriter, r *http.
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ChangeSuperuserPasswordResponseObject); ok {
 		if err := validResponse.VisitChangeSuperuserPasswordResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RefreshSuperuserSession operation middleware
+func (sh *strictHandler) RefreshSuperuserSession(w http.ResponseWriter, r *http.Request) {
+	var request RefreshSuperuserSessionRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RefreshSuperuserSession(ctx, request.(RefreshSuperuserSessionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RefreshSuperuserSession")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RefreshSuperuserSessionResponseObject); ok {
+		if err := validResponse.VisitRefreshSuperuserSessionResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
