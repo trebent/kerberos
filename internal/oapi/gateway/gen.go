@@ -220,6 +220,9 @@ type ServerInterface interface {
 
 	// (TRACE /gw/backend/{backend}/*)
 	ProxyTrace(w http.ResponseWriter, r *http.Request, backend string)
+
+	// (GET /gw/health)
+	HealthCheck(w http.ResponseWriter, r *http.Request)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -431,6 +434,20 @@ func (siw *ServerInterfaceWrapper) ProxyTrace(w http.ResponseWriter, r *http.Req
 	handler.ServeHTTP(w, r)
 }
 
+// HealthCheck operation middleware
+func (siw *ServerInterfaceWrapper) HealthCheck(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.HealthCheck(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -559,6 +576,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("POST "+options.BaseURL+"/gw/backend/{backend}/*", wrapper.ProxyPost)
 	m.HandleFunc("PUT "+options.BaseURL+"/gw/backend/{backend}/*", wrapper.ProxyPut)
 	m.HandleFunc("TRACE "+options.BaseURL+"/gw/backend/{backend}/*", wrapper.ProxyTrace)
+	m.HandleFunc("GET "+options.BaseURL+"/gw/health", wrapper.HealthCheck)
 
 	return m
 }
@@ -923,6 +941,21 @@ func (response ProxyTracedefaultTextResponse) VisitProxyTraceResponse(w http.Res
 	return err
 }
 
+type HealthCheckRequestObject struct {
+}
+
+type HealthCheckResponseObject interface {
+	VisitHealthCheckResponse(w http.ResponseWriter) error
+}
+
+type HealthCheck204Response struct {
+}
+
+func (response HealthCheck204Response) VisitHealthCheckResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
@@ -949,6 +982,9 @@ type StrictServerInterface interface {
 
 	// (TRACE /gw/backend/{backend}/*)
 	ProxyTrace(ctx context.Context, request ProxyTraceRequestObject) (ProxyTraceResponseObject, error)
+
+	// (GET /gw/health)
+	HealthCheck(ctx context.Context, request HealthCheckRequestObject) (HealthCheckResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -1309,6 +1345,30 @@ func (sh *strictHandler) ProxyTrace(w http.ResponseWriter, r *http.Request, back
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ProxyTraceResponseObject); ok {
 		if err := validResponse.VisitProxyTraceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// HealthCheck operation middleware
+func (sh *strictHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
+	var request HealthCheckRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.HealthCheck(ctx, request.(HealthCheckRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "HealthCheck")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(HealthCheckResponseObject); ok {
+		if err := validResponse.VisitHealthCheckResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
