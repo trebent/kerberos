@@ -70,7 +70,7 @@ func SessionMiddleware(
 				return f(ctx, w, r, request)
 			}
 
-			cookie := r.Cookies()[0]
+			cookie := r.CookiesNamed(security.SessionCookieName)[0]
 
 			// No session at all to verify.
 			if cookie.Value == "" {

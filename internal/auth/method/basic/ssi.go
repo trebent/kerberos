@@ -115,7 +115,10 @@ func (i *impl) Login(
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/api/auth/basic/organisations/%d/refresh; HttpOnly; Secure; Max-Age=%d",
 				//nolint:golines // welp
-				security.RefreshCookieName, refreshID, req.OrgID, int(sessionRefreshExpiry.Seconds()),
+				security.RefreshCookieName,
+				refreshID,
+				req.OrgID,
+				int(sessionRefreshExpiry.Seconds()),
 			),
 		},
 	}, nil
@@ -143,7 +146,10 @@ func (i *impl) Logout(
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/api/auth/basic/organisations/%d/refresh; HttpOnly; Secure; Max-Age=%d",
 				//nolint:golines // welp
-				security.RefreshCookieName, "expired", req.OrgID, 0,
+				security.RefreshCookieName,
+				"expired",
+				req.OrgID,
+				0,
 			),
 		},
 	}, nil
@@ -200,7 +206,10 @@ func (i *impl) Refresh(
 			),
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/api/auth/basic/organisations/%d/refresh; HttpOnly; Secure; Max-Age=%d",
-				security.RefreshCookieName, refreshID, req.OrgID, int(sessionRefreshExpiry.Seconds()),
+				security.RefreshCookieName,
+				refreshID,
+				req.OrgID,
+				int(sessionRefreshExpiry.Seconds()),
 			),
 		},
 	}, nil

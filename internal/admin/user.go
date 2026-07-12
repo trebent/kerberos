@@ -152,7 +152,7 @@ func (i *impl) LoginSuperuser(
 			),
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/; Secure; Max-Age=%d",
-				security.CSRFCookieName, sessionID, int(sessionRefreshExpiry.Seconds()),
+				security.CSRFCookieName, uuid.NewString(), int(sessionRefreshExpiry.Seconds()),
 			),
 		},
 	}, nil
@@ -228,7 +228,9 @@ func (i *impl) RefreshSuperuserSession(
 	if err := dbCreateSession(
 		ctx,
 		i.sqlClient,
-		session.UserID, refreshID, sessionID,
+		session.UserID,
+		refreshID,
+		sessionID,
 	); err != nil {
 		zerologr.Error(err, "Failed to store admin session")
 		return adminapi.RefreshSuperuserSession500JSONResponse(apiErrInternal), nil
@@ -247,7 +249,7 @@ func (i *impl) RefreshSuperuserSession(
 			),
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/; Secure; Max-Age=%d",
-				security.CSRFCookieName, sessionID, int(sessionRefreshExpiry.Seconds()),
+				security.CSRFCookieName, uuid.NewString(), int(sessionRefreshExpiry.Seconds()),
 			),
 		},
 	}, nil
@@ -290,7 +292,7 @@ func (i *impl) Login(
 			),
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/; Secure; Max-Age=%d",
-				security.CSRFCookieName, sessionID, int(sessionRefreshExpiry.Seconds()),
+				security.CSRFCookieName, uuid.NewString(), int(sessionRefreshExpiry.Seconds()),
 			),
 		},
 	}, nil
@@ -360,7 +362,9 @@ func (i *impl) RefreshUserSession(
 	if err := dbCreateSession(
 		ctx,
 		i.sqlClient,
-		session.UserID, refreshID, sessionID,
+		session.UserID,
+		refreshID,
+		sessionID,
 	); err != nil {
 		zerologr.Error(err, "Failed to store admin session")
 		return adminapi.RefreshUserSession500JSONResponse(apiErrInternal), nil
@@ -378,7 +382,7 @@ func (i *impl) RefreshUserSession(
 			),
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/; Secure; Max-Age=%d",
-				security.CSRFCookieName, sessionID, int(sessionRefreshExpiry.Seconds()),
+				security.CSRFCookieName, uuid.NewString(), int(sessionRefreshExpiry.Seconds()),
 			),
 		},
 	}, nil
