@@ -12,4 +12,5 @@
 !internal/config/schemas/*.json
 !openapi/
 !openapi/**
+!poc/poc.json
 internal/**/*_test.go

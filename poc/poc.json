@@ -1,0 +1,34 @@
+{
+  "persistence": {
+    "driver": "sqlite",
+    "address": "krb.db"
+  },
+  "gateway": {
+    "router": {
+      "backends": [
+        {
+          "name": "echo",
+          "host": "localhost",
+          "port": 15000
+        }
+      ]
+    }
+  },
+  "auth": {
+    "methods": {
+      "basic": {}
+    },
+    "scheme": {
+      "mappings": [
+        {
+          "backend": "${ref:gateway.router.backends[0].name}",
+          "method": "basic"
+        }
+      ]
+    },
+    "order": 1
+  },
+  "observability": {
+    "enabled": false
+  }
+}

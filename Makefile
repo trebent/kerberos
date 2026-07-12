@@ -135,10 +135,8 @@ docker/run: docker/build docker/stop docker/rm
 	-e ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
 	-e LOG_TO_CONSOLE=true \
 	-e LOG_VERBOSITY=$(LOG_VERBOSITY) \
-	-e OAS_DIRECTORY=/krb-oas \
 	-v $(PWD)/test/config:/config:ro \
 	-v $(PWD)/test/oas:/oas:ro \
-	-v $(PWD)/openapi:/krb-oas:ro \
 	--name kerberos \
 ghcr.io/trebent/kerberos:$(VERSION) \
 	--config /config/docker.json
