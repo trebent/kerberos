@@ -15,12 +15,10 @@ services:
       - PORT=${KERBEROS_PORT:-30000}
       - ADMIN_PORT=${KERBEROS_ADMIN_PORT:-30001}
       - VERSION=${VERSION:-unset}
-      - OAS_DIRECTORY=/krb-oas
     volumes:
       - ../../config:/config:ro
       - ../../oas:/oas:ro
       - ../../certs:/certs:ro
-      - ../../../openapi:/krb-oas:ro
 
   echo:
     image: "ghcr.io/trebent/kerberos/echo:${VERSION:-unset}"
