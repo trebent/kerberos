@@ -44,6 +44,13 @@ components:
             $ref: "#/components/schemas/JSONRequest"
 
 paths:
+  /gw/health:
+    get:
+      operationId: HealthCheck
+      responses:
+        "204":
+          description: The gateway is healthy.
+
   # Dispatch a request to a backend
   /gw/backend/{backend}/*:
     parameters:

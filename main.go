@@ -272,6 +272,9 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 
 	zerologr.Info("Starting server")
 	gwMux.Handle("/gw/", composer)
+	gwMux.Handle("/gw/health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
 	gwServer := http.Server{
 		Addr:         fmt.Sprintf(":%d", internalenv.Port.Value()),
 		ReadTimeout:  readTimeout,
