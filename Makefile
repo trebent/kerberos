@@ -141,7 +141,7 @@ docker/run: docker/build docker/stop docker/rm
 	-v $(PWD)/test/config:/config:ro \
 	-v $(PWD)/test/oas:/oas:ro \
 	--name kerberos \
-ghcr.io/trebent/kerberos:$(VERSION) \
+	ghcr.io/trebent/kerberos:$(VERSION) \
 	--config /config/docker.json
 
 docker/stop:
