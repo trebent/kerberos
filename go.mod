@@ -4,7 +4,7 @@ go 1.26.5
 
 require (
 	github.com/getkin/kin-openapi v0.142.0
-	github.com/go-logr/logr v1.4.3
+	github.com/go-logr/logr v1.4.4
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.12.3
 	github.com/oapi-codegen/nethttp-middleware v1.2.0
