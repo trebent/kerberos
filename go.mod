@@ -3,7 +3,7 @@ module github.com/trebent/kerberos
 go 1.26.5
 
 require (
-	github.com/getkin/kin-openapi v0.143.0
+	github.com/getkin/kin-openapi v0.144.0
 	github.com/go-logr/logr v1.4.4
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.12.3
