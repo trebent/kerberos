@@ -34,6 +34,7 @@ extensions:
       # tls:
       #   cert_file: /certs/server.crt
       #   key_file: /certs/server.key
+    # This port is used by tests and does not need to be exposed to the host. It is used for internal communication between the query service and the storage extension.
     grpc:
       endpoint: 0.0.0.0:16685
   jaeger_storage:
