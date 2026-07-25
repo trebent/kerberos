@@ -16,9 +16,13 @@ permissions:
 jobs:
   push-images:
     runs-on: ubuntu-latest
+    environment: poc-aws
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
       - name: Obtain temporary AWS credentials
         uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
@@ -32,15 +36,48 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
 
-      - name: Push images
-        env:
-          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
-        run: |
-          docker pull ghcr.io/${{ github.repository }}:${{ inputs.version }}
-          docker pull ghcr.io/${{ github.repository }}/echo:${{ inputs.version }}
+      - name: Kerberos metadata
+        id: krb-meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ steps.ecr-login.outputs.registry }}/${{ vars.POC_AWS_REPO_KRB }}
+          tags: |
+            type=raw,value=${{ inputs.version }}
 
-          docker tag ghcr.io/${{ github.repository }}:${{ inputs.version }} $ECR_REGISTRY/${{ vars.POC_AWS_REPO_KRB }}:${{ inputs.version }}
-          docker tag ghcr.io/${{ github.repository }}/echo:${{ inputs.version }} "$ECR_REGISTRY/${{ vars.POC_AWS_REPO_KRB_ECHO }}:${{ inputs.version }}"
+      - name: Build and push kerberos
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: docker/krb.Dockerfile
+          push: true
+          target: poc-runtime
+          build-args: |
+            VERSION=${{ inputs.version }}
+          tags: ${{ steps.krb-meta.outputs.tags }}
+          labels: ${{ steps.krb-meta.outputs.labels }}
+          cache-from: type=gha,scope=kerberos
+          cache-to: type=gha,scope=kerberos,mode=max
 
-          docker push $ECR_REGISTRY/${{ vars.POC_AWS_REPO_KRB }}:${{ inputs.version }}
-          docker push $ECR_REGISTRY/${{ vars.POC_AWS_REPO_KRB_ECHO }}:${{ inputs.version }}
+      - name: Echo metadata
+        id: echo-meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ steps.ecr-login.outputs.registry }}/${{ vars.POC_AWS_REPO_KRB_ECHO }}
+          tags: |
+            type=raw,value=${{ inputs.version }}
+          labels: |
+            org.opencontainers.image.title=echo
+            org.opencontainers.image.description=A simple HTTP echo server that echoes back request body and headers.
+
+      - name: Build and push echo
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: docker/echo.Dockerfile
+          push: true
+          build-args: |
+            VERSION=${{ inputs.version }}
+          tags: ${{ steps.echo-meta.outputs.tags }}
+          labels: ${{ steps.echo-meta.outputs.labels }}
+          cache-from: type=gha,scope=echo
+          cache-to: type=gha,scope=echo,mode=max

@@ -1,16 +1,19 @@
 services:
   postgres:
-    image: "postgres:17.10-alpine3.23"
+    image: "postgres:18.4-alpine3.23"
     pull_policy: if_not_present
     environment:
       - POSTGRES_DB=kerberos
       - POSTGRES_USER=kerberos
       - POSTGRES_PASSWORD=kerberos
+    restart: on-failure
     healthcheck:
       test: ["CMD-SHELL", "psql -U kerberos -d kerberos -c 'SELECT 1' -q -t 2>/dev/null | grep -q 1"]
-      interval: 2s
-      timeout: 1s
+      interval: 1s
+      timeout: 2s
       retries: 10
+    volumes:
+      - postgres:/var/lib/postgresql/18/docker
 
   kerberos:
     image: "ghcr.io/trebent/kerberos:${VERSION:-unset}"
@@ -22,6 +25,7 @@ services:
     build:
       context: ../../..
       dockerfile: ./docker/krb.Dockerfile
+    restart: on-failure
     ports:
       - ${KERBEROS_PORT:-30000}:${KERBEROS_PORT:-30000}
       - ${KERBEROS_ADMIN_PORT:-30001}:${KERBEROS_ADMIN_PORT:-30001}
@@ -51,6 +55,7 @@ services:
     build:
       context: ../../..
       dockerfile: ./docker/echo.Dockerfile
+    restart: on-failure
     ports:
       - ${ECHO_PORT:-15000}:${ECHO_PORT:-15000}
       - ${ECHO_METRICS_PORT:-9463}:${ECHO_METRICS_PORT:-9463}
@@ -68,6 +73,7 @@ services:
     build:
       context: ../../..
       dockerfile: ./docker/echo.Dockerfile
+    restart: on-failure
     environment:
       - PORT=${ECHO_PORT:-15000}
       - OTEL_METRICS_EXPORTER=prometheus
@@ -77,16 +83,23 @@ services:
       - OTEL_EXPORTER_PROMETHEUS_PORT=${ECHO_METRICS_PORT:-9463}
 
   prometheus:
-    image: "prom/prometheus:v3.3.1"
+    image: "prom/prometheus:v3"
     pull_policy: if_not_present
+    command: ["--config.file=/prometheus.yml", "--storage.tsdb.path", "/prometheus/data", "--storage.tsdb.retention.size", "1GB"]
+    restart: on-failure
     ports:
       - ${PROM_PORT:-9090}:9090
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/prometheus.yml:/prometheus.yml
+      - prometheus:/prometheus
 
   grafana:
-    image: "grafana/grafana:12.0.0"
+    image: "grafana/grafana:13.1"
     pull_policy: if_not_present
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: on-failure
     ports:
       - ${GRAFANA_PORT:-3000}:3000
     volumes:
@@ -97,12 +110,30 @@ services:
       - ./grafana/kerberos_http.json:/var/lib/grafana/kerberos_http.json
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
 
-  jaeger:
-    image: "jaegertracing/jaeger:2.6.0"
+  jaeger-init:
+    image: busybox:1.38
     pull_policy: if_not_present
+    command: ["sh", "-c", "chown 10001:0 /jaeger"]
+    restart: on-failure
+    volumes:
+      - jaeger:/jaeger
+
+  jaeger:
+    image: "jaegertracing/jaeger:2.20.0"
+    pull_policy: if_not_present
+    depends_on:
+      jaeger-init:
+        condition: service_completed_successfully
+    restart: on-failure
+    command: --config /jaeger.yml
     ports:
-      - ${JAEGER_OTLP_PORT:-4317}:4317
-      - ${JAEGER_QUERY_PORT:-16685}:16685
-      - ${JAEGER_UI_PORT:-16686}:16686
-    environment:
-      - COLLECTOR_OTLP_ENABLED=true
+      - 16686:16686
+    volumes:
+      - ./jaeger/jaeger.yml:/jaeger.yml
+      - ./jaeger/config-ui.json:/config-ui.json
+      - jaeger:/jaeger
+
+volumes:
+  postgres:
+  prometheus:
+  jaeger:
