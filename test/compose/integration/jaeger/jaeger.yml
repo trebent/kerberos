@@ -34,6 +34,8 @@ extensions:
       # tls:
       #   cert_file: /certs/server.crt
       #   key_file: /certs/server.key
+    grpc:
+      endpoint: 0.0.0.0:16685
   jaeger_storage:
     backends:
       badger_store:
