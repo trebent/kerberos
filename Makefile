@@ -49,6 +49,11 @@ codegen: install/deps
 	$(call cecho,Running codegen for integration tests...,$(BOLD_YELLOW))
 	@cd test/suites/integration && go generate ./...
 
+compose/clean:
+	$(call cecho,Cleaning up Kerberos test environment...,$(BOLD_YELLOW))
+	@docker compose -f test/compose/integration/compose.yaml down --volumes --remove-orphans
+	@docker compose -f test/compose/security/compose.yaml down --volumes --remove-orphans
+
 compose/down:
 	$(call cecho,Tearing down Kerberos test environment...,$(BOLD_YELLOW))
 	@docker compose -f test/compose/integration/compose.yaml down
