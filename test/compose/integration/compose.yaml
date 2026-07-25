@@ -127,6 +127,7 @@ services:
     restart: on-failure
     command: --config /jaeger.yml
     ports:
+      - 16685:16685
       - 16686:16686
     volumes:
       - ./jaeger/jaeger.yml:/jaeger.yml
