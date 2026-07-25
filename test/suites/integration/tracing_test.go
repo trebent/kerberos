@@ -65,6 +65,7 @@ func findSpans(conn *grpc.ClientConn, traceID model.TraceID, start time.Time, sp
 			Query: &tracingv2.TraceQueryParameters{
 				ServiceName:  "echo",
 				StartTimeMin: start,
+				StartTimeMax: time.Now(),
 			},
 		})
 		if err != nil {
