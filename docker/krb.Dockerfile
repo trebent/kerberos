@@ -24,6 +24,26 @@ USER nonroot:nonroot
 
 COPY --chown=nonroot:nonroot --from=build /kerberos /kerberos
 COPY --chown=nonroot:nonroot --from=build openapi/ /krb-oas/
+
+ARG VERSION="unset"
+
+ENV VERSION=${VERSION}
+ENV OAS_DIRECTORY=/krb-oas
+
+EXPOSE 30000
+
+ENTRYPOINT [ "/kerberos" ]
+
+#
+# PoC-runtime image for AWS ECR. This image is used to run the PoC in AWS ECR, and as such has the PoC JSON file baked in.
+#
+
+FROM gcr.io/distroless/static-debian12:nonroot@sha256:aef9602f8710ec12bde19d593fed1f76c708531bb7aba205110f1029786ead7b AS poc-runtime
+
+USER nonroot:nonroot
+
+COPY --chown=nonroot:nonroot --from=build /kerberos /kerberos
+COPY --chown=nonroot:nonroot --from=build openapi/ /krb-oas/
 COPY --chown=nonroot:nonroot --from=build poc/poc.json /poc.json
 
 ARG VERSION="unset"
