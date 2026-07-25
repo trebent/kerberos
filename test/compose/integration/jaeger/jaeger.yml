@@ -28,7 +28,12 @@ extensions:
       traces_archive: badger_archive
     ui:
       config_file: /config-ui.json
-
+    http:
+      endpoint: 0.0.0.0:16686
+      # To enable TLS:
+      # tls:
+      #   cert_file: /certs/server.crt
+      #   key_file: /certs/server.key
   jaeger_storage:
     backends:
       badger_store:
@@ -55,8 +60,6 @@ receivers:
     protocols:
       grpc:
         endpoint: "0.0.0.0:4317"
-      http:
-        endpoint: "0.0.0.0:4318"
 
 processors:
   batch:
