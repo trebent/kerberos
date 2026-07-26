@@ -113,7 +113,7 @@ func TestAdminRequireSessionMiddleware(t *testing.T) {
 		t.Fatal("Expected an error")
 	}
 
-	if !errors.Is(err, apierror.ErrUnauthenticated) {
+	if !errors.Is(err, apierror.ErrUnauthorized) {
 		t.Fatal("Expected an apierror")
 	}
 }

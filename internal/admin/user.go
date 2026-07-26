@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	admindb "github.com/trebent/kerberos/internal/admin/db"
 	"github.com/trebent/kerberos/internal/admin/model"
 	"github.com/trebent/kerberos/internal/db"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
@@ -114,7 +115,7 @@ func (i *impl) LoginSuperuser(
 	ctx context.Context,
 	request adminapi.LoginSuperuserRequestObject,
 ) (adminapi.LoginSuperuserResponseObject, error) {
-	superuser, err := dbGetSuperuser(ctx, i.sqlClient)
+	superuser, err := admindb.GetSuperuser(ctx, i.sqlClient)
 	if err != nil {
 		zerologr.Error(err, "Failed to query superuser")
 		return adminapi.LoginSuperuser500JSONResponse(apiErrInternal), nil
@@ -134,7 +135,13 @@ func (i *impl) LoginSuperuser(
 
 	sessionID := uuid.NewString()
 	refreshID := uuid.NewString()
-	if err := dbCreateSession(ctx, i.sqlClient, superuser.ID, refreshID, sessionID); err != nil {
+	if err := admindb.CreateSession(
+		ctx,
+		i.sqlClient,
+		superuser.ID,
+		refreshID,
+		sessionID,
+	); err != nil {
 		zerologr.Error(err, "Failed to store super-session")
 		return adminapi.LoginSuperuser500JSONResponse(apiErrInternal), nil
 	}
@@ -143,16 +150,20 @@ func (i *impl) LoginSuperuser(
 		cookies: []string{
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
-				security.SessionCookieName, sessionID, int(sessionExpiry.Seconds()),
+				security.SessionCookieName, sessionID, int(admindb.SessionExpiry.Seconds()),
 			),
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/api/admin/superuser/refresh; HttpOnly; Secure; Max-Age=%d",
 				//nolint:golines // welp
-				security.RefreshCookieName, refreshID, int(sessionRefreshExpiry.Seconds()),
+				security.RefreshCookieName,
+				refreshID,
+				int(admindb.SessionRefreshExpiry.Seconds()),
 			),
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/; Secure; Max-Age=%d",
-				security.CSRFCookieName, uuid.NewString(), int(sessionRefreshExpiry.Seconds()),
+				security.CSRFCookieName,
+				uuid.NewString(),
+				int(admindb.SessionRefreshExpiry.Seconds()),
 			),
 		},
 	}, nil
@@ -167,7 +178,7 @@ func (i *impl) LogoutSuperuser(
 		return adminapi.LogoutSuperuser403JSONResponse(apiErrForbidden), nil
 	}
 
-	_, err := i.sqlClient.Exec(ctx, deleteSuperSessions)
+	err := admindb.DeleteSuperuserSessions(ctx, i.sqlClient)
 	if err != nil {
 		zerologr.Error(err, "Failed to delete super sessions during logout")
 		return adminapi.LogoutSuperuser500JSONResponse(apiErrInternal), nil
@@ -181,7 +192,9 @@ func (i *impl) LogoutSuperuser(
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/api/admin/superuser/refresh; HttpOnly; Secure; Max-Age=%d",
 				//nolint:golines // welp
-				security.RefreshCookieName, "expired", 0,
+				security.RefreshCookieName,
+				"expired",
+				0,
 			),
 		},
 	}, nil
@@ -200,8 +213,8 @@ func (i *impl) RefreshSuperuserSession(
 		return adminapi.RefreshSuperuserSession401JSONResponse(apiErrUnauthorized), nil
 	}
 
-	session, err := dbGetSessionByRefresh(ctx, i.sqlClient, oldRefreshID)
-	if errors.Is(err, errRowNotFound) {
+	session, err := admindb.GetSessionByRefresh(ctx, i.sqlClient, oldRefreshID)
+	if errors.Is(err, db.ErrRowNotFound) {
 		return adminapi.RefreshSuperuserSession401JSONResponse(apiErrUnauthorized), nil
 	}
 	if err != nil {
@@ -213,11 +226,13 @@ func (i *impl) RefreshSuperuserSession(
 		return adminapi.RefreshSuperuserSession403JSONResponse(apiErrForbidden), nil
 	}
 
-	if time.Since(time.UnixMilli(session.Expires)) > (sessionRefreshExpiry - sessionExpiry) {
+	if time.Since(
+		time.UnixMilli(session.Expires),
+	) > (admindb.SessionRefreshExpiry - admindb.SessionExpiry) {
 		return adminapi.RefreshSuperuserSession401JSONResponse(apiErrUnauthorized), nil
 	}
 
-	if err := dbDeleteSession(ctx, i.sqlClient, session.SessionID); err != nil {
+	if err := admindb.DeleteSession(ctx, i.sqlClient, session.SessionID); err != nil {
 		zerologr.Error(err, "Failed to delete old session during refresh")
 		return adminapi.RefreshSuperuserSession500JSONResponse(apiErrInternal), nil
 	}
@@ -225,7 +240,7 @@ func (i *impl) RefreshSuperuserSession(
 	// Refresh token is valid, create a new session and refresh token.
 	sessionID := uuid.NewString()
 	refreshID := uuid.NewString()
-	if err := dbCreateSession(
+	if err := admindb.CreateSession(
 		ctx,
 		i.sqlClient,
 		session.UserID,
@@ -240,16 +255,20 @@ func (i *impl) RefreshSuperuserSession(
 		cookies: []string{
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
-				security.SessionCookieName, sessionID, int(sessionExpiry.Seconds()),
+				security.SessionCookieName, sessionID, int(admindb.SessionExpiry.Seconds()),
 			),
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/api/admin/superuser/refresh; HttpOnly; Secure; Max-Age=%d",
 				//nolint:golines // welp
-				security.RefreshCookieName, refreshID, int(sessionRefreshExpiry.Seconds()),
+				security.RefreshCookieName,
+				refreshID,
+				int(admindb.SessionRefreshExpiry.Seconds()),
 			),
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/; Secure; Max-Age=%d",
-				security.CSRFCookieName, uuid.NewString(), int(sessionRefreshExpiry.Seconds()),
+				security.CSRFCookieName,
+				uuid.NewString(),
+				int(admindb.SessionRefreshExpiry.Seconds()),
 			),
 		},
 	}, nil
@@ -260,9 +279,9 @@ func (i *impl) Login(
 	ctx context.Context,
 	request adminapi.LoginRequestObject,
 ) (adminapi.LoginResponseObject, error) {
-	u, err := dbLoginLookup(ctx, i.sqlClient, request.Body.Username)
+	u, err := admindb.LoginLookup(ctx, i.sqlClient, request.Body.Username)
 	if err != nil {
-		if errors.Is(err, errRowNotFound) {
+		if errors.Is(err, db.ErrRowNotFound) {
 			return adminapi.Login401JSONResponse(apiErrUnauthorized), nil
 		}
 		zerologr.Error(err, "Failed to look up admin user during login")
@@ -275,7 +294,7 @@ func (i *impl) Login(
 
 	sessionID := uuid.NewString()
 	refreshID := uuid.NewString()
-	if err := dbCreateSession(ctx, i.sqlClient, u.ID, refreshID, sessionID); err != nil {
+	if err := admindb.CreateSession(ctx, i.sqlClient, u.ID, refreshID, sessionID); err != nil {
 		zerologr.Error(err, "Failed to store admin session")
 		return adminapi.Login500JSONResponse(apiErrInternal), nil
 	}
@@ -284,15 +303,17 @@ func (i *impl) Login(
 		cookies: []string{
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
-				security.SessionCookieName, sessionID, int(sessionExpiry.Seconds()),
+				security.SessionCookieName, sessionID, int(admindb.SessionExpiry.Seconds()),
 			),
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/api/admin/refresh; HttpOnly; Secure; Max-Age=%d",
-				security.RefreshCookieName, refreshID, int(sessionRefreshExpiry.Seconds()),
+				security.RefreshCookieName, refreshID, int(admindb.SessionRefreshExpiry.Seconds()),
 			),
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/; Secure; Max-Age=%d",
-				security.CSRFCookieName, uuid.NewString(), int(sessionRefreshExpiry.Seconds()),
+				security.CSRFCookieName,
+				uuid.NewString(),
+				int(admindb.SessionRefreshExpiry.Seconds()),
 			),
 		},
 	}, nil
@@ -308,7 +329,7 @@ func (i *impl) Logout(
 		return adminapi.Logout401JSONResponse(apiErrUnauthorized), nil
 	}
 
-	if err := dbDeleteSession(ctx, i.sqlClient, session.SessionID); err != nil {
+	if err := admindb.DeleteSession(ctx, i.sqlClient, session.SessionID); err != nil {
 		zerologr.Error(err, "Failed to delete admin session during logout")
 		return adminapi.Logout500JSONResponse(apiErrInternal), nil
 	}
@@ -338,8 +359,8 @@ func (i *impl) RefreshUserSession(
 		return adminapi.RefreshUserSession401JSONResponse(apiErrUnauthorized), nil
 	}
 
-	session, err := dbGetSessionByRefresh(ctx, i.sqlClient, oldRefreshID)
-	if errors.Is(err, errRowNotFound) {
+	session, err := admindb.GetSessionByRefresh(ctx, i.sqlClient, oldRefreshID)
+	if errors.Is(err, db.ErrRowNotFound) {
 		return adminapi.RefreshUserSession401JSONResponse(apiErrUnauthorized), nil
 	}
 	if err != nil {
@@ -347,11 +368,13 @@ func (i *impl) RefreshUserSession(
 		return adminapi.RefreshUserSession500JSONResponse(apiErrInternal), nil
 	}
 
-	if time.Since(time.UnixMilli(session.Expires)) > (sessionRefreshExpiry - sessionExpiry) {
+	if time.Since(
+		time.UnixMilli(session.Expires),
+	) > (admindb.SessionRefreshExpiry - admindb.SessionExpiry) {
 		return adminapi.RefreshUserSession401JSONResponse(apiErrUnauthorized), nil
 	}
 
-	if err := dbDeleteSession(ctx, i.sqlClient, session.SessionID); err != nil {
+	if err := admindb.DeleteSession(ctx, i.sqlClient, session.SessionID); err != nil {
 		zerologr.Error(err, "Failed to delete old session during refresh")
 		return adminapi.RefreshUserSession500JSONResponse(apiErrInternal), nil
 	}
@@ -359,7 +382,7 @@ func (i *impl) RefreshUserSession(
 	// Refresh token is valid, create a new session and refresh token.
 	sessionID := uuid.NewString()
 	refreshID := uuid.NewString()
-	if err := dbCreateSession(
+	if err := admindb.CreateSession(
 		ctx,
 		i.sqlClient,
 		session.UserID,
@@ -374,15 +397,17 @@ func (i *impl) RefreshUserSession(
 		cookies: []string{
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
-				security.SessionCookieName, sessionID, int(sessionExpiry.Seconds()),
+				security.SessionCookieName, sessionID, int(admindb.SessionExpiry.Seconds()),
 			),
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/api/admin/refresh; HttpOnly; Secure; Max-Age=%d",
-				security.RefreshCookieName, refreshID, int(sessionRefreshExpiry.Seconds()),
+				security.RefreshCookieName, refreshID, int(admindb.SessionRefreshExpiry.Seconds()),
 			),
 			fmt.Sprintf(
 				"%s=%s; SameSite=None; Path=/; Secure; Max-Age=%d",
-				security.CSRFCookieName, uuid.NewString(), int(sessionRefreshExpiry.Seconds()),
+				security.CSRFCookieName,
+				uuid.NewString(),
+				int(admindb.SessionRefreshExpiry.Seconds()),
 			),
 		},
 	}, nil
@@ -399,7 +424,7 @@ func (i *impl) CreateUser(
 
 	_, salt, hashedPassword := password.Make(request.Body.Password)
 
-	id, err := dbCreateUser(
+	id, err := admindb.CreateUser(
 		ctx,
 		i.sqlClient,
 		request.Body.Username,
@@ -431,14 +456,14 @@ func (i *impl) GetUsers(
 		return adminapi.GetUsers403JSONResponse(apiErrForbidden), nil
 	}
 
-	users, err := dbListUsers(ctx, i.sqlClient)
+	users, err := admindb.ListUsers(ctx, i.sqlClient)
 	if err != nil {
 		zerologr.Error(err, "Failed to list admin users")
 		return adminapi.GetUsers500JSONResponse(apiErrInternal), nil
 	}
 
 	for index, u := range users {
-		groups, err := dbListGroupBindings(ctx, i.sqlClient, int64(u.Id))
+		groups, err := admindb.ListGroupBindings(ctx, i.sqlClient, int64(u.Id))
 		if err != nil {
 			zerologr.Error(err, "Failed to list admin user group bindings")
 			return adminapi.GetUsers500JSONResponse(apiErrInternal), nil
@@ -467,13 +492,13 @@ func (i *impl) GetMe(
 	//nolint:errcheck // no need, done in mware
 	session := ctx.Value(adminContextSession).(*model.Session)
 
-	u, err := dbGetUser(ctx, i.sqlClient, session.UserID)
+	u, err := admindb.GetUser(ctx, i.sqlClient, session.UserID)
 	if err != nil {
 		zerologr.Error(err, "Failed to get admin user for /me")
 		return adminapi.GetMe500JSONResponse(apiErrInternal), nil
 	}
 
-	groups, err := dbListGroupBindings(ctx, i.sqlClient, int64(u.Id))
+	groups, err := admindb.ListGroupBindings(ctx, i.sqlClient, int64(u.Id))
 	if err != nil {
 		zerologr.Error(err, "Failed to list admin user group bindings for /me")
 		return adminapi.GetMe500JSONResponse(apiErrInternal), nil
@@ -501,16 +526,16 @@ func (i *impl) GetUser(
 		return adminapi.GetUser403JSONResponse(apiErrForbidden), nil
 	}
 
-	u, err := dbGetUser(ctx, i.sqlClient, int64(request.UserID))
+	u, err := admindb.GetUser(ctx, i.sqlClient, int64(request.UserID))
 	if err != nil {
-		if errors.Is(err, errRowNotFound) {
+		if errors.Is(err, db.ErrRowNotFound) {
 			return adminapi.GetUser404JSONResponse(apiErrNotFound), nil
 		}
 		zerologr.Error(err, "Failed to get admin user")
 		return adminapi.GetUser500JSONResponse(apiErrInternal), nil
 	}
 
-	groups, err := dbListGroupBindings(ctx, i.sqlClient, int64(u.Id))
+	groups, err := admindb.ListGroupBindings(ctx, i.sqlClient, int64(u.Id))
 	if err != nil {
 		zerologr.Error(err, "Failed to list admin user group bindings")
 		return adminapi.GetUser500JSONResponse(apiErrInternal), nil
@@ -538,7 +563,7 @@ func (i *impl) UpdateUser(
 		return adminapi.UpdateUser403JSONResponse(apiErrForbidden), nil
 	}
 
-	if err := dbUpdateUser(
+	if err := admindb.UpdateUser(
 		ctx,
 		i.sqlClient,
 		int64(request.UserID),
@@ -565,15 +590,15 @@ func (i *impl) DeleteUser(
 		return adminapi.DeleteUser403JSONResponse(apiErrForbidden), nil
 	}
 
-	if _, err := dbGetUser(ctx, i.sqlClient, int64(request.UserID)); err != nil {
-		if errors.Is(err, errRowNotFound) {
+	if _, err := admindb.GetUser(ctx, i.sqlClient, int64(request.UserID)); err != nil {
+		if errors.Is(err, db.ErrRowNotFound) {
 			return adminapi.DeleteUser404JSONResponse(apiErrNotFound), nil
 		}
 		zerologr.Error(err, "Failed to check admin user before delete")
 		return adminapi.DeleteUser500JSONResponse(apiErrInternal), nil
 	}
 
-	if err := dbDeleteUser(ctx, i.sqlClient, int64(request.UserID)); err != nil {
+	if err := admindb.DeleteUser(ctx, i.sqlClient, int64(request.UserID)); err != nil {
 		zerologr.Error(err, "Failed to delete admin user")
 		return adminapi.DeleteUser500JSONResponse(apiErrInternal), nil
 	}
@@ -594,9 +619,9 @@ func (i *impl) ChangeUserPassword(
 		return adminapi.ChangeUserPassword403JSONResponse(apiErrForbidden), nil
 	}
 
-	auth, err := dbGetUserAuth(ctx, i.sqlClient, int64(request.UserID))
+	auth, err := admindb.GetUserAuth(ctx, i.sqlClient, int64(request.UserID))
 	if err != nil {
-		if errors.Is(err, errRowNotFound) {
+		if errors.Is(err, db.ErrRowNotFound) {
 			return adminapi.ChangeUserPassword404JSONResponse(apiErrNotFound), nil
 		}
 		zerologr.Error(err, "Failed to get admin user auth for password change")
@@ -608,7 +633,7 @@ func (i *impl) ChangeUserPassword(
 	}
 
 	_, newSalt, newHashed := password.Make(request.Body.NewPassword)
-	if err := dbUpdateUserPassword(
+	if err := admindb.UpdateUserPassword(
 		ctx,
 		i.sqlClient,
 		int64(request.UserID),
@@ -630,7 +655,7 @@ func (i *impl) ChangeSuperuserPassword(
 		return adminapi.ChangeSuperuserPassword403JSONResponse(apiErrForbidden), nil
 	}
 
-	superuser, err := dbGetSuperuser(ctx, i.sqlClient)
+	superuser, err := admindb.GetSuperuser(ctx, i.sqlClient)
 	if err != nil {
 		zerologr.Error(err, "Failed to get superuser for password change")
 		return adminapi.ChangeSuperuserPassword500JSONResponse(apiErrInternal), nil
@@ -641,7 +666,7 @@ func (i *impl) ChangeSuperuserPassword(
 	}
 
 	_, newSalt, newHashed := password.Make(request.Body.NewPassword)
-	if err := dbUpdateSuperuserPassword(
+	if err := admindb.UpdateSuperuserPassword(
 		ctx,
 		i.sqlClient,
 		newSalt,
@@ -663,15 +688,15 @@ func (i *impl) UpdateUserGroups(
 		return adminapi.UpdateUserGroups403JSONResponse(apiErrForbidden), nil
 	}
 
-	if _, err := dbGetUser(ctx, i.sqlClient, int64(request.UserID)); err != nil {
-		if errors.Is(err, errRowNotFound) {
+	if _, err := admindb.GetUser(ctx, i.sqlClient, int64(request.UserID)); err != nil {
+		if errors.Is(err, db.ErrRowNotFound) {
 			return adminapi.UpdateUserGroups404JSONResponse(apiErrNotFound), nil
 		}
 		zerologr.Error(err, "Failed to check admin user before group update")
 		return adminapi.UpdateUserGroups500JSONResponse(apiErrInternal), nil
 	}
 
-	if err := dbUpdateUserGroupBindings(
+	if err := admindb.UpdateUserGroupBindings(
 		ctx,
 		i.sqlClient,
 		int64(request.UserID),
@@ -693,7 +718,7 @@ func (i *impl) CreateGroup(
 		return adminapi.CreateGroup403JSONResponse(apiErrForbidden), nil
 	}
 
-	id, err := dbCreateGroup(ctx, i.sqlClient, request.Body.Name)
+	id, err := admindb.CreateGroup(ctx, i.sqlClient, request.Body.Name)
 	if err != nil {
 		if errors.Is(err, db.ErrUnique) {
 			zerologr.Error(err, "Group name conflict")
@@ -704,12 +729,17 @@ func (i *impl) CreateGroup(
 		return adminapi.CreateGroup500JSONResponse(apiErrInternal), nil
 	}
 
-	if err := dbSetGroupPermissions(ctx, i.sqlClient, id, request.Body.PermissionIDs); err != nil {
+	if err := admindb.SetGroupPermissions(
+		ctx,
+		i.sqlClient,
+		id,
+		request.Body.PermissionIDs,
+	); err != nil {
 		zerologr.Error(err, "Failed to set permissions for admin group")
 		return adminapi.CreateGroup500JSONResponse(apiErrInternal), nil
 	}
 
-	perms, err := dbGetGroupPermissions(ctx, i.sqlClient, id)
+	perms, err := admindb.GetGroupPermissions(ctx, i.sqlClient, id)
 	if err != nil {
 		zerologr.Error(err, "Failed to fetch permissions for created admin group")
 		return adminapi.CreateGroup500JSONResponse(apiErrInternal), nil
@@ -729,7 +759,7 @@ func (i *impl) GetGroups(
 		return adminapi.GetGroups403JSONResponse(apiErrForbidden), nil
 	}
 
-	groups, err := dbListGroups(ctx, i.sqlClient)
+	groups, err := admindb.ListGroups(ctx, i.sqlClient)
 	if err != nil {
 		zerologr.Error(err, "Failed to list admin groups")
 		return adminapi.GetGroups500JSONResponse(apiErrInternal), nil
@@ -737,7 +767,7 @@ func (i *impl) GetGroups(
 
 	enriched := make([]adminapi.Group, 0, len(groups))
 	for _, g := range groups {
-		perms, err := dbGetGroupPermissions(ctx, i.sqlClient, int64(g.Id))
+		perms, err := admindb.GetGroupPermissions(ctx, i.sqlClient, int64(g.Id))
 		if err != nil {
 			zerologr.Error(err, "Failed to fetch permissions for admin group")
 			return adminapi.GetGroups500JSONResponse(apiErrInternal), nil
@@ -758,16 +788,16 @@ func (i *impl) GetGroup(
 		return adminapi.GetGroup403JSONResponse(apiErrForbidden), nil
 	}
 
-	g, err := dbGetGroup(ctx, i.sqlClient, int64(request.GroupID))
+	g, err := admindb.GetGroup(ctx, i.sqlClient, int64(request.GroupID))
 	if err != nil {
-		if errors.Is(err, errRowNotFound) {
+		if errors.Is(err, db.ErrRowNotFound) {
 			return adminapi.GetGroup404JSONResponse(apiErrNotFound), nil
 		}
 		zerologr.Error(err, "Failed to get admin group")
 		return adminapi.GetGroup500JSONResponse(apiErrInternal), nil
 	}
 
-	perms, err := dbGetGroupPermissions(ctx, i.sqlClient, int64(request.GroupID))
+	perms, err := admindb.GetGroupPermissions(ctx, i.sqlClient, int64(request.GroupID))
 	if err != nil {
 		zerologr.Error(err, "Failed to fetch permissions for admin group")
 		return adminapi.GetGroup500JSONResponse(apiErrInternal), nil
@@ -786,8 +816,8 @@ func (i *impl) UpdateGroup(
 		return adminapi.UpdateGroup403JSONResponse(apiErrForbidden), nil
 	}
 
-	if _, err := dbGetGroup(ctx, i.sqlClient, int64(request.GroupID)); err != nil {
-		if errors.Is(err, errRowNotFound) {
+	if _, err := admindb.GetGroup(ctx, i.sqlClient, int64(request.GroupID)); err != nil {
+		if errors.Is(err, db.ErrRowNotFound) {
 			return adminapi.UpdateGroup404JSONResponse(apiErrNotFound), nil
 		}
 
@@ -795,7 +825,7 @@ func (i *impl) UpdateGroup(
 		return adminapi.UpdateGroup500JSONResponse(apiErrInternal), nil
 	}
 
-	if err := dbUpdateGroup(
+	if err := admindb.UpdateGroup(
 		ctx,
 		i.sqlClient,
 		int64(request.GroupID),
@@ -810,7 +840,7 @@ func (i *impl) UpdateGroup(
 		return adminapi.UpdateGroup500JSONResponse(apiErrInternal), nil
 	}
 
-	if err := dbSetGroupPermissions(
+	if err := admindb.SetGroupPermissions(
 		ctx,
 		i.sqlClient,
 		int64(request.GroupID),
@@ -832,15 +862,15 @@ func (i *impl) DeleteGroup(
 		return adminapi.DeleteGroup403JSONResponse(apiErrForbidden), nil
 	}
 
-	if _, err := dbGetGroup(ctx, i.sqlClient, int64(request.GroupID)); err != nil {
-		if errors.Is(err, errRowNotFound) {
+	if _, err := admindb.GetGroup(ctx, i.sqlClient, int64(request.GroupID)); err != nil {
+		if errors.Is(err, db.ErrRowNotFound) {
 			return adminapi.DeleteGroup404JSONResponse(apiErrNotFound), nil
 		}
 		zerologr.Error(err, "Failed to check admin group before delete")
 		return adminapi.DeleteGroup500JSONResponse(apiErrInternal), nil
 	}
 
-	if err := dbDeleteGroup(ctx, i.sqlClient, int64(request.GroupID)); err != nil {
+	if err := admindb.DeleteGroup(ctx, i.sqlClient, int64(request.GroupID)); err != nil {
 		zerologr.Error(err, "Failed to delete admin group")
 		return adminapi.DeleteGroup500JSONResponse(apiErrInternal), nil
 	}

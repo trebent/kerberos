@@ -1,10 +1,14 @@
 {
+  "persistence": {
+    "driver": "sqlite",
+    "address": "krb.db"
+  },
   "gateway": {
     "router": {
       "backends": [
         {
           "name": "echo",
-          "host": "localhost",
+          "host": "echo",
           "port": 15000
         }
       ]

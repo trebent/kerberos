@@ -1,4 +1,4 @@
-name: Test
+name: Security tests
 
 on:
   workflow_call:
@@ -25,7 +25,7 @@ jobs:
       - name: Set up Golang
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: test/suites/security/go.mod
+          go-version-file: test/suites/go.mod
           cache: false
 
       - name: Compute build cache key
@@ -40,7 +40,7 @@ jobs:
                 -not -path './test/suites/*' \
                 -not -path './tools/*' \
                 -print0 | sort -z | xargs -0 cat
-              cat test/suites/security/go.mod test/suites/security/go.sum
+              cat test/suites/go.mod test/suites/go.sum
               find test/suites/security -type f -name '*.go' -print0 | sort -z | xargs -0 cat
             } | md5sum | awk '{print $1}'
           )
@@ -50,7 +50,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/go/pkg/mod
-          key: security-test-go-mod-${{ runner.os }}-${{ hashFiles('test/suites/security/go.sum') }}
+          key: security-test-go-mod-${{ runner.os }}-${{ hashFiles('test/suites/go.sum') }}
 
       - name: Cache Go build cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

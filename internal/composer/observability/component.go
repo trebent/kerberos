@@ -3,6 +3,7 @@ package obs
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/trebent/zerologr"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
@@ -173,7 +175,7 @@ func (o *obs) spanStartOpts(req *http.Request) []trace.SpanStartOption {
 	opts := make([]trace.SpanStartOption, len(o.spanOpts)+2)
 	copy(opts, o.spanOpts)
 	opts[len(opts)-1] = trace.WithAttributes(semconv.HTTPMethod(req.Method))
-	opts[len(opts)-2] = trace.WithAttributes(semconv.HTTPURL(req.URL.Path))
+	opts[len(opts)-2] = trace.WithAttributes(semconv.HTTPURL(req.URL.String()))
 
 	return opts
 }
@@ -184,12 +186,15 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// Check request trace context
 	ctx := otel.GetTextMapPropagator().Extract(req.Context(), propagation.HeaderCarrier(req.Header))
-	ctx, span := tracer.Start(ctx, req.Method, o.spanStartOpts(req)...)
+	ctx, span := tracer.Start(
+		ctx,
+		fmt.Sprintf("%s %s", req.Method, req.URL.String()),
+		o.spanStartOpts(req)...,
+	)
 	defer span.End() // Stop the span after EVERYTHING is done
 
-	rLogger := o.logger.WithValues("path", req.URL.Path, "method", req.Method)
+	rLogger := o.logger.WithValues("http.path", req.URL.Path, semconv.HTTPMethodKey, req.Method)
 	originalPath := req.URL.Path
-	rLogger.Info(req.Method + " " + originalPath)
 
 	// Wrap the response to extract:
 	// - status code
@@ -208,8 +213,12 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		//nolint:errcheck // no point
 		o.bumpMetrics(ctx, wrapped.(*response.Wrapper), bw, req, 0, krbAttributes)
 
-		span.SetStatus(http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+		span.SetStatus(codes.Error, http.StatusText(http.StatusBadRequest))
 		span.SetAttributes(krbAttributes...)
+
+		rLogger.Info(
+			req.Method + " " + originalPath + " " + strconv.Itoa(http.StatusBadRequest),
+		)
 
 		// Debugging this failure is pointless since the session matching will inevitably
 		return
@@ -262,8 +271,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	span.SetAttributes(krbAttributes...)
 
 	rLogger.Info(
-		req.Method+" "+originalPath+" "+strconv.Itoa(wrapper.StatusCode()),
-		string(semconv.HTTPStatusCodeKey), wrapper.StatusCode(),
+		req.Method + " " + originalPath + " " + strconv.Itoa(wrapper.StatusCode()),
 	)
 
 	debugCall.SetStatusCode(wrapper.StatusCode())

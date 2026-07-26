@@ -10,6 +10,8 @@ import (
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	"github.com/trebent/zerologr"
 	"golang.org/x/time/rate"
+
+	admindb "github.com/trebent/kerberos/internal/admin/db"
 )
 
 type (
@@ -153,7 +155,12 @@ func (r *realCall) SetURL(url string) {
 func (r *realCall) Finalise() {
 	r.apiCall.StoppedAt = time.Now()
 
-	_, err := dbCreateDebugSessionCall(context.Background(), r.sqlClient, r.sessionID, r.apiCall)
+	_, err := admindb.CreateDebugSessionCall(
+		context.Background(),
+		r.sqlClient,
+		r.sessionID,
+		r.apiCall,
+	)
 	if err != nil {
 		zerologr.Error(err, "Failed to persist debug session call")
 	}

@@ -1,9 +1,5 @@
 **
 !go.mod
 !go.sum
-!cmd/
 !cmd/echo/
-!cmd/echo/**/*.go
-!internal/
 !internal/otel/
-!internal/otel/**/*.go

@@ -19,13 +19,17 @@ type (
 var (
 	_ error = (*Error)(nil)
 
-	ErrUnauthenticated = &Error{
+	ErrUnauthorized = &Error{
 		Errors:     []string{http.StatusText(http.StatusUnauthorized)},
 		StatusCode: http.StatusUnauthorized,
 	}
 	ErrISE = &Error{
 		Errors:     []string{http.StatusText(http.StatusInternalServerError)},
 		StatusCode: http.StatusInternalServerError,
+	}
+	ErrBadGateway = &Error{
+		Errors:     []string{http.StatusText(http.StatusBadGateway)},
+		StatusCode: http.StatusBadGateway,
 	}
 	ErrNotFound = &Error{
 		Errors:     []string{http.StatusText(http.StatusNotFound)},
@@ -43,7 +47,7 @@ var (
 	}
 	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
 	ErrUnimplemented = &Error{
-		Errors:     []string{"unimplemented"},
+		Errors:     []string{http.StatusText(http.StatusNotImplemented)},
 		StatusCode: http.StatusNotImplemented,
 	}
 )

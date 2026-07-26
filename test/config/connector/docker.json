@@ -1,0 +1,9 @@
+{
+  "whitelist": [
+    "localhost"
+  ],
+  "persistence": {
+    "driver": "sqlite",
+    "address": "krb.db"
+  }
+}

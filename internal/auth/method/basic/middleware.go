@@ -74,7 +74,7 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 
 			if len(r.Cookies()) == 0 {
 				zerologr.V(20).Info("No cookies found, denying access")
-				return nil, apierror.ErrUnauthenticated
+				return nil, apierror.ErrUnauthorized
 			}
 
 			if len(r.CookiesNamed(security.RefreshCookieName)) == 0 {
@@ -94,27 +94,27 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 
 			if len(r.CookiesNamed(security.SessionCookieName)) == 0 {
 				zerologr.V(20).Info("No session cookie found, denying access")
-				return nil, apierror.ErrUnauthenticated
+				return nil, apierror.ErrUnauthorized
 			}
 
 			cookie := r.CookiesNamed(security.SessionCookieName)[0]
 			if cookie.Value == "" {
 				zerologr.V(20).Info("Session cookie is empty, denying access")
-				return nil, apierror.ErrUnauthenticated
+				return nil, apierror.ErrUnauthorized
 			}
 
 			session, err := dbGetSessionRow(ctx, apiImpl.db, cookie.Value)
 			if errors.Is(err, errNoSession) {
-				zerologr.Error(apierror.ErrUnauthenticated, "Failed to find a matching session")
-				return nil, apierror.ErrUnauthenticated
+				zerologr.Error(apierror.ErrUnauthorized, "Failed to find a matching session")
+				return nil, apierror.ErrUnauthorized
 			}
 			if err != nil {
 				return nil, apierror.ErrISE
 			}
 
 			if time.Now().UnixMilli() > session.Expires {
-				zerologr.Error(apierror.ErrUnauthenticated, "Session expired")
-				return nil, apierror.ErrUnauthenticated
+				zerologr.Error(apierror.ErrUnauthorized, "Session expired")
+				return nil, apierror.ErrUnauthorized
 			}
 
 			var validation []error

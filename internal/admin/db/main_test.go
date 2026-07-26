@@ -1,12 +1,11 @@
 //go:build !postgres_integration
 
-package admin
+package admindb
 
 import (
 	"os"
 	"testing"
 
-	admindb "github.com/trebent/kerberos/internal/admin/db"
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/kerberos/internal/db/sqlite"
 )
@@ -20,15 +19,15 @@ var testClient db.SQLClient
 
 func TestMain(m *testing.M) {
 	testClient = sqlite.New(&sqlite.Opts{DSN: "test.db"})
-	if err := admindb.ApplySchemas(testClient); err != nil {
+	if err := ApplySchemas(testClient); err != nil {
 		panic("failed to apply admin DB schema: " + err.Error())
 	}
 
-	if err := admindb.BootstrapSuperuser(testClient, testClientID, testClientSecret); err != nil {
+	if err := BootstrapSuperuser(testClient, testClientID, testClientSecret); err != nil {
 		panic("failed to bootstrap superuser: " + err.Error())
 	}
 
-	if err := admindb.BootstrapPermissions(testClient); err != nil {
+	if err := BootstrapPermissions(testClient); err != nil {
 		panic("failed to bootstrap permissions: " + err.Error())
 	}
 

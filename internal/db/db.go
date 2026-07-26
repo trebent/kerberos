@@ -46,4 +46,7 @@ type (
 // Failed unique constraint, conflict.
 var ErrUnique = errors.New("unique constraint failed")
 
+// ErrRowNotFound is returned when a query finds no matching row.
+var ErrRowNotFound = errors.New("row not found")
+
 const SchemaApplyTimeout = 5 * time.Second

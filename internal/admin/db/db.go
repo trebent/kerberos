@@ -1,4 +1,4 @@
-package admin
+package admindb
 
 import (
 	"context"
@@ -6,6 +6,8 @@ import (
 	"errors"
 	"slices"
 	"time"
+
+	_ "embed"
 
 	"github.com/trebent/kerberos/internal/admin/model"
 	"github.com/trebent/kerberos/internal/db"
@@ -90,13 +92,31 @@ const (
 	insertDebugSessionFlowTransition  = "INSERT INTO admin_debug_session_call_flow_transitions (call_id, component, direction, started_at, stopped_at, result, failure_cause) VALUES(@call_id, @component, @direction, @started_at, @stopped_at, @result, @failure_cause);"
 	selectDebugSessionFlowTransitions = "SELECT component, direction, started_at, stopped_at, result, failure_cause FROM admin_debug_session_call_flow_transitions WHERE call_id = @call_id ORDER BY started_at ASC;"
 
-	sessionExpiry        = 15 * time.Minute
-	sessionRefreshExpiry = 60 * time.Minute
+	SessionExpiry        = 15 * time.Minute
+	SessionRefreshExpiry = 60 * time.Minute
 )
 
-var errRowNotFound = errors.New("row not found")
+//go:embed schema/schema.sql
+var dbschemaBytes []byte
 
-func dbListDebugSessions(
+//go:embed schema/schema_postgres.sql
+var dbschemaPostgresBytes []byte
+
+// ApplySchemas applies the admin DB schema to the given SQL client.
+func ApplySchemas(sqlClient db.SQLClient) error {
+	schema := dbschemaBytes
+	if sqlClient.Dialect() == db.PostgresDialect {
+		schema = dbschemaPostgresBytes
+	}
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), db.SchemaApplyTimeout)
+	defer cancel()
+	if _, err := sqlClient.Exec(timeoutCtx, string(schema)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func ListDebugSessions(
 	ctx context.Context,
 	client db.SQLClient,
 	backend string,
@@ -141,7 +161,7 @@ func dbListDebugSessions(
 	return sessions, nil
 }
 
-func dbCreateDebugSession(
+func CreateDebugSession(
 	ctx context.Context,
 	client db.SQLClient,
 	backend string,
@@ -173,7 +193,7 @@ func dbCreateDebugSession(
 	return id, nil
 }
 
-func dbGetDebugSession(
+func GetDebugSession(
 	ctx context.Context,
 	client db.SQLClient,
 	backend string,
@@ -215,10 +235,10 @@ func dbGetDebugSession(
 		return nil, err
 	}
 
-	return nil, errRowNotFound
+	return nil, db.ErrRowNotFound
 }
 
-func dbUpdateDebugSession(
+func UpdateDebugSession(
 	ctx context.Context,
 	client db.SQLClient,
 	debugSession adminapi.DebugSession,
@@ -248,7 +268,7 @@ func dbUpdateDebugSession(
 	return err
 }
 
-func dbDeleteDebugSession(
+func DeleteDebugSession(
 	ctx context.Context,
 	client db.SQLClient,
 	backend string,
@@ -268,7 +288,7 @@ func dbDeleteDebugSession(
 	return nil
 }
 
-func dbCreateDebugSessionCall(
+func CreateDebugSessionCall(
 	ctx context.Context,
 	client db.SQLClient,
 	sessionID int64,
@@ -351,7 +371,7 @@ func dbCreateDebugSessionCall(
 	return callID, nil
 }
 
-func dbListDebugSessionCalls(
+func ListDebugSessionCalls(
 	ctx context.Context,
 	client db.SQLClient,
 	sessionID int64,
@@ -397,7 +417,7 @@ func dbListDebugSessionCalls(
 	if includeTransitions {
 		// Fetch flow transitions per call.
 		for i, call := range calls {
-			transitions, err := dbListDebugSessionFlowTransitions(ctx, client, int64(call.Id))
+			transitions, err := ListDebugSessionFlowTransitions(ctx, client, int64(call.Id))
 			if err != nil {
 				zerologr.Error(err, "Failed to list debug session flow transitions")
 				return nil, err
@@ -409,7 +429,7 @@ func dbListDebugSessionCalls(
 	return calls, nil
 }
 
-func dbGetDebugSessionCall(
+func GetDebugSessionCall(
 	ctx context.Context,
 	client db.SQLClient,
 	callID int64,
@@ -448,7 +468,7 @@ func dbGetDebugSessionCall(
 		// On SQLite (single connection) an open cursor blocks further queries.
 		_ = rows.Close()
 
-		transitions, err := dbListDebugSessionFlowTransitions(ctx, client, int64(call.Id))
+		transitions, err := ListDebugSessionFlowTransitions(ctx, client, int64(call.Id))
 		if err != nil {
 			zerologr.Error(err, "Failed to list debug session flow transitions")
 			return nil, err
@@ -461,10 +481,10 @@ func dbGetDebugSessionCall(
 		return nil, err
 	}
 
-	return nil, errRowNotFound
+	return nil, db.ErrRowNotFound
 }
 
-func dbListDebugSessionFlowTransitions(
+func ListDebugSessionFlowTransitions(
 	ctx context.Context,
 	client db.SQLClient,
 	callID int64,
@@ -514,9 +534,9 @@ func dbListDebugSessionFlowTransitions(
 
 // --- Superuser / session helpers (used by ssi.go, middleware.go) ---
 
-// dbGetSuperuser returns the superuser row.
+// GetSuperuser returns the superuser row.
 // Returns (nil, errNoSuperuser) when no superuser exists.
-func dbGetSuperuser(ctx context.Context, client db.SQLClient) (*model.User, error) {
+func GetSuperuser(ctx context.Context, client db.SQLClient) (*model.User, error) {
 	rows, err := client.Query(ctx, selectSuperuser)
 	if err != nil {
 		zerologr.Error(err, "Failed to query for superuser during session check")
@@ -541,12 +561,12 @@ func dbGetSuperuser(ctx context.Context, client db.SQLClient) (*model.User, erro
 		return nil, err
 	}
 
-	return nil, errRowNotFound
+	return nil, db.ErrRowNotFound
 }
 
-// dbGetSession returns a session by its session ID.
+// GetSession returns a session by its session ID.
 // Returns (nil, errNoSession) when no matching session exists.
-func dbGetSession(
+func GetSession(
 	ctx context.Context,
 	client db.SQLClient,
 	sessionID string,
@@ -580,12 +600,12 @@ func dbGetSession(
 		return nil, err
 	}
 
-	return nil, errRowNotFound
+	return nil, db.ErrRowNotFound
 }
 
-// dbGetSessionByRefresh returns when the session associated with the given refresh ID expires.
+// GetSessionByRefresh returns when the session associated with the given refresh ID expires.
 // Returns (0, errNoSession) when no matching session exists.
-func dbGetSessionByRefresh(
+func GetSessionByRefresh(
 	ctx context.Context,
 	client db.SQLClient,
 	refreshID string,
@@ -619,14 +639,14 @@ func dbGetSessionByRefresh(
 		return nil, err
 	}
 
-	return nil, errRowNotFound
+	return nil, db.ErrRowNotFound
 }
 
 // --- Users ---
 
-// dbGetUser returns a non-superuser admin user by ID.
+// GetUser returns a non-superuser admin user by ID.
 // Returns (nil, errNoUser) when no matching user exists.
-func dbGetUser(ctx context.Context, client db.SQLClient, userID int64) (*adminapi.User, error) {
+func GetUser(ctx context.Context, client db.SQLClient, userID int64) (*adminapi.User, error) {
 	rows, err := client.Query(
 		ctx,
 		selectAdminUser,
@@ -643,7 +663,7 @@ func dbGetUser(ctx context.Context, client db.SQLClient, userID int64) (*adminap
 			zerologr.Error(err, "Failed to iterate admin user rows")
 			return nil, err
 		}
-		return nil, errRowNotFound
+		return nil, db.ErrRowNotFound
 	}
 
 	var u adminapi.User
@@ -655,7 +675,7 @@ func dbGetUser(ctx context.Context, client db.SQLClient, userID int64) (*adminap
 	return &u, nil
 }
 
-func dbListUsers(ctx context.Context, client db.SQLClient) ([]adminapi.User, error) {
+func ListUsers(ctx context.Context, client db.SQLClient) ([]adminapi.User, error) {
 	rows, err := client.Query(ctx, selectAdminUsers)
 	if err != nil {
 		zerologr.Error(err, "Failed to query admin users")
@@ -680,7 +700,7 @@ func dbListUsers(ctx context.Context, client db.SQLClient) ([]adminapi.User, err
 	return users, nil
 }
 
-func dbCreateUser(
+func CreateUser(
 	ctx context.Context,
 	client db.SQLClient,
 	username, salt, hashedPassword string,
@@ -712,7 +732,7 @@ func dbCreateUser(
 	return id, nil
 }
 
-func dbUpdateUser(ctx context.Context, client db.SQLClient, userID int64, username string) error {
+func UpdateUser(ctx context.Context, client db.SQLClient, userID int64, username string) error {
 	_, err := client.Exec(
 		ctx,
 		updateAdminUser,
@@ -725,7 +745,7 @@ func dbUpdateUser(ctx context.Context, client db.SQLClient, userID int64, userna
 	return err
 }
 
-func dbDeleteUser(ctx context.Context, client db.SQLClient, userID int64) error {
+func DeleteUser(ctx context.Context, client db.SQLClient, userID int64) error {
 	_, err := client.Exec(
 		ctx,
 		deleteAdminUser,
@@ -737,9 +757,9 @@ func dbDeleteUser(ctx context.Context, client db.SQLClient, userID int64) error 
 	return err
 }
 
-// dbGetUserAuth returns authentication credentials for a non-superuser admin user.
+// GetUserAuth returns authentication credentials for a non-superuser admin user.
 // Returns (nil, errNoUser) when no matching user exists.
-func dbGetUserAuth(
+func GetUserAuth(
 	ctx context.Context,
 	client db.SQLClient,
 	userID int64,
@@ -760,7 +780,7 @@ func dbGetUserAuth(
 			zerologr.Error(err, "Failed to iterate admin user auth rows")
 			return nil, err
 		}
-		return nil, errRowNotFound
+		return nil, db.ErrRowNotFound
 	}
 
 	r := &model.UserAuth{}
@@ -772,7 +792,7 @@ func dbGetUserAuth(
 	return r, nil
 }
 
-func dbUpdateUserPassword(
+func UpdateUserPassword(
 	ctx context.Context,
 	client db.SQLClient,
 	userID int64,
@@ -791,7 +811,7 @@ func dbUpdateUserPassword(
 	return err
 }
 
-func dbUpdateSuperuserPassword(
+func UpdateSuperuserPassword(
 	ctx context.Context,
 	client db.SQLClient,
 	salt, hashedPassword string,
@@ -808,9 +828,9 @@ func dbUpdateSuperuserPassword(
 	return err
 }
 
-// dbLoginLookup looks up a non-superuser admin user by username for authentication.
+// LoginLookup looks up a non-superuser admin user by username for authentication.
 // Returns (nil, errNoUser) when no matching user exists.
-func dbLoginLookup(
+func LoginLookup(
 	ctx context.Context,
 	client db.SQLClient,
 	username string,
@@ -831,7 +851,7 @@ func dbLoginLookup(
 			zerologr.Error(err, "Failed to iterate admin login user rows")
 			return nil, err
 		}
-		return nil, errRowNotFound
+		return nil, db.ErrRowNotFound
 	}
 
 	r := &model.SuperuserLoginUser{}
@@ -845,9 +865,9 @@ func dbLoginLookup(
 
 // --- Groups ---
 
-// dbGetGroup returns an admin group by ID.
+// GetGroup returns an admin group by ID.
 // Returns (nil, errNoGroup) when no matching group exists.
-func dbGetGroup(ctx context.Context, client db.SQLClient, groupID int64) (*adminapi.Group, error) {
+func GetGroup(ctx context.Context, client db.SQLClient, groupID int64) (*adminapi.Group, error) {
 	rows, err := client.Query(
 		ctx,
 		selectAdminGroup,
@@ -864,7 +884,7 @@ func dbGetGroup(ctx context.Context, client db.SQLClient, groupID int64) (*admin
 			zerologr.Error(err, "Failed to iterate admin group rows")
 			return nil, err
 		}
-		return nil, errRowNotFound
+		return nil, db.ErrRowNotFound
 	}
 
 	var g adminapi.Group
@@ -876,7 +896,7 @@ func dbGetGroup(ctx context.Context, client db.SQLClient, groupID int64) (*admin
 	return &g, nil
 }
 
-func dbListGroups(ctx context.Context, client db.SQLClient) ([]adminapi.Group, error) {
+func ListGroups(ctx context.Context, client db.SQLClient) ([]adminapi.Group, error) {
 	rows, err := client.Query(ctx, selectAdminGroups)
 	if err != nil {
 		zerologr.Error(err, "Failed to query admin groups")
@@ -901,7 +921,7 @@ func dbListGroups(ctx context.Context, client db.SQLClient) ([]adminapi.Group, e
 	return groups, nil
 }
 
-func dbCreateGroup(ctx context.Context, client db.SQLClient, name string) (int64, error) {
+func CreateGroup(ctx context.Context, client db.SQLClient, name string) (int64, error) {
 	if client.Dialect() == db.PostgresDialect {
 		return postgres.InsertReturningID(ctx, client, insertAdminGroupReturning,
 			sql.NamedArg{Name: argName, Value: name},
@@ -925,7 +945,7 @@ func dbCreateGroup(ctx context.Context, client db.SQLClient, name string) (int64
 	return id, nil
 }
 
-func dbUpdateGroup(ctx context.Context, client db.SQLClient, groupID int64, name string) error {
+func UpdateGroup(ctx context.Context, client db.SQLClient, groupID int64, name string) error {
 	_, err := client.Exec(
 		ctx,
 		updateAdminGroup,
@@ -938,7 +958,7 @@ func dbUpdateGroup(ctx context.Context, client db.SQLClient, groupID int64, name
 	return err
 }
 
-func dbDeleteGroup(ctx context.Context, client db.SQLClient, groupID int64) error {
+func DeleteGroup(ctx context.Context, client db.SQLClient, groupID int64) error {
 	_, err := client.Exec(
 		ctx,
 		deleteAdminGroup,
@@ -952,7 +972,7 @@ func dbDeleteGroup(ctx context.Context, client db.SQLClient, groupID int64) erro
 
 // --- Group bindings ---
 
-func dbListGroupBindings(
+func ListGroupBindings(
 	ctx context.Context,
 	client db.SQLClient,
 	userID int64,
@@ -985,14 +1005,14 @@ func dbListGroupBindings(
 	return bindings, nil
 }
 
-// dbUpdateUserGroupBindings atomically updates a user's group memberships to exactly match desiredGroupIDs.
-func dbUpdateUserGroupBindings(
+// UpdateUserGroupBindings atomically updates a user's group memberships to exactly match desiredGroupIDs.
+func UpdateUserGroupBindings(
 	ctx context.Context,
 	client db.SQLClient,
 	userID int64,
 	desiredGroupIDs []int,
 ) error {
-	bindings, err := dbListGroupBindings(ctx, client, userID)
+	bindings, err := ListGroupBindings(ctx, client, userID)
 	if err != nil {
 		return err
 	}
@@ -1055,7 +1075,7 @@ func dbUpdateUserGroupBindings(
 
 // --- Sessions ---
 
-func dbCreateSession(
+func CreateSession(
 	ctx context.Context,
 	client db.SQLClient,
 	userID int64,
@@ -1068,7 +1088,7 @@ func dbCreateSession(
 		sql.NamedArg{Name: "user_id", Value: userID},
 		sql.NamedArg{Name: "refresh_id", Value: refreshID},
 		sql.NamedArg{Name: "session_id", Value: sessionID},
-		sql.NamedArg{Name: "expires", Value: time.Now().Add(sessionExpiry).UnixMilli()},
+		sql.NamedArg{Name: "expires", Value: time.Now().Add(SessionExpiry).UnixMilli()},
 	)
 	if err != nil {
 		zerologr.Error(err, "Failed to store admin session")
@@ -1076,7 +1096,7 @@ func dbCreateSession(
 	return err
 }
 
-func dbDeleteSession(ctx context.Context, client db.SQLClient, sessionID string) error {
+func DeleteSession(ctx context.Context, client db.SQLClient, sessionID string) error {
 	_, err := client.Exec(
 		ctx,
 		deleteAdminSession,
@@ -1088,10 +1108,18 @@ func dbDeleteSession(ctx context.Context, client db.SQLClient, sessionID string)
 	return err
 }
 
+func DeleteSuperuserSessions(ctx context.Context, client db.SQLClient) error {
+	_, err := client.Exec(ctx, deleteSuperSessions)
+	if err != nil {
+		zerologr.Error(err, "Failed to delete superuser sessions")
+	}
+	return err
+}
+
 // bootstrapSuperuser checks if a super user exists and if not, creates one with the provided credentials.
 // This is to allow bootstrapping of the first super user. Subsequent calls to this function will not have any effect.
 // This is to prevent re-provisioning of the super-user, potentially allowing an attacker to reset powerful credentials.
-func dbBootstrapSuperuser(client db.SQLClient, clientID, clientSecret string) error {
+func BootstrapSuperuser(client db.SQLClient, clientID, clientSecret string) error {
 	// check if a super user already exists.
 	rows, err := client.Query(context.Background(), selectSuperuser)
 	if err != nil {
@@ -1126,19 +1154,19 @@ func dbBootstrapSuperuser(client db.SQLClient, clientID, clientSecret string) er
 
 // --- Permissions ---
 
-// dbBootstrapPermissions inserts the fixed set of permissions if they do not yet exist.
-func dbBootstrapPermissions(client db.SQLClient) error {
+// BootstrapPermissions inserts the fixed set of permissions if they do not yet exist.
+func BootstrapPermissions(client db.SQLClient) error {
 	perms := []struct {
 		id   int64
 		name string
 	}{
-		{PermissionIDFlowViewer, PermissionNameFlowViewer},
-		{PermissionIDOASViewer, PermissionNameOASViewer},
-		{PermissionIDBasicAuthOrgAdmin, PermissionNameBasicAuthOrgAdmin},
-		{PermissionIDBasicAuthOrgViewer, PermissionNameBasicAuthOrgViewer},
-		{PermissionIDAdminUserMgmtAdmin, PermissionNameAdminUserMgmtAdmin},
-		{PermissionIDAdminUserMgmtViewer, PermissionNameAdminUserMgmtViewer},
-		{PermissionIDDebugger, PermissionNameDebugger},
+		{1, "flow-viewer"},
+		{2, "oas-viewer"},
+		{3, "basic-auth-org-admin"},
+		{4, "basic-auth-org-viewer"},
+		{5, "admin-user-mgmt-admin"},
+		{6, "admin-user-mgmt-viewer"},
+		{7, "debugger"},
 	}
 
 	for _, p := range perms {
@@ -1168,8 +1196,8 @@ func dbBootstrapPermissions(client db.SQLClient) error {
 	return nil
 }
 
-// dbListPermissions returns all available permissions.
-func dbListPermissions(ctx context.Context, client db.SQLClient) ([]adminapi.Permission, error) {
+// ListPermissions returns all available permissions.
+func ListPermissions(ctx context.Context, client db.SQLClient) ([]adminapi.Permission, error) {
 	rows, err := client.Query(ctx, selectAdminPermissions)
 	if err != nil {
 		zerologr.Error(err, "Failed to query admin permissions")
@@ -1194,8 +1222,8 @@ func dbListPermissions(ctx context.Context, client db.SQLClient) ([]adminapi.Per
 	return perms, nil
 }
 
-// dbGetGroupPermissions returns the permissions assigned to the given group.
-func dbGetGroupPermissions(
+// GetGroupPermissions returns the permissions assigned to the given group.
+func GetGroupPermissions(
 	ctx context.Context,
 	client db.SQLClient,
 	groupID int64,
@@ -1228,8 +1256,8 @@ func dbGetGroupPermissions(
 	return perms, nil
 }
 
-// dbSetGroupPermissions atomically replaces a group's permission bindings with the provided set.
-func dbSetGroupPermissions(
+// SetGroupPermissions atomically replaces a group's permission bindings with the provided set.
+func SetGroupPermissions(
 	ctx context.Context,
 	client db.SQLClient,
 	groupID int64,
@@ -1273,8 +1301,8 @@ func dbSetGroupPermissions(
 	return nil
 }
 
-// dbGetUserPermissionIDs returns all permission IDs available to the given user via their group memberships.
-func dbGetUserPermissionIDs(
+// GetUserPermissionIDs returns all permission IDs available to the given user via their group memberships.
+func GetUserPermissionIDs(
 	ctx context.Context,
 	client db.SQLClient,
 	userID int64,

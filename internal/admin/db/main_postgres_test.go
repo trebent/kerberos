@@ -1,13 +1,12 @@
 //go:build postgres_integration
 
-package admin
+package admindb
 
 import (
 	"fmt"
 	"os"
 	"testing"
 
-	admindb "github.com/trebent/kerberos/internal/admin/db"
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/kerberos/internal/db/postgres"
 )
@@ -44,15 +43,15 @@ func postgresDSN() string {
 
 func TestMain(m *testing.M) {
 	testClient = postgres.New(&postgres.Opts{DSN: postgresDSN()})
-	if err := admindb.ApplySchemas(testClient); err != nil {
+	if err := ApplySchemas(testClient); err != nil {
 		panic("failed to apply admin DB schema: " + err.Error())
 	}
 
-	if err := admindb.BootstrapSuperuser(testClient, testClientID, testClientSecret); err != nil {
+	if err := BootstrapSuperuser(testClient, testClientID, testClientSecret); err != nil {
 		panic("failed to bootstrap superuser: " + err.Error())
 	}
 
-	if err := admindb.BootstrapPermissions(testClient); err != nil {
+	if err := BootstrapPermissions(testClient); err != nil {
 		panic("failed to bootstrap permissions: " + err.Error())
 	}
 
