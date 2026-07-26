@@ -35,3 +35,8 @@ jobs:
     needs: image
     uses: ./.github/workflows/callable-test-security.yaml
     secrets: inherit
+
+  connector-test:
+    needs: image
+    uses: ./.github/workflows/callable-test-connector.yaml
+    secrets: inherit

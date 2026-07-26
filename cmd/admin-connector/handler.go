@@ -76,9 +76,8 @@ func (h *connectorHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	)
 	defer newSpan.End()
 
-	sessionCookies := r.CookiesNamed(security.SessionCookieName)
 	if err := h.checkSession(r); err != nil {
-		zerologr.Error(err, "Session check failed", "cookies", sessionCookies)
+		zerologr.Error(err, "Session check failed")
 		newSpan.SetStatus(codes.Error, http.StatusText(http.StatusUnauthorized))
 		h.callDeniedCounter.Add(ctx, 1)
 		apierror.ErrorHandler(w, r, apierror.ErrUnauthorized)
