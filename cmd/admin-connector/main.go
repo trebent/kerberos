@@ -21,6 +21,7 @@ import (
 	intotel "github.com/trebent/kerberos/internal/otel"
 	"github.com/trebent/kerberos/internal/response"
 	"github.com/trebent/kerberos/internal/security"
+	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
 
 	"github.com/trebent/envparser"
 	"github.com/trebent/zerologr"
@@ -56,13 +57,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger := zerologr.New(&zerologr.Opts{
+	zerologr.Set(zerologr.New(&zerologr.Opts{
 		Console: logToConsole.Value(),
 		Caller:  true,
 		V:       logVerbosity.Value(),
-	})
-
-	zerologr.Set(logger)
+	}).
+		WithValues(semconv.ServiceName("admin-connector"), semconv.ServiceVersion(version.Value())).
+		WithName("admin-connector"),
+	)
 
 	zerologr.Info("Starting admin connector", "port", port.Value())
 
