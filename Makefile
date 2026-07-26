@@ -149,6 +149,9 @@ compose/connector/down:
 	$(call cecho,Tearing down Kerberos Admin Connector test environment...,$(BOLD_YELLOW))
 	@docker compose -f test/compose/connector/compose.yaml down
 
+compose/connector/logs:
+	@docker compose -f test/compose/connector/compose.yaml logs kerberos echo connector
+
 compose/connector/logs/follow:
 	@docker compose -f test/compose/connector/compose.yaml logs -f kerberos echo connector
 
@@ -367,6 +370,10 @@ test/echo-methods:
 	curl -X DELETE -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
 	curl -X OPTIONS -i localhost:$(KERBEROS_PORT)/gw/backend/echo/hi
 
+test/protected-echo:
+	$(call cecho,Sending a test request to protected-echo...,$(BOLD_YELLOW))
+	curl -X GET -i localhost:$(KERBEROS_PORT)/gw/backend/protected-echo/hi
+
 test/integration:
 	$(call cecho,Running integration tests for Kerberos...,$(BOLD_YELLOW))
 	@cd test/suites/integration && go test -v ./... -count=1 -failfast
@@ -376,10 +383,6 @@ test/integration/json:
 	@mkdir -p build
 	@cd test/suites/integration && go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/integration-test-output.json
 
-test/protected-echo:
-	$(call cecho,Sending a test request to protected-echo...,$(BOLD_YELLOW))
-	curl -X GET -i localhost:$(KERBEROS_PORT)/gw/backend/protected-echo/hi
-
 test/security:
 	$(call cecho,Running security tests for Kerberos...,$(BOLD_YELLOW))
 	@cd test/suites/security && go test -v ./... -count=1 -failfast
@@ -388,6 +391,15 @@ test/security/json:
 	$(call cecho,Running security tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
 	@cd test/suites/security && go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/security-test-output.json
+
+test/connector:
+	$(call cecho,Running Admin Connector tests for Kerberos...,$(BOLD_YELLOW))
+	@cd test/suites/connector && go test -v ./... -count=1 -failfast
+
+test/connector/json:
+	$(call cecho,Running Admin Connector tests for Kerberos...,$(BOLD_YELLOW))
+	@mkdir -p build
+	@cd test/suites/connector && go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/connector-test-output.json
 
 test/unit:
 	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))

@@ -46,7 +46,7 @@ func WhitelistCORSMiddleware(allowedOrigins []string, next http.Handler) http.Ha
 		origin := r.Header.Get("Origin")
 		for _, allowedOrigin := range allowedOrigins {
 			if origin == allowedOrigin {
-				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
 				w.Header().Set(
 					"Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS",
 				)

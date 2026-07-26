@@ -1,6 +1,6 @@
 {
   "whitelist": [
-    "localhost"
+    "http://localhost:30100"
   ],
   "persistence": {
     "driver": "postgres",

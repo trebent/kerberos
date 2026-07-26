@@ -1,4 +1,4 @@
-name: Integration tests
+name: Connector tests
 
 on:
   workflow_call:
@@ -41,7 +41,7 @@ jobs:
                 -not -path './tools/*' \
                 -print0 | sort -z | xargs -0 cat
               cat test/suites/go.mod test/suites/go.sum
-              find test/suites/integration -type f -name '*.go' -print0 | sort -z | xargs -0 cat
+              find test/suites/connector -type f -name '*.go' -print0 | sort -z | xargs -0 cat
             } | md5sum | awk '{print $1}'
           )
           echo "checksum=$checksum" >> "$GITHUB_OUTPUT"
@@ -50,29 +50,29 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/go/pkg/mod
-          key: integration-test-go-mod-${{ runner.os }}-${{ hashFiles('test/suites/go.sum') }}
+          key: connector-test-go-mod-${{ runner.os }}-${{ hashFiles('test/suites/go.sum') }}
 
       - name: Cache Go build cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/go-build
-          key: integration-test-go-build-${{ runner.os }}-${{ steps.build-cache-key.outputs.checksum }}
+          key: connector-test-go-build-${{ runner.os }}-${{ steps.build-cache-key.outputs.checksum }}
           restore-keys: |
-            integration-test-go-build-${{ runner.os }}-
+            connector-test-go-build-${{ runner.os }}-
 
       - name: Run test environment
         timeout-minutes: 2
         run: make compose/up
 
-      - name: Run integration tests
-        run: make test/integration/json
+      - name: Run connector tests
+        run: make test/connector/json
 
-      - name: Publish integration test results
+      - name: Publish connector test results
         uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
         if: always()
         with:
-          name: Integration Tests
-          path: build/integration-test-output.json
+          name: Connector Tests
+          path: build/connector-test-output.json
           reporter: golang-json
           fail-on-error: "false"
 
@@ -80,15 +80,15 @@ jobs:
         if: failure()
         run: |
           mkdir -p build
-          make compose/logs > build/integration-test.log
+          make compose/connector/logs > build/connector-test.log
 
       - name: Upload logs
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: integration-test-log
-          path: build/integration-test.log
+          name: connector-test-log
+          path: build/connector-test.log
 
       - name: Tear down Kerberos test environment
         if: always()
-        run: make compose/down
+        run: make compose/connector/down

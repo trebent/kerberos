@@ -103,9 +103,7 @@ services:
         condition: service_completed_successfully
     restart: on-failure
     command: --config /jaeger.yml
-    ports:
-      - 16685:16685
-      - 16686:16686
+    # No port-exposure needed. The connector proxies it, and the gRPC endpoint isn't tested in the connector suite.
     volumes:
       - ./jaeger/jaeger.yml:/jaeger.yml
       - ./jaeger/config-ui.json:/config-ui.json
