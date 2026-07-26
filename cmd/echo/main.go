@@ -64,14 +64,14 @@ func main() {
 	flag.Parse()
 	envparser.Parse()
 
-	logger := zerologr.New(&zerologr.Opts{
+	zerologr.Set(zerologr.New(&zerologr.Opts{
 		Console: logToConsole.Value(),
 		Caller:  true,
 		V:       verbosity.Value(),
-	})
-	logger.WithName("echo")
-	logger.WithValues(semconv.ServiceName("echo"), semconv.ServiceVersion(version.Value()))
-	zerologr.Set(logger)
+	}).
+		WithValues(semconv.ServiceName("echo"), semconv.ServiceVersion(version.Value())).
+		WithName("echo"),
+	)
 
 	signalCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()

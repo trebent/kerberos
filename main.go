@@ -72,9 +72,10 @@ func main() {
 		Caller:  true,
 		V:       LogVerbosity.Value(),
 	}).
-		WithValues(string(semconv.ServiceNameKey), serviceName, string(semconv.ServiceVersionKey), Version.Value()).
-		WithName("krb"),
+		WithValues(semconv.ServiceName(serviceName), semconv.ServiceVersion(Version.Value())).
+		WithName(serviceName),
 	)
+
 	cfg, err := setupConfig()
 	if err != nil {
 		zerologr.Error(err, "Failed to set up configuration")
