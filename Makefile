@@ -235,7 +235,7 @@ connector/run:
 	VERSION=$(VERSION) \
 	TARGET=localhost:$(ECHO_PORT) \
 	LOG_TO_CONSOLE=true \
-	go run ./cmd/admin-connector
+	go run ./cmd/admin-connector --config test/config/connector/local.json
 
 connector/docker/build:
 	$(call cecho,Building Admin Connector Docker image...,$(BOLD_YELLOW))
@@ -257,9 +257,11 @@ connector/docker/run: connector/docker/build connector/docker/stop connector/doc
 	-e OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0 \
 	-e OTEL_EXPORTER_PROMETHEUS_PORT=$(CONNECTOR_METRICS_PORT) \
 	-e OTEL_TRACES_EXPORTER=none \
+	-v $(PWD)/test/config/connector:/config:ro \
 	--network $(NETWORK_NAME) \
 	--name connector \
-	ghcr.io/trebent/kerberos/admin-connector:$(VERSION)
+	ghcr.io/trebent/kerberos/admin-connector:$(VERSION) \
+	--config /config/docker.json
 
 connector/docker/stop:
 	@docker stop connector || true

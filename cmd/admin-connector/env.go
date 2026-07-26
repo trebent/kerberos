@@ -1,9 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/trebent/envparser"
 	"github.com/trebent/kerberos/internal/env"
 )
@@ -61,50 +58,4 @@ var (
 		Value:    5, // nolint: mnd
 		Validate: env.ValidateGreaterThanZero,
 	})
-
-	whitelist = envparser.Register(&envparser.Opts[string]{
-		Name:  "WHITELIST",
-		Desc:  "Comma-separated list of whitelisted Origins.",
-		Value: noWhitelist,
-		Validate: func(s string) error {
-			if s == "" {
-				return nil
-			}
-
-			split := strings.Split(s, ",")
-
-			if len(split) == 0 {
-				return nil
-			}
-
-			for i, origin := range split {
-				if len(origin) == 0 {
-					return fmt.Errorf("origin at index %d is empty", i)
-				}
-			}
-
-			return nil
-		},
-	})
-
-	serverCertFile = envparser.Register(&envparser.Opts[string]{
-		Name:     "SERVER_CERT_FILE",
-		Desc:     "Path to the server certificate file.",
-		Value:    "",
-		Validate: env.ValidateDirPath,
-	})
-	serverKeyFile = envparser.Register(&envparser.Opts[string]{
-		Name:     "SERVER_KEY_FILE",
-		Desc:     "Path to the server key file.",
-		Value:    "",
-		Validate: env.ValidateDirPath,
-	})
 )
-
-func getWhitelist() []string {
-	if whitelist.Value() == noWhitelist {
-		return []string{}
-	}
-
-	return strings.Split(whitelist.Value(), ",")
-}
