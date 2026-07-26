@@ -119,12 +119,17 @@ func startServer(signalCtx context.Context, cfg *config.ConnectorConfig) error {
 		return fmt.Errorf("failed to create SQL client: %w", err)
 	}
 
+	handler, err := newHandler(opts{
+		version:   version.Value(),
+		target:    target.Value(),
+		scheme:    getScheme(isTLS),
+		sqlClient: sqlClient,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create handler: %w", err)
+	}
+
 	var (
-		handler = newHandler(opts{
-			target:    target.Value(),
-			scheme:    getScheme(isTLS),
-			sqlClient: sqlClient,
-		})
 		finalHandler      http.Handler
 		loggingMiddleware = func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -210,7 +215,7 @@ func getScheme(isTLS bool) string {
 
 func createSQLClient(cfg *config.PersistenceConfig) (db.SQLClient, error) {
 	if cfg == nil {
-		return nil, fmt.Errorf("persistence config is nil")
+		return nil, errors.New("persistence config is nil")
 	}
 
 	switch cfg.Driver {

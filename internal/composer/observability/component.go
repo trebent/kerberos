@@ -19,6 +19,7 @@ import (
 	"github.com/trebent/zerologr"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
@@ -212,7 +213,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		//nolint:errcheck // no point
 		o.bumpMetrics(ctx, wrapped.(*response.Wrapper), bw, req, 0, krbAttributes)
 
-		span.SetStatus(http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+		span.SetStatus(codes.Error, http.StatusText(http.StatusBadRequest))
 		span.SetAttributes(krbAttributes...)
 
 		rLogger.Info(

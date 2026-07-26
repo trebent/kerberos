@@ -5,8 +5,6 @@ import (
 	"github.com/trebent/kerberos/internal/env"
 )
 
-const noWhitelist = ""
-
 var (
 	logToConsole = envparser.Register(&envparser.Opts[bool]{
 		Name: "LOG_TO_CONSOLE",

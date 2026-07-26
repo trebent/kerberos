@@ -27,6 +27,10 @@ var (
 		Errors:     []string{http.StatusText(http.StatusInternalServerError)},
 		StatusCode: http.StatusInternalServerError,
 	}
+	ErrBadGateway = &Error{
+		Errors:     []string{http.StatusText(http.StatusBadGateway)},
+		StatusCode: http.StatusBadGateway,
+	}
 	ErrNotFound = &Error{
 		Errors:     []string{http.StatusText(http.StatusNotFound)},
 		StatusCode: http.StatusNotFound,
