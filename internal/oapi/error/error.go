@@ -19,7 +19,7 @@ type (
 var (
 	_ error = (*Error)(nil)
 
-	ErrUnauthenticated = &Error{
+	ErrUnauthorized = &Error{
 		Errors:     []string{http.StatusText(http.StatusUnauthorized)},
 		StatusCode: http.StatusUnauthorized,
 	}
@@ -43,7 +43,7 @@ var (
 	}
 	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
 	ErrUnimplemented = &Error{
-		Errors:     []string{"unimplemented"},
+		Errors:     []string{http.StatusText(http.StatusNotImplemented)},
 		StatusCode: http.StatusNotImplemented,
 	}
 )

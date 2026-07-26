@@ -3,11 +3,29 @@ package admin
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
+	"time"
 
+	admindb "github.com/trebent/kerberos/internal/admin/db"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
 )
+
+func mustCreateAdminUser(t *testing.T, username string) int64 {
+	t.Helper()
+	id, err := admindb.CreateUser(context.Background(), testClient, username, "salt", "hashed")
+	if err != nil {
+		t.Fatalf("dbCreateUser(%q) error: %v", username, err)
+	}
+	return id
+}
+
+// uniqueName returns a name that is unique per test to avoid constraint violations.
+func uniqueName(t *testing.T, prefix string) string {
+	t.Helper()
+	return fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
+}
 
 func TestAdminSSIDummyOASBackend(t *testing.T) {
 	ssi, err := newSSI(&ssiOpts{
@@ -37,7 +55,7 @@ func TestAdminSSISuperuserBootstrap(t *testing.T) {
 	}
 
 	// Check if superuser was created.
-	superuser, err := dbGetSuperuser(t.Context(), testClient)
+	superuser, err := admindb.GetSuperuser(t.Context(), testClient)
 	if err != nil {
 		t.Fatalf("expected superuser to be created, got error: %v", err)
 	}
@@ -58,7 +76,7 @@ func TestAdminSSIPermissionBootstrap(t *testing.T) {
 	}
 
 	// Check if permissions were created.
-	permissions, err := dbListPermissions(t.Context(), testClient)
+	permissions, err := admindb.ListPermissions(t.Context(), testClient)
 	if err != nil {
 		t.Fatalf("expected permissions to be created, got error: %v", err)
 	}
@@ -130,14 +148,14 @@ func TestAdminSSIRefreshSuperuserSession(t *testing.T) {
 		t.Fatalf("expected newSSI to succeed, got error: %v", err)
 	}
 
-	superuser, err := dbGetSuperuser(t.Context(), testClient)
+	superuser, err := admindb.GetSuperuser(t.Context(), testClient)
 	if err != nil {
 		t.Fatalf("expected superuser to exist, got error: %v", err)
 	}
 
 	refreshID := uniqueName(t, "refresh-super")
 	sessionID := uniqueName(t, "session-super")
-	if err := dbCreateSession(t.Context(), testClient, superuser.ID, refreshID, sessionID); err != nil {
+	if err := admindb.CreateSession(t.Context(), testClient, superuser.ID, refreshID, sessionID); err != nil {
 		t.Fatalf("dbCreateSession error: %v", err)
 	}
 
@@ -168,7 +186,7 @@ func TestAdminSSIRefreshSuperuserSessionForbidden(t *testing.T) {
 	userID := mustCreateAdminUser(t, uniqueName(t, "user-refresh-forbidden"))
 	refreshID := uniqueName(t, "refresh-forbidden")
 	sessionID := uniqueName(t, "session-forbidden")
-	if err := dbCreateSession(t.Context(), testClient, userID, refreshID, sessionID); err != nil {
+	if err := admindb.CreateSession(t.Context(), testClient, userID, refreshID, sessionID); err != nil {
 		t.Fatalf("dbCreateSession error: %v", err)
 	}
 
@@ -220,7 +238,7 @@ func TestAdminSSIRefreshUserSession(t *testing.T) {
 	userID := mustCreateAdminUser(t, uniqueName(t, "user-refresh-ok"))
 	refreshID := uniqueName(t, "refresh-user")
 	sessionID := uniqueName(t, "session-user-refresh")
-	if err := dbCreateSession(t.Context(), testClient, userID, refreshID, sessionID); err != nil {
+	if err := admindb.CreateSession(t.Context(), testClient, userID, refreshID, sessionID); err != nil {
 		t.Fatalf("dbCreateSession error: %v", err)
 	}
 

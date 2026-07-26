@@ -1,13 +1,12 @@
 package admin
 
 import (
-	"context"
-	_ "embed"
 	"fmt"
 	"net/http"
 	"os"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	admindb "github.com/trebent/kerberos/internal/admin/db"
 	adminext "github.com/trebent/kerberos/internal/admin/extensions"
 	composerdebug "github.com/trebent/kerberos/internal/composer/debug"
 	"github.com/trebent/kerberos/internal/config"
@@ -45,19 +44,13 @@ type (
 	}
 )
 
-//go:embed dbschema/schema.sql
-var dbschemaBytes []byte
-
-//go:embed dbschema/schema_postgres.sql
-var dbschemaPostgresBytes []byte
-
 const adminSpecification = "admin.yaml"
 
 // Runs the administration API.
 func New(opts *Opts) (*Admin, error) {
 	zerologr.Info("Setting up administration API")
 
-	if err := applySchemas(opts.SQLClient); err != nil {
+	if err := admindb.ApplySchemas(opts.SQLClient); err != nil {
 		return nil, fmt.Errorf("failed to apply admin DB schema: %w", err)
 	}
 
@@ -132,17 +125,4 @@ func (a *Admin) RegisterAPIProvider(apiProvider adminext.APIProvider) error {
 		a.mux,
 		SessionMiddleware(a.ssi),
 	)
-}
-
-func applySchemas(sqlClient db.SQLClient) error {
-	schema := dbschemaBytes
-	if sqlClient.Dialect() == db.PostgresDialect {
-		schema = dbschemaPostgresBytes
-	}
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), db.SchemaApplyTimeout)
-	defer cancel()
-	if _, err := sqlClient.Exec(timeoutCtx, string(schema)); err != nil {
-		return err
-	}
-	return nil
 }

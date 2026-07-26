@@ -1,8 +1,8 @@
-//nolint:gochecknoglobals // Package env provides environment variable parsing for the Kerberos service.
-package env
+package main
 
 import (
 	"github.com/trebent/envparser"
+	"github.com/trebent/kerberos/internal/env"
 )
 
 var (
@@ -19,42 +19,38 @@ var (
 	LogVerbosity = envparser.Register(&envparser.Opts[int]{
 		Name:     "LOG_VERBOSITY",
 		Desc:     "Set the log verbosity.",
-		Validate: validateGreaterThanOrEqualToZero,
+		Validate: env.ValidateGreaterThanOrEqualToZero,
 	})
 
 	Port = envparser.Register(&envparser.Opts[int]{
 		Name:     "PORT",
 		Desc:     "Port for the Kerberos API GW server.",
 		Value:    30000, // nolint: mnd
-		Validate: validatePort,
+		Validate: env.ValidatePort,
 	})
 	AdminPort = envparser.Register(&envparser.Opts[int]{
 		Name:     "ADMIN_PORT",
 		Desc:     "Port for the Kerberos admin server.",
 		Value:    30001, // nolint: mnd
-		Validate: validatePort,
+		Validate: env.ValidatePort,
 	})
 	ReadTimeoutSeconds = envparser.Register(&envparser.Opts[int]{
 		Name:     "READ_TIMEOUT_SECONDS",
 		Desc:     "Read timeout in seconds.",
 		Value:    5, // nolint: mnd
-		Validate: validateGreaterThanZero,
+		Validate: env.ValidateGreaterThanZero,
 	})
 	WriteTimeoutSeconds = envparser.Register(&envparser.Opts[int]{
 		Name:     "WRITE_TIMEOUT_SECONDS",
 		Desc:     "Write timeout in seconds.",
 		Value:    5, // nolint: mnd
-		Validate: validateGreaterThanZero,
+		Validate: env.ValidateGreaterThanZero,
 	})
 
 	OASDirectory = envparser.Register(&envparser.Opts[string]{
 		Name:     "OAS_DIRECTORY",
 		Desc:     "Path to the directory where Kerberos OAS specifications are stored.",
 		Value:    "",
-		Validate: validateDirPath,
+		Validate: env.ValidateDirPath,
 	})
 )
-
-func Parse() error {
-	return envparser.Parse()
-}

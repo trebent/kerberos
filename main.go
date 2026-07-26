@@ -25,7 +25,6 @@ import (
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/kerberos/internal/db/postgres"
 	"github.com/trebent/kerberos/internal/db/sqlite"
-	internalenv "github.com/trebent/kerberos/internal/env"
 	"github.com/trebent/kerberos/internal/oas"
 	"github.com/trebent/kerberos/internal/response"
 	"github.com/trebent/kerberos/internal/security"
@@ -62,18 +61,18 @@ func main() {
 	}
 
 	// ExitOnError = true
-	_ = internalenv.Parse()
+	_ = envparser.Parse()
 
-	readTimeout = time.Duration(internalenv.ReadTimeoutSeconds.Value()) * time.Second
-	writeTimeout = time.Duration(internalenv.WriteTimeoutSeconds.Value()) * time.Second
+	readTimeout = time.Duration(ReadTimeoutSeconds.Value()) * time.Second
+	writeTimeout = time.Duration(WriteTimeoutSeconds.Value()) * time.Second
 
 	// Set up monitoring
 	zerologr.Set(zerologr.New(&zerologr.Opts{
-		Console: internalenv.LogToConsole.Value(),
+		Console: LogToConsole.Value(),
 		Caller:  true,
-		V:       internalenv.LogVerbosity.Value(),
+		V:       LogVerbosity.Value(),
 	}).
-		WithValues(string(semconv.ServiceNameKey), serviceName, string(semconv.ServiceVersionKey), internalenv.Version.Value()).
+		WithValues(string(semconv.ServiceNameKey), serviceName, string(semconv.ServiceVersionKey), Version.Value()).
 		WithName("krb"),
 	)
 	cfg, err := setupConfig()
@@ -84,8 +83,8 @@ func main() {
 
 	startLogger := zerologr.WithName("start")
 	startLogger.Info("Starting Kerberos API GW server",
-		"port", internalenv.Port.Value(),
-		"admin_port", internalenv.AdminPort.Value())
+		"port", Port.Value(),
+		"admin_port", AdminPort.Value())
 
 	signalCtx, signalCancel := signal.NotifyContext(
 		context.Background(),
@@ -98,7 +97,7 @@ func main() {
 		signalCtx,
 		cfg.ObservabilityConfig,
 		serviceName,
-		internalenv.Version.Value(),
+		Version.Value(),
 	)
 	if err != nil {
 		startLogger.Error(err, "Failed to instrument OpenTelemetry")
@@ -200,7 +199,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 			Cfg:       cfg.AdminConfig,
 			Mux:       adminMux,
 			SQLClient: db,
-			OASDir:    internalenv.OASDirectory.Value(),
+			OASDir:    OASDirectory.Value(),
 		},
 	)
 	if err != nil {
@@ -210,7 +209,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	zerologr.Info("Loading observability")
 	observability := obs.NewComponent(&obs.Opts{
 		Cfg:      cfg.ObservabilityConfig,
-		Version:  internalenv.Version.Value(),
+		Version:  Version.Value(),
 		Debugger: adm.GetDebugger(),
 	})
 
@@ -225,7 +224,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		authorizer, err := auth.NewComponent(&auth.Opts{
 			Cfg:       cfg.AuthConfig,
 			SQLClient: db,
-			OASDir:    internalenv.OASDirectory.Value(),
+			OASDir:    OASDirectory.Value(),
 		})
 		if err != nil {
 			return fmt.Errorf("failed to initialize auth: %w", err)
@@ -276,7 +275,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	gwServer := http.Server{
-		Addr:         fmt.Sprintf(":%d", internalenv.Port.Value()),
+		Addr:         fmt.Sprintf(":%d", Port.Value()),
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
 		// TODO: add support for per-backend CORS configuration. For now, skip CORS for backends.
@@ -295,7 +294,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	}
 
 	adminServer := http.Server{
-		Addr:         fmt.Sprintf(":%d", internalenv.AdminPort.Value()),
+		Addr:         fmt.Sprintf(":%d", AdminPort.Value()),
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
 		// TODO: add support for origin whitelisting for the admin server.

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
+	admindb "github.com/trebent/kerberos/internal/admin/db"
 	adminapigen "github.com/trebent/kerberos/internal/oapi/admin"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
 	"github.com/trebent/kerberos/internal/security"
@@ -77,7 +78,7 @@ func SessionMiddleware(
 				return f(ctx, w, r, request)
 			}
 
-			session, err := dbGetSession(ctx, apiImpl.sqlClient, cookie.Value)
+			session, err := admindb.GetSession(ctx, apiImpl.sqlClient, cookie.Value)
 			// Not found among sessions, just continue. Remember this middleware does NOT enforce
 			// auth, it only populates metadata.
 			if err != nil {
@@ -94,7 +95,7 @@ func SessionMiddleware(
 				ctx = context.WithValue(ctx, adminContextIsSuperUser, true)
 			} else {
 				// Populate the user's permissions from their group memberships.
-				permIDs, err := dbGetUserPermissionIDs(ctx, apiImpl.sqlClient, session.UserID)
+				permIDs, err := admindb.GetUserPermissionIDs(ctx, apiImpl.sqlClient, session.UserID)
 				if err != nil {
 					zerologr.Error(
 						err,
@@ -140,7 +141,7 @@ func RequireSessionMiddleware() adminapigen.StrictMiddlewareFunc {
 				return f(ctx, w, r, request)
 			}
 
-			return nil, apierror.ErrUnauthenticated
+			return nil, apierror.ErrUnauthorized
 		}
 	}
 }

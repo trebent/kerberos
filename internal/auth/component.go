@@ -176,7 +176,7 @@ func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if err := m.Authenticated(req); err != nil {
 		zerologr.Error(err, "User tried to perform an authenticated action while unauthenticated")
-		apierror.ErrorHandler(w, req, apierror.ErrUnauthenticated)
+		apierror.ErrorHandler(w, req, apierror.ErrUnauthorized)
 		transitionFailure(debugCall, debugStart, http.StatusText(http.StatusUnauthorized))
 		return
 	}

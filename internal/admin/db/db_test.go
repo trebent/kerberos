@@ -1,4 +1,4 @@
-package admin
+package admindb
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/trebent/kerberos/internal/db"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 )
 
@@ -15,7 +16,7 @@ import (
 
 func mustCreateAdminUser(t *testing.T, username string) int64 {
 	t.Helper()
-	id, err := dbCreateUser(context.Background(), testClient, username, "salt", "hashed")
+	id, err := CreateUser(context.Background(), testClient, username, "salt", "hashed")
 	if err != nil {
 		t.Fatalf("dbCreateUser(%q) error: %v", username, err)
 	}
@@ -24,7 +25,7 @@ func mustCreateAdminUser(t *testing.T, username string) int64 {
 
 func mustCreateAdminGroup(t *testing.T, name string) int64 {
 	t.Helper()
-	id, err := dbCreateGroup(context.Background(), testClient, name)
+	id, err := CreateGroup(context.Background(), testClient, name)
 	if err != nil {
 		t.Fatalf("dbCreateGroup(%q) error: %v", name, err)
 	}
@@ -46,7 +47,7 @@ func TestDebugSessions(t *testing.T) {
 		// Truncate for postgres tests that automatically trim nanoseconds.
 		expiresAt := time.Now().Add(1 * time.Hour).Truncate(time.Microsecond)
 
-		sessionID, err := dbCreateDebugSession(ctx, testClient, "backend", expiresAt)
+		sessionID, err := CreateDebugSession(ctx, testClient, "backend", expiresAt)
 		if err != nil {
 			t.Fatalf("Failed to create debug session: %v", err)
 		}
@@ -55,12 +56,12 @@ func TestDebugSessions(t *testing.T) {
 		}
 
 		// one more
-		_, err = dbCreateDebugSession(ctx, testClient, "backend", expiresAt)
+		_, err = CreateDebugSession(ctx, testClient, "backend", expiresAt)
 		if err != nil {
 			t.Fatalf("Failed to create debug session: %v", err)
 		}
 
-		session, err := dbGetDebugSession(ctx, testClient, "backend", sessionID)
+		session, err := GetDebugSession(ctx, testClient, "backend", sessionID)
 		if err != nil {
 			t.Fatalf("Failed to get debug session: %v", err)
 		}
@@ -75,7 +76,7 @@ func TestDebugSessions(t *testing.T) {
 			t.Fatalf("Expected expires_at %v, got %v", expiresAt, session.ExpiresAt)
 		}
 
-		sessions, err := dbListDebugSessions(ctx, testClient, "backend")
+		sessions, err := ListDebugSessions(ctx, testClient, "backend")
 		if err != nil {
 			t.Fatalf("Failed to list debug sessions: %v", err)
 		}
@@ -97,13 +98,13 @@ func TestDebugSessions(t *testing.T) {
 
 	t.Run("Get non-existent debug session", func(t *testing.T) {
 		ctx := context.Background()
-		_, err := dbGetDebugSession(ctx, testClient, "backend", 999999)
-		if !errors.Is(err, errRowNotFound) {
+		_, err := GetDebugSession(ctx, testClient, "backend", 999999)
+		if !errors.Is(err, db.ErrRowNotFound) {
 			t.Fatalf("Expected errNoDebugSession, got %v", err)
 		}
 
-		_, err = dbGetDebugSession(ctx, testClient, "baccckkkkeeennnddddd", 999999)
-		if !errors.Is(err, errRowNotFound) {
+		_, err = GetDebugSession(ctx, testClient, "baccckkkkeeennnddddd", 999999)
+		if !errors.Is(err, db.ErrRowNotFound) {
 			t.Fatalf("Expected errNoDebugSession, got %v", err)
 		}
 	})
@@ -112,23 +113,23 @@ func TestDebugSessions(t *testing.T) {
 		ctx := context.Background()
 
 		initialExpiresAt := time.Now().Add(1 * time.Hour).Truncate(time.Microsecond)
-		sessionID, err := dbCreateDebugSession(ctx, testClient, "backend", initialExpiresAt)
+		sessionID, err := CreateDebugSession(ctx, testClient, "backend", initialExpiresAt)
 		if err != nil {
 			t.Fatalf("Failed to create debug session: %v", err)
 		}
 
-		session, err := dbGetDebugSession(ctx, testClient, "backend", sessionID)
+		session, err := GetDebugSession(ctx, testClient, "backend", sessionID)
 		if err != nil {
 			t.Fatalf("Failed to get debug session: %v", err)
 		}
 
 		session.ExpiresAt = time.Now().UTC().Add(1 * time.Hour).Truncate(time.Microsecond)
 
-		if err := dbUpdateDebugSession(ctx, testClient, *session); err != nil {
+		if err := UpdateDebugSession(ctx, testClient, *session); err != nil {
 			t.Fatalf("Failed to update debug session: %v", err)
 		}
 
-		updatedSession, err := dbGetDebugSession(ctx, testClient, "backend", sessionID)
+		updatedSession, err := GetDebugSession(ctx, testClient, "backend", sessionID)
 		if err != nil {
 			t.Fatalf("Failed to get updated debug session: %v", err)
 		}
@@ -139,11 +140,11 @@ func TestDebugSessions(t *testing.T) {
 		stoppedAt := time.Now().UTC().Truncate(time.Microsecond)
 		updatedSession.StoppedAt = &stoppedAt
 
-		if err := dbUpdateDebugSession(ctx, testClient, *updatedSession); err != nil {
+		if err := UpdateDebugSession(ctx, testClient, *updatedSession); err != nil {
 			t.Fatalf("Failed to update debug session with stopped_at: %v", err)
 		}
 
-		finalSession, err := dbGetDebugSession(ctx, testClient, "backend", sessionID)
+		finalSession, err := GetDebugSession(ctx, testClient, "backend", sessionID)
 		if err != nil {
 			t.Fatalf("Failed to get final debug session: %v", err)
 		}
@@ -154,24 +155,24 @@ func TestDebugSessions(t *testing.T) {
 
 	t.Run("Delete debug session", func(t *testing.T) {
 		ctx := context.Background()
-		sessionID, err := dbCreateDebugSession(ctx, testClient, "backend", time.Now().Add(1*time.Hour).Truncate(time.Microsecond))
+		sessionID, err := CreateDebugSession(ctx, testClient, "backend", time.Now().Add(1*time.Hour).Truncate(time.Microsecond))
 		if err != nil {
 			t.Fatalf("Failed to create debug session: %v", err)
 		}
 
-		if err := dbDeleteDebugSession(ctx, testClient, "backend", sessionID); err != nil {
+		if err := DeleteDebugSession(ctx, testClient, "backend", sessionID); err != nil {
 			t.Fatalf("Failed to delete debug session: %v", err)
 		}
 
-		_, err = dbGetDebugSession(ctx, testClient, "backend", sessionID)
-		if !errors.Is(err, errRowNotFound) {
+		_, err = GetDebugSession(ctx, testClient, "backend", sessionID)
+		if !errors.Is(err, db.ErrRowNotFound) {
 			t.Fatalf("Expected errNoDebugSession after delete, got %v", err)
 		}
 	})
 }
 
 func TestDebugSessionCalls(t *testing.T) {
-	staticSessionID, err := dbCreateDebugSession(
+	staticSessionID, err := CreateDebugSession(
 		context.Background(),
 		testClient,
 		"backend",
@@ -216,7 +217,7 @@ func TestDebugSessionCalls(t *testing.T) {
 				},
 			},
 		}
-		if _, err := dbCreateDebugSessionCall(ctx, testClient, staticSessionID, call1); err != nil {
+		if _, err := CreateDebugSessionCall(ctx, testClient, staticSessionID, call1); err != nil {
 			t.Fatalf("Failed to create debug session call 1: %v", err)
 		}
 
@@ -247,11 +248,11 @@ func TestDebugSessionCalls(t *testing.T) {
 				},
 			},
 		}
-		if _, err := dbCreateDebugSessionCall(ctx, testClient, staticSessionID, call2); err != nil {
+		if _, err := CreateDebugSessionCall(ctx, testClient, staticSessionID, call2); err != nil {
 			t.Fatalf("Failed to create debug session call 2: %v", err)
 		}
 
-		calls, err := dbListDebugSessionCalls(ctx, testClient, staticSessionID, true)
+		calls, err := ListDebugSessionCalls(ctx, testClient, staticSessionID, true)
 		if err != nil {
 			t.Fatalf("Failed to list debug session calls: %v", err)
 		}
@@ -303,7 +304,7 @@ func TestDebugSessionCalls(t *testing.T) {
 
 	t.Run("Get debug session call by ID", func(t *testing.T) {
 		ctx := context.Background()
-		callID, err := dbCreateDebugSessionCall(ctx, testClient, staticSessionID, adminapi.DebugSessionCall{
+		callID, err := CreateDebugSessionCall(ctx, testClient, staticSessionID, adminapi.DebugSessionCall{
 			Method:     http.MethodGet,
 			Url:        "/test-get",
 			StartedAt:  time.Now().UTC().Truncate(time.Microsecond),
@@ -314,7 +315,7 @@ func TestDebugSessionCalls(t *testing.T) {
 			t.Fatalf("Failed to create debug session call: %v", err)
 		}
 
-		call, err := dbGetDebugSessionCall(ctx, testClient, callID)
+		call, err := GetDebugSessionCall(ctx, testClient, callID)
 		if err != nil {
 			t.Fatalf("Failed to get debug session call by ID: %v", err)
 		}
@@ -340,7 +341,7 @@ func TestDBGetSuperuser(t *testing.T) {
 
 	t.Run("get existing", func(t *testing.T) {
 		// The superuser is bootstrapped by TestMain.
-		u, err := dbGetSuperuser(ctx, testClient)
+		u, err := GetSuperuser(ctx, testClient)
 		if err != nil {
 			t.Fatalf("dbGetSuperuser error: %v", err)
 		}
@@ -362,11 +363,11 @@ func TestDBSessions(t *testing.T) {
 
 	t.Run("create and get", func(t *testing.T) {
 		sessionID := uniqueName(t, "session")
-		if err := dbCreateSession(ctx, testClient, userID, "refresh", sessionID); err != nil {
+		if err := CreateSession(ctx, testClient, userID, "refresh", sessionID); err != nil {
 			t.Fatalf("dbCreateSession error: %v", err)
 		}
 
-		s, err := dbGetSession(ctx, testClient, sessionID)
+		s, err := GetSession(ctx, testClient, sessionID)
 		if err != nil {
 			t.Fatalf("dbGetSession error: %v", err)
 		}
@@ -379,24 +380,24 @@ func TestDBSessions(t *testing.T) {
 	})
 
 	t.Run("get not found", func(t *testing.T) {
-		_, err := dbGetSession(ctx, testClient, "no-such-session")
-		if !errors.Is(err, errRowNotFound) {
+		_, err := GetSession(ctx, testClient, "no-such-session")
+		if !errors.Is(err, db.ErrRowNotFound) {
 			t.Fatalf("expected errNoSession, got %v", err)
 		}
 	})
 
 	t.Run("delete", func(t *testing.T) {
 		sessionID := uniqueName(t, "session-del")
-		if err := dbCreateSession(ctx, testClient, userID, "refresh", sessionID); err != nil {
+		if err := CreateSession(ctx, testClient, userID, "refresh", sessionID); err != nil {
 			t.Fatalf("dbCreateSession error: %v", err)
 		}
 
-		if err := dbDeleteSession(ctx, testClient, sessionID); err != nil {
+		if err := DeleteSession(ctx, testClient, sessionID); err != nil {
 			t.Fatalf("dbDeleteSession error: %v", err)
 		}
 
-		_, err := dbGetSession(ctx, testClient, sessionID)
-		if !errors.Is(err, errRowNotFound) {
+		_, err := GetSession(ctx, testClient, sessionID)
+		if !errors.Is(err, db.ErrRowNotFound) {
 			t.Fatalf("expected errNoSession after delete, got %v", err)
 		}
 	})
@@ -408,7 +409,7 @@ func TestDBUsers(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("create", func(t *testing.T) {
-		id, err := dbCreateUser(ctx, testClient, uniqueName(t, "user-create"), "salt", "hashed")
+		id, err := CreateUser(ctx, testClient, uniqueName(t, "user-create"), "salt", "hashed")
 		if err != nil {
 			t.Fatalf("dbCreateUser error: %v", err)
 		}
@@ -420,7 +421,7 @@ func TestDBUsers(t *testing.T) {
 	t.Run("create duplicate", func(t *testing.T) {
 		name := uniqueName(t, "user-dup")
 		mustCreateAdminUser(t, name)
-		_, err := dbCreateUser(ctx, testClient, name, "salt", "hashed")
+		_, err := CreateUser(ctx, testClient, name, "salt", "hashed")
 		if err == nil {
 			t.Fatal("expected error for duplicate user name, got nil")
 		}
@@ -430,7 +431,7 @@ func TestDBUsers(t *testing.T) {
 		name := uniqueName(t, "user-get")
 		userID := mustCreateAdminUser(t, name)
 
-		u, err := dbGetUser(ctx, testClient, userID)
+		u, err := GetUser(ctx, testClient, userID)
 		if err != nil {
 			t.Fatalf("dbGetUser error: %v", err)
 		}
@@ -443,8 +444,8 @@ func TestDBUsers(t *testing.T) {
 	})
 
 	t.Run("get not found", func(t *testing.T) {
-		_, err := dbGetUser(ctx, testClient, 999999)
-		if !errors.Is(err, errRowNotFound) {
+		_, err := GetUser(ctx, testClient, 999999)
+		if !errors.Is(err, db.ErrRowNotFound) {
 			t.Fatalf("expected errNoUser, got %v", err)
 		}
 	})
@@ -453,7 +454,7 @@ func TestDBUsers(t *testing.T) {
 		name := uniqueName(t, "user-list")
 		mustCreateAdminUser(t, name)
 
-		users, err := dbListUsers(ctx, testClient)
+		users, err := ListUsers(ctx, testClient)
 		if err != nil {
 			t.Fatalf("dbListUsers error: %v", err)
 		}
@@ -474,11 +475,11 @@ func TestDBUsers(t *testing.T) {
 		userID := mustCreateAdminUser(t, name)
 
 		newName := uniqueName(t, "user-upd-new")
-		if err := dbUpdateUser(ctx, testClient, userID, newName); err != nil {
+		if err := UpdateUser(ctx, testClient, userID, newName); err != nil {
 			t.Fatalf("dbUpdateUser error: %v", err)
 		}
 
-		u, err := dbGetUser(ctx, testClient, userID)
+		u, err := GetUser(ctx, testClient, userID)
 		if err != nil {
 			t.Fatalf("dbGetUser after update error: %v", err)
 		}
@@ -491,24 +492,24 @@ func TestDBUsers(t *testing.T) {
 		name := uniqueName(t, "user-del")
 		userID := mustCreateAdminUser(t, name)
 
-		if err := dbDeleteUser(ctx, testClient, userID); err != nil {
+		if err := DeleteUser(ctx, testClient, userID); err != nil {
 			t.Fatalf("dbDeleteUser error: %v", err)
 		}
 
-		_, err := dbGetUser(ctx, testClient, userID)
-		if !errors.Is(err, errRowNotFound) {
+		_, err := GetUser(ctx, testClient, userID)
+		if !errors.Is(err, db.ErrRowNotFound) {
 			t.Fatalf("expected errNoUser after delete, got %v", err)
 		}
 	})
 
 	t.Run("get user auth", func(t *testing.T) {
 		name := uniqueName(t, "user-auth")
-		userID, err := dbCreateUser(ctx, testClient, name, "mysalt", "myhashed")
+		userID, err := CreateUser(ctx, testClient, name, "mysalt", "myhashed")
 		if err != nil {
 			t.Fatalf("dbCreateUser error: %v", err)
 		}
 
-		auth, err := dbGetUserAuth(ctx, testClient, userID)
+		auth, err := GetUserAuth(ctx, testClient, userID)
 		if err != nil {
 			t.Fatalf("dbGetUserAuth error: %v", err)
 		}
@@ -521,24 +522,24 @@ func TestDBUsers(t *testing.T) {
 	})
 
 	t.Run("get user auth not found", func(t *testing.T) {
-		_, err := dbGetUserAuth(ctx, testClient, 999999)
-		if !errors.Is(err, errRowNotFound) {
+		_, err := GetUserAuth(ctx, testClient, 999999)
+		if !errors.Is(err, db.ErrRowNotFound) {
 			t.Fatalf("expected errNoUser, got %v", err)
 		}
 	})
 
 	t.Run("update password", func(t *testing.T) {
 		name := uniqueName(t, "user-pw")
-		userID, err := dbCreateUser(ctx, testClient, name, "salt", "oldpassword")
+		userID, err := CreateUser(ctx, testClient, name, "salt", "oldpassword")
 		if err != nil {
 			t.Fatalf("dbCreateUser error: %v", err)
 		}
 
-		if err := dbUpdateUserPassword(ctx, testClient, userID, "newsalt", "newpassword"); err != nil {
+		if err := UpdateUserPassword(ctx, testClient, userID, "newsalt", "newpassword"); err != nil {
 			t.Fatalf("dbUpdateUserPassword error: %v", err)
 		}
 
-		auth, err := dbGetUserAuth(ctx, testClient, userID)
+		auth, err := GetUserAuth(ctx, testClient, userID)
 		if err != nil {
 			t.Fatalf("dbGetUserAuth after password update error: %v", err)
 		}
@@ -551,16 +552,16 @@ func TestDBUsers(t *testing.T) {
 	})
 
 	t.Run("update superuser password", func(t *testing.T) {
-		oldSuperuser, err := dbGetSuperuser(ctx, testClient)
+		oldSuperuser, err := GetSuperuser(ctx, testClient)
 		if err != nil {
 			t.Fatalf("dbGetSuperuser error: %v", err)
 		}
 
-		if err := dbUpdateSuperuserPassword(ctx, testClient, "supernewsalt", "supernewpassword"); err != nil {
+		if err := UpdateSuperuserPassword(ctx, testClient, "supernewsalt", "supernewpassword"); err != nil {
 			t.Fatalf("dbUpdateUserPassword error: %v", err)
 		}
 
-		superuser, err := dbGetSuperuser(ctx, testClient)
+		superuser, err := GetSuperuser(ctx, testClient)
 		if err != nil {
 			t.Fatalf("dbGetUserAuth after superuser password update error: %v", err)
 		}
@@ -572,19 +573,19 @@ func TestDBUsers(t *testing.T) {
 		}
 
 		// Change password back to original for other tests.
-		if err := dbUpdateSuperuserPassword(ctx, testClient, oldSuperuser.Salt, oldSuperuser.HashedPassword); err != nil {
+		if err := UpdateSuperuserPassword(ctx, testClient, oldSuperuser.Salt, oldSuperuser.HashedPassword); err != nil {
 			t.Fatalf("dbUpdateUserPassword error: %v", err)
 		}
 	})
 
 	t.Run("login lookup", func(t *testing.T) {
 		name := uniqueName(t, "user-login")
-		userID, err := dbCreateUser(ctx, testClient, name, "salt", "hashed")
+		userID, err := CreateUser(ctx, testClient, name, "salt", "hashed")
 		if err != nil {
 			t.Fatalf("dbCreateUser error: %v", err)
 		}
 
-		lu, err := dbLoginLookup(ctx, testClient, name)
+		lu, err := LoginLookup(ctx, testClient, name)
 		if err != nil {
 			t.Fatalf("dbLoginLookup error: %v", err)
 		}
@@ -600,8 +601,8 @@ func TestDBUsers(t *testing.T) {
 	})
 
 	t.Run("login lookup not found", func(t *testing.T) {
-		_, err := dbLoginLookup(ctx, testClient, "no-such-user")
-		if !errors.Is(err, errRowNotFound) {
+		_, err := LoginLookup(ctx, testClient, "no-such-user")
+		if !errors.Is(err, db.ErrRowNotFound) {
 			t.Fatalf("expected errNoUser, got %v", err)
 		}
 	})
@@ -613,7 +614,7 @@ func TestDBGroups(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("create", func(t *testing.T) {
-		id, err := dbCreateGroup(ctx, testClient, uniqueName(t, "group-create"))
+		id, err := CreateGroup(ctx, testClient, uniqueName(t, "group-create"))
 		if err != nil {
 			t.Fatalf("dbCreateGroup error: %v", err)
 		}
@@ -625,7 +626,7 @@ func TestDBGroups(t *testing.T) {
 	t.Run("create duplicate", func(t *testing.T) {
 		name := uniqueName(t, "group-dup")
 		mustCreateAdminGroup(t, name)
-		_, err := dbCreateGroup(ctx, testClient, name)
+		_, err := CreateGroup(ctx, testClient, name)
 		if err == nil {
 			t.Fatal("expected error for duplicate group name, got nil")
 		}
@@ -635,7 +636,7 @@ func TestDBGroups(t *testing.T) {
 		name := uniqueName(t, "group-get")
 		groupID := mustCreateAdminGroup(t, name)
 
-		g, err := dbGetGroup(ctx, testClient, groupID)
+		g, err := GetGroup(ctx, testClient, groupID)
 		if err != nil {
 			t.Fatalf("dbGetGroup error: %v", err)
 		}
@@ -648,8 +649,8 @@ func TestDBGroups(t *testing.T) {
 	})
 
 	t.Run("get not found", func(t *testing.T) {
-		_, err := dbGetGroup(ctx, testClient, 999999)
-		if !errors.Is(err, errRowNotFound) {
+		_, err := GetGroup(ctx, testClient, 999999)
+		if !errors.Is(err, db.ErrRowNotFound) {
 			t.Fatalf("expected errNoGroup, got %v", err)
 		}
 	})
@@ -658,7 +659,7 @@ func TestDBGroups(t *testing.T) {
 		name := uniqueName(t, "group-list")
 		mustCreateAdminGroup(t, name)
 
-		groups, err := dbListGroups(ctx, testClient)
+		groups, err := ListGroups(ctx, testClient)
 		if err != nil {
 			t.Fatalf("dbListGroups error: %v", err)
 		}
@@ -679,11 +680,11 @@ func TestDBGroups(t *testing.T) {
 		groupID := mustCreateAdminGroup(t, name)
 
 		newName := uniqueName(t, "group-upd-new")
-		if err := dbUpdateGroup(ctx, testClient, groupID, newName); err != nil {
+		if err := UpdateGroup(ctx, testClient, groupID, newName); err != nil {
 			t.Fatalf("dbUpdateGroup error: %v", err)
 		}
 
-		g, err := dbGetGroup(ctx, testClient, groupID)
+		g, err := GetGroup(ctx, testClient, groupID)
 		if err != nil {
 			t.Fatalf("dbGetGroup after update error: %v", err)
 		}
@@ -696,12 +697,12 @@ func TestDBGroups(t *testing.T) {
 		name := uniqueName(t, "group-del")
 		groupID := mustCreateAdminGroup(t, name)
 
-		if err := dbDeleteGroup(ctx, testClient, groupID); err != nil {
+		if err := DeleteGroup(ctx, testClient, groupID); err != nil {
 			t.Fatalf("dbDeleteGroup error: %v", err)
 		}
 
-		_, err := dbGetGroup(ctx, testClient, groupID)
-		if !errors.Is(err, errRowNotFound) {
+		_, err := GetGroup(ctx, testClient, groupID)
+		if !errors.Is(err, db.ErrRowNotFound) {
 			t.Fatalf("expected errNoGroup after delete, got %v", err)
 		}
 	})
@@ -717,22 +718,22 @@ func TestDBCascadeDeletes(t *testing.T) {
 	t.Run("delete user cascades sessions", func(t *testing.T) {
 		userID := mustCreateAdminUser(t, uniqueName(t, "cascade-sess-user"))
 		sessionID := uniqueName(t, "cascade-sess")
-		if err := dbCreateSession(ctx, testClient, userID, "refresh", sessionID); err != nil {
+		if err := CreateSession(ctx, testClient, userID, "refresh", sessionID); err != nil {
 			t.Fatalf("dbCreateSession error: %v", err)
 		}
 
 		// Verify session exists.
-		if _, err := dbGetSession(ctx, testClient, sessionID); err != nil {
+		if _, err := GetSession(ctx, testClient, sessionID); err != nil {
 			t.Fatalf("dbGetSession before delete error: %v", err)
 		}
 
 		// Delete user — should cascade to sessions.
-		if err := dbDeleteUser(ctx, testClient, userID); err != nil {
+		if err := DeleteUser(ctx, testClient, userID); err != nil {
 			t.Fatalf("dbDeleteUser error: %v", err)
 		}
 
-		_, err := dbGetSession(ctx, testClient, sessionID)
-		if !errors.Is(err, errRowNotFound) {
+		_, err := GetSession(ctx, testClient, sessionID)
+		if !errors.Is(err, db.ErrRowNotFound) {
 			t.Fatalf("expected errNoSession after user cascade delete, got %v", err)
 		}
 	})
@@ -740,11 +741,11 @@ func TestDBCascadeDeletes(t *testing.T) {
 	t.Run("delete user cascades group bindings", func(t *testing.T) {
 		userID := mustCreateAdminUser(t, uniqueName(t, "cascade-bind-user"))
 		groupID := mustCreateAdminGroup(t, uniqueName(t, "cascade-bind-grp-u"))
-		if err := dbUpdateUserGroupBindings(ctx, testClient, userID, []int{int(groupID)}); err != nil {
+		if err := UpdateUserGroupBindings(ctx, testClient, userID, []int{int(groupID)}); err != nil {
 			t.Fatalf("dbUpdateUserGroupBindings error: %v", err)
 		}
 
-		bindings, err := dbListGroupBindings(ctx, testClient, userID)
+		bindings, err := ListGroupBindings(ctx, testClient, userID)
 		if err != nil {
 			t.Fatalf("dbListGroupBindings error: %v", err)
 		}
@@ -753,11 +754,11 @@ func TestDBCascadeDeletes(t *testing.T) {
 		}
 
 		// Delete user — should cascade to group bindings.
-		if err := dbDeleteUser(ctx, testClient, userID); err != nil {
+		if err := DeleteUser(ctx, testClient, userID); err != nil {
 			t.Fatalf("dbDeleteUser error: %v", err)
 		}
 
-		bindings, err = dbListGroupBindings(ctx, testClient, userID)
+		bindings, err = ListGroupBindings(ctx, testClient, userID)
 		if err != nil {
 			t.Fatalf("dbListGroupBindings after user delete error: %v", err)
 		}
@@ -769,11 +770,11 @@ func TestDBCascadeDeletes(t *testing.T) {
 	t.Run("delete group cascades group bindings", func(t *testing.T) {
 		userID := mustCreateAdminUser(t, uniqueName(t, "cascade-grp-user"))
 		groupID := mustCreateAdminGroup(t, uniqueName(t, "cascade-grp"))
-		if err := dbUpdateUserGroupBindings(ctx, testClient, userID, []int{int(groupID)}); err != nil {
+		if err := UpdateUserGroupBindings(ctx, testClient, userID, []int{int(groupID)}); err != nil {
 			t.Fatalf("dbUpdateUserGroupBindings error: %v", err)
 		}
 
-		bindings, err := dbListGroupBindings(ctx, testClient, userID)
+		bindings, err := ListGroupBindings(ctx, testClient, userID)
 		if err != nil {
 			t.Fatalf("dbListGroupBindings error: %v", err)
 		}
@@ -782,11 +783,11 @@ func TestDBCascadeDeletes(t *testing.T) {
 		}
 
 		// Delete group — should cascade to group bindings.
-		if err := dbDeleteGroup(ctx, testClient, groupID); err != nil {
+		if err := DeleteGroup(ctx, testClient, groupID); err != nil {
 			t.Fatalf("dbDeleteGroup error: %v", err)
 		}
 
-		bindings, err = dbListGroupBindings(ctx, testClient, userID)
+		bindings, err = ListGroupBindings(ctx, testClient, userID)
 		if err != nil {
 			t.Fatalf("dbListGroupBindings after group delete error: %v", err)
 		}
@@ -807,7 +808,7 @@ func TestDBGroupBindings(t *testing.T) {
 		groupID2 := mustCreateAdminGroup(t, uniqueName(t, "binding-grp2"))
 
 		// Initially no bindings.
-		bindings, err := dbListGroupBindings(ctx, testClient, userID)
+		bindings, err := ListGroupBindings(ctx, testClient, userID)
 		if err != nil {
 			t.Fatalf("dbListGroupBindings error: %v", err)
 		}
@@ -816,11 +817,11 @@ func TestDBGroupBindings(t *testing.T) {
 		}
 
 		// Set two groups.
-		if err := dbUpdateUserGroupBindings(ctx, testClient, userID, []int{int(groupID1), int(groupID2)}); err != nil {
+		if err := UpdateUserGroupBindings(ctx, testClient, userID, []int{int(groupID1), int(groupID2)}); err != nil {
 			t.Fatalf("dbUpdateUserGroupBindings error: %v", err)
 		}
 
-		bindings, err = dbListGroupBindings(ctx, testClient, userID)
+		bindings, err = ListGroupBindings(ctx, testClient, userID)
 		if err != nil {
 			t.Fatalf("dbListGroupBindings after update error: %v", err)
 		}
@@ -829,11 +830,11 @@ func TestDBGroupBindings(t *testing.T) {
 		}
 
 		// Reduce to one group.
-		if err := dbUpdateUserGroupBindings(ctx, testClient, userID, []int{int(groupID1)}); err != nil {
+		if err := UpdateUserGroupBindings(ctx, testClient, userID, []int{int(groupID1)}); err != nil {
 			t.Fatalf("dbUpdateUserGroupBindings (reduce) error: %v", err)
 		}
 
-		bindings, err = dbListGroupBindings(ctx, testClient, userID)
+		bindings, err = ListGroupBindings(ctx, testClient, userID)
 		if err != nil {
 			t.Fatalf("dbListGroupBindings after reduce error: %v", err)
 		}
@@ -845,11 +846,11 @@ func TestDBGroupBindings(t *testing.T) {
 		}
 
 		// Clear all groups.
-		if err := dbUpdateUserGroupBindings(ctx, testClient, userID, []int{}); err != nil {
+		if err := UpdateUserGroupBindings(ctx, testClient, userID, []int{}); err != nil {
 			t.Fatalf("dbUpdateUserGroupBindings (clear) error: %v", err)
 		}
 
-		bindings, err = dbListGroupBindings(ctx, testClient, userID)
+		bindings, err = ListGroupBindings(ctx, testClient, userID)
 		if err != nil {
 			t.Fatalf("dbListGroupBindings after clear error: %v", err)
 		}

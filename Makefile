@@ -1,16 +1,24 @@
-GRAFANA_PORT ?= 3000
-PROM_PORT ?= 9090
-KERBEROS_PORT ?= 30000
-KERBEROS_ADMIN_PORT ?= 30001
+# User config
 SUPERUSER_CLIENT_ID ?= admin
 SUPERUSER_CLIENT_SECRET ?= secret
 ADMIN_USER_ALWAYS ?= always
 ADMIN_USER_ALWAYS_PASSWORD ?= password123
 AUTH_BASIC_USER_ALWAYS ?= always
 AUTH_BASIC_USER_ALWAYS_PASSWORD ?= password123
+
+# Port config
+GRAFANA_PORT ?= 3000
+PROM_PORT ?= 9090
+KERBEROS_PORT ?= 30000
+KERBEROS_ADMIN_PORT ?= 30001
 KERBEROS_METRICS_PORT ?= 9464
 ECHO_PORT ?= 15000
 ECHO_METRICS_PORT ?= 9463
+CONNECTOR_PORT ?= 30100
+CONNECTOR_METRICS_PORT ?= 9462
+
+# Docker network config
+NETWORK_NAME ?= kerberos
 
 BOLD_RED=\033[1;31m
 BOLD_GREEN=\033[1;32m
@@ -32,7 +40,7 @@ define cecho
 @printf "${2}${1}${RESET}\n"
 endef
 
-default: static-analysis/lint static-analysis/vulncheck build test/unit
+default: static-analysis/lint static-analysis/vulncheck build test/unit postgres/run test/unit/postgres postgres/stop
 
 build:
 	$(call cecho,Building Kerberos binary...,$(BOLD_YELLOW))
@@ -48,6 +56,17 @@ codegen: install/deps
 
 	$(call cecho,Running codegen for integration tests...,$(BOLD_YELLOW))
 	@cd test/suites/integration && go generate ./...
+
+run:
+	$(call cecho,Running Kerberos...,$(BOLD_YELLOW))
+	mkdir -p build
+	PORT=$(KERBEROS_PORT) \
+	ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
+	LOG_TO_CONSOLE=true \
+	LOG_VERBOSITY=$(LOG_VERBOSITY) \
+	OAS_DIRECTORY=$(PWD)/openapi \
+	VERSION=$(VERSION) \
+	go run . --config ./test/config/local.json
 
 compose/clean:
 	$(call cecho,Cleaning up Kerberos test environment...,$(BOLD_YELLOW))
@@ -130,10 +149,14 @@ docker/logs:
 docker/rm:
 	@docker rm kerberos || true
 
+poc/build:
+	$(call cecho,Building Kerberos Docker image for PoC...,$(BOLD_YELLOW))
+	docker build --build-arg VERSION=$(VERSION) --target poc-runtime -t ghcr.io/trebent/kerberos:$(VERSION) -f docker/krb.Dockerfile .
+
 poc/run:
 	docker run -d --name kerberos ghcr.io/trebent/kerberos:$(VERSION) --config /poc.json
 
-docker/run: docker/build docker/stop docker/rm
+docker/run: docker/build docker/stop docker/rm docker/network/create
 	$(call cecho,Running Kerberos Docker container...,$(BOLD_YELLOW))
 	docker run -d \
 	-p $(KERBEROS_PORT):$(KERBEROS_PORT) \
@@ -143,14 +166,24 @@ docker/run: docker/build docker/stop docker/rm
 	-e ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
 	-e LOG_TO_CONSOLE=true \
 	-e LOG_VERBOSITY=$(LOG_VERBOSITY) \
+	-e OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0 \
+	-e OTEL_METRICS_EXPORTER=prometheus \
+	-e OTEL_EXPORTER_PROMETHEUS_PORT=$(KERBEROS_METRICS_PORT) \
 	-v $(PWD)/test/config:/config:ro \
 	-v $(PWD)/test/oas:/oas:ro \
+	--network $(NETWORK_NAME) \
 	--name kerberos \
 	ghcr.io/trebent/kerberos:$(VERSION) \
 	--config /config/docker.json
 
 docker/stop:
 	@docker stop kerberos || true
+
+docker/network/create:
+	@docker network inspect $(NETWORK_NAME) > /dev/null 2>&1 || docker network create $(NETWORK_NAME)
+
+docker/network/rm:
+	@docker network rm $(NETWORK_NAME) || true
 
 echo/build:
 	$(call cecho,Building Echo binary...,$(BOLD_YELLOW))
@@ -169,14 +202,20 @@ echo/docker/logs:
 echo/docker/rm:
 	@docker rm echo || true
 
-echo/docker/run: echo/docker/build echo/docker/stop echo/docker/rm
+echo/docker/run: echo/docker/build echo/docker/stop echo/docker/rm docker/network/create
 	$(call cecho,Running Echo Docker container...,$(BOLD_YELLOW))
 	@docker run -d \
 	-p $(ECHO_PORT):$(ECHO_PORT) \
 	-p $(ECHO_METRICS_PORT):$(ECHO_METRICS_PORT) \
+	-e LOG_VERBOSITY=$(LOG_VERBOSITY) \
+	-e OTEL_METRICS_EXPORTER=prometheus \
+	-e OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0 \
+	-e OTEL_EXPORTER_PROMETHEUS_PORT=$(ECHO_METRICS_PORT) \
+	-e OTEL_TRACES_EXPORTER=none \
 	-e VERSION=$(VERSION) \
+	--network $(NETWORK_NAME) \
 	--name echo \
-ghcr.io/trebent/kerberos/echo:$(VERSION)
+	ghcr.io/trebent/kerberos/echo:$(VERSION)
 
 echo/docker/stop:
 	@docker stop echo || true
@@ -185,6 +224,48 @@ echo/run:
 	$(call cecho,Running echo...,$(BOLD_YELLOW))
 	VERSION=$(VERSION) \
 	go run ./cmd/echo
+
+connector/build:
+	$(call cecho,Building Admin Connector binary...,$(BOLD_YELLOW))
+	@mkdir -p build
+	@CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/connector ./cmd/admin-connector
+
+connector/run:
+	$(call cecho,Running Admin Connector...,$(BOLD_YELLOW))
+	VERSION=$(VERSION) \
+	TARGET=localhost:$(ECHO_PORT) \
+	LOG_TO_CONSOLE=true \
+	go run ./cmd/admin-connector
+
+connector/docker/build:
+	$(call cecho,Building Admin Connector Docker image...,$(BOLD_YELLOW))
+	@docker build --build-arg VERSION=$(VERSION) \
+	-f docker/connector.Dockerfile \
+	-t ghcr.io/trebent/kerberos/admin-connector:$(VERSION) \
+	.
+
+connector/docker/run: connector/docker/build connector/docker/stop connector/docker/rm docker/network/create
+	$(call cecho,Running Admin Connector Docker container...,$(BOLD_YELLOW))
+	@docker run -d \
+	-p $(CONNECTOR_PORT):$(CONNECTOR_PORT) \
+	-p $(CONNECTOR_METRICS_PORT):$(CONNECTOR_METRICS_PORT) \
+	-e VERSION=$(VERSION) \
+	-e TARGET=echo:$(ECHO_PORT) \
+	-e LOG_TO_CONSOLE=true \
+	-e LOG_VERBOSITY=$(LOG_VERBOSITY) \
+	-e OTEL_METRICS_EXPORTER=prometheus \
+	-e OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0 \
+	-e OTEL_EXPORTER_PROMETHEUS_PORT=$(CONNECTOR_METRICS_PORT) \
+	-e OTEL_TRACES_EXPORTER=none \
+	--network $(NETWORK_NAME) \
+	--name connector \
+	ghcr.io/trebent/kerberos/admin-connector:$(VERSION)
+
+connector/docker/stop:
+	@docker stop connector || true
+
+connector/docker/rm:
+	@docker rm connector || true
 
 install/deps:
 	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.6.0
@@ -224,22 +305,17 @@ postgres/run:
 	-e POSTGRES_PASSWORD=kerberos \
 	-e POSTGRES_DB=kerberos \
 	--name kerberos-postgres \
-postgres:17-alpine
+	postgres:18.4-alpine3.23
+	$(call cecho,Waiting for PostgreSQL to be ready...,$(BOLD_YELLOW))
+	@until docker exec kerberos-postgres pg_isready -U kerberos -d kerberos > /dev/null 2>&1; do \
+	echo "Waiting for PostgreSQL..."; \
+	sleep 1; \
+	done; \
+	echo "PostgreSQL is ready!"
 
 postgres/stop:
 	$(call cecho,Stopping PostgreSQL for Kerberos...,$(BOLD_YELLOW))
 	@docker stop kerberos-postgres || true
-
-run:
-	$(call cecho,Running Kerberos...,$(BOLD_YELLOW))
-	mkdir -p build
-	PORT=$(KERBEROS_PORT) \
-	ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
-	LOG_TO_CONSOLE=true \
-	LOG_VERBOSITY=$(LOG_VERBOSITY) \
-	OAS_DIRECTORY=$(PWD)/openapi \
-	VERSION=$(VERSION) \
-	go run . --config ./test/config/local.json
 
 static-analysis/lint:
 	$(call cecho,Running linter for Kerberos...,$(BOLD_YELLOW))
@@ -299,9 +375,10 @@ test/unit/json:
 	@mkdir -p build
 	@go test -v -json -coverprofile=build/coverage.out -covermode=atomic ./... -timeout 20s -failfast > build/unit-test-output.json
 
+# admin tests run with -p 1 since there are two main appliers of the same schema.
 test/unit/postgres:
 	$(call cecho,Running unit tests (admin, basic auth) for Kerberos with PostgreSQL...,$(BOLD_YELLOW))
-	cd internal/admin && go test -v ./... -timeout 20s -failfast -tags=postgres_integration
+	cd internal/admin && go test -v -p 1 ./... -timeout 20s -failfast -tags=postgres_integration
 	cd internal/auth/method/basic && go test -v ./... -timeout 20s -failfast -tags=postgres_integration
 	cd internal/db/postgres && go test -v ./... -timeout 20s -failfast -tags=postgres_integration
 

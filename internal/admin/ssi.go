@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 
+	admindb "github.com/trebent/kerberos/internal/admin/db"
 	adminext "github.com/trebent/kerberos/internal/admin/extensions"
 	"github.com/trebent/kerberos/internal/db"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
@@ -61,11 +62,13 @@ func newSSI(opts *ssiOpts) (withExtensions, error) {
 		debugger:   opts.Debugger,
 	}
 
-	if err := dbBootstrapSuperuser(i.sqlClient, opts.ClientID, opts.ClientSecret); err != nil {
+	if err := admindb.BootstrapSuperuser(
+		i.sqlClient, opts.ClientID, opts.ClientSecret,
+	); err != nil {
 		return nil, err
 	}
 
-	if err := dbBootstrapPermissions(i.sqlClient); err != nil {
+	if err := admindb.BootstrapPermissions(i.sqlClient); err != nil {
 		return nil, err
 	}
 
@@ -117,7 +120,7 @@ func (i *impl) GetPermissions(
 	ctx context.Context,
 	_ adminapi.GetPermissionsRequestObject,
 ) (adminapi.GetPermissionsResponseObject, error) {
-	perms, err := dbListPermissions(ctx, i.sqlClient)
+	perms, err := admindb.ListPermissions(ctx, i.sqlClient)
 	if err != nil {
 		zerologr.Error(err, "Failed to list admin permissions")
 		return adminapi.GetPermissions500JSONResponse(apiErrInternal), nil
