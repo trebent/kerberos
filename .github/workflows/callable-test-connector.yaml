@@ -14,7 +14,7 @@ permissions:
   packages: read
 
 jobs:
-  integration-test:
+  connector-test:
     env:
       VERSION: ${{ inputs.version }}
     runs-on: ubuntu-latest
@@ -62,7 +62,7 @@ jobs:
 
       - name: Run test environment
         timeout-minutes: 2
-        run: make compose/up
+        run: make compose/connector/up
 
       - name: Run connector tests
         run: make test/connector/json
