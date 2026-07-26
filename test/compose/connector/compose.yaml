@@ -1,0 +1,116 @@
+services:
+  postgres:
+    image: "postgres:18.4-alpine3.23"
+    pull_policy: if_not_present
+    environment:
+      - POSTGRES_DB=kerberos
+      - POSTGRES_USER=kerberos
+      - POSTGRES_PASSWORD=kerberos
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "psql -U kerberos -d kerberos -c 'SELECT 1' -q -t 2>/dev/null | grep -q 1"]
+      interval: 1s
+      timeout: 2s
+      retries: 10
+    volumes:
+      - postgres:/var/lib/postgresql/18/docker
+
+  kerberos:
+    image: "ghcr.io/trebent/kerberos:${VERSION:-unset}"
+    command: --config /config/integration.json
+    pull_policy: if_not_present
+    depends_on:
+      postgres:
+        condition: service_healthy
+    build:
+      context: ../../..
+      dockerfile: ./docker/krb.Dockerfile
+    restart: on-failure
+    ports:
+      - ${KERBEROS_PORT:-30000}:${KERBEROS_PORT:-30000}
+      - ${KERBEROS_ADMIN_PORT:-30001}:${KERBEROS_ADMIN_PORT:-30001}
+    environment:
+      - OTEL_METRICS_EXPORTER=none
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
+      # Use to test sampling in production. The default is AlwaysSample unless otherwise stated by the parent span.
+      # There are appropriate for development and testing, but can lead to high overhead in production.
+      # - OTEL_TRACES_SAMPLER=parentbased_traceidratio
+      # - OTEL_TRACES_SAMPLER_ARG=0.1
+      - LOG_TO_CONSOLE=1
+      - LOG_VERBOSITY=${LOG_VERBOSITY:-20}
+      - PORT=${KERBEROS_PORT:-30000}
+      - ADMIN_PORT=${KERBEROS_ADMIN_PORT:-30001}
+      - VERSION=${VERSION:-unset}
+    volumes:
+      - ../../config:/config:ro
+      - ../../oas:/oas:ro
+
+  connector:
+    image: "ghcr.io/trebent/kerberos/admin-connector:${VERSION:-unset}"
+    command: --config /config/integration.json
+    pull_policy: if_not_present
+    depends_on:
+      kerberos:
+        condition: service_started
+    build:
+      context: ../../..
+      dockerfile: ./docker/connector.Dockerfile
+    restart: on-failure
+    ports:
+      - ${CONNECTOR_PORT:-30100}:${CONNECTOR_PORT:-30100}
+    environment:
+      - OTEL_METRICS_EXPORTER=none
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
+      - LOG_TO_CONSOLE=true
+      - LOG_VERBOSITY=${LOG_VERBOSITY:-20}
+      - VERSION=${VERSION:-unset}
+      - PORT=${CONNECTOR_PORT:-30100}
+      - TARGET=jaeger:16686
+    volumes:
+      - ../../config/connector:/config:ro
+
+  echo:
+    image: "ghcr.io/trebent/kerberos/echo:${VERSION:-unset}"
+    pull_policy: if_not_present
+    build:
+      context: ../../..
+      dockerfile: ./docker/echo.Dockerfile
+    restart: on-failure
+    ports:
+      - ${ECHO_PORT:-15000}:${ECHO_PORT:-15000}
+      - ${ECHO_METRICS_PORT:-9463}:${ECHO_METRICS_PORT:-9463}
+    environment:
+      - PORT=${ECHO_PORT:-15000}
+      - OTEL_METRICS_EXPORTER=none
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
+
+  jaeger-init:
+    image: busybox:1.38
+    pull_policy: if_not_present
+    command: ["sh", "-c", "chown 10001:0 /jaeger"]
+    restart: on-failure
+    volumes:
+      - jaeger:/jaeger
+
+  jaeger:
+    image: "jaegertracing/jaeger:2.20.0"
+    pull_policy: if_not_present
+    depends_on:
+      jaeger-init:
+        condition: service_completed_successfully
+    restart: on-failure
+    command: --config /jaeger.yml
+    ports:
+      - 16685:16685
+      - 16686:16686
+    volumes:
+      - ./jaeger/jaeger.yml:/jaeger.yml
+      - ./jaeger/config-ui.json:/config-ui.json
+      - jaeger:/jaeger
+
+volumes:
+  postgres:
+  jaeger:

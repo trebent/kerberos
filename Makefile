@@ -73,6 +73,25 @@ compose/clean:
 	@docker compose -f test/compose/integration/compose.yaml down --volumes --remove-orphans
 	@docker compose -f test/compose/security/compose.yaml down --volumes --remove-orphans
 
+compose/up:
+	$(call cecho,Composing Kerberos test environment...,$(BOLD_YELLOW))
+	@VERSION=$(VERSION) \
+	KERBEROS_PORT=$(KERBEROS_PORT) \
+	KERBEROS_ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
+	KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
+	LOG_VERBOSITY=$(LOG_VERBOSITY) \
+	PROM_PORT=$(PROM_PORT) \
+	GRAFANA_PORT=$(GRAFANA_PORT) \
+	ECHO_PORT=$(ECHO_PORT) \
+	ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
+	docker compose -f test/compose/integration/compose.yaml up -d --force-recreate
+	$(call cecho,Waiting for Kerberos to be ready...,$(BOLD_YELLOW))
+	@until [ "$$(curl -s -o /dev/null -w '%{http_code}' localhost:$(KERBEROS_ADMIN_PORT)/api/admin/flow)" = "401" ]; do \
+	echo "Waiting for Kerberos admin API..."; \
+	sleep 1; \
+	done; \
+	echo "Kerberos is ready!"
+
 compose/down:
 	$(call cecho,Tearing down Kerberos test environment...,$(BOLD_YELLOW))
 	@docker compose -f test/compose/integration/compose.yaml down
@@ -85,10 +104,6 @@ compose/logs/follow:
 
 compose/ps:
 	@docker compose -f test/compose/integration/compose.yaml ps
-
-compose/security/down:
-	$(call cecho,Tearing down Kerberos security test environment...,$(BOLD_YELLOW))
-	@docker compose -f test/compose/security/compose.yaml down
 
 compose/security/logs:
 	@docker compose -f test/compose/security/compose.yaml logs kerberos echo
@@ -111,24 +126,31 @@ compose/security/up:
 	done; \
 	echo "Kerberos is ready!"
 
-compose/up:
-	$(call cecho,Composing Kerberos test environment...,$(BOLD_YELLOW))
+compose/security/down:
+	$(call cecho,Tearing down Kerberos security test environment...,$(BOLD_YELLOW))
+	@docker compose -f test/compose/security/compose.yaml down
+
+compose/connector/up:
+	$(call cecho,Composing Kerberos Admin Connector test environment...,$(BOLD_YELLOW))
 	@VERSION=$(VERSION) \
 	KERBEROS_PORT=$(KERBEROS_PORT) \
 	KERBEROS_ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
-	KERBEROS_METRICS_PORT=$(KERBEROS_METRICS_PORT) \
-	LOG_VERBOSITY=$(LOG_VERBOSITY) \
-	PROM_PORT=$(PROM_PORT) \
-	GRAFANA_PORT=$(GRAFANA_PORT) \
+	CONNECTOR_PORT=$(CONNECTOR_PORT) \
 	ECHO_PORT=$(ECHO_PORT) \
-	ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
-	docker compose -f test/compose/integration/compose.yaml up -d --force-recreate
-	$(call cecho,Waiting for Kerberos to be ready...,$(BOLD_YELLOW))
-	@until [ "$$(curl -s -o /dev/null -w '%{http_code}' localhost:$(KERBEROS_ADMIN_PORT)/api/admin/flow)" = "401" ]; do \
-	echo "Waiting for Kerberos admin API..."; \
+	LOG_VERBOSITY=$(LOG_VERBOSITY) \
+	docker compose -f test/compose/connector/compose.yaml up -d --force-recreate
+	@until [ "$$(curl -s -o /dev/null -w '%{http_code}' localhost:$(CONNECTOR_PORT))" = "401" ]; do \
+	echo "Waiting for Admin Connector API..."; \
 	sleep 1; \
 	done; \
-	echo "Kerberos is ready!"
+	echo "Admin Connector is ready!"
+
+compose/connector/down:
+	$(call cecho,Tearing down Kerberos Admin Connector test environment...,$(BOLD_YELLOW))
+	@docker compose -f test/compose/connector/compose.yaml down
+
+compose/connector/logs/follow:
+	@docker compose -f test/compose/connector/compose.yaml logs -f kerberos echo connector
 
 coverage:
 	@go tool cover -html=build/coverage.out -o build/coverage.html

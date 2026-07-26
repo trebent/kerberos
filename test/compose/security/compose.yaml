@@ -6,6 +6,7 @@ services:
     build:
       context: ../../..
       dockerfile: ./docker/krb.Dockerfile
+    restart: on-failure
     ports:
       - ${KERBEROS_PORT:-30000}:${KERBEROS_PORT:-30000}
       - ${KERBEROS_ADMIN_PORT:-30001}:${KERBEROS_ADMIN_PORT:-30001}
@@ -26,6 +27,7 @@ services:
     build:
       context: ../../..
       dockerfile: ./docker/echo.Dockerfile
+    restart: on-failure
     ports:
       - ${ECHO_PORT:-15000}:${ECHO_PORT:-15000}
     environment:
