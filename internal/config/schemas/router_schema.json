@@ -34,6 +34,9 @@
             "default": 5000,
             "description": "Request timeout in milliseconds for the backend."
           },
+          "origins": {
+            "$ref": "http://trebent.com/kerberos/schemas/origins_schema.json"
+          },
           "tls": {
             "type": "object",
             "properties": {

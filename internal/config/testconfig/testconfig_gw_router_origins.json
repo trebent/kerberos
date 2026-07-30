@@ -1,0 +1,19 @@
+{
+  "gateway": {
+    "router": {
+      "backends": [
+        {
+          "name": "backend1",
+          "host": "localhost",
+          "port": 8080,
+          "origins": {
+            "allowedOrigins": [
+              "https://example.com",
+              "https://another-example.com"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

@@ -8,6 +8,13 @@
       "type": "object",
       "description": "Settings for the Administration API.",
       "properties": {
+        "cookieDomain": {
+          "type": "string",
+          "description": "Domain setting for administration API cookies, this translates directly to Domain=<value> for session, refresh and CSRF cookies."
+        },
+        "origins": {
+          "$ref": "http://trebent.com/kerberos/schemas/origins_schema.json"
+        },
         "tls": {
           "type": "object",
           "description": "TLS settings for the administration API.",

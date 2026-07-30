@@ -30,6 +30,7 @@ type (
 		Host      string      `json:"host"`
 		Port      int         `json:"port"`
 		TimeoutMs int         `json:"timeout,omitempty"`
+		Origins   *Origins    `json:"origins,omitempty"`
 		TLS       *BackendTLS `json:"tls,omitempty"`
 	}
 	// BackendTLS holds per-backend TLS settings.
@@ -86,8 +87,23 @@ type (
 		ClientID     string `json:"clientId"`
 		ClientSecret string `json:"clientSecret"`
 	}
+	// AdminAPI holds configuration for the admin API.
 	AdminAPI struct {
+		// CookieDomain is the domain setting for administration API cookies, this translates directly to Domain=<value> for session, refresh and CSRF cookies.
+		CookieDomain string `json:"cookieDomain,omitempty"`
+		// Origins holds configuration for CORS origins.
+		Origins *Origins `json:"origins,omitempty"`
+		// TLS holds configuration for TLS settings for the admin API.
 		TLS *ServerTLS `json:"tls,omitempty"`
+	}
+
+	// Origins holds configuration for CORS origins.
+	Origins struct {
+		// AllowedOrigins is a list of allowed origins for CORS.
+		AllowedOrigins []string `json:"allowedOrigins,omitempty"`
+		// AllowAll indicates whether to allow all origins for CORS. Mutually exclusive with 'allowedOrigins'.
+		// AllowAll will mean the Access-Control-Allow-Origin header is set to whatever Origin was received.
+		AllowAll bool `json:"allowAll,omitempty"`
 	}
 
 	ServerTLS struct {
