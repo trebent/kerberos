@@ -6,6 +6,7 @@
   "properties": {
     "mappings": {
       "type": "array",
+      "description": "Maps backends to OpenAPI specifications and determines how incoming requests are validated.",
       "minItems": 1,
       "items": {
         "type": "object",

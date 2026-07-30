@@ -19,6 +19,7 @@
     },
     "postgres": {
       "type": "object",
+      "description": "Postgres specific settings, applicable when driver is set to 'postgres'.",
       "properties": {
         "database": {
           "type": "string",

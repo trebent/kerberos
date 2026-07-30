@@ -6,6 +6,7 @@
   "properties": {
     "methods": {
       "type": "object",
+      "description": "Configure available authentication mechanisms.",
       "properties": {
         "basic": {
           "type": "object"
