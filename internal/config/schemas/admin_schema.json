@@ -2,20 +2,23 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "http://trebent.com/kerberos/schemas/admin_schema.json",
   "type": "object",
+  "description": "Administration configuration.",
   "properties": {
     "api": {
       "type": "object",
+      "description": "Settings for the Administration API.",
       "properties": {
         "tls": {
           "type": "object",
+          "description": "TLS settings for the administration API.",
           "properties": {
             "serverCertFile": {
               "type": "string",
-              "description": "ServerCertFile is the path to a PEM-encoded server certificate for mTLS."
+              "description": "Path to a PEM-encoded server certificate."
             },
             "serverKeyFile": {
               "type": "string",
-              "description": "ServerKeyFile is the path to a PEM-encoded server key for mTLS."
+              "description": "Path to a PEM-encoded server key."
             }
           },
           "required": [
@@ -29,6 +32,7 @@
     },
     "superUser": {
       "type": "object",
+      "description": "Superuser settings. NOTE: keep in mind to change the provisioned credentials ASAP after first start. The provided credentials here are only consumed once. Once changed, this settings block becomes obsolete.",
       "default": {},
       "properties": {
         "clientId": {

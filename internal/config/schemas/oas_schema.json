@@ -2,9 +2,11 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "http://trebent.com/kerberos/schemas/oas_schema.json",
   "type": "object",
+  "description": "OAS related configuration.",
   "properties": {
     "mappings": {
       "type": "array",
+      "description": "Maps backends to OpenAPI specifications and determines how incoming requests are validated.",
       "minItems": 1,
       "items": {
         "type": "object",

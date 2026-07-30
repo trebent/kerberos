@@ -2,9 +2,11 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "http://trebent.com/kerberos/schemas/auth_schema.json",
   "type": "object",
+  "description": "Authentication and authorization configuration.",
   "properties": {
     "methods": {
       "type": "object",
+      "description": "Configure available authentication mechanisms.",
       "properties": {
         "basic": {
           "type": "object"

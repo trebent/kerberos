@@ -2,20 +2,22 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "http://trebent.com/kerberos/schemas/gateway_schema.json",
   "type": "object",
+  "description": "General Gateway configuration.",
   "properties": {
     "router": {
       "$ref": "http://trebent.com/kerberos/schemas/router_schema.json"
     },
     "tls": {
       "type": "object",
+      "description": "TLS settings for the gateway.",
       "properties": {
         "serverCertFile": {
           "type": "string",
-          "description": "ServerCertFile is the path to a PEM-encoded certificate for providing server identity."
+          "description": "Path to a PEM-encoded server certificate."
         },
         "serverKeyFile": {
           "type": "string",
-          "description": "ServerKeyFile is the path to a PEM-encoded key for providing server identity."
+          "description": "Path to a PEM-encoded server key."
         }
       },
       "required": [
