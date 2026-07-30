@@ -5,12 +5,12 @@
   "properties": {
     "enabled": {
       "type": "boolean",
-      "description": "Whether to enable observability for all incoming requests and outgoing responses.",
+      "description": "Enable observability for the Gateway.",
       "default": true
     },
     "runtimeMetrics": {
       "type": "boolean",
-      "description": "Whether to enable runtime metrics collection.",
+      "description": "Enable runtime metrics collection.",
       "default": true
     }
   },
