@@ -87,6 +87,31 @@ func TestConfigAdmin(t *testing.T) {
 			t.Errorf("expected admin origins allow all to be false, got true")
 		}
 	})
+
+	t.Run("Cookies", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_admin_cookies.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		cfg := New()
+		cfg.Load(data)
+		if err := cfg.Parse(); err != nil {
+			t.Fatalf("failed to load config: %v", err)
+		}
+
+		if cfg.AdminConfig.API.Cookies == nil {
+			t.Fatalf("expected admin cookies config to be non-nil, got nil")
+		}
+
+		if cfg.AdminConfig.API.Cookies.Domain != "example.com" {
+			t.Errorf("expected admin cookies domain to be example.com, got %s", cfg.AdminConfig.API.Cookies.Domain)
+		}
+
+		if cfg.AdminConfig.API.Cookies.SameSite != "Lax" {
+			t.Errorf("expected admin cookies same site to be None, got %s", cfg.AdminConfig.API.Cookies.SameSite)
+		}
+	})
 }
 
 func TestConfigNoRouter(t *testing.T) {

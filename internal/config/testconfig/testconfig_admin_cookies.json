@@ -1,11 +1,9 @@
 {
   "admin": {
     "api": {
-      "origins": {
-        "allowedOrigins": [
-          "https://example.com",
-          "https://admin.example.com"
-        ]
+      "cookies": {
+        "domain": "example.com",
+        "sameSite": "Lax"
       }
     }
   },

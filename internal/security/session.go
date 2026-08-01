@@ -18,6 +18,7 @@ func SessionCookie(
 	sameSite http.SameSite,
 	domain string,
 ) http.Cookie {
+	//nolint:gosec // SameSite configurable
 	return http.Cookie{
 		Name:     SessionCookieName,
 		Value:    value,
@@ -43,6 +44,7 @@ func ExpiredSessionCookie(
 	sameSite http.SameSite,
 	domain string,
 ) http.Cookie {
+	//nolint:gosec // SameSite configurable
 	return http.Cookie{
 		Name:     SessionCookieName,
 		Value:    "expired",
@@ -72,6 +74,7 @@ func RefreshCookie(
 	domain string,
 	path string,
 ) http.Cookie {
+	//nolint:gosec // SameSite configurable
 	return http.Cookie{
 		Name:     RefreshCookieName,
 		Value:    value,
@@ -100,6 +103,7 @@ func ExpiredRefreshCookie(
 	domain string,
 	path string,
 ) http.Cookie {
+	//nolint:gosec // SameSite configurable
 	return http.Cookie{
 		Name:     RefreshCookieName,
 		Value:    "expired",

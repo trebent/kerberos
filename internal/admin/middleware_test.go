@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/trebent/kerberos/internal/admin/model"
+	"github.com/trebent/kerberos/internal/config"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
 	"github.com/trebent/kerberos/internal/security"
@@ -21,6 +22,7 @@ func TestAdminSessionMiddleware(t *testing.T) {
 		SQLClient:    testClient,
 		ClientID:     testClientID,
 		ClientSecret: testClientSecret,
+		CookieCfg:    &config.Cookies{},
 	})
 	if err != nil {
 		t.Fatalf("expected newSSI to succeed, got error: %v", err)

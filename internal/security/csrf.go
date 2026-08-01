@@ -4,26 +4,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/uuid"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
 	"github.com/trebent/zerologr"
 )
-
-// GetCSRFToken generates a new CSRF token and returns it as an HTTP cookie.
-func GetCSRFToken(maxAgeSeconds int) *http.Cookie {
-	//nolint:gosec // on purpose
-	return &http.Cookie{
-		Name:  CSRFCookieName,
-		Value: uuid.New().String(),
-		// The double-submit method used by KRB means we need to inject the cookie value into
-		// the KRB CSRF token header on the client side, so we cannot set the HttpOnly flag here.
-		HttpOnly: false,
-		Secure:   true,
-		SameSite: http.SameSiteNoneMode,
-		Path:     "/",
-		MaxAge:   maxAgeSeconds,
-	}
-}
 
 // CSRFMiddlewareWithExemptions is an HTTP middleware that checks for the presence of a valid CSRF token in requests,
 // with the ability to exempt certain request paths from CSRF protection.
@@ -81,6 +64,7 @@ func CSRFMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// CSRFCookieString creates a new CSRF cookie with the given value, SameSite attribute, and domain, and returns its string representation.
 func CSRFCookieString(
 	value string,
 	sameSite http.SameSite,
@@ -90,6 +74,9 @@ func CSRFCookieString(
 	return c.String()
 }
 
+// CSRFCookie creates a new CSRF cookie with the given value, SameSite attribute, and domain.
+//
+//nolint:gosec // HttpOnly false due to double-submit method requiring the cookie to be accessible by JavaScript.
 func CSRFCookie(
 	value string,
 	sameSite http.SameSite,
