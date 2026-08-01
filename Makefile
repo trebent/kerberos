@@ -109,7 +109,7 @@ compose/security/logs:
 	@docker compose -f test/compose/security/compose.yaml logs kerberos echo
 
 compose/security/logs/follow:
-	@docker compose -f test/compose/security/compose.yaml logs kerberos echo -f
+	@docker compose -f test/compose/security/compose.yaml logs kerberos mtls-echo tls-echo -f
 
 compose/security/up:
 	$(call cecho,Composing Kerberos security test environment...,$(BOLD_YELLOW))

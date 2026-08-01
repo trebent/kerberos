@@ -23,7 +23,8 @@ func SelectCORSMiddleware(allowedOrigins []string, allowAll bool, next http.Hand
 	return next
 }
 
-// CORSMiddleware is a middleware that adds CORS headers to the response.
+// CORSMiddleware is a middleware that adds CORS headers to the response. Input Origin
+// are mirrored back in the Access-Control-Allow-Origin header, allowing any origin to access the resource.
 func CORSMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		zerologr.V(20).Info("CORS middleware: attaching CORS headers")

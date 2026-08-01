@@ -80,3 +80,28 @@ func CSRFMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+func CSRFCookieString(
+	value string,
+	sameSite http.SameSite,
+	domain string,
+) string {
+	c := CSRFCookie(value, sameSite, domain)
+	return c.String()
+}
+
+func CSRFCookie(
+	value string,
+	sameSite http.SameSite,
+	domain string,
+) http.Cookie {
+	return http.Cookie{
+		Name:     CSRFCookieName,
+		Value:    value,
+		SameSite: sameSite,
+		HttpOnly: false, // Double-submit method requires the cookie to be accessible by JavaScript
+		Secure:   true,
+		Domain:   domain,
+		MaxAge:   int(RefreshMaxAge.Seconds()),
+	}
+}

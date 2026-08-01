@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://trebent.com/kerberos/schemas/cookies_schema.json",
+  "type": "object",
+  "description": "Cookie management settings.",
+  "properties": {
+    "domain": {
+      "type": "string",
+      "description": "Domain setting for cookies, this translates directly to Domain=<value> for cookies."
+    },
+    "sameSite": {
+      "type": "string",
+      "default": "None",
+      "enum": [
+        "Strict",
+        "Lax",
+        "None"
+      ],
+      "description": "SameSite setting for cookies, this translates directly to SameSite=<value> for cookies."
+    },
+    "additionalProperties": false
+  }
+}

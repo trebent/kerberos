@@ -7,6 +7,7 @@ import (
 
 	admindb "github.com/trebent/kerberos/internal/admin/db"
 	adminext "github.com/trebent/kerberos/internal/admin/extensions"
+	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/db"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	"github.com/trebent/zerologr"
@@ -30,6 +31,8 @@ type (
 		ClientSecret string
 
 		Debugger *debugger
+
+		CookieCfg *config.Cookies
 	}
 	impl struct {
 		sqlClient db.SQLClient
@@ -38,6 +41,8 @@ type (
 		oasBackend  adminext.OASBackend
 
 		*debugger
+
+		cookieCfg *config.Cookies
 	}
 )
 
@@ -60,6 +65,7 @@ func newSSI(opts *ssiOpts) (withExtensions, error) {
 		sqlClient:  opts.SQLClient,
 		oasBackend: &adminext.DummyOASBackend{},
 		debugger:   opts.Debugger,
+		cookieCfg:  opts.CookieCfg,
 	}
 
 	if err := admindb.BootstrapSuperuser(

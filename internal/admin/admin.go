@@ -68,6 +68,7 @@ func New(opts *Opts) (*Admin, error) {
 		SQLClient:    opts.SQLClient,
 		ClientID:     opts.Cfg.SuperUser.ClientID,
 		ClientSecret: opts.Cfg.SuperUser.ClientSecret,
+		CookieCfg:    opts.Cfg.API.Cookies,
 		Debugger:     newDebugger(opts.SQLClient),
 	})
 	if err != nil {

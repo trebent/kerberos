@@ -3,7 +3,6 @@ package admin
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/trebent/kerberos/internal/db"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	"github.com/trebent/kerberos/internal/security"
+	utilhttp "github.com/trebent/kerberos/internal/util/http"
 	"github.com/trebent/kerberos/internal/util/password"
 	"github.com/trebent/zerologr"
 )
@@ -148,22 +148,21 @@ func (i *impl) LoginSuperuser(
 
 	return customSuperLoginResponse{
 		cookies: []string{
-			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
-				security.SessionCookieName, sessionID, int(admindb.SessionExpiry.Seconds()),
+			security.SessionCookieString(
+				sessionID,
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
 			),
-			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/api/admin/superuser/refresh; HttpOnly; Secure; Max-Age=%d",
-				//nolint:golines // welp
-				security.RefreshCookieName,
+			security.RefreshCookieString(
 				refreshID,
-				int(admindb.SessionRefreshExpiry.Seconds()),
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
+				"/api/admin/superuser/refresh",
 			),
-			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/; Secure; Max-Age=%d",
-				security.CSRFCookieName,
+			security.CSRFCookieString(
 				uuid.NewString(),
-				int(admindb.SessionRefreshExpiry.Seconds()),
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
 			),
 		},
 	}, nil
@@ -185,16 +184,14 @@ func (i *impl) LogoutSuperuser(
 	}
 	return customSuperLogoutResponse{
 		cookies: []string{
-			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
-				security.SessionCookieName, "expired", 0,
+			security.ExpiredSessionCookieString(
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
 			),
-			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/api/admin/superuser/refresh; HttpOnly; Secure; Max-Age=%d",
-				//nolint:golines // welp
-				security.RefreshCookieName,
-				"expired",
-				0,
+			security.ExpiredRefreshCookieString(
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
+				"/api/admin/superuser/refresh",
 			),
 		},
 	}, nil
@@ -253,22 +250,21 @@ func (i *impl) RefreshSuperuserSession(
 
 	return customRefreshSuperuserSessionResponse{
 		cookies: []string{
-			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
-				security.SessionCookieName, sessionID, int(admindb.SessionExpiry.Seconds()),
+			security.SessionCookieString(
+				sessionID,
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
 			),
-			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/api/admin/superuser/refresh; HttpOnly; Secure; Max-Age=%d",
-				//nolint:golines // welp
-				security.RefreshCookieName,
+			security.RefreshCookieString(
 				refreshID,
-				int(admindb.SessionRefreshExpiry.Seconds()),
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
+				"/api/admin/superuser/refresh",
 			),
-			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/; Secure; Max-Age=%d",
-				security.CSRFCookieName,
+			security.CSRFCookieString(
 				uuid.NewString(),
-				int(admindb.SessionRefreshExpiry.Seconds()),
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
 			),
 		},
 	}, nil
@@ -301,19 +297,21 @@ func (i *impl) Login(
 
 	return customLoginResponse{
 		cookies: []string{
-			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
-				security.SessionCookieName, sessionID, int(admindb.SessionExpiry.Seconds()),
+			security.SessionCookieString(
+				sessionID,
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
 			),
-			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/api/admin/refresh; HttpOnly; Secure; Max-Age=%d",
-				security.RefreshCookieName, refreshID, int(admindb.SessionRefreshExpiry.Seconds()),
+			security.RefreshCookieString(
+				refreshID,
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
+				"/api/admin/refresh",
 			),
-			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/; Secure; Max-Age=%d",
-				security.CSRFCookieName,
+			security.CSRFCookieString(
 				uuid.NewString(),
-				int(admindb.SessionRefreshExpiry.Seconds()),
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
 			),
 		},
 	}, nil
@@ -336,13 +334,14 @@ func (i *impl) Logout(
 
 	return customLogoutResponse{
 		cookies: []string{
-			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
-				security.SessionCookieName, "expired", 0,
+			security.ExpiredSessionCookieString(
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
 			),
-			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/api/admin/refresh; HttpOnly; Secure; Max-Age=%d",
-				security.RefreshCookieName, "expired", 0,
+			security.ExpiredRefreshCookieString(
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
+				"/api/admin/refresh",
 			),
 		},
 	}, nil
@@ -395,19 +394,21 @@ func (i *impl) RefreshUserSession(
 
 	return customRefreshSessionResponse{
 		cookies: []string{
-			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
-				security.SessionCookieName, sessionID, int(admindb.SessionExpiry.Seconds()),
+			security.SessionCookieString(
+				sessionID,
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
 			),
-			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/api/admin/refresh; HttpOnly; Secure; Max-Age=%d",
-				security.RefreshCookieName, refreshID, int(admindb.SessionRefreshExpiry.Seconds()),
+			security.RefreshCookieString(
+				refreshID,
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
+				"/api/admin/refresh",
 			),
-			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/; Secure; Max-Age=%d",
-				security.CSRFCookieName,
+			security.CSRFCookieString(
 				uuid.NewString(),
-				int(admindb.SessionRefreshExpiry.Seconds()),
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
 			),
 		},
 	}, nil

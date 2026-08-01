@@ -26,12 +26,14 @@ type (
 		Backends []*RouterBackend `json:"backends"`
 	}
 	RouterBackend struct {
-		Name      string      `json:"name"`
-		Host      string      `json:"host"`
-		Port      int         `json:"port"`
-		TimeoutMs int         `json:"timeout,omitempty"`
-		Origins   *Origins    `json:"origins,omitempty"`
-		TLS       *BackendTLS `json:"tls,omitempty"`
+		Name      string `json:"name"`
+		Host      string `json:"host"`
+		Port      int    `json:"port"`
+		TimeoutMs int    `json:"timeout,omitempty"`
+		// Origins holds configuration for CORS origins. In addition, Origins other than the allowed ones
+		// will be rejected with a 403 response.
+		Origins *Origins    `json:"origins,omitempty"`
+		TLS     *BackendTLS `json:"tls,omitempty"`
 	}
 	// BackendTLS holds per-backend TLS settings.
 	// When nil, the forwarder uses plain HTTP for that backend.
@@ -89,12 +91,20 @@ type (
 	}
 	// AdminAPI holds configuration for the admin API.
 	AdminAPI struct {
-		// CookieDomain is the domain setting for administration API cookies, this translates directly to Domain=<value> for session, refresh and CSRF cookies.
-		CookieDomain string `json:"cookieDomain,omitempty"`
-		// Origins holds configuration for CORS origins.
+		// Cookies contain cookie settings for the csrf, session, and refresh cookies.
+		Cookies *Cookies `json:"cookies,omitempty"`
+		// Origins holds configuration for CORS origins. In addition, Origins other than the allowed ones
+		// will be rejected with a 403 response.
 		Origins *Origins `json:"origins,omitempty"`
 		// TLS holds configuration for TLS settings for the admin API.
 		TLS *ServerTLS `json:"tls,omitempty"`
+	}
+
+	Cookies struct {
+		// Domain is the domain setting for cookies, this translates directly to Domain=<value> for cookies.
+		Domain string `json:"domain,omitempty"`
+		// SameSite is the SameSite setting for cookies, this translates directly to SameSite=<value> for cookies.
+		SameSite string `json:"sameSite,omitempty"`
 	}
 
 	// Origins holds configuration for CORS origins.
@@ -138,6 +148,9 @@ const defaultCalloutTimeoutMs = 5000
 func newAdminConfig() *AdminConfig {
 	return &AdminConfig{
 		API: &AdminAPI{
+			Cookies: &Cookies{
+				SameSite: "None",
+			},
 			// Default as empty to simplify boot configuration, normally this will fail validation
 			// as both allow all and allowed origins are empty, but this is a valid default for bootstrapping.
 			Origins: &Origins{},
