@@ -7,6 +7,22 @@ import (
 	"github.com/trebent/zerologr"
 )
 
+// SelectCORSMiddleware selects the appropriate CORS middleware based on the provided configuration.
+// If allowAll is true, it returns the CORSMiddleware that allows all origins.
+// If allowedOrigins is non-empty, it returns the WhitelistCORSMiddleware that allows only the specified origins.
+// If neither condition is met, it returns the next handler without any CORS middleware.
+func SelectCORSMiddleware(allowedOrigins []string, allowAll bool, next http.Handler) http.Handler {
+	if allowAll {
+		return CORSMiddleware(next)
+	}
+
+	if len(allowedOrigins) > 0 {
+		return WhitelistCORSMiddleware(allowedOrigins, next)
+	}
+
+	return next
+}
+
 // CORSMiddleware is a middleware that adds CORS headers to the response.
 func CORSMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -19,7 +35,8 @@ func CORSMiddleware(next http.Handler) http.Handler {
 		}
 		w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, "+CSRFTokenHeader)
+		// Read more here for whitelisted headers: https://developer.mozilla.org/en-US/docs/Glossary/CORS-safelisted_response_header
+		w.Header().Set("Access-Control-Allow-Headers", CSRFTokenHeader)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		if r.Method == http.MethodOptions {
@@ -31,6 +48,8 @@ func CORSMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// WhitelistCORSMiddleware is a middleware that adds CORS headers to the response for requests from allowed origins.
+// Non-whitelisted origins will receive a 403 Forbidden response.
 func WhitelistCORSMiddleware(allowedOrigins []string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		zerologr.V(20).Info("Whitelist CORS middleware: checking allowed origins")
@@ -50,7 +69,7 @@ func WhitelistCORSMiddleware(allowedOrigins []string, next http.Handler) http.Ha
 				w.Header().Set(
 					"Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS",
 				)
-				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, "+CSRFTokenHeader)
+				w.Header().Set("Access-Control-Allow-Headers", CSRFTokenHeader)
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 				if r.Method == http.MethodOptions {

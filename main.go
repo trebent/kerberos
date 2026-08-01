@@ -279,8 +279,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		Addr:         fmt.Sprintf(":%d", Port.Value()),
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
-		// TODO: add support for per-backend CORS configuration. For now, skip CORS for backends.
-		Handler: gwMux,
+		Handler:      gwMux,
 	}
 
 	loggingMiddleware := func(next http.Handler) http.Handler {
@@ -298,8 +297,9 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		Addr:         fmt.Sprintf(":%d", AdminPort.Value()),
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
-		// TODO: add support for origin whitelisting for the admin server.
-		Handler: loggingMiddleware(security.CORSMiddleware(
+		Handler: loggingMiddleware(security.SelectCORSMiddleware(
+			cfg.AdminConfig.API.Origins.AllowedOrigins,
+			cfg.AdminConfig.API.Origins.AllowAll,
 			security.CSRFMiddlewareWithExemptions(
 				[]string{"/superuser/login", "/admin/login"},
 			)(adminMux),

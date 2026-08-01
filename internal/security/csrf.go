@@ -25,6 +25,8 @@ func GetCSRFToken(maxAgeSeconds int) *http.Cookie {
 	}
 }
 
+// CSRFMiddlewareWithExemptions is an HTTP middleware that checks for the presence of a valid CSRF token in requests,
+// with the ability to exempt certain request paths from CSRF protection.
 func CSRFMiddlewareWithExemptions(exemptSuffixes []string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		csrfProtected := CSRFMiddleware(next)
