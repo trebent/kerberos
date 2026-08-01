@@ -310,18 +310,16 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	go func() {
 		if tlsCfg := cfg.GatewayConfig.TLS; tlsCfg != nil {
 			gwErrChan <- gwServer.ListenAndServeTLS(tlsCfg.CertFile, tlsCfg.KeyFile)
-		} else {
-			gwErrChan <- gwServer.ListenAndServe()
+			return
 		}
+		gwErrChan <- gwServer.ListenAndServe()
 	}()
 
 	adminErrChan := make(chan error, 1)
 	go func() {
-		if cfg.AdminConfig.API != nil {
-			if tlsCfg := cfg.AdminConfig.API.TLS; tlsCfg != nil {
-				adminErrChan <- adminServer.ListenAndServeTLS(tlsCfg.CertFile, tlsCfg.KeyFile)
-				return
-			}
+		if tlsCfg := cfg.AdminConfig.API.TLS; tlsCfg != nil {
+			adminErrChan <- adminServer.ListenAndServeTLS(tlsCfg.CertFile, tlsCfg.KeyFile)
+			return
 		}
 		adminErrChan <- adminServer.ListenAndServe()
 	}()

@@ -20,6 +20,7 @@ func SelectCORSMiddleware(allowedOrigins []string, allowAll bool, next http.Hand
 		return WhitelistCORSMiddleware(allowedOrigins, next)
 	}
 
+	// Neither allowAll nor allowedOrigins is set, so return the next handler without any CORS middleware.
 	return next
 }
 

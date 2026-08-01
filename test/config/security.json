@@ -19,6 +19,19 @@
   "observability": {
     "enabled": false
   },
+  "auth": {
+    "methods": {
+      "basic": {}
+    },
+    "scheme": {
+      "mappings": [
+        {
+          "backend": "dummy",
+          "method": "basic"
+        }
+      ]
+    }
+  },
   "gateway": {
     "tls": {
       "serverCertFile": "/certs/krb_server.pem",
@@ -45,6 +58,11 @@
             "rootCAFile": "/certs/ca.crt",
             "insecureSkipVerify": false
           }
+        },
+        {
+          "name": "dummy",
+          "host": "dummy",
+          "port": 12345
         }
       ]
     }

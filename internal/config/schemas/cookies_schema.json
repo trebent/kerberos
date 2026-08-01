@@ -10,7 +10,7 @@
     },
     "sameSite": {
       "type": "string",
-      "default": "None",
+      "default": "Strict",
       "enum": [
         "Strict",
         "Lax",

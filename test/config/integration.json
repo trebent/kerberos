@@ -1,4 +1,11 @@
 {
+  "admin": {
+    "api": {
+      "origins": {
+        "allowAll": true
+      }
+    }
+  },
   "persistence": {
     "driver": "postgres",
     "address": "postgres:5432",

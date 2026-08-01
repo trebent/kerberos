@@ -44,6 +44,15 @@ func TestSelectCORSMiddleware(t *testing.T) {
 		if w.Header().Get("Access-Control-Allow-Origin") != "http://allowed.com" {
 			t.Errorf("Expected Access-Control-Allow-Origin header to be set to %s, got %s", "http://allowed.com", w.Header().Get("Access-Control-Allow-Origin"))
 		}
+
+		req, _ = http.NewRequest("GET", "/", nil)
+		req.Header.Set("Origin", "http://not-allowed.com")
+		w = httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+
+		if w.Result().StatusCode != http.StatusForbidden {
+			t.Errorf("Expected status code %d for non-allowed origin, got %d", http.StatusForbidden, w.Result().StatusCode)
+		}
 	})
 
 	t.Run("neither allowAll nor allowedOrigins is set", func(t *testing.T) {

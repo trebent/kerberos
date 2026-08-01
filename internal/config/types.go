@@ -149,7 +149,7 @@ func newAdminConfig() *AdminConfig {
 	return &AdminConfig{
 		API: &AdminAPI{
 			Cookies: &Cookies{
-				SameSite: "None",
+				SameSite: "Strict",
 			},
 			// Default as empty to simplify boot configuration, normally this will fail validation
 			// as both allow all and allowed origins are empty, but this is a valid default for bootstrapping.
