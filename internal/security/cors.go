@@ -28,7 +28,7 @@ func SelectCORSMiddleware(
 		return WhitelistCORSMiddleware(allowedOrigins)
 	}
 
-	// Neither allowAll nor allowedOrigins is set, so return the next handler without any CORS middleware.
+	// Neither allowAll, denyAll, nor allowedOrigins is set, so return the next handler without any CORS middleware.
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			zerologr.V(20).Info("CORS middleware: no CORS configuration set, skipping CORS headers")

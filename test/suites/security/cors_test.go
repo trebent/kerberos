@@ -82,7 +82,7 @@ func TestCORS_basicauth(t *testing.T) {
 		verifyHeaderMissing(resp.Header, "Access-Control-Allow-Origin", t)
 	})
 
-	t.Run("Non-rowser request - accepted", func(t *testing.T) {
+	t.Run("Non-browser request - accepted", func(t *testing.T) {
 		t.Parallel()
 		client := basicAuthResponsesTLSClient(t)
 		resp, err := client.Login(t.Context(), orgID, authbasicapi.LoginJSONRequestBody{

@@ -1,6 +1,8 @@
 package config
 
-import utilhttp "github.com/trebent/kerberos/internal/util/http"
+import (
+	utilhttp "github.com/trebent/kerberos/internal/util/http"
+)
 
 type (
 	// OASConfig holds configuration for OAS-based request routing and validation.
@@ -188,13 +190,20 @@ func newPersistenceConfig() *PersistenceConfig {
 }
 
 func (ac *AuthConfig) postProcess() {
+	// Populate basic auth default values IF basic auth is enabled. This is done here since the whole "auth"
+	// block is optional configuration.
 	if ac.Methods.Basic != nil && ac.Methods.Basic.API == nil {
-		ac.Methods.Basic.API = &AuthMethodBasicAPI{
-			Cookies: &Cookies{
-				SameSite: utilhttp.SameSiteStrict,
-			},
-			Origins: &Origins{},
+		ac.Methods.Basic.API = &AuthMethodBasicAPI{}
+	}
+
+	if ac.Methods.Basic != nil && ac.Methods.Basic.API.Cookies == nil {
+		ac.Methods.Basic.API.Cookies = &Cookies{
+			SameSite: utilhttp.SameSiteStrict,
 		}
+	}
+
+	if ac.Methods.Basic != nil && ac.Methods.Basic.API.Origins == nil {
+		ac.Methods.Basic.API.Origins = &Origins{}
 	}
 }
 

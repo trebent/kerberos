@@ -34,7 +34,13 @@
   },
   "auth": {
     "methods": {
-      "basic": {}
+      "basic": {
+        "api": {
+          "origins": {
+            "allowAll": true
+          }
+        }
+      }
     },
     "scheme": {
       "mappings": [
