@@ -5,12 +5,13 @@ import (
 	"testing"
 
 	adminapi "github.com/trebent/kerberos/test/integration/client/admin"
+	authbasicapi "github.com/trebent/kerberos/test/integration/client/auth/basic"
 )
 
-func TestCookies(t *testing.T) {
+func TestCookies_admin(t *testing.T) {
 	t.Run("Verify superuser cookie attributes", func(t *testing.T) {
 		t.Parallel()
-		client := responsesTLSClient(t)
+		client := adminResponsesTLSClient(t)
 		resp, err := client.LoginSuperuser(
 			t.Context(),
 			adminapi.LoginSuperuserJSONRequestBody{
@@ -21,16 +22,12 @@ func TestCookies(t *testing.T) {
 		)
 		checkErr(err, t)
 		verifyStatusCode(resp.StatusCode, http.StatusNoContent, t)
-		cookies := resp.Cookies()
-		if len(cookies) == 0 {
-			t.Fatalf("Expected at least one cookie, got none")
-		}
-		validateCookieAttributes(cookies, t)
+		validateAdminCookieAttributes(resp.Cookies(), t)
 	})
 
 	t.Run("Verify admin user cookie attributes", func(t *testing.T) {
 		t.Parallel()
-		client := responsesTLSClient(t)
+		client := adminResponsesTLSClient(t)
 		resp, err := client.Login(
 			t.Context(),
 			adminapi.LoginJSONRequestBody{
@@ -41,18 +38,82 @@ func TestCookies(t *testing.T) {
 		)
 		checkErr(err, t)
 		verifyStatusCode(resp.StatusCode, http.StatusNoContent, t)
-		cookies := resp.Cookies()
-		if len(cookies) == 0 {
-			t.Fatalf("Expected at least one cookie, got none")
-		}
-		validateCookieAttributes(cookies, t)
+		validateAdminCookieAttributes(resp.Cookies(), t)
 	})
 }
 
-func validateCookieAttributes(cookies []*http.Cookie, t *testing.T) {
+func TestCookies_basicauth(t *testing.T) {
+	t.Run("Verify basic auth cookie attributes", func(t *testing.T) {
+		t.Parallel()
+		client := basicAuthResponsesTLSClient(t)
+		loginResp, err := client.Login(t.Context(), orgID, authbasicapi.LoginJSONRequestBody{
+			Username: basicAuthUser,
+			Password: basicAuthPassword,
+		})
+		checkErr(err, t)
+		verifyStatusCode(loginResp.StatusCode, http.StatusNoContent, t)
+		var refresh, session, csrf bool
+		for _, cookie := range loginResp.Cookies() {
+			switch cookie.Name {
+			case "session":
+				session = true
+				if !cookie.Secure {
+					t.Errorf("Expected 'session' cookie to have Secure attribute, but it was not set")
+				}
+				if !cookie.HttpOnly {
+					t.Errorf("Expected 'session' cookie to have HttpOnly attribute, but it was not set")
+				}
+				if cookie.SameSite != http.SameSiteStrictMode {
+					t.Errorf("Expected 'session' cookie to have SameSite=Strict, but got %v", cookie.SameSite)
+				}
+				if cookie.Domain != "otherkrbtest.com" {
+					t.Errorf("Expected 'session' cookie to have Domain=otherkrbtest.com, but got %v", cookie.Domain)
+				}
+			case "refresh":
+				refresh = true
+				if !cookie.Secure {
+					t.Errorf("Expected 'refresh' cookie to have Secure attribute, but it was not set")
+				}
+				if !cookie.HttpOnly {
+					t.Errorf("Expected 'refresh' cookie to have HttpOnly attribute, but it was not set")
+				}
+				if cookie.SameSite != http.SameSiteStrictMode {
+					t.Errorf("Expected 'refresh' cookie to have SameSite=Strict, but got %v", cookie.SameSite)
+				}
+				if cookie.Domain != "otherkrbtest.com" {
+					t.Errorf("Expected 'refresh' cookie to have Domain=otherkrbtest.com, but got %v", cookie.Domain)
+				}
+			case "csrf":
+				csrf = true
+				if !cookie.Secure {
+					t.Errorf("Expected 'csrf' cookie to have Secure attribute, but it was not set")
+				}
+				if cookie.HttpOnly {
+					t.Errorf("Expected 'csrf' cookie to NOT have HttpOnly attribute, but it was set")
+				}
+				if cookie.SameSite != http.SameSiteStrictMode {
+					t.Errorf("Expected 'refresh' cookie to have SameSite=Strict, but got %v", cookie.SameSite)
+				}
+				if cookie.Domain != "otherkrbtest.com" {
+					t.Errorf("Expected 'refresh' cookie to have Domain=otherkrbtest.com, but got %v", cookie.Domain)
+				}
+			default:
+				t.Log("Ignoring cookie", cookie.Name)
+			}
+		}
+
+		if !(refresh && session && csrf) {
+			t.Errorf("Expected to find 'refresh', 'session', and 'csrf' cookies, but did not find all of them")
+		}
+	})
+}
+
+func validateAdminCookieAttributes(cookies []*http.Cookie, t *testing.T) {
+	var refresh, session, csrf bool
 	for _, cookie := range cookies {
 		switch cookie.Name {
 		case "session":
+			session = true
 			if !cookie.Secure {
 				t.Errorf("Expected 'session' cookie to have Secure attribute, but it was not set")
 			}
@@ -66,6 +127,7 @@ func validateCookieAttributes(cookies []*http.Cookie, t *testing.T) {
 				t.Errorf("Expected 'session' cookie to have Domain=krbtest.com, but got %v", cookie.Domain)
 			}
 		case "csrf":
+			csrf = true
 			if !cookie.Secure {
 				t.Errorf("Expected 'csrf' cookie to have Secure attribute, but it was not set")
 			}
@@ -79,6 +141,7 @@ func validateCookieAttributes(cookies []*http.Cookie, t *testing.T) {
 				t.Errorf("Expected 'csrf' cookie to have Domain=krbtest.com, but got %v", cookie.Domain)
 			}
 		case "refresh":
+			refresh = true
 			if !cookie.Secure {
 				t.Errorf("Expected 'refresh' cookie to have Secure attribute, but it was not set")
 			}
@@ -94,5 +157,9 @@ func validateCookieAttributes(cookies []*http.Cookie, t *testing.T) {
 		default:
 			t.Log("Ignoring cookie", cookie.Name)
 		}
+	}
+
+	if !(refresh && session && csrf) {
+		t.Errorf("Expected to find 'refresh', 'session', and 'csrf' cookies, but did not find all of them")
 	}
 }

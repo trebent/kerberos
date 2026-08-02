@@ -2,6 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "http://trebent.com/kerberos/schemas/cookies_schema.json",
   "type": "object",
+  "default": {},
   "description": "Cookie management settings.",
   "properties": {
     "domain": {

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	adminapi "github.com/trebent/kerberos/test/integration/client/admin"
+	authbasicapi "github.com/trebent/kerberos/test/integration/client/auth/basic"
 )
 
 func TestMain(m *testing.M) {
@@ -68,6 +69,67 @@ func TestMain(m *testing.M) {
 	}
 	if createAdminUserResp.StatusCode() != http.StatusCreated && createAdminUserResp.StatusCode() != http.StatusConflict {
 		panic("create admin user response did not indicate success: " + createAdminUserResp.Status())
+	}
+
+	basicAuthClient, err := authbasicapi.NewClientWithResponses(
+		fmt.Sprintf("https://%s:%d", getHost(), getAdminPort()),
+		authbasicapi.WithHTTPClient(httpClient),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	orgCreateResp, err := basicAuthClient.CreateOrganisationWithResponse(
+		context.Background(),
+		authbasicapi.CreateOrganisationJSONRequestBody{
+			Name: "security-org",
+		},
+		authbasicapi.RequestEditorFn(requestEditorSuper),
+	)
+	if err != nil {
+		panic(err)
+	}
+	if orgCreateResp.StatusCode() != http.StatusCreated && orgCreateResp.StatusCode() != http.StatusConflict {
+		panic("create organization response did not indicate success: " + orgCreateResp.Status())
+	}
+	switch orgCreateResp.StatusCode() {
+	case http.StatusCreated:
+		orgID = orgCreateResp.JSON201.Id
+	case http.StatusConflict:
+		orgListResp, err := basicAuthClient.ListOrganisationsWithResponse(
+			context.Background(),
+			authbasicapi.RequestEditorFn(requestEditorSuper),
+		)
+		if err != nil {
+			panic(err)
+		}
+		if orgListResp.StatusCode() != http.StatusOK {
+			panic("org list response was not OK: " + orgListResp.Status())
+		}
+		for _, org := range *orgListResp.JSON200 {
+			if org.Name == "security-org" {
+				orgID = org.Id
+				break
+			}
+		}
+	default:
+		panic("unexpected status code when creating organization: " + orgCreateResp.Status())
+	}
+
+	basicAuthResp, err := basicAuthClient.CreateUserWithResponse(
+		context.Background(),
+		orgID,
+		authbasicapi.CreateUserJSONRequestBody{
+			Name:     basicAuthUser,
+			Password: basicAuthPassword,
+		},
+		authbasicapi.RequestEditorFn(requestEditorSuper),
+	)
+	if err != nil {
+		panic(err)
+	}
+	if basicAuthResp.StatusCode() != http.StatusCreated && basicAuthResp.StatusCode() != http.StatusConflict {
+		panic("create basic auth user response did not indicate success: " + basicAuthResp.Status())
 	}
 
 	println("Running tests...")

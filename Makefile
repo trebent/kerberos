@@ -40,7 +40,7 @@ define cecho
 @printf "${2}${1}${RESET}\n"
 endef
 
-default: static-analysis/lint static-analysis/vulncheck build test/unit postgres/run test/unit/postgres postgres/stop
+default: static-analysis/lint static-analysis/vulncheck build test/unit test/unit/postgres postgres/stop
 
 build:
 	$(call cecho,Building Kerberos binary...,$(BOLD_YELLOW))
@@ -323,7 +323,7 @@ krb/basic-auth-login:
 		-H "Content-Type: application/json" \
 		-d '{"username":"$(AUTH_BASIC_USER_ALWAYS)","password":"$(AUTH_BASIC_USER_ALWAYS_PASSWORD)"}'
 
-postgres/run:
+postgres/run: postgres/stop
 	$(call cecho,Running PostgreSQL for Kerberos...,$(BOLD_YELLOW))
 	@docker run -d \
 	--rm \
@@ -412,7 +412,7 @@ test/unit/json:
 	@go test -v -json -coverprofile=build/coverage.out -covermode=atomic ./... -timeout 20s -failfast > build/unit-test-output.json
 
 # admin tests run with -p 1 since there are two main appliers of the same schema.
-test/unit/postgres:
+test/unit/postgres: postgres/run
 	$(call cecho,Running unit tests (admin, basic auth) for Kerberos with PostgreSQL...,$(BOLD_YELLOW))
 	cd internal/admin && go test -v -p 1 ./... -timeout 20s -failfast -tags=postgres_integration
 	cd internal/auth/method/basic && go test -v ./... -timeout 20s -failfast -tags=postgres_integration

@@ -21,7 +21,17 @@
   },
   "auth": {
     "methods": {
-      "basic": {}
+      "basic": {
+        "api": {
+          "cookies": {
+            "domain": "otherkrbtest.com",
+            "sameSite": "Strict"
+          },
+          "origins": {
+            "denyAll": true
+          }
+        }
+      }
     },
     "scheme": {
       "mappings": [

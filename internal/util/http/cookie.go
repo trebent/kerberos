@@ -1,4 +1,4 @@
-package http
+package utilhttp
 
 import (
 	"net/http"
@@ -6,16 +6,22 @@ import (
 	"github.com/trebent/zerologr"
 )
 
+const (
+	SameSiteStrict = "Strict"
+	SameSiteLax    = "Lax"
+	SameSiteNone   = "None"
+)
+
 // ConvertSameSite converts a string representation of SameSite to the corresponding http.SameSite value.
 // If the input string is invalid, it logs a warning and returns http.SameSiteDefaultMode.
 // Valid inputs are "Lax", "Strict", and "None".
 func ConvertSameSite(sameSite string) http.SameSite {
 	switch sameSite {
-	case "Lax":
+	case SameSiteLax:
 		return http.SameSiteLaxMode
-	case "Strict":
+	case SameSiteStrict:
 		return http.SameSiteStrictMode
-	case "None":
+	case SameSiteNone:
 		return http.SameSiteNoneMode
 	default:
 		zerologr.Info("WARN: invalid input SameSite, using default")

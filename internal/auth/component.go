@@ -206,7 +206,7 @@ func (a *authorizer) RegisterRoutes(
 	middleware ...strictnethttp.StrictHTTPMiddlewareFunc,
 ) error {
 	if a.basic != nil {
-		if err := a.basic.RegisterRoutes(mux, middleware...); err != nil {
+		if err := a.basic.RegisterRoutes(mux, a.cfg, middleware...); err != nil {
 			return err
 		}
 	}

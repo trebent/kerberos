@@ -12,6 +12,7 @@ import (
 	"time"
 
 	adminapi "github.com/trebent/kerberos/test/integration/client/admin"
+	authbasicapi "github.com/trebent/kerberos/test/integration/client/auth/basic"
 )
 
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -35,7 +36,12 @@ const (
 
 	adminUser         = "security-admin"
 	adminUserPassword = "security-admin-password"
+
+	basicAuthUser     = "security-basic-auth-user"
+	basicAuthPassword = "security-basic-auth-password"
 )
+
+var orgID int64
 
 func checkErr(err error, t *testing.T) {
 	t.Helper()
@@ -66,13 +72,25 @@ func verifyHeaderMissing(headers http.Header, key string, t *testing.T) {
 	}
 }
 
-// responsesTLSClient returns an adminapi.ClientWithResponses that verifies the server cert against
+// adminResponsesTLSClient returns an adminapi.ClientWithResponses that verifies the server cert against
 // the test CA but sends no client certificate.
-func responsesTLSClient(t *testing.T) *adminapi.ClientWithResponses {
+func adminResponsesTLSClient(t *testing.T) *adminapi.ClientWithResponses {
 	t.Helper()
 	client, err := adminapi.NewClientWithResponses(
 		fmt.Sprintf("https://%s:%d", getHost(), getAdminPort()),
 		adminapi.WithHTTPClient(tlsClient(t)),
+	)
+	checkErr(err, t)
+	return client
+}
+
+// basicAuthResponsesTLSClient returns an adminapi.ClientWithResponses that verifies the server cert against
+// the test CA but sends no client certificate.
+func basicAuthResponsesTLSClient(t *testing.T) *authbasicapi.ClientWithResponses {
+	t.Helper()
+	client, err := authbasicapi.NewClientWithResponses(
+		fmt.Sprintf("https://%s:%d", getHost(), getAdminPort()),
+		authbasicapi.WithHTTPClient(tlsClient(t)),
 	)
 	checkErr(err, t)
 	return client

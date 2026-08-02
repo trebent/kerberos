@@ -147,13 +147,13 @@ func startServer(signalCtx context.Context, cfg *config.ConnectorConfig) error {
 
 	if len(cfg.Whitelist) == 0 {
 		zerologr.Info("No CORS whitelist provided, allowing all origins")
-		finalHandler = loggingMiddleware(security.CORSMiddleware(handler))
+		finalHandler = loggingMiddleware(security.CORSMiddleware()(handler))
 	} else {
 		zerologr.Info(
 			"CORS whitelist provided, allowing only specified origins",
 			"whitelist", cfg.Whitelist,
 		)
-		finalHandler = loggingMiddleware(security.WhitelistCORSMiddleware(cfg.Whitelist, handler))
+		finalHandler = loggingMiddleware(security.WhitelistCORSMiddleware(cfg.Whitelist)(handler))
 	}
 
 	mux.Handle("/", finalHandler)

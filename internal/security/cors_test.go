@@ -11,7 +11,7 @@ func TestSelectCORSMiddleware(t *testing.T) {
 		nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		})
-		handler := SelectCORSMiddleware(nil, true, nextHandler)
+		handler := SelectCORSMiddleware(nil, true, false)(nextHandler)
 
 		req, _ := http.NewRequest("GET", "/", nil)
 		req.Header.Set("Origin", "http://example.com")
@@ -31,7 +31,7 @@ func TestSelectCORSMiddleware(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		})
 		allowedOrigins := []string{"http://allowed.com"}
-		handler := SelectCORSMiddleware(allowedOrigins, false, nextHandler)
+		handler := SelectCORSMiddleware(allowedOrigins, false, false)(nextHandler)
 
 		req, _ := http.NewRequest("GET", "/", nil)
 		req.Header.Set("Origin", "http://allowed.com")
@@ -59,7 +59,7 @@ func TestSelectCORSMiddleware(t *testing.T) {
 		nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		})
-		handler := SelectCORSMiddleware(nil, false, nextHandler)
+		handler := SelectCORSMiddleware(nil, false, false)(nextHandler)
 
 		req, _ := http.NewRequest("GET", "/", nil)
 		req.Header.Set("Origin", "http://example.com")
@@ -68,6 +68,25 @@ func TestSelectCORSMiddleware(t *testing.T) {
 
 		if w.Result().StatusCode != http.StatusOK {
 			t.Errorf("Expected status code %d, got %d", http.StatusOK, w.Result().StatusCode)
+		}
+		if w.Header().Get("Access-Control-Allow-Origin") != "" {
+			t.Errorf("Expected Access-Control-Allow-Origin header to be empty, got %s", w.Header().Get("Access-Control-Allow-Origin"))
+		}
+	})
+
+	t.Run("denyAll is set", func(t *testing.T) {
+		nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+		handler := SelectCORSMiddleware(nil, false, true)(nextHandler)
+
+		req, _ := http.NewRequest("GET", "/", nil)
+		req.Header.Set("Origin", "http://example.com")
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+
+		if w.Result().StatusCode != http.StatusForbidden {
+			t.Errorf("Expected status code %d, got %d", http.StatusForbidden, w.Result().StatusCode)
 		}
 		if w.Header().Get("Access-Control-Allow-Origin") != "" {
 			t.Errorf("Expected Access-Control-Allow-Origin header to be empty, got %s", w.Header().Get("Access-Control-Allow-Origin"))

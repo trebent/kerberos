@@ -1,0 +1,27 @@
+{
+  "gateway": {
+    "router": {
+      "backends": [
+        {
+          "name": "backend",
+          "host": "host",
+          "port": 8080
+        }
+      ]
+    }
+  },
+  "auth": {
+    "methods": {
+      "basic": {}
+    },
+    "scheme": {
+      "mappings": [
+        {
+          "backend": "${ref:gateway.router.backends[0].name}",
+          "method": "basic"
+        }
+      ]
+    },
+    "order": 2
+  }
+}

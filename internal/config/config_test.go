@@ -41,6 +41,41 @@ func TestConfigReferences(t *testing.T) {
 	}
 }
 
+func TestConfigAuth(t *testing.T) {
+	t.Run("Basic auth with no API config", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_auth_basic_no_api.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		cfg := New()
+		cfg.Load(data)
+		if err := cfg.Parse(); err != nil {
+			t.Fatalf("failed to load config: %v", err)
+		}
+
+		if cfg.AuthConfig.Methods.Basic == nil {
+			t.Fatalf("expected basic auth method to be non-nil, got nil")
+		}
+
+		if cfg.AuthConfig.Methods.Basic.API == nil {
+			t.Fatalf("expected basic auth API config to be non-nil, got nil")
+		}
+
+		if cfg.AuthConfig.Methods.Basic.API.Cookies == nil {
+			t.Fatalf("expected basic auth API cookies config to be non-nil, got nil")
+		}
+
+		if cfg.AuthConfig.Methods.Basic.API.Cookies.SameSite != "Strict" {
+			t.Errorf("expected basic auth API cookies SameSite to be 'Strict', got '%s'", cfg.AuthConfig.Methods.Basic.API.Cookies.SameSite)
+		}
+
+		if cfg.AuthConfig.Methods.Basic.API.Origins == nil {
+			t.Fatalf("expected basic auth API origins config to be non-nil, got nil")
+		}
+	})
+}
+
 func TestConfigAdmin(t *testing.T) {
 	t.Run("Default", func(t *testing.T) {
 		data, err := os.ReadFile("./testconfig/testconfig.json")

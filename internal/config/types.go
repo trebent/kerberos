@@ -1,5 +1,7 @@
 package config
 
+import utilhttp "github.com/trebent/kerberos/internal/util/http"
+
 type (
 	// OASConfig holds configuration for OAS-based request routing and validation.
 	OASConfig struct {
@@ -78,7 +80,13 @@ type (
 		Groups []string            `json:"groups"`
 		Paths  map[string][]string `json:"paths"`
 	}
-	AuthMethodBasic struct{}
+	AuthMethodBasic struct {
+		API *AuthMethodBasicAPI `json:"api,omitempty"`
+	}
+	AuthMethodBasicAPI struct {
+		Cookies *Cookies `json:"cookies,omitempty"`
+		Origins *Origins `json:"origins,omitempty"`
+	}
 
 	// AdminConfig holds configuration for the admin API.
 	AdminConfig struct {
@@ -152,7 +160,7 @@ func newAdminConfig() *AdminConfig {
 	return &AdminConfig{
 		API: &AdminAPI{
 			Cookies: &Cookies{
-				SameSite: "Strict",
+				SameSite: utilhttp.SameSiteStrict,
 			},
 			// Default as empty to simplify boot configuration, normally this will fail validation
 			// as both allow all and allowed origins are empty, but this is a valid default for bootstrapping.
@@ -179,7 +187,17 @@ func newPersistenceConfig() *PersistenceConfig {
 	}
 }
 
-func (ac *AuthConfig) postProcess() {}
+func (ac *AuthConfig) postProcess() {
+	if ac.Methods.Basic != nil && ac.Methods.Basic.API == nil {
+		ac.Methods.Basic.API = &AuthMethodBasicAPI{
+			Cookies: &Cookies{
+				SameSite: utilhttp.SameSiteStrict,
+			},
+			Origins: &Origins{},
+		}
+	}
+}
+
 func (gc *GatewayConfig) postProcess() {
 	for _, b := range gc.Router.Backends {
 		if b.TimeoutMs == 0 {

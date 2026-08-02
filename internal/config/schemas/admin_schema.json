@@ -16,7 +16,7 @@
         },
         "tls": {
           "type": "object",
-          "description": "TLS settings for the administration API.",
+          "description": "TLS settings for the administration API, this also includes Basic authentication (if enabled).",
           "properties": {
             "serverCertFile": {
               "type": "string",

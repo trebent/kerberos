@@ -8,9 +8,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/db"
 	authbasicapi "github.com/trebent/kerberos/internal/oapi/auth/basic"
 	"github.com/trebent/kerberos/internal/security"
+	utilhttp "github.com/trebent/kerberos/internal/util/http"
 	"github.com/trebent/kerberos/internal/util/password"
 	"github.com/trebent/zerologr"
 )
@@ -18,6 +20,8 @@ import (
 type (
 	impl struct {
 		db db.SQLClient
+
+		cookieCfg *config.Cookies
 	}
 
 	// customLoginResponse is a custom implementation of [authbasicapi.LoginResponseObject] that allows us to set cookies in the response.
@@ -73,8 +77,8 @@ func makeGenAPIError(msg string) authbasicapi.APIErrorResponse {
 	return authbasicapi.APIErrorResponse{Errors: []string{msg}}
 }
 
-func newSSI(db db.SQLClient) authbasicapi.StrictServerInterface {
-	return &impl{db}
+func newSSI(db db.SQLClient, cookieCfg *config.Cookies) authbasicapi.StrictServerInterface {
+	return &impl{db: db, cookieCfg: cookieCfg}
 }
 
 // Login implements [StrictServerInterface].
@@ -108,17 +112,21 @@ func (i *impl) Login(
 
 	return customLoginResponse{
 		cookies: []string{
-			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
-				security.SessionCookieName, sessionID, int(sessionExpiry.Seconds()),
+			security.SessionCookieString(
+				sessionID,
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
 			),
-			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/api/auth/basic/organisations/%d/refresh; HttpOnly; Secure; Max-Age=%d",
-				//nolint:golines // welp
-				security.RefreshCookieName,
+			security.RefreshCookieString(
 				refreshID,
-				req.OrgID,
-				int(sessionRefreshExpiry.Seconds()),
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
+				fmt.Sprintf("/api/auth/basic/organisations/%d/refresh", req.OrgID),
+			),
+			security.CSRFCookieString(
+				uuid.NewString(),
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
 			),
 		},
 	}, nil
@@ -139,17 +147,14 @@ func (i *impl) Logout(
 
 	return customLogoutResponse{
 		cookies: []string{
-			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
-				security.SessionCookieName, "expired", 0,
+			security.ExpiredSessionCookieString(
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
 			),
-			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/api/auth/basic/organisations/%d/refresh; HttpOnly; Secure; Max-Age=%d",
-				//nolint:golines // welp
-				security.RefreshCookieName,
-				"expired",
-				req.OrgID,
-				0,
+			security.ExpiredRefreshCookieString(
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
+				fmt.Sprintf("/api/auth/basic/organisations/%d/refresh", req.OrgID),
 			),
 		},
 	}, nil
@@ -200,16 +205,21 @@ func (i *impl) Refresh(
 
 	return customRefreshSessionResponse{
 		cookies: []string{
-			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/; HttpOnly; Secure; Max-Age=%d",
-				security.SessionCookieName, sessionID, int(sessionExpiry.Seconds()),
+			security.SessionCookieString(
+				sessionID,
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
 			),
-			fmt.Sprintf(
-				"%s=%s; SameSite=None; Path=/api/auth/basic/organisations/%d/refresh; HttpOnly; Secure; Max-Age=%d",
-				security.RefreshCookieName,
+			security.RefreshCookieString(
 				refreshID,
-				req.OrgID,
-				int(sessionRefreshExpiry.Seconds()),
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
+				fmt.Sprintf("/api/auth/basic/organisations/%d/refresh", req.OrgID),
+			),
+			security.CSRFCookieString(
+				uuid.NewString(),
+				utilhttp.ConvertSameSite(i.cookieCfg.SameSite),
+				i.cookieCfg.Domain,
 			),
 		},
 	}, nil

@@ -14,12 +14,12 @@ import (
 	_ "embed"
 
 	"github.com/getkin/kin-openapi/openapi3"
-	adminext "github.com/trebent/kerberos/internal/admin/extensions"
 	"github.com/trebent/kerberos/internal/auth/method"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/config"
 	authbasicapi "github.com/trebent/kerberos/internal/oapi/auth/basic"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
+	"github.com/trebent/kerberos/internal/security"
 
 	"github.com/trebent/kerberos/internal/db"
 	"github.com/trebent/kerberos/internal/oas"
@@ -29,7 +29,14 @@ import (
 type (
 	Basic interface {
 		method.Method
-		adminext.APIProvider
+
+		// RegisterRoutes is overridden to pass the auth config, and since it's the authorizer
+		// that needs to satisfy the admin extension that does not matter.
+		RegisterRoutes(
+			mux *http.ServeMux,
+			cfg *config.AuthConfig,
+			middleware ...authbasicapi.StrictMiddlewareFunc,
+		) error
 	}
 	basic struct {
 		config    map[string]*config.AuthZ
@@ -207,6 +214,7 @@ func (a *basic) Authorized(req *http.Request) error {
 // RegisterRoutes registers the API routes for the basic auth method.
 func (a *basic) RegisterRoutes(
 	mux *http.ServeMux,
+	cfg *config.AuthConfig,
 	middleware ...authbasicapi.StrictMiddlewareFunc,
 ) error {
 	data, err := os.ReadFile(fmt.Sprintf("%s/%s", a.oasDir, authBasicSpecification))
@@ -219,7 +227,7 @@ func (a *basic) RegisterRoutes(
 		return fmt.Errorf("failed to load basic authentication OAS: %w", err)
 	}
 
-	ssi := newSSI(a.sqlClient)
+	ssi := newSSI(a.sqlClient, cfg.Methods.Basic.API.Cookies)
 	authMiddleware := make([]authbasicapi.StrictMiddlewareFunc, len(middleware)+1)
 	authMiddleware[0] = AuthMiddleware(ssi)
 
@@ -240,6 +248,12 @@ func (a *basic) RegisterRoutes(
 		BaseRouter: mux,
 		Middlewares: []authbasicapi.MiddlewareFunc{
 			oas.ValidationMiddleware(spec),
+			security.CSRFMiddlewareWithExemptions([]string{"/login"}),
+			security.SelectCORSMiddleware(
+				cfg.Methods.Basic.API.Origins.AllowedOrigins,
+				cfg.Methods.Basic.API.Origins.AllowAll,
+				cfg.Methods.Basic.API.Origins.DenyAll,
+			),
 		},
 	})
 

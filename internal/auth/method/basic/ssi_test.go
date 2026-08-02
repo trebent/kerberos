@@ -6,13 +6,14 @@ import (
 	"context"
 	"testing"
 
+	"github.com/trebent/kerberos/internal/config"
 	authbasicapi "github.com/trebent/kerberos/internal/oapi/auth/basic"
 )
 
 // TestBasicSSIRefreshNoRefreshCookie verifies that Refresh returns 401 when the context
 // contains no refresh token (simulates a missing refresh cookie).
 func TestBasicSSIRefreshNoRefreshCookie(t *testing.T) {
-	ssi := newSSI(testClient)
+	ssi := newSSI(testClient, &config.Cookies{})
 
 	resp, err := ssi.Refresh(t.Context(), authbasicapi.RefreshRequestObject{OrgID: 0})
 	if err != nil {
@@ -26,7 +27,7 @@ func TestBasicSSIRefreshNoRefreshCookie(t *testing.T) {
 // TestBasicSSIRefresh verifies that Refresh succeeds when the context contains a refresh token
 // linked to a valid session. No session context is needed — only the refresh token.
 func TestBasicSSIRefresh(t *testing.T) {
-	ssi := newSSI(testClient)
+	ssi := newSSI(testClient, &config.Cookies{})
 
 	orgID, userID := mustCreateOrg(t, uniqueName(t, "ssi-refresh-org"))
 

@@ -6,12 +6,13 @@ import (
 	"testing"
 
 	adminapi "github.com/trebent/kerberos/test/integration/client/admin"
+	authbasicapi "github.com/trebent/kerberos/test/integration/client/auth/basic"
 )
 
 func TestCORS_admin(t *testing.T) {
 	t.Run("Non-browser request", func(t *testing.T) {
 		t.Parallel()
-		client := responsesTLSClient(t)
+		client := adminResponsesTLSClient(t)
 		resp, err := client.LoginSuperuser(
 			t.Context(),
 			adminapi.LoginSuperuserJSONRequestBody{
@@ -27,7 +28,7 @@ func TestCORS_admin(t *testing.T) {
 
 	t.Run("Browser request, valid Origin", func(t *testing.T) {
 		t.Parallel()
-		client := responsesTLSClient(t)
+		client := adminResponsesTLSClient(t)
 		resp, err := client.LoginSuperuser(
 			t.Context(),
 			adminapi.LoginSuperuserJSONRequestBody{
@@ -47,7 +48,7 @@ func TestCORS_admin(t *testing.T) {
 
 	t.Run("Browser request, invalid Origin", func(t *testing.T) {
 		t.Parallel()
-		client := responsesTLSClient(t)
+		client := adminResponsesTLSClient(t)
 		resp, err := client.LoginSuperuser(
 			t.Context(),
 			adminapi.LoginSuperuserJSONRequestBody{
@@ -61,6 +62,35 @@ func TestCORS_admin(t *testing.T) {
 		)
 		checkErr(err, t)
 		verifyStatusCode(resp.StatusCode, http.StatusForbidden, t)
+		verifyHeaderMissing(resp.Header, "Access-Control-Allow-Origin", t)
+	})
+}
+
+func TestCORS_basicauth(t *testing.T) {
+	t.Run("Browser request - denied", func(t *testing.T) {
+		t.Parallel()
+		client := basicAuthResponsesTLSClient(t)
+		resp, err := client.Login(t.Context(), orgID, authbasicapi.LoginJSONRequestBody{
+			Username: basicAuthUser,
+			Password: basicAuthPassword,
+		}, func(ctx context.Context, req *http.Request) error {
+			req.Header.Set("Origin", "http://www.safe.com")
+			return nil
+		})
+		checkErr(err, t)
+		verifyStatusCode(resp.StatusCode, http.StatusForbidden, t)
+		verifyHeaderMissing(resp.Header, "Access-Control-Allow-Origin", t)
+	})
+
+	t.Run("Non-rowser request - accepted", func(t *testing.T) {
+		t.Parallel()
+		client := basicAuthResponsesTLSClient(t)
+		resp, err := client.Login(t.Context(), orgID, authbasicapi.LoginJSONRequestBody{
+			Username: basicAuthUser,
+			Password: basicAuthPassword,
+		})
+		checkErr(err, t)
+		verifyStatusCode(resp.StatusCode, http.StatusNoContent, t)
 		verifyHeaderMissing(resp.Header, "Access-Control-Allow-Origin", t)
 	})
 }

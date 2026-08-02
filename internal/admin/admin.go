@@ -14,6 +14,7 @@ import (
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
 	"github.com/trebent/kerberos/internal/oas"
+	"github.com/trebent/kerberos/internal/security"
 	"github.com/trebent/zerologr"
 )
 
@@ -92,6 +93,14 @@ func New(opts *Opts) (*Admin, error) {
 		BaseRouter: opts.Mux,
 		Middlewares: []adminapi.MiddlewareFunc{
 			oas.ValidationMiddleware(spec),
+			security.CSRFMiddlewareWithExemptions(
+				[]string{"/superuser/login", "/admin/login"},
+			),
+			security.SelectCORSMiddleware(
+				opts.Cfg.API.Origins.AllowedOrigins,
+				opts.Cfg.API.Origins.AllowAll,
+				opts.Cfg.API.Origins.DenyAll,
+			),
 		},
 	})
 
