@@ -1,0 +1,24 @@
+{
+  "admin": {
+    "api": {
+      "origins": {
+        "allowedOrigins": [
+          "https://example.com",
+          "https://admin.example.com"
+        ],
+        "allowAll": true
+      }
+    }
+  },
+  "gateway": {
+    "router": {
+      "backends": [
+        {
+          "name": "backend1",
+          "host": "hostname",
+          "port": 8080
+        }
+      ]
+    }
+  }
+}
