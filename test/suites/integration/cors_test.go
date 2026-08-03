@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -82,11 +83,32 @@ func TestCORS_basicauth(t *testing.T) {
 }
 
 func TestCORS_gateway(t *testing.T) {
+	baseURL := fmt.Sprintf("http://localhost:%d/gw/backend/echo", getPort())
+
+	// normal echo has allowAll, but since Origin is omitted, we should not see a returned CORS header.
 	t.Run("Non-browser request - accepted", func(t *testing.T) {
 		t.Parallel()
+		// No Origin set
+		resp := get(baseURL+"/hi", t)
+		verifyStatusCode(resp.StatusCode, http.StatusOK, t)
+		verifyHeaderMissing(resp.Header, "Access-Control-Allow-Origin", t)
 	})
 
+	// normal echo has allowAll, expect headers
 	t.Run("Browser request - accepted", func(t *testing.T) {
 		t.Parallel()
+		resp := get(baseURL+"/hi", t, http.Header{"Origin": []string{"http://www.something.com"}})
+		verifyStatusCode(resp.StatusCode, http.StatusOK, t)
+		verifyHeader(resp.Header, "Access-Control-Allow-Origin", "http://www.something.com", t)
+		verifyHeader(resp.Header, "Access-Control-Allow-Credentials", "true", t)
+	})
+
+	// Send to protected-echo since it has no CORS conf., expect no headers
+	t.Run("Browser request - no configured CORS", func(t *testing.T) {
+		t.Parallel()
+		protectedURL := fmt.Sprintf("http://localhost:%d/gw/backend/protected-echo/unprotected", getPort())
+		resp := get(protectedURL, t, http.Header{"Origin": []string{"http://www.something.com"}})
+		verifyStatusCode(resp.StatusCode, http.StatusOK, t)
+		verifyHeaderMissing(resp.Header, "Access-Control-Allow-Origin", t)
 	})
 }

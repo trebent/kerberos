@@ -41,14 +41,21 @@ func DenyAllOriginsMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			zerologr.V(20).Info("CORS middleware: denying all origins")
-			if r.Header.Get("Origin") == "" {
-				zerologr.V(20).Info("CORS middleware: not a browser request, skipping")
-				next.ServeHTTP(w, r)
+
+			if HasOrigin(r) {
+				apierror.ErrorHandler(w, r, apierror.ErrForbidden)
 				return
 			}
-			apierror.ErrorHandler(w, r, apierror.ErrForbidden)
+
+			zerologr.V(20).Info("CORS middleware: not a browser request, skipping")
+			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// HasOrigin checks if the request has an Origin header.
+func HasOrigin(r *http.Request) bool {
+	return r.Header.Get("Origin") != ""
 }
 
 // CORSMiddleware is a middleware that adds CORS headers to the response. Input Origin
@@ -57,17 +64,13 @@ func CORSMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			zerologr.V(20).Info("CORS middleware: attaching CORS headers")
-			if r.Header.Get("Origin") == "" {
+			if !HasOrigin(r) {
 				// No Origin header present, so this is not a browser request.
 				zerologr.V(20).Info("CORS middleware: not a browser request, skipping CORS headers")
 				next.ServeHTTP(w, r)
 				return
 			}
-			w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-			// Read more here for whitelisted headers: https://developer.mozilla.org/en-US/docs/Glossary/CORS-safelisted_response_header
-			w.Header().Set("Access-Control-Allow-Headers", CSRFTokenHeader)
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			SetCORSHeaders(w, r.Header.Get("Origin"))
 
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusOK)
@@ -85,7 +88,7 @@ func WhitelistCORSMiddleware(allowedOrigins []string) func(http.Handler) http.Ha
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			zerologr.V(20).Info("Whitelist CORS middleware: checking allowed origins")
-			if r.Header.Get("Origin") == "" {
+			if !HasOrigin(r) {
 				// No Origin header present, so this is not a browser request.
 				zerologr.V(20).Info(
 					"Whitelist CORS middleware: not a browser request, skipping CORS headers",
@@ -97,12 +100,7 @@ func WhitelistCORSMiddleware(allowedOrigins []string) func(http.Handler) http.Ha
 			origin := r.Header.Get("Origin")
 			for _, allowedOrigin := range allowedOrigins {
 				if origin == allowedOrigin {
-					w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
-					w.Header().Set(
-						"Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-					)
-					w.Header().Set("Access-Control-Allow-Headers", CSRFTokenHeader)
-					w.Header().Set("Access-Control-Allow-Credentials", "true")
+					SetCORSHeaders(w, origin)
 
 					if r.Method == http.MethodOptions {
 						w.WriteHeader(http.StatusOK)
@@ -118,4 +116,15 @@ func WhitelistCORSMiddleware(allowedOrigins []string) func(http.Handler) http.Ha
 			apierror.ErrorHandler(w, r, apierror.ErrForbidden)
 		})
 	}
+}
+
+// SetCORSHeaders sets the necessary CORS headers on the response writer for the given origin.
+func SetCORSHeaders(w http.ResponseWriter, origin string) {
+	w.Header().Set("Access-Control-Allow-Origin", origin)
+	w.Header().Set(
+		"Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+	)
+	// Read more here for whitelisted headers: https://developer.mozilla.org/en-US/docs/Glossary/CORS-safelisted_response_header
+	w.Header().Set("Access-Control-Allow-Headers", CSRFTokenHeader)
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
 }

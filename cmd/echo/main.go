@@ -120,7 +120,10 @@ func main() {
 	zerologr.Info("Echo gracefully stopped")
 }
 
-// tlsConfig returns a TLS configuration if TLS_CERT_FILE and TLS_KEY_FILE are set, otherwise it returns nil. If TLS_CLIENT_CA_FILE is set, it configures the server for mutual TLS (mTLS) by requiring and verifying client certificates against the provided CA bundle.
+// tlsConfig returns a TLS configuration if TLS_CERT_FILE and TLS_KEY_FILE are set,
+// otherwise it returns nil. If TLS_CLIENT_CA_FILE is set, it returns a *tls.Config
+// for a server using mutual TLS (mTLS) by requiring and verifying client certificates
+// against the provided CA bundle.
 func tlsConfig() *tls.Config {
 	if tlsCertFile.Value() != "" && tlsKeyFile.Value() != "" {
 		zerologr.Info(

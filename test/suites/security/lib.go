@@ -147,6 +147,20 @@ func getHost() string {
 	}
 }
 
+func getPort() int {
+	val, found := os.LookupEnv("KRB_FT_PORT")
+	if !found {
+		return defaultKerberosPort
+	}
+
+	decoded, err := strconv.Atoi(val)
+	if err != nil {
+		return defaultKerberosPort
+	} else {
+		return decoded
+	}
+}
+
 func getAdminPort() int {
 	val, found := os.LookupEnv("KRB_FT_ADMIN_PORT")
 	if !found {

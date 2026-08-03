@@ -22,7 +22,10 @@
         {
           "name": "echo",
           "host": "echo",
-          "port": 15000
+          "port": 15000,
+          "origins": {
+            "allowAll": true
+          }
         },
         {
           "name": "protected-echo",

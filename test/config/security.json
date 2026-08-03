@@ -53,6 +53,9 @@
           "name": "mtls-echo",
           "host": "mtls-echo",
           "port": 15000,
+          "origins": {
+            "denyAll": true
+          },
           "tls": {
             "rootCAFile": "/certs/ca.crt",
             "clientCertFile": "/certs/krb_client.pem",
@@ -64,6 +67,11 @@
           "name": "tls-echo",
           "host": "tls-echo",
           "port": 15000,
+          "origins": {
+            "allowedOrigins": [
+              "http://www.safe.com"
+            ]
+          },
           "tls": {
             "rootCAFile": "/certs/ca.crt",
             "insecureSkipVerify": false

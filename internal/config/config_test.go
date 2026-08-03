@@ -319,6 +319,14 @@ func TestConfigGateway(t *testing.T) {
 		if cfg.GatewayConfig.TLS != nil {
 			t.Errorf("expected TLS config to be nil, got non-nil")
 		}
+
+		if cfg.GatewayConfig.Router.Backends[0].Origins != nil {
+			t.Fatalf("expected router backend's Origins config to be nil, got non-nil")
+		}
+
+		if cfg.GatewayConfig.Router.Backends[0].TimeoutMs != defaultCalloutTimeoutMs {
+			t.Errorf("expected router backend TimeoutMs to be %d, got %d", defaultCalloutTimeoutMs, cfg.GatewayConfig.Router.Backends[0].TimeoutMs)
+		}
 	})
 
 	t.Run("With TLS", func(t *testing.T) {
@@ -448,6 +456,19 @@ func TestConfigGateway(t *testing.T) {
 
 		if cfg.GatewayConfig.Router.Backends[0].Origins.AllowAll {
 			t.Errorf("expected router backend Origins AllowAll to be false, got true")
+		}
+	})
+
+	t.Run("Origins misconfigured", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_gw_router_origins_invalid.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		cfg := New()
+		cfg.Load(data)
+		if err := cfg.Parse(); err == nil {
+			t.Fatalf("expected error when loading config with misconfigured router backend Origins, got nil")
 		}
 	})
 }
