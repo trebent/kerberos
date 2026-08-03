@@ -54,6 +54,10 @@ var (
 	schemaBytesConfig []byte
 	//go:embed schemas/persistence_schema.json
 	schemaBytesPersistence []byte
+	//go:embed schemas/origins_schema.json
+	schemaBytesOrigins []byte
+	//go:embed schemas/cookies_schema.json
+	schemaBytesCookies []byte
 )
 
 func (rc *RootConfig) AuthEnabled() bool {
@@ -397,6 +401,8 @@ func (rc *RootConfig) validateSchema() error {
 		gojsonschema.NewBytesLoader(schemaBytesRouter),
 		gojsonschema.NewBytesLoader(schemaBytesOAS),
 		gojsonschema.NewBytesLoader(schemaBytesPersistence),
+		gojsonschema.NewBytesLoader(schemaBytesOrigins),
+		gojsonschema.NewBytesLoader(schemaBytesCookies),
 	); err != nil {
 		zerologr.Error(err, "Failed to add global schemas")
 		return err

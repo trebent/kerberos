@@ -14,6 +14,7 @@ import (
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
 	"github.com/trebent/kerberos/internal/response"
+	"github.com/trebent/kerberos/internal/security"
 	"github.com/trebent/zerologr"
 )
 
@@ -108,6 +109,41 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 			apiErrNoBackendFound.Error(),
 		)
 		return
+	}
+
+	if security.HasOrigin(req) && corsConfigured(backend) {
+		origin := req.Header.Get("Origin")
+		if err := ValidateOrigin(
+			origin,
+			backend.Origins,
+		); err != nil {
+			rLogger.Error(err, "Origin denied", "origin", origin)
+			apierror.ErrorHandler(wrapped, req, err)
+			debuggedCall.AddTransition(
+				"router",
+				composerdebug.CallDirectionInbound,
+				debugStart,
+				time.Now(),
+				composerdebug.CallResultFailure,
+				err.Error(),
+			)
+			return
+		}
+
+		security.SetCORSHeaders(wrapped, req.Header.Get("Origin"))
+
+		if req.Method == http.MethodOptions {
+			wrapped.WriteHeader(http.StatusNoContent)
+			debuggedCall.AddTransition(
+				"router",
+				composerdebug.CallDirectionInbound,
+				debugStart,
+				time.Now(),
+				composerdebug.CallResultSuccess,
+				"",
+			)
+			return
+		}
 	}
 
 	// Set backend in context logger to forward. Don't append to the name.

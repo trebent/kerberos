@@ -1,0 +1,21 @@
+{
+  "admin": {
+    "api": {
+      "cookies": {
+        "domain": "example.com",
+        "sameSite": "Lax"
+      }
+    }
+  },
+  "gateway": {
+    "router": {
+      "backends": [
+        {
+          "name": "backend1",
+          "host": "hostname",
+          "port": 8080
+        }
+      ]
+    }
+  }
+}

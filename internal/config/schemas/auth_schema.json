@@ -9,7 +9,26 @@
       "description": "Configure available authentication mechanisms.",
       "properties": {
         "basic": {
-          "type": "object"
+          "type": "object",
+          "description": "Settings for the Basic authentication method.",
+          "default": {
+            "api": {}
+          },
+          "properties": {
+            "api": {
+              "description": "Settings for the Basic authentication API.",
+              "properties": {
+                "cookies": {
+                  "$ref": "http://trebent.com/kerberos/schemas/cookies_schema.json"
+                },
+                "origins": {
+                  "$ref": "http://trebent.com/kerberos/schemas/origins_schema.json"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false

@@ -21,20 +21,33 @@ services:
       - ../../oas:/oas:ro
       - ../../certs:/certs:ro
 
-  echo:
+  mtls-echo:
     image: "ghcr.io/trebent/kerberos/echo:${VERSION:-unset}"
     pull_policy: if_not_present
     build:
       context: ../../..
       dockerfile: ./docker/echo.Dockerfile
     restart: on-failure
-    ports:
-      - ${ECHO_PORT:-15000}:${ECHO_PORT:-15000}
     environment:
       - PORT=${ECHO_PORT:-15000}
       - OBSERVABILITY_ENABLED=false
-      - TLS_CERT_FILE=/certs/client.crt
-      - TLS_KEY_FILE=/certs/client.key
+      - TLS_CERT_FILE=/certs/mtls_echo_server.pem
+      - TLS_KEY_FILE=/certs/mtls_echo_server.key
       - TLS_CLIENT_CA_FILE=/certs/ca.crt
+    volumes:
+      - ../../certs:/certs:ro
+
+  tls-echo:
+    image: "ghcr.io/trebent/kerberos/echo:${VERSION:-unset}"
+    pull_policy: if_not_present
+    build:
+      context: ../../..
+      dockerfile: ./docker/echo.Dockerfile
+    restart: on-failure
+    environment:
+      - PORT=${ECHO_PORT:-15000}
+      - OBSERVABILITY_ENABLED=false
+      - TLS_CERT_FILE=/certs/tls_echo_server.pem
+      - TLS_KEY_FILE=/certs/tls_echo_server.key
     volumes:
       - ../../certs:/certs:ro

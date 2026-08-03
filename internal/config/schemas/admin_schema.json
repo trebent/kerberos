@@ -8,9 +8,15 @@
       "type": "object",
       "description": "Settings for the Administration API.",
       "properties": {
+        "cookies": {
+          "$ref": "http://trebent.com/kerberos/schemas/cookies_schema.json"
+        },
+        "origins": {
+          "$ref": "http://trebent.com/kerberos/schemas/origins_schema.json"
+        },
         "tls": {
           "type": "object",
-          "description": "TLS settings for the administration API.",
+          "description": "TLS settings for the administration API, this also includes Basic authentication (if enabled).",
           "properties": {
             "serverCertFile": {
               "type": "string",

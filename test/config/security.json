@@ -1,32 +1,86 @@
 {
   "admin": {
     "api": {
+      "cookies": {
+        "domain": "krbtest.com",
+        "sameSite": "Lax"
+      },
+      "origins": {
+        "allowedOrigins": [
+          "http://www.safe.com"
+        ]
+      },
       "tls": {
-        "serverCertFile": "/certs/server.crt",
-        "serverKeyFile": "/certs/server.key"
+        "serverCertFile": "/certs/krb_server.pem",
+        "serverKeyFile": "/certs/krb_server.key"
       }
     }
   },
   "observability": {
     "enabled": false
   },
+  "auth": {
+    "methods": {
+      "basic": {
+        "api": {
+          "cookies": {
+            "domain": "otherkrbtest.com",
+            "sameSite": "Strict"
+          },
+          "origins": {
+            "denyAll": true
+          }
+        }
+      }
+    },
+    "scheme": {
+      "mappings": [
+        {
+          "backend": "dummy",
+          "method": "basic"
+        }
+      ]
+    }
+  },
   "gateway": {
     "tls": {
-      "serverCertFile": "/certs/server.crt",
-      "serverKeyFile": "/certs/server.key"
+      "serverCertFile": "/certs/krb_server.pem",
+      "serverKeyFile": "/certs/krb_server.key"
     },
     "router": {
       "backends": [
         {
-          "name": "echo",
-          "host": "echo",
+          "name": "mtls-echo",
+          "host": "mtls-echo",
           "port": 15000,
+          "origins": {
+            "denyAll": true
+          },
           "tls": {
             "rootCAFile": "/certs/ca.crt",
-            "clientCertFile": "/certs/client.crt",
-            "clientKeyFile": "/certs/client.key",
+            "clientCertFile": "/certs/krb_client.pem",
+            "clientKeyFile": "/certs/krb_client.key",
             "insecureSkipVerify": false
           }
+        },
+        {
+          "name": "tls-echo",
+          "host": "tls-echo",
+          "port": 15000,
+          "origins": {
+            "allowedOrigins": [
+              "http://www.safe.com"
+            ]
+          },
+          "tls": {
+            "rootCAFile": "/certs/ca.crt",
+            "insecureSkipVerify": false
+          }
+        },
+        {
+          "name": "dummy",
+          "host": "dummy",
+          "port": 12345
         }
       ]
     }

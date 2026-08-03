@@ -409,3 +409,18 @@ func adminUserLogin(t *testing.T, name, pass string) RequestEditorFn {
 	verifyStatusCode(resp.StatusCode(), http.StatusNoContent, t)
 	return sessionCookieRequestEditor(resp.HTTPResponse, t)
 }
+
+func verifyHeader(headers http.Header, key string, expectedValue string, t *testing.T) {
+	t.Helper()
+	actualValue := headers.Get(key)
+	if actualValue != expectedValue {
+		t.Fatalf("Expected header %s to have value %s, got %s", key, expectedValue, actualValue)
+	}
+}
+
+func verifyHeaderMissing(headers http.Header, key string, t *testing.T) {
+	t.Helper()
+	if headers.Get(key) != "" {
+		t.Fatalf("Expected header %s to be missing, but it was present", key)
+	}
+}

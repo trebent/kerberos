@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://trebent.com/kerberos/schemas/origins_schema.json",
+  "type": "object",
+  "default": {},
+  "description": "Origin management settings.",
+  "properties": {
+    "allowedOrigins": {
+      "type": "array",
+      "description": "List of allowed origins for CORS.",
+      "default": [],
+      "items": {
+        "type": "string"
+      }
+    },
+    "allowAll": {
+      "type": "boolean",
+      "description": "Whether to allow all origins for CORS. Mutually exclusive with 'allowedOrigins'.",
+      "default": false
+    },
+    "denyAll": {
+      "type": "boolean",
+      "description": "Whether to deny all origins for CORS. Mutually exclusive with 'allowedOrigins' and 'allowAll'.",
+      "default": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "allowAll"
+        ],
+        "properties": {
+          "allowAll": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "denyAll": {
+            "const": false
+          },
+          "allowedOrigins": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "denyAll"
+        ],
+        "properties": {
+          "denyAll": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "allowAll": {
+            "const": false
+          },
+          "allowedOrigins": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "allowedOrigins"
+        ],
+        "properties": {
+          "allowedOrigins": {
+            "minItems": 1
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "allowAll": {
+            "const": false
+          },
+          "denyAll": {
+            "const": false
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

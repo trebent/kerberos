@@ -8,6 +8,7 @@ import (
 	"time"
 
 	admindb "github.com/trebent/kerberos/internal/admin/db"
+	"github.com/trebent/kerberos/internal/config"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
 )
@@ -91,6 +92,7 @@ func TestAdminSSISuperuser(t *testing.T) {
 		SQLClient:    testClient,
 		ClientID:     testClientID,
 		ClientSecret: testClientSecret,
+		CookieCfg:    &config.Cookies{},
 	})
 	if err != nil {
 		t.Fatalf("expected newSSI to succeed, got error: %v", err)
@@ -143,6 +145,7 @@ func TestAdminSSIRefreshSuperuserSession(t *testing.T) {
 		SQLClient:    testClient,
 		ClientID:     testClientID,
 		ClientSecret: testClientSecret,
+		CookieCfg:    &config.Cookies{},
 	})
 	if err != nil {
 		t.Fatalf("expected newSSI to succeed, got error: %v", err)
@@ -230,6 +233,7 @@ func TestAdminSSIRefreshUserSession(t *testing.T) {
 		SQLClient:    testClient,
 		ClientID:     testClientID,
 		ClientSecret: testClientSecret,
+		CookieCfg:    &config.Cookies{},
 	})
 	if err != nil {
 		t.Fatalf("expected newSSI to succeed, got error: %v", err)

@@ -1,5 +1,9 @@
 package config
 
+import (
+	utilhttp "github.com/trebent/kerberos/internal/util/http"
+)
+
 type (
 	// OASConfig holds configuration for OAS-based request routing and validation.
 	OASConfig struct {
@@ -26,11 +30,14 @@ type (
 		Backends []*RouterBackend `json:"backends"`
 	}
 	RouterBackend struct {
-		Name      string      `json:"name"`
-		Host      string      `json:"host"`
-		Port      int         `json:"port"`
-		TimeoutMs int         `json:"timeout,omitempty"`
-		TLS       *BackendTLS `json:"tls,omitempty"`
+		Name      string `json:"name"`
+		Host      string `json:"host"`
+		Port      int    `json:"port"`
+		TimeoutMs int    `json:"timeout,omitempty"`
+		// Origins holds configuration for CORS origins. In addition, Origins other than the allowed ones
+		// will be rejected with a 403 response.
+		Origins *Origins    `json:"origins,omitempty"`
+		TLS     *BackendTLS `json:"tls,omitempty"`
 	}
 	// BackendTLS holds per-backend TLS settings.
 	// When nil, the forwarder uses plain HTTP for that backend.
@@ -75,7 +82,13 @@ type (
 		Groups []string            `json:"groups"`
 		Paths  map[string][]string `json:"paths"`
 	}
-	AuthMethodBasic struct{}
+	AuthMethodBasic struct {
+		API *AuthMethodBasicAPI `json:"api,omitempty"`
+	}
+	AuthMethodBasicAPI struct {
+		Cookies *Cookies `json:"cookies,omitempty"`
+		Origins *Origins `json:"origins,omitempty"`
+	}
 
 	// AdminConfig holds configuration for the admin API.
 	AdminConfig struct {
@@ -86,8 +99,34 @@ type (
 		ClientID     string `json:"clientId"`
 		ClientSecret string `json:"clientSecret"`
 	}
+	// AdminAPI holds configuration for the admin API.
 	AdminAPI struct {
+		// Cookies contain cookie settings for the csrf, session, and refresh cookies.
+		Cookies *Cookies `json:"cookies,omitempty"`
+		// Origins holds configuration for CORS origins. In addition, Origins other than the allowed ones
+		// will be rejected with a 403 response.
+		Origins *Origins `json:"origins,omitempty"`
+		// TLS holds configuration for TLS settings for the admin API.
 		TLS *ServerTLS `json:"tls,omitempty"`
+	}
+
+	Cookies struct {
+		// Domain is the domain setting for cookies, this translates directly to Domain=<value> for cookies.
+		Domain string `json:"domain,omitempty"`
+		// SameSite is the SameSite setting for cookies, this translates directly to SameSite=<value> for cookies.
+		SameSite string `json:"sameSite,omitempty"`
+	}
+
+	// Origins holds configuration for CORS origins.
+	Origins struct {
+		// AllowedOrigins is a list of allowed origins for CORS.
+		AllowedOrigins []string `json:"allowedOrigins,omitempty"`
+		// AllowAll indicates whether to allow all origins for CORS. Mutually exclusive with 'allowedOrigins'.
+		// AllowAll will mean the Access-Control-Allow-Origin header is set to whatever Origin was received.
+		AllowAll bool `json:"allowAll,omitempty"`
+		// DenyAll denies any request with an Origin header, effectively disabling browser access.
+		// Mutually exclusive with 'allowedOrigins' and 'allowAll'.
+		DenyAll bool `json:"denyAll,omitempty"`
 	}
 
 	ServerTLS struct {
@@ -121,6 +160,14 @@ const defaultCalloutTimeoutMs = 5000
 
 func newAdminConfig() *AdminConfig {
 	return &AdminConfig{
+		API: &AdminAPI{
+			Cookies: &Cookies{
+				SameSite: utilhttp.SameSiteStrict,
+			},
+			// Default as empty to simplify boot configuration, normally this will fail validation
+			// as both allow all and allowed origins are empty, but this is a valid default for bootstrapping.
+			Origins: &Origins{},
+		},
 		SuperUser: &SuperUser{
 			ClientID:     "admin",
 			ClientSecret: "secret",
@@ -142,7 +189,24 @@ func newPersistenceConfig() *PersistenceConfig {
 	}
 }
 
-func (ac *AuthConfig) postProcess() {}
+func (ac *AuthConfig) postProcess() {
+	// Populate basic auth default values IF basic auth is enabled. This is done here since the whole "auth"
+	// block is optional configuration.
+	if ac.Methods.Basic != nil && ac.Methods.Basic.API == nil {
+		ac.Methods.Basic.API = &AuthMethodBasicAPI{}
+	}
+
+	if ac.Methods.Basic != nil && ac.Methods.Basic.API.Cookies == nil {
+		ac.Methods.Basic.API.Cookies = &Cookies{
+			SameSite: utilhttp.SameSiteStrict,
+		}
+	}
+
+	if ac.Methods.Basic != nil && ac.Methods.Basic.API.Origins == nil {
+		ac.Methods.Basic.API.Origins = &Origins{}
+	}
+}
+
 func (gc *GatewayConfig) postProcess() {
 	for _, b := range gc.Router.Backends {
 		if b.TimeoutMs == 0 {

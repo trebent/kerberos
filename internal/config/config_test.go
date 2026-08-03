@@ -41,25 +41,125 @@ func TestConfigReferences(t *testing.T) {
 	}
 }
 
-func TestConfigAdminDefaults(t *testing.T) {
-	data, err := os.ReadFile("./testconfig/testconfig.json")
-	if err != nil {
-		t.Fatalf("failed to read test config: %v", err)
-	}
+func TestConfigAuth(t *testing.T) {
+	t.Run("Basic auth with no API config", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_auth_basic_no_api.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
 
-	cfg := New()
-	cfg.Load(data)
-	if err := cfg.Parse(); err != nil {
-		t.Fatalf("failed to load config: %v", err)
-	}
+		cfg := New()
+		cfg.Load(data)
+		if err := cfg.Parse(); err != nil {
+			t.Fatalf("failed to load config: %v", err)
+		}
 
-	if cfg.AdminConfig.SuperUser.ClientID != "admin" {
-		t.Errorf("expected superuser client ID to be 'admin', got '%s'", cfg.AdminConfig.SuperUser.ClientID)
-	}
+		if cfg.AuthConfig.Methods.Basic == nil {
+			t.Fatalf("expected basic auth method to be non-nil, got nil")
+		}
 
-	if cfg.AdminConfig.SuperUser.ClientSecret != "secret" {
-		t.Errorf("expected superuser client secret to be 'secret', got '%s'", cfg.AdminConfig.SuperUser.ClientSecret)
-	}
+		if cfg.AuthConfig.Methods.Basic.API == nil {
+			t.Fatalf("expected basic auth API config to be non-nil, got nil")
+		}
+
+		if cfg.AuthConfig.Methods.Basic.API.Cookies == nil {
+			t.Fatalf("expected basic auth API cookies config to be non-nil, got nil")
+		}
+
+		if cfg.AuthConfig.Methods.Basic.API.Cookies.SameSite != "Strict" {
+			t.Errorf("expected basic auth API cookies SameSite to be 'Strict', got '%s'", cfg.AuthConfig.Methods.Basic.API.Cookies.SameSite)
+		}
+
+		if cfg.AuthConfig.Methods.Basic.API.Origins == nil {
+			t.Fatalf("expected basic auth API origins config to be non-nil, got nil")
+		}
+	})
+}
+
+func TestConfigAdmin(t *testing.T) {
+	t.Run("Default", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		cfg := New()
+		cfg.Load(data)
+		if err := cfg.Parse(); err != nil {
+			t.Fatalf("failed to load config: %v", err)
+		}
+
+		if cfg.AdminConfig.SuperUser.ClientID != "admin" {
+			t.Errorf("expected superuser client ID to be 'admin', got '%s'", cfg.AdminConfig.SuperUser.ClientID)
+		}
+
+		if cfg.AdminConfig.SuperUser.ClientSecret != "secret" {
+			t.Errorf("expected superuser client secret to be 'secret', got '%s'", cfg.AdminConfig.SuperUser.ClientSecret)
+		}
+	})
+
+	t.Run("Origins", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_admin_origins.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		cfg := New()
+		cfg.Load(data)
+		if err := cfg.Parse(); err != nil {
+			t.Fatalf("failed to load config: %v", err)
+		}
+
+		if cfg.AdminConfig.API.Origins == nil {
+			t.Fatalf("expected admin origins config to be non-nil, got nil")
+		}
+
+		if len(cfg.AdminConfig.API.Origins.AllowedOrigins) != 2 {
+			t.Errorf("expected admin origins allowed origins length to be 2, got %d", len(cfg.AdminConfig.API.Origins.AllowedOrigins))
+		}
+
+		if cfg.AdminConfig.API.Origins.AllowAll {
+			t.Errorf("expected admin origins allow all to be false, got true")
+		}
+	})
+
+	t.Run("Bad origins", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_admin_bad_origins.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		cfg := New()
+		cfg.Load(data)
+		if err := cfg.Parse(); err == nil {
+			t.Fatalf("expected error when loading config with bad origins, got nil")
+		}
+	})
+
+	t.Run("Cookies", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_admin_cookies.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		cfg := New()
+		cfg.Load(data)
+		if err := cfg.Parse(); err != nil {
+			t.Fatalf("failed to load config: %v", err)
+		}
+
+		if cfg.AdminConfig.API.Cookies == nil {
+			t.Fatalf("expected admin cookies config to be non-nil, got nil")
+		}
+
+		if cfg.AdminConfig.API.Cookies.Domain != "example.com" {
+			t.Errorf("expected admin cookies domain to be example.com, got %s", cfg.AdminConfig.API.Cookies.Domain)
+		}
+
+		if cfg.AdminConfig.API.Cookies.SameSite != "Lax" {
+			t.Errorf("expected admin cookies same site to be None, got %s", cfg.AdminConfig.API.Cookies.SameSite)
+		}
+	})
 }
 
 func TestConfigNoRouter(t *testing.T) {
@@ -219,6 +319,14 @@ func TestConfigGateway(t *testing.T) {
 		if cfg.GatewayConfig.TLS != nil {
 			t.Errorf("expected TLS config to be nil, got non-nil")
 		}
+
+		if cfg.GatewayConfig.Router.Backends[0].Origins != nil {
+			t.Fatalf("expected router backend's Origins config to be nil, got non-nil")
+		}
+
+		if cfg.GatewayConfig.Router.Backends[0].TimeoutMs != defaultCalloutTimeoutMs {
+			t.Errorf("expected router backend TimeoutMs to be %d, got %d", defaultCalloutTimeoutMs, cfg.GatewayConfig.Router.Backends[0].TimeoutMs)
+		}
 	})
 
 	t.Run("With TLS", func(t *testing.T) {
@@ -319,6 +427,48 @@ func TestConfigGateway(t *testing.T) {
 		cfg.Load(data)
 		if err := cfg.Parse(); err == nil {
 			t.Fatalf("expected error when loading config with invalid router backend port, got nil")
+		}
+	})
+
+	t.Run("Origins set", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_gw_router_origins.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		cfg := New()
+		cfg.Load(data)
+		if err := cfg.Parse(); err != nil {
+			t.Fatalf("failed to load config: %v", err)
+		}
+
+		if cfg.GatewayConfig.Router == nil {
+			t.Fatalf("expected router config to be non-nil, got nil")
+		}
+
+		if cfg.GatewayConfig.Router.Backends[0].Origins == nil {
+			t.Fatalf("expected router backend's Origins config to be non-nil, got nil")
+		}
+
+		if len(cfg.GatewayConfig.Router.Backends[0].Origins.AllowedOrigins) != 2 {
+			t.Errorf("expected router backend Origins AllowedOrigins to have length 2, got %d", len(cfg.GatewayConfig.Router.Backends[0].Origins.AllowedOrigins))
+		}
+
+		if cfg.GatewayConfig.Router.Backends[0].Origins.AllowAll {
+			t.Errorf("expected router backend Origins AllowAll to be false, got true")
+		}
+	})
+
+	t.Run("Origins misconfigured", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_gw_router_origins_invalid.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		cfg := New()
+		cfg.Load(data)
+		if err := cfg.Parse(); err == nil {
+			t.Fatalf("expected error when loading config with misconfigured router backend Origins, got nil")
 		}
 	})
 }

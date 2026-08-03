@@ -1,4 +1,11 @@
 {
+  "admin": {
+    "api": {
+      "origins": {
+        "allowAll": true
+      }
+    }
+  },
   "persistence": {
     "driver": "postgres",
     "address": "postgres:5432",
@@ -15,7 +22,10 @@
         {
           "name": "echo",
           "host": "echo",
-          "port": 15000
+          "port": 15000,
+          "origins": {
+            "allowAll": true
+          }
         },
         {
           "name": "protected-echo",
@@ -27,7 +37,13 @@
   },
   "auth": {
     "methods": {
-      "basic": {}
+      "basic": {
+        "api": {
+          "origins": {
+            "allowAll": true
+          }
+        }
+      }
     },
     "scheme": {
       "mappings": [

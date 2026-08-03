@@ -27,7 +27,6 @@ import (
 	"github.com/trebent/kerberos/internal/db/sqlite"
 	"github.com/trebent/kerberos/internal/oas"
 	"github.com/trebent/kerberos/internal/response"
-	"github.com/trebent/kerberos/internal/security"
 	"github.com/trebent/zerologr"
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 )
@@ -279,8 +278,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		Addr:         fmt.Sprintf(":%d", Port.Value()),
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
-		// TODO: add support for per-backend CORS configuration. For now, skip CORS for backends.
-		Handler: gwMux,
+		Handler:      gwMux,
 	}
 
 	loggingMiddleware := func(next http.Handler) http.Handler {
@@ -298,30 +296,25 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		Addr:         fmt.Sprintf(":%d", AdminPort.Value()),
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
-		// TODO: add support for origin whitelisting for the admin server.
-		Handler: loggingMiddleware(security.CORSMiddleware(
-			security.CSRFMiddlewareWithExemptions(
-				[]string{"/superuser/login", "/admin/login"},
-			)(adminMux),
-		)),
+		// Since it's important for individual API implementors to have control over CORS/CSRF
+		// settings, the only general middleware is for logging.
+		Handler: loggingMiddleware(adminMux),
 	}
 
 	gwErrChan := make(chan error, 1)
 	go func() {
 		if tlsCfg := cfg.GatewayConfig.TLS; tlsCfg != nil {
 			gwErrChan <- gwServer.ListenAndServeTLS(tlsCfg.CertFile, tlsCfg.KeyFile)
-		} else {
-			gwErrChan <- gwServer.ListenAndServe()
+			return
 		}
+		gwErrChan <- gwServer.ListenAndServe()
 	}()
 
 	adminErrChan := make(chan error, 1)
 	go func() {
-		if cfg.AdminConfig.API != nil {
-			if tlsCfg := cfg.AdminConfig.API.TLS; tlsCfg != nil {
-				adminErrChan <- adminServer.ListenAndServeTLS(tlsCfg.CertFile, tlsCfg.KeyFile)
-				return
-			}
+		if tlsCfg := cfg.AdminConfig.API.TLS; tlsCfg != nil {
+			adminErrChan <- adminServer.ListenAndServeTLS(tlsCfg.CertFile, tlsCfg.KeyFile)
+			return
 		}
 		adminErrChan <- adminServer.ListenAndServe()
 	}()
