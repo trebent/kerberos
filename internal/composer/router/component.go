@@ -131,6 +131,19 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 		}
 
 		security.SetCORSHeaders(wrapped, req.Header.Get("Origin"))
+
+		if req.Method == http.MethodOptions {
+			wrapped.WriteHeader(http.StatusNoContent)
+			debuggedCall.AddTransition(
+				"router",
+				composerdebug.CallDirectionInbound,
+				debugStart,
+				time.Now(),
+				composerdebug.CallResultSuccess,
+				"",
+			)
+			return
+		}
 	}
 
 	// Set backend in context logger to forward. Don't append to the name.
