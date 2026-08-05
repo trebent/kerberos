@@ -15,6 +15,19 @@ func TestCORS(t *testing.T) {
 	t.Run("allowed origin, CORS headers", func(t *testing.T) {
 		testCORS(t, "http://localhost:30100", true)
 	})
+
+	t.Run("allowed origin, OPTIONS preflight", func(t *testing.T) {
+		t.Parallel()
+		url := fmt.Sprintf("http://%s:%d", getHost(), getConnectorPort())
+		resp := options(url, t, http.Header{"Origin": []string{"http://localhost:30100"}})
+		defer resp.Body.Close()
+		verifyStatusCode(resp.StatusCode, http.StatusNoContent, t)
+		verifyHeader(resp.Header, "Access-Control-Allow-Origin", "http://localhost:30100", t)
+		verifyHeader(resp.Header, "Access-Control-Allow-Credentials", "true", t)
+		if resp.Header.Get("Access-Control-Allow-Methods") == "" {
+			t.Fatal("Expected Access-Control-Allow-Methods to be set")
+		}
+	})
 }
 
 func testCORS(t *testing.T, origin string, expectCORSHeaders bool) {
