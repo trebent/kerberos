@@ -66,7 +66,7 @@ func TestAdminGetFlow(t *testing.T) {
 		t.Logf("Flow component index: %d name: %s", i, component.Name)
 
 		switch component.Name {
-		case "observability":
+		case "obs":
 			if i != 0 {
 				t.Error("observability component should have index 0")
 			}
