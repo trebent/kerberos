@@ -244,18 +244,29 @@ func (a *basic) RegisterRoutes(
 		},
 	)
 
+	corsMw := security.SelectCORSMiddleware(
+		cfg.Methods.Basic.API.Origins.AllowedOrigins,
+		cfg.Methods.Basic.API.Origins.AllowAll,
+		cfg.Methods.Basic.API.Origins.DenyAll,
+	)
+
 	_ = authbasicapi.HandlerWithOptions(strictHandler, authbasicapi.StdHTTPServerOptions{
 		BaseRouter: mux,
 		Middlewares: []authbasicapi.MiddlewareFunc{
-			oas.ValidationMiddleware(spec),
 			security.CSRFMiddlewareWithExemptions([]string{"/login"}),
-			security.SelectCORSMiddleware(
-				cfg.Methods.Basic.API.Origins.AllowedOrigins,
-				cfg.Methods.Basic.API.Origins.AllowAll,
-				cfg.Methods.Basic.API.Origins.DenyAll,
-			),
+			oas.ValidationMiddleware(spec),
+			corsMw,
 		},
 	})
+
+	// Go 1.22+ ServeMux performs method matching, so OPTIONS requests are rejected
+	// with 405 before middleware runs. Always register a wildcard OPTIONS handler:
+	// when CORS is configured it short-circuits here; when it is the passthrough,
+	// OAS validation runs as next and rejects OPTIONS naturally.
+	methodNotAllowed := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	})
+	mux.HandleFunc("OPTIONS /api/auth/basic/{path...}", corsMw(methodNotAllowed).ServeHTTP)
 
 	return nil
 }

@@ -125,6 +125,6 @@ func SetCORSHeaders(w http.ResponseWriter, origin string) {
 		"Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS",
 	)
 	// Read more here for whitelisted headers: https://developer.mozilla.org/en-US/docs/Glossary/CORS-safelisted_response_header
-	w.Header().Set("Access-Control-Allow-Headers", CSRFTokenHeader)
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, "+CSRFTokenHeader)
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 }

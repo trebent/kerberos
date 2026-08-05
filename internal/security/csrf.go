@@ -89,6 +89,7 @@ func CSRFCookie(
 		HttpOnly: false, // Double-submit method requires the cookie to be accessible by JavaScript
 		Secure:   true,
 		Domain:   domain,
+		Path:     "/",
 		MaxAge:   int(RefreshMaxAge.Seconds()),
 	}
 }

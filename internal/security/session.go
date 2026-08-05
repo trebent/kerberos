@@ -26,6 +26,7 @@ func SessionCookie(
 		HttpOnly: true,
 		Secure:   true,
 		Domain:   domain,
+		Path:     "/",
 		MaxAge:   int(SessionMaxAge.Seconds()),
 	}
 }
@@ -52,6 +53,7 @@ func ExpiredSessionCookie(
 		HttpOnly: true,
 		Secure:   true,
 		Domain:   domain,
+		Path:     "/",
 		MaxAge:   -1,
 	}
 }

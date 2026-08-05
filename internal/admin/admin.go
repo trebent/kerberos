@@ -89,20 +89,31 @@ func New(opts *Opts) (*Admin, error) {
 		},
 	)
 
+	corsMw := security.SelectCORSMiddleware(
+		opts.Cfg.API.Origins.AllowedOrigins,
+		opts.Cfg.API.Origins.AllowAll,
+		opts.Cfg.API.Origins.DenyAll,
+	)
+
 	_ = adminapi.HandlerWithOptions(strictHandler, adminapi.StdHTTPServerOptions{
 		BaseRouter: opts.Mux,
 		Middlewares: []adminapi.MiddlewareFunc{
-			oas.ValidationMiddleware(spec),
 			security.CSRFMiddlewareWithExemptions(
 				[]string{"/superuser/login", "/admin/login"},
 			),
-			security.SelectCORSMiddleware(
-				opts.Cfg.API.Origins.AllowedOrigins,
-				opts.Cfg.API.Origins.AllowAll,
-				opts.Cfg.API.Origins.DenyAll,
-			),
+			oas.ValidationMiddleware(spec),
+			corsMw,
 		},
 	})
+
+	// Go 1.22+ ServeMux performs method matching, so OPTIONS requests are rejected
+	// with 405 before middleware runs. Always register a wildcard OPTIONS handler:
+	// when CORS is configured it short-circuits here; when it is the passthrough,
+	// OAS validation runs as next and rejects OPTIONS naturally.
+	methodNotAllowed := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	})
+	opts.Mux.HandleFunc("OPTIONS /api/admin/{path...}", corsMw(methodNotAllowed).ServeHTTP)
 
 	return &Admin{
 		ssi: ssi,
