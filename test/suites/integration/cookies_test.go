@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -21,7 +22,7 @@ func TestCookies_admin(t *testing.T) {
 		)
 		checkErr(err, t)
 		verifyStatusCode(resp.StatusCode, http.StatusNoContent, t)
-		validateAdminCookieAttributes(resp.Cookies(), t)
+		validateAdminCookieAttributes(resp.Cookies(), "/api/admin/superuser/refresh", t)
 	})
 
 	t.Run("Verify admin user cookie attributes", func(t *testing.T) {
@@ -36,7 +37,7 @@ func TestCookies_admin(t *testing.T) {
 		)
 		checkErr(err, t)
 		verifyStatusCode(resp.StatusCode, http.StatusNoContent, t)
-		validateAdminCookieAttributes(resp.Cookies(), t)
+		validateAdminCookieAttributes(resp.Cookies(), "/api/admin/refresh", t)
 	})
 }
 
@@ -69,6 +70,9 @@ func TestCookies_basicauth(t *testing.T) {
 				if cookie.Domain != "" {
 					t.Errorf("Expected 'session' cookie to have Domain='', but got %v", cookie.Domain)
 				}
+				if cookie.Path != "/" {
+					t.Errorf("Expected 'session' cookie to have Path='/', but got %v", cookie.Path)
+				}
 			case "refresh":
 				refresh = true
 				if !cookie.Secure {
@@ -82,6 +86,10 @@ func TestCookies_basicauth(t *testing.T) {
 				}
 				if cookie.Domain != "" {
 					t.Errorf("Expected 'refresh' cookie to have Domain='', but got %v", cookie.Domain)
+				}
+				expectedRefreshPath := fmt.Sprintf("/api/auth/basic/organisations/%d/refresh", alwaysOrgID)
+				if cookie.Path != expectedRefreshPath {
+					t.Errorf("Expected 'refresh' cookie to have Path='%s', but got %v", expectedRefreshPath, cookie.Path)
 				}
 			case "csrf":
 				csrf = true
@@ -97,6 +105,9 @@ func TestCookies_basicauth(t *testing.T) {
 				if cookie.Domain != "" {
 					t.Errorf("Expected 'refresh' cookie to have Domain='', but got %v", cookie.Domain)
 				}
+				if cookie.Path != "/" {
+					t.Errorf("Expected 'csrf' cookie to have Path='/', but got %v", cookie.Path)
+				}
 			default:
 				t.Log("Ignoring cookie", cookie.Name)
 			}
@@ -108,7 +119,7 @@ func TestCookies_basicauth(t *testing.T) {
 	})
 }
 
-func validateAdminCookieAttributes(cookies []*http.Cookie, t *testing.T) {
+func validateAdminCookieAttributes(cookies []*http.Cookie, expectedRefreshPath string, t *testing.T) {
 	var refresh, session, csrf bool
 	for _, cookie := range cookies {
 		switch cookie.Name {
@@ -126,6 +137,9 @@ func validateAdminCookieAttributes(cookies []*http.Cookie, t *testing.T) {
 			if cookie.Domain != "" {
 				t.Errorf("Expected 'session' cookie to have Domain='', but got %v", cookie.Domain)
 			}
+			if cookie.Path != "/" {
+				t.Errorf("Expected 'session' cookie to have Path='/', but got %v", cookie.Path)
+			}
 		case "csrf":
 			csrf = true
 			if !cookie.Secure {
@@ -140,6 +154,9 @@ func validateAdminCookieAttributes(cookies []*http.Cookie, t *testing.T) {
 			if cookie.Domain != "" {
 				t.Errorf("Expected 'csrf' cookie to have Domain='', but got %v", cookie.Domain)
 			}
+			if cookie.Path != "/" {
+				t.Errorf("Expected 'csrf' cookie to have Path='/', but got %v", cookie.Path)
+			}
 		case "refresh":
 			refresh = true
 			if !cookie.Secure {
@@ -153,6 +170,9 @@ func validateAdminCookieAttributes(cookies []*http.Cookie, t *testing.T) {
 			}
 			if cookie.Domain != "" {
 				t.Errorf("Expected 'refresh' cookie to have Domain='', but got %v", cookie.Domain)
+			}
+			if cookie.Path != expectedRefreshPath {
+				t.Errorf("Expected 'refresh' cookie to have Path='%s', but got %v", expectedRefreshPath, cookie.Path)
 			}
 		default:
 			t.Log("Ignoring cookie", cookie.Name)
