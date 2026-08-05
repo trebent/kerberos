@@ -15,7 +15,7 @@ func TestCORS_admin(t *testing.T) {
 		t.Parallel()
 		url := fmt.Sprintf("http://%s:%d/api/admin/login", getHost(), getAdminPort())
 		resp := options(url, t, http.Header{"Origin": []string{"http://www.safe.com"}})
-		verifyStatusCode(resp.StatusCode, http.StatusOK, t)
+		verifyStatusCode(resp.StatusCode, http.StatusNoContent, t)
 		verifyHeader(resp.Header, "Access-Control-Allow-Origin", "http://www.safe.com", t)
 		verifyHeader(resp.Header, "Access-Control-Allow-Credentials", "true", t)
 		if resp.Header.Get("Access-Control-Allow-Methods") == "" {
@@ -64,7 +64,7 @@ func TestCORS_basicauth(t *testing.T) {
 		t.Parallel()
 		url := fmt.Sprintf("http://%s:%d/api/auth/basic/organisations/%d/login", getHost(), getAdminPort(), alwaysOrgID)
 		resp := options(url, t, http.Header{"Origin": []string{"http://www.safe.com"}})
-		verifyStatusCode(resp.StatusCode, http.StatusOK, t)
+		verifyStatusCode(resp.StatusCode, http.StatusNoContent, t)
 		verifyHeader(resp.Header, "Access-Control-Allow-Origin", "http://www.safe.com", t)
 		verifyHeader(resp.Header, "Access-Control-Allow-Credentials", "true", t)
 		if resp.Header.Get("Access-Control-Allow-Methods") == "" {
@@ -131,7 +131,7 @@ func TestCORS_gateway(t *testing.T) {
 	t.Run("OPTIONS preflight with Origin - CORS headers returned", func(t *testing.T) {
 		t.Parallel()
 		resp := options(baseURL+"/hi", t, http.Header{"Origin": []string{"http://www.something.com"}})
-		verifyStatusCode(resp.StatusCode, http.StatusOK, t)
+		verifyStatusCode(resp.StatusCode, http.StatusNoContent, t)
 		verifyHeader(resp.Header, "Access-Control-Allow-Origin", "http://www.something.com", t)
 		verifyHeader(resp.Header, "Access-Control-Allow-Credentials", "true", t)
 		if resp.Header.Get("Access-Control-Allow-Methods") == "" {

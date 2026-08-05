@@ -73,7 +73,7 @@ func CORSMiddleware() func(http.Handler) http.Handler {
 			SetCORSHeaders(w, r.Header.Get("Origin"))
 
 			if r.Method == http.MethodOptions {
-				w.WriteHeader(http.StatusOK)
+				w.WriteHeader(http.StatusNoContent)
 				return
 			}
 
@@ -103,7 +103,7 @@ func WhitelistCORSMiddleware(allowedOrigins []string) func(http.Handler) http.Ha
 					SetCORSHeaders(w, origin)
 
 					if r.Method == http.MethodOptions {
-						w.WriteHeader(http.StatusOK)
+						w.WriteHeader(http.StatusNoContent)
 						return
 					}
 
