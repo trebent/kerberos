@@ -110,7 +110,7 @@ type FlowMeta struct {
 	// Data The metadata for the flow component. The structure of the metadata depends on the flow component.
 	Data FlowMeta_Data `json:"data"`
 
-	// Name The name of the flow component, e.g. "observability", "router".
+	// Name The name of the flow component, e.g. "obs", "router".
 	Name string `json:"name"`
 }
 

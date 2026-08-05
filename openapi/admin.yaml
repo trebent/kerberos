@@ -314,7 +314,7 @@ components:
       properties:
         name:
           type: string
-          description: The name of the flow component, e.g. "observability", "router".
+          description: The name of the flow component, e.g. "obs", "router".
         data:
           type: object
           description: The metadata for the flow component. The structure of the metadata

@@ -165,7 +165,7 @@ func (o *obs) GetMeta() []adminapi.FlowMeta {
 
 	return append([]adminapi.FlowMeta{
 		{
-			Name: "observability",
+			Name: "obs",
 			Data: fmd,
 		},
 	}, o.next.GetMeta()...)
