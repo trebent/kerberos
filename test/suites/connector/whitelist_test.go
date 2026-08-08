@@ -16,11 +16,11 @@ func TestWhitelist(t *testing.T) {
 	})
 
 	t.Run("allowed origin", func(t *testing.T) {
-		testWhitelist(t, "http://localhost:30100", true)
+		testWhitelist(t, "https://admin.trebent.test:30001", true)
 	})
 
 	t.Run("disallowed origin", func(t *testing.T) {
-		testWhitelist(t, "http://localhost:30101", false)
+		testWhitelist(t, "https://admin.trebent.test:30002", false)
 	})
 }
 
