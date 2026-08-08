@@ -148,6 +148,9 @@ compose/connector/logs/follow:
 	@docker compose -f test/compose/connector/compose.yaml logs -f kerberos echo connector
 
 compose/staging/up:
+	$(call cecho,Generating self-signed certificates for Kerberos staging test environment...,$(BOLD_YELLOW))
+	test/certs/staging/make_certs.sh
+
 	$(call cecho,Composing Kerberos staging test environment...,$(BOLD_YELLOW))
 	@VERSION=$(VERSION) \
 	docker compose -f test/compose/staging/compose.yaml up -d --force-recreate
