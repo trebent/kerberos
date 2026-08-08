@@ -114,7 +114,8 @@ func loadConfig(path string) (*config.ConnectorConfig, error) {
 
 func startServer(signalCtx context.Context, cfg *config.ConnectorConfig) error {
 	mux := http.NewServeMux()
-	isTLS := isTLSEnabled(cfg)
+	isServerTLS := isServerTLSEnabled(cfg)
+	isTargetTLS := isTargetTLSEnabled(cfg)
 
 	sqlClient, err := createSQLClient(cfg.Persistence)
 	if err != nil {
@@ -124,8 +125,9 @@ func startServer(signalCtx context.Context, cfg *config.ConnectorConfig) error {
 	handler, err := newHandler(opts{
 		version:   version.Value(),
 		target:    target.Value(),
-		scheme:    getScheme(isTLS),
+		scheme:    getScheme(isTargetTLS),
 		sqlClient: sqlClient,
+		targetTLS: cfg.TargetTLS,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create handler: %w", err)
@@ -167,12 +169,12 @@ func startServer(signalCtx context.Context, cfg *config.ConnectorConfig) error {
 
 	errChan := make(chan error, 1)
 	go func() {
-		if isTLS {
+		if isServerTLS {
 			zerologr.Info(
 				"Starting TLS server",
-				"certFile", cfg.ServerTLS.CertFile, "keyFile", cfg.ServerTLS.KeyFile,
+				"certFile", cfg.TLS.CertFile, "keyFile", cfg.TLS.KeyFile,
 			)
-			errChan <- server.ListenAndServeTLS(cfg.ServerTLS.CertFile, cfg.ServerTLS.KeyFile)
+			errChan <- server.ListenAndServeTLS(cfg.TLS.CertFile, cfg.TLS.KeyFile)
 		} else {
 			zerologr.Info("Starting server")
 			errChan <- server.ListenAndServe()
@@ -199,12 +201,16 @@ func startServer(signalCtx context.Context, cfg *config.ConnectorConfig) error {
 	return nil
 }
 
-func isTLSEnabled(cfg *config.ConnectorConfig) bool {
-	if cfg.ServerTLS == nil {
+func isTargetTLSEnabled(cfg *config.ConnectorConfig) bool {
+	return cfg.TargetTLS != nil
+}
+
+func isServerTLSEnabled(cfg *config.ConnectorConfig) bool {
+	if cfg.TLS == nil {
 		return false
 	}
 
-	return cfg.ServerTLS.CertFile != "" && cfg.ServerTLS.KeyFile != ""
+	return cfg.TLS.CertFile != "" && cfg.TLS.KeyFile != ""
 }
 
 func getScheme(isTLS bool) string {

@@ -114,11 +114,7 @@ compose/security/logs/follow:
 compose/security/up:
 	$(call cecho,Composing Kerberos security test environment...,$(BOLD_YELLOW))
 	@VERSION=$(VERSION) \
-	KERBEROS_PORT=$(KERBEROS_PORT) \
-	KERBEROS_ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
 	LOG_VERBOSITY=$(LOG_VERBOSITY) \
-	ECHO_PORT=$(ECHO_PORT) \
-	ECHO_METRICS_PORT=$(ECHO_METRICS_PORT) \
 	docker compose -f test/compose/security/compose.yaml up -d --force-recreate
 	@until [ "$$(curl -s -o /dev/null -w '%{http_code}' --cacert test/certs/ca.crt https://localhost:$(KERBEROS_ADMIN_PORT)/api/admin/flow)" = "401" ]; do \
 	echo "Waiting for Kerberos admin API..."; \
@@ -133,10 +129,6 @@ compose/security/down:
 compose/connector/up:
 	$(call cecho,Composing Kerberos Admin Connector test environment...,$(BOLD_YELLOW))
 	@VERSION=$(VERSION) \
-	KERBEROS_PORT=$(KERBEROS_PORT) \
-	KERBEROS_ADMIN_PORT=$(KERBEROS_ADMIN_PORT) \
-	CONNECTOR_PORT=$(CONNECTOR_PORT) \
-	ECHO_PORT=$(ECHO_PORT) \
 	LOG_VERBOSITY=$(LOG_VERBOSITY) \
 	docker compose -f test/compose/connector/compose.yaml up -d --force-recreate
 	@until [ "$$(curl -s -o /dev/null -w '%{http_code}' localhost:$(CONNECTOR_PORT))" = "401" ]; do \
@@ -154,6 +146,27 @@ compose/connector/logs:
 
 compose/connector/logs/follow:
 	@docker compose -f test/compose/connector/compose.yaml logs -f kerberos echo connector
+
+compose/staging/up:
+	$(call cecho,Composing Kerberos staging test environment...,$(BOLD_YELLOW))
+	@VERSION=$(VERSION) \
+	docker compose -f test/compose/staging/compose.yaml up -d --force-recreate
+	$(call cecho,Waiting for Kerberos to be ready...,$(BOLD_YELLOW))
+	@until [ "$$(curl -s -o /dev/null -w '%{http_code}' --cacert "$$(mkcert -CAROOT)/rootCA.pem" https://localhost:$(KERBEROS_ADMIN_PORT)/api/admin/flow)" = "401" ]; do \
+	echo "Waiting for Kerberos admin API..."; \
+	sleep 1; \
+	done; \
+	echo "Kerberos is ready!"
+
+compose/staging/down:
+	$(call cecho,Tearing down Kerberos staging test environment...,$(BOLD_YELLOW))
+	@docker compose -f test/compose/staging/compose.yaml down
+
+compose/staging/logs:
+	@docker compose -f test/compose/staging/compose.yaml logs kerberos echo protected-echo connector
+
+compose/staging/logs/follow:
+	@docker compose -f test/compose/staging/compose.yaml logs -f kerberos echo protected-echo connector
 
 coverage:
 	@go tool cover -html=build/coverage.out -o build/coverage.html

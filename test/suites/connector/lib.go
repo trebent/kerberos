@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"testing"
 
-	adminapi "github.com/trebent/kerberos/test/integration/client/admin"
+	adminapi "github.com/trebent/kerberos/test/client/admin"
 )
 
 type RequestEditorFn func(ctx context.Context, req *http.Request) error

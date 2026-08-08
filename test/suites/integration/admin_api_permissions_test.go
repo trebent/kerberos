@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	adminapi "github.com/trebent/kerberos/test/integration/client/admin"
-	authbasicapi "github.com/trebent/kerberos/test/integration/client/auth/basic"
+	adminapi "github.com/trebent/kerberos/test/client/admin"
+	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
 )
 
 // Permission IDs are the fixed permission IDs bootstrapped by the server.

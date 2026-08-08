@@ -1,0 +1,22 @@
+{
+  "whitelist": [
+    "http://trebent.test"
+  ],
+  "persistence": {
+    "driver": "postgres",
+    "address": "postgres:5432",
+    "postgres": {
+      "database": "kerberos",
+      "username": "kerberos",
+      "password": "kerberos",
+      "sslMode": "disable"
+    }
+  },
+  "tls": {
+    "serverCertFile": "/certs/staging/connector-jaeger.pem",
+    "serverKeyFile": "/certs/staging/connector-jaeger-key.pem"
+  },
+  "targetTls": {
+    "rootCAFile": "/certs/staging/rootCA.pem"
+  }
+}

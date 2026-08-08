@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	authbasicapi "github.com/trebent/kerberos/test/integration/client/auth/basic"
+	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
 )
 
 // TestOrganisationCreate verifies that a superuser can create an organisation and

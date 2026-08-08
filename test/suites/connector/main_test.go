@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	adminapi "github.com/trebent/kerberos/test/integration/client/admin"
+	adminapi "github.com/trebent/kerberos/test/client/admin"
 )
 
 func TestMain(m *testing.M) {

@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	authbasicapi "github.com/trebent/kerberos/test/integration/client/auth/basic"
+	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
 )
 
 // TestGroupCreate verifies that a new group can be created within an organisation and that
