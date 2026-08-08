@@ -104,7 +104,13 @@ func loadConfig(path string) (*config.ConnectorConfig, error) {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	var cfg config.ConnectorConfig
+	cfg := config.ConnectorConfig{
+		Origins: &config.Origins{
+			AllowAll:       false,
+			DenyAll:        false,
+			AllowedOrigins: []string{},
+		},
+	}
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
@@ -114,7 +120,8 @@ func loadConfig(path string) (*config.ConnectorConfig, error) {
 
 func startServer(signalCtx context.Context, cfg *config.ConnectorConfig) error {
 	mux := http.NewServeMux()
-	isTLS := isTLSEnabled(cfg)
+	isServerTLS := isServerTLSEnabled(cfg)
+	isTargetTLS := isTargetTLSEnabled(cfg)
 
 	sqlClient, err := createSQLClient(cfg.Persistence)
 	if err != nil {
@@ -124,37 +131,30 @@ func startServer(signalCtx context.Context, cfg *config.ConnectorConfig) error {
 	handler, err := newHandler(opts{
 		version:   version.Value(),
 		target:    target.Value(),
-		scheme:    getScheme(isTLS),
+		scheme:    getScheme(isTargetTLS),
 		sqlClient: sqlClient,
+		targetTLS: cfg.TargetTLS,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create handler: %w", err)
 	}
 
-	var (
-		finalHandler      http.Handler
-		loggingMiddleware = func(next http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				//nolint:errcheck // guaranteed
-				wrapper := response.NewResponseWrapper(w).(*response.Wrapper)
-				next.ServeHTTP(wrapper, r)
-				zerologr.Info(
-					fmt.Sprintf("%s %s %d", r.Method, r.URL.Path, wrapper.StatusCode()),
-				)
-			})
-		}
-	)
-
-	if len(cfg.Whitelist) == 0 {
-		zerologr.Info("No CORS whitelist provided, allowing all origins")
-		finalHandler = loggingMiddleware(security.CORSMiddleware()(handler))
-	} else {
-		zerologr.Info(
-			"CORS whitelist provided, allowing only specified origins",
-			"whitelist", cfg.Whitelist,
-		)
-		finalHandler = loggingMiddleware(security.WhitelistCORSMiddleware(cfg.Whitelist)(handler))
+	loggingMiddleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			//nolint:errcheck // guaranteed
+			wrapper := response.NewResponseWrapper(w).(*response.Wrapper)
+			next.ServeHTTP(wrapper, r)
+			zerologr.Info(
+				fmt.Sprintf("%s %s %d", r.Method, r.URL.Path, wrapper.StatusCode()),
+			)
+		})
 	}
+
+	finalHandler := loggingMiddleware(
+		security.SelectCORSMiddleware(
+			cfg.Origins.AllowedOrigins, cfg.Origins.AllowAll, cfg.Origins.DenyAll,
+		)(handler),
+	)
 
 	mux.Handle("/", finalHandler)
 
@@ -167,12 +167,12 @@ func startServer(signalCtx context.Context, cfg *config.ConnectorConfig) error {
 
 	errChan := make(chan error, 1)
 	go func() {
-		if isTLS {
+		if isServerTLS {
 			zerologr.Info(
 				"Starting TLS server",
-				"certFile", cfg.ServerTLS.CertFile, "keyFile", cfg.ServerTLS.KeyFile,
+				"certFile", cfg.TLS.CertFile, "keyFile", cfg.TLS.KeyFile,
 			)
-			errChan <- server.ListenAndServeTLS(cfg.ServerTLS.CertFile, cfg.ServerTLS.KeyFile)
+			errChan <- server.ListenAndServeTLS(cfg.TLS.CertFile, cfg.TLS.KeyFile)
 		} else {
 			zerologr.Info("Starting server")
 			errChan <- server.ListenAndServe()
@@ -199,12 +199,16 @@ func startServer(signalCtx context.Context, cfg *config.ConnectorConfig) error {
 	return nil
 }
 
-func isTLSEnabled(cfg *config.ConnectorConfig) bool {
-	if cfg.ServerTLS == nil {
+func isTargetTLSEnabled(cfg *config.ConnectorConfig) bool {
+	return cfg.TargetTLS != nil
+}
+
+func isServerTLSEnabled(cfg *config.ConnectorConfig) bool {
+	if cfg.TLS == nil {
 		return false
 	}
 
-	return cfg.ServerTLS.CertFile != "" && cfg.ServerTLS.KeyFile != ""
+	return cfg.TLS.CertFile != "" && cfg.TLS.KeyFile != ""
 }
 
 func getScheme(isTLS bool) string {

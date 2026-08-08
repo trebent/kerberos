@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	adminapi "github.com/trebent/kerberos/test/integration/client/admin"
+	adminapi "github.com/trebent/kerberos/test/client/admin"
 )
 
 // mustGetAdminUserID fetches the admin user list and returns the ID of the user with the given username.

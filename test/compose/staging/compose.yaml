@@ -17,7 +17,7 @@ services:
 
   kerberos:
     image: "ghcr.io/trebent/kerberos:${VERSION:-unset}"
-    command: --config /config/integration.json
+    command: --config /config/staging.json
     pull_policy: if_not_present
     depends_on:
       postgres:
@@ -36,18 +36,18 @@ services:
       - OTEL_METRICS_EXPORTER=prometheus
       - OTEL_EXPORTER_PROMETHEUS_HOST=kerberos
       - OTEL_EXPORTER_PROMETHEUS_PORT=${KERBEROS_METRICS_PORT:-9464}
-      # Use to test sampling in production. The default is AlwaysSample unless otherwise stated by the parent span.
-      # There are appropriate for development and testing, but can lead to high overhead in production.
-      # - OTEL_TRACES_SAMPLER=parentbased_traceidratio
-      # - OTEL_TRACES_SAMPLER_ARG=0.1
+      # AlwaysSample parent spans and 10% of the rest.
+      - OTEL_TRACES_SAMPLER=parentbased_traceidratio
+      - OTEL_TRACES_SAMPLER_ARG=0.1
       - LOG_TO_CONSOLE=1
-      - LOG_VERBOSITY=${LOG_VERBOSITY:-20}
+      - LOG_VERBOSITY=${LOG_VERBOSITY:-0}
       - PORT=${KERBEROS_PORT:-30000}
       - ADMIN_PORT=${KERBEROS_ADMIN_PORT:-30001}
       - VERSION=${VERSION:-unset}
     volumes:
       - ../../config:/config:ro
       - ../../oas:/oas:ro
+      - ../../certs:/certs:ro
 
   echo:
     image: "ghcr.io/trebent/kerberos/echo:${VERSION:-unset}"
@@ -87,8 +87,6 @@ services:
     pull_policy: if_not_present
     command: ["--config.file=/prometheus.yml", "--storage.tsdb.path", "/prometheus/data", "--storage.tsdb.retention.size", "1GB"]
     restart: on-failure
-    ports:
-      - ${PROM_PORT:-9090}:9090
     volumes:
       - ../../config/prometheus/prometheus.yml:/prometheus.yml
       - prometheus:/prometheus
@@ -108,7 +106,37 @@ services:
       - ../../config/grafana/prometheus.json:/var/lib/grafana/prometheus.json
       - ../../config/grafana/kerberos_runtime.json:/var/lib/grafana/kerberos_runtime.json
       - ../../config/grafana/kerberos_http.json:/var/lib/grafana/kerberos_http.json
-      - ../../config/grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ../../config/grafana/staging.ini:/etc/grafana/grafana.ini
+      - ../../certs:/certs:ro
+
+  connector:
+    image: "ghcr.io/trebent/kerberos/admin-connector:${VERSION:-unset}"
+    command: --config /config/staging.json
+    pull_policy: if_not_present
+    depends_on:
+      kerberos:
+        condition: service_started
+    build:
+      context: ../../..
+      dockerfile: ./docker/connector.Dockerfile
+    restart: on-failure
+    ports:
+      - ${CONNECTOR_PORT:-30100}:${CONNECTOR_PORT:-30100}
+      - ${CONNECTOR_METRICS_PORT:-9462}:${CONNECTOR_METRICS_PORT:-9462}
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
+      - OTEL_METRICS_EXPORTER=prometheus
+      - OTEL_EXPORTER_PROMETHEUS_HOST=connector
+      - OTEL_EXPORTER_PROMETHEUS_PORT=${CONNECTOR_METRICS_PORT:-9462}
+      - LOG_TO_CONSOLE=true
+      - LOG_VERBOSITY=${LOG_VERBOSITY:-0}
+      - VERSION=${VERSION:-unset}
+      - PORT=${CONNECTOR_PORT:-30100}
+      - TARGET=jaeger:16686
+    volumes:
+      - ../../config/connector:/config:ro
+      - ../../certs:/certs:ro
 
   jaeger-init:
     image: busybox:1.38
@@ -125,13 +153,14 @@ services:
       jaeger-init:
         condition: service_completed_successfully
     restart: on-failure
-    command: --config /jaeger.yml
+    command: --config /staging.yml
     ports:
       - 16685:16685
       - 16686:16686
     volumes:
-      - ../../config/jaeger/jaeger.yml:/jaeger.yml
+      - ../../config/jaeger/staging.yml:/staging.yml
       - ../../config/jaeger/config-ui.json:/config-ui.json
+      - ../../certs:/certs:ro
       - jaeger:/jaeger
 
 volumes:

@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"testing"
 
-	authbasicapi "github.com/trebent/kerberos/test/integration/client/auth/basic"
+	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
 )
 
 func TestAuthBasicCall(t *testing.T) {

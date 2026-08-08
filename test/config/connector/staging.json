@@ -1,8 +1,6 @@
 {
   "origins": {
-    "allowedOrigins": [
-      "https://admin.trebent.test:30001"
-    ]
+    "denyAll": true
   },
   "persistence": {
     "driver": "postgres",
@@ -13,5 +11,12 @@
       "password": "kerberos",
       "sslMode": "disable"
     }
+  },
+  "tls": {
+    "serverCertFile": "/certs/staging/connector-jaeger.pem",
+    "serverKeyFile": "/certs/staging/connector-jaeger-key.pem"
+  },
+  "targetTls": {
+    "rootCAFile": "/certs/staging/rootCA.pem"
   }
 }

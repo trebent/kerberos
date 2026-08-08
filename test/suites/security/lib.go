@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	adminapi "github.com/trebent/kerberos/test/integration/client/admin"
-	authbasicapi "github.com/trebent/kerberos/test/integration/client/auth/basic"
+	adminapi "github.com/trebent/kerberos/test/client/admin"
+	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
 )
 
 type RequestEditorFn func(ctx context.Context, req *http.Request) error

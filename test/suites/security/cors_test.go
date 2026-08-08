@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"testing"
 
-	adminapi "github.com/trebent/kerberos/test/integration/client/admin"
-	authbasicapi "github.com/trebent/kerberos/test/integration/client/auth/basic"
+	adminapi "github.com/trebent/kerberos/test/client/admin"
+	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
 )
 
 func TestCORS_admin(t *testing.T) {

@@ -124,7 +124,7 @@ type (
 		// AllowAll indicates whether to allow all origins for CORS. Mutually exclusive with 'allowedOrigins'.
 		// AllowAll will mean the Access-Control-Allow-Origin header is set to whatever Origin was received.
 		AllowAll bool `json:"allowAll,omitempty"`
-		// DenyAll denies any request with an Origin header, effectively disabling browser access.
+		// DenyAll denies any request with an Origin header, effectively disabling cross-site access.
 		// Mutually exclusive with 'allowedOrigins' and 'allowAll'.
 		DenyAll bool `json:"denyAll,omitempty"`
 	}

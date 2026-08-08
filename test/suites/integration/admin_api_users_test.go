@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	adminapi "github.com/trebent/kerberos/test/integration/client/admin"
+	adminapi "github.com/trebent/kerberos/test/client/admin"
 )
 
 // TestAdminUserCreate verifies that a new admin user can be created via a superuser session.

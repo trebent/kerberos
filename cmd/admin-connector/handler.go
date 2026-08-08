@@ -1,14 +1,18 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"time"
 
 	admindb "github.com/trebent/kerberos/internal/admin/db"
+	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/kerberos/internal/db"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
 	"github.com/trebent/kerberos/internal/security"
@@ -27,6 +31,7 @@ type (
 		target    string
 		scheme    string
 		sqlClient db.SQLClient
+		targetTLS *config.TargetTLS
 	}
 	connectorHandler struct {
 		proxy     *httputil.ReverseProxy
@@ -45,8 +50,13 @@ func newHandler(opts opts) (*connectorHandler, error) {
 		Scheme: opts.scheme,
 		Host:   opts.target,
 	}
+	transport, err := makeTransport(opts)
+	if err != nil {
+		return nil, fmt.Errorf("building proxy transport: %w", err)
+	}
 	ch := &connectorHandler{
 		proxy: &httputil.ReverseProxy{
+			Transport: transport,
 			Rewrite: func(r *httputil.ProxyRequest) {
 				r.SetURL(u)
 			},
@@ -90,6 +100,35 @@ func (h *connectorHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.callCounter.Add(ctx, 1)
 	newSpan.SetStatus(codes.Ok, "proxied")
 	h.proxy.ServeHTTP(w, r.WithContext(ctx))
+}
+
+func makeTransport(opts opts) (http.RoundTripper, error) {
+	if opts.targetTLS == nil {
+		return http.DefaultTransport, nil
+	}
+
+	tc := &tls.Config{
+		//nolint:gosec // InsecureSkipVerify is an explicit opt-in for non-production environments.
+		InsecureSkipVerify: opts.targetTLS.InsecureSkipVerify,
+	}
+
+	if opts.targetTLS.RootCAFile != "" {
+		zerologr.Info("Loading target root CA bundle", "path", opts.targetTLS.RootCAFile)
+		pem, err := os.ReadFile(opts.targetTLS.RootCAFile)
+		if err != nil {
+			return nil, fmt.Errorf("reading root CA bundle %q: %w", opts.targetTLS.RootCAFile, err)
+		}
+		pool := x509.NewCertPool()
+		if !pool.AppendCertsFromPEM(pem) {
+			return nil, fmt.Errorf(
+				"no valid PEM certificates found in %q",
+				opts.targetTLS.RootCAFile,
+			)
+		}
+		tc.RootCAs = pool
+	}
+
+	return &http.Transport{TLSClientConfig: tc}, nil
 }
 
 func (h *connectorHandler) checkSession(r *http.Request) error {

@@ -47,7 +47,7 @@ func DenyAllOriginsMiddleware() func(http.Handler) http.Handler {
 				return
 			}
 
-			zerologr.V(20).Info("CORS middleware: not a browser request, skipping")
+			zerologr.V(20).Info("CORS middleware: not a CORS request, letting it through")
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -66,7 +66,7 @@ func CORSMiddleware() func(http.Handler) http.Handler {
 			zerologr.V(20).Info("CORS middleware: attaching CORS headers")
 			if !HasOrigin(r) {
 				// No Origin header present, so this is not a browser request.
-				zerologr.V(20).Info("CORS middleware: not a browser request, skipping CORS headers")
+				zerologr.V(20).Info("CORS middleware: not a CORS request, skipping CORS headers")
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -91,7 +91,7 @@ func WhitelistCORSMiddleware(allowedOrigins []string) func(http.Handler) http.Ha
 			if !HasOrigin(r) {
 				// No Origin header present, so this is not a browser request.
 				zerologr.V(20).Info(
-					"Whitelist CORS middleware: not a browser request, skipping CORS headers",
+					"Whitelist CORS middleware: not a CORS request, skipping CORS headers",
 				)
 				next.ServeHTTP(w, r)
 				return

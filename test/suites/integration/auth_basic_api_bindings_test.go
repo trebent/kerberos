@@ -5,8 +5,8 @@ import (
 	"slices"
 	"testing"
 
-	adminapi "github.com/trebent/kerberos/test/integration/client/admin"
-	authbasicapi "github.com/trebent/kerberos/test/integration/client/auth/basic"
+	adminapi "github.com/trebent/kerberos/test/client/admin"
+	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
 )
 
 // TestUserGroupBindingAssign verifies that groups can be assigned to a user and are returned

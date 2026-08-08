@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	authbasicapi "github.com/trebent/kerberos/test/integration/client/auth/basic"
+	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
 )
 
 // orgWithSession is a helper that creates a fresh organisation and returns its ID along
