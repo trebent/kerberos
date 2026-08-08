@@ -104,7 +104,13 @@ func loadConfig(path string) (*config.ConnectorConfig, error) {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	var cfg config.ConnectorConfig
+	cfg := config.ConnectorConfig{
+		Origins: &config.Origins{
+			AllowAll:       false,
+			DenyAll:        false,
+			AllowedOrigins: []string{},
+		},
+	}
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
@@ -133,30 +139,22 @@ func startServer(signalCtx context.Context, cfg *config.ConnectorConfig) error {
 		return fmt.Errorf("failed to create handler: %w", err)
 	}
 
-	var (
-		finalHandler      http.Handler
-		loggingMiddleware = func(next http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				//nolint:errcheck // guaranteed
-				wrapper := response.NewResponseWrapper(w).(*response.Wrapper)
-				next.ServeHTTP(wrapper, r)
-				zerologr.Info(
-					fmt.Sprintf("%s %s %d", r.Method, r.URL.Path, wrapper.StatusCode()),
-				)
-			})
-		}
-	)
-
-	if len(cfg.Whitelist) == 0 {
-		zerologr.Info("No CORS whitelist provided, allowing all origins")
-		finalHandler = loggingMiddleware(security.CORSMiddleware()(handler))
-	} else {
-		zerologr.Info(
-			"CORS whitelist provided, allowing only specified origins",
-			"whitelist", cfg.Whitelist,
-		)
-		finalHandler = loggingMiddleware(security.WhitelistCORSMiddleware(cfg.Whitelist)(handler))
+	loggingMiddleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			//nolint:errcheck // guaranteed
+			wrapper := response.NewResponseWrapper(w).(*response.Wrapper)
+			next.ServeHTTP(wrapper, r)
+			zerologr.Info(
+				fmt.Sprintf("%s %s %d", r.Method, r.URL.Path, wrapper.StatusCode()),
+			)
+		})
 	}
+
+	finalHandler := loggingMiddleware(
+		security.SelectCORSMiddleware(
+			cfg.Origins.AllowedOrigins, cfg.Origins.AllowAll, cfg.Origins.DenyAll,
+		)(handler),
+	)
 
 	mux.Handle("/", finalHandler)
 

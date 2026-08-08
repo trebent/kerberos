@@ -1,7 +1,9 @@
 {
-  "whitelist": [
-    "localhost"
-  ],
+  "origins": {
+    "allowedOrigins": [
+      "https://admin.trebent.test:30001"
+    ]
+  },
   "persistence": {
     "driver": "sqlite",
     "address": "krb.db"

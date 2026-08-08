@@ -1,7 +1,9 @@
 {
-  "whitelist": [
-    "http://localhost:30100"
-  ],
+  "origins": {
+    "allowedOrigins": [
+      "https://admin.trebent.test:30001"
+    ]
+  },
   "persistence": {
     "driver": "postgres",
     "address": "postgres:5432",
