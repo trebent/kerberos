@@ -42,7 +42,7 @@ configuration file. Mandatory sections are always included; optional sections
 		RunE: runConfig,
 	}
 
-	cmd.Flags().StringP("output", "o", "config.json", "Path to write the generated config.json")
+	cmd.Flags().StringP("output", "o", "krb.json", "Path to write the generated krb.json")
 
 	return cmd
 }
@@ -56,7 +56,7 @@ func runConfig(cmd *cobra.Command, _ []string) error {
 	scanner := bufio.NewScanner(os.Stdin)
 	opts := &configOptions{outputPath: output}
 
-	fmt.Fprintln(os.Stdout, "=== Kerberos config.json generator ===")
+	fmt.Fprintln(os.Stdout, "=== Kerberos krb.json generator ===")
 	fmt.Fprintln(os.Stdout)
 
 	// Backend targets (mandatory — gateway needs at least one)
@@ -86,7 +86,7 @@ func runConfig(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
-	fmt.Fprintf(os.Stdout, "\nconfig.json written to %s\n", opts.outputPath)
+	fmt.Fprintf(os.Stdout, "\nkrb.json written to %s\n", opts.outputPath)
 
 	return nil
 }

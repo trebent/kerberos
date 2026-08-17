@@ -126,7 +126,7 @@ func writePostgresService(b *strings.Builder, opts *composeOptions) {
 func writeKerberosService(b *strings.Builder, opts *composeOptions) {
 	b.WriteString(`  kerberos:
     image: "ghcr.io/trebent/kerberos:${VERSION:-unset}"
-    command: --config /config/config.json
+    command: --config /krb.json
     pull_policy: if_not_present
 `)
 
@@ -158,7 +158,7 @@ func writeKerberosService(b *strings.Builder, opts *composeOptions) {
 	writeOtelEnv(b, opts.includeObsStack, "kerberos", "${KERBEROS_METRICS_PORT:-9464}")
 
 	b.WriteString(`    volumes:
-      - ./config:/config:ro
+      - ./krb.json:/krb.json:ro
 
 `)
 }
@@ -195,7 +195,7 @@ func writeConnectorService(b *strings.Builder, opts *composeOptions) {
 
 	b.WriteString(`  connector:
     image: "ghcr.io/trebent/kerberos/admin-connector:${VERSION:-unset}"
-    command: --config /config/connector.json
+    command: --config /connector.json
     pull_policy: if_not_present
     depends_on:
       kerberos:
@@ -219,7 +219,7 @@ func writeConnectorService(b *strings.Builder, opts *composeOptions) {
 	writeOtelEnv(b, opts.includeObsStack, "connector", "${CONNECTOR_METRICS_PORT:-9462}")
 
 	b.WriteString(`    volumes:
-      - ./config/connector:/config:ro
+      - ./connector.json:/connector.json:ro
 
 `)
 }
@@ -238,7 +238,7 @@ func writeObsServices(b *strings.Builder, opts *composeOptions) {
     ports:
       - ${PROM_PORT:-9090}:9090
     volumes:
-      - ./config/prometheus/prometheus.yml:/prometheus.yml
+      - ./prometheus.yml:/prometheus.yml
       - prometheus:/prometheus
 
   grafana:
@@ -248,8 +248,8 @@ func writeObsServices(b *strings.Builder, opts *composeOptions) {
     ports:
       - ${GRAFANA_PORT:-3000}:3000
     volumes:
-      - ./config/grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/grafana-datasources.yml
-      - ./config/grafana/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/grafana-dashboards.yml
+      - ./grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/grafana-datasources.yml
+      - ./grafana/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/grafana-dashboards.yml
       - grafana:/var/lib/grafana
 
   jaeger-init:
@@ -271,7 +271,7 @@ func writeObsServices(b *strings.Builder, opts *composeOptions) {
     ports:
       - 16686:16686
     volumes:
-      - ./config/jaeger/jaeger.yml:/jaeger.yml
+      - ./jaeger.yml:/jaeger.yml
       - jaeger:/jaeger
 
 `)
