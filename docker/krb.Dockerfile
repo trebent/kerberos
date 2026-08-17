@@ -18,7 +18,7 @@ ENV CGO_ENABLED=0
 RUN --mount=type=cache,target=/root/.cache/go-build \
   go build -trimpath -ldflags="-s -w" -o kerberos .
 
-FROM gcr.io/distroless/static-debian12:nonroot@sha256:f5b485ea962d9bd1186b2f6b3a061191539b905b82ec395de78cbfae51f20e35 AS runtime
+FROM gcr.io/distroless/static-debian12:nonroot@sha256:1b7b9f0f0e0a1d2155f531db587cc48ec26aaf97ab64364225f5bf18a054e66a AS runtime
 
 USER nonroot:nonroot
 
@@ -38,7 +38,7 @@ ENTRYPOINT [ "/kerberos" ]
 # PoC-runtime image for AWS ECR. This image is used to run the PoC in AWS ECR, and as such has the PoC JSON file baked in.
 #
 
-FROM gcr.io/distroless/static-debian12:nonroot@sha256:aef9602f8710ec12bde19d593fed1f76c708531bb7aba205110f1029786ead7b AS poc-runtime
+FROM gcr.io/distroless/static-debian12:nonroot@sha256:1b7b9f0f0e0a1d2155f531db587cc48ec26aaf97ab64364225f5bf18a054e66a AS poc-runtime
 
 USER nonroot:nonroot
 
