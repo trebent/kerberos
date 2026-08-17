@@ -20,6 +20,10 @@ jobs:
     uses: ./.github/workflows/callable-build.yaml
     secrets: inherit
 
+  cli:
+    uses: ./.github/workflows/callable-cli.yaml
+    secrets: inherit
+
   image:
     uses: ./.github/workflows/callable-image.yaml
     secrets: inherit

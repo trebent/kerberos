@@ -1,0 +1,136 @@
+name: krbctl CLI
+
+on:
+  workflow_call:
+  release:
+    types:
+      - published
+
+concurrency:
+  group: cli-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Golang
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Compute build cache key
+        id: build-cache-key
+        run: |
+          checksum=$(
+            {
+              cat go.mod
+              [ -f go.sum ] && cat go.sum
+              cat Makefile
+              find . -type f -name '*.go' \
+                -not -path './test/suites/*' \
+                -not -path './tools/*' \
+                -print0 | sort -z | xargs -0 cat
+            } | md5sum | awk '{print $1}'
+          )
+          echo "checksum=$checksum" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Go module cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: cli-build-go-mod-${{ runner.os }}-${{ hashFiles('go.sum') }}
+
+      - name: Cache Go build cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: cli-build-go-build-${{ runner.os }}-${{ steps.build-cache-key.outputs.checksum }}
+          restore-keys: |
+            cli-build-go-build-${{ runner.os }}-
+
+      - name: Build krbctl
+        run: make krbctl/build
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Golang
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Compute build cache key
+        id: build-cache-key
+        run: |
+          checksum=$(
+            {
+              cat go.mod
+              [ -f go.sum ] && cat go.sum
+              cat Makefile
+              find . -type f -name '*.go' \
+                -not -path './test/suites/*' \
+                -not -path './tools/*' \
+                -print0 | sort -z | xargs -0 cat
+            } | md5sum | awk '{print $1}'
+          )
+          echo "checksum=$checksum" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Go module cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: cli-test-go-mod-${{ runner.os }}-${{ hashFiles('go.sum') }}
+
+      - name: Cache Go build cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: cli-test-go-build-${{ runner.os }}-${{ steps.build-cache-key.outputs.checksum }}
+          restore-keys: |
+            cli-test-go-build-${{ runner.os }}-
+
+      - name: Test krbctl
+        run: make krbctl/test
+
+  release-assets:
+    if: github.event_name == 'release'
+    needs:
+      - build
+      - test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Golang
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Build release artifacts
+        run: make krbctl/release VERSION=${{ github.ref_name }}
+
+      - name: Upload artifacts to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.ref_name }}" \
+            build/release/*.tar.gz \
+            build/release/*.zip \
+            build/release/checksums.txt \
+            --clobber

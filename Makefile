@@ -310,6 +310,59 @@ connector/docker/stop:
 connector/docker/rm:
 	@docker rm connector || true
 
+# krbctl version injection: the version string is compiled into the binary via
+# ldflags, since krbctl is a distributed CLI and end users won't set env vars.
+KRBCTL_PKG := github.com/trebent/kerberos/cmd/krbctl/cmd
+KRBCTL_LDFLAGS := -s -w -X $(KRBCTL_PKG).version=$(VERSION)
+
+# krbctl release build matrix (GOOS/GOARCH pairs).
+KRBCTL_PLATFORMS := \
+	linux/amd64 \
+	linux/arm64 \
+	darwin/amd64 \
+	darwin/arm64 \
+	windows/amd64 \
+	windows/arm64
+
+krbctl/build:
+	$(call cecho,Building krbctl binary...,$(BOLD_YELLOW))
+	@mkdir -p build
+	@CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="$(KRBCTL_LDFLAGS)" -o build/krbctl ./cmd/krbctl
+
+krbctl/install:
+	$(call cecho,Installing krbctl binary to $(GOBIN)...,$(BOLD_YELLOW))
+	@CGO_ENABLED=0 GOOS=linux go install -trimpath -ldflags="$(KRBCTL_LDFLAGS)" ./cmd/krbctl
+
+krbctl/test:
+	$(call cecho,Running krbctl tests...,$(BOLD_YELLOW))
+	@go test -v ./cmd/krbctl/... -failfast
+
+krbctl/release:
+	$(call cecho,Building krbctl release artifacts for version $(VERSION)...,$(BOLD_YELLOW))
+	@rm -rf build/release
+	@mkdir -p build/release
+	@for platform in $(KRBCTL_PLATFORMS); do \
+		os=$${platform%/*}; \
+		arch=$${platform#*/}; \
+		name=krbctl_$(VERSION)_$${os}_$${arch}; \
+		bin=krbctl; \
+		if [ "$${os}" = "windows" ]; then bin=krbctl.exe; fi; \
+		printf "${BOLD_YELLOW}  -> $${os}/$${arch}${RESET}\n"; \
+		mkdir -p build/release/$${name}; \
+		CGO_ENABLED=0 GOOS=$${os} GOARCH=$${arch} \
+			go build -trimpath -ldflags="$(KRBCTL_LDFLAGS)" \
+			-o build/release/$${name}/$${bin} ./cmd/krbctl || exit 1; \
+		if [ "$${os}" = "windows" ]; then \
+			(cd build/release && zip -q -r $${name}.zip $${name}) || exit 1; \
+		else \
+			tar -czf build/release/$${name}.tar.gz -C build/release $${name} || exit 1; \
+		fi; \
+		rm -rf build/release/$${name}; \
+	done
+	$(call cecho,Generating checksums...,$(BOLD_YELLOW))
+	@cd build/release && sha256sum *.tar.gz *.zip > checksums.txt
+	$(call cecho,krbctl release artifacts written to build/release.,$(BOLD_GREEN))
+
 install/deps:
 	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.6.0
 

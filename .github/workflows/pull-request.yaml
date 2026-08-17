@@ -27,3 +27,7 @@ jobs:
   unit-test:
     uses: ./.github/workflows/callable-test-unit.yaml
     secrets: inherit
+
+  cli:
+    uses: ./.github/workflows/callable-cli.yaml
+    secrets: inherit
