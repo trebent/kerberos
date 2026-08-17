@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"strings"
 
+	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 )
 
@@ -39,23 +39,34 @@ func runCompose(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	scanner := bufio.NewScanner(os.Stdin)
 	opts := &composeOptions{outputPath: output}
 
-	fmt.Fprintln(os.Stdout, "=== Kerberos compose.yaml generator ===")
-	fmt.Fprintln(os.Stdout)
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewConfirm().
+				Title("Include the echo service?").
+				Description("Useful for testing backends.").
+				Value(&opts.includeEcho),
 
-	opts.includeEcho = promptYesNo(scanner,
-		"Include the echo service (useful for testing backends)? [y/N]")
+			huh.NewConfirm().
+				Title("Include the observability stack?").
+				Description("Adds Prometheus, Grafana, and Jaeger services.").
+				Value(&opts.includeObsStack),
 
-	opts.includeObsStack = promptYesNo(scanner,
-		"Include the observability stack (Prometheus, Grafana, Jaeger)? [y/N]")
+			huh.NewConfirm().
+				Title("Include PostgreSQL as the persistence backend?").
+				Description("Uses SQLite by default if skipped.").
+				Value(&opts.includePostgres),
 
-	opts.includePostgres = promptYesNo(scanner,
-		"Include PostgreSQL as the persistence backend? [y/N]")
+			huh.NewConfirm().
+				Title("Include the admin-connector service?").
+				Value(&opts.includeConnector),
+		),
+	)
 
-	opts.includeConnector = promptYesNo(scanner,
-		"Include the admin-connector service? [y/N]")
+	if err := form.Run(); err != nil {
+		return fmt.Errorf("prompt cancelled: %w", err)
+	}
 
 	content := buildCompose(opts)
 
@@ -66,23 +77,6 @@ func runCompose(cmd *cobra.Command, _ []string) error {
 	fmt.Fprintf(os.Stdout, "\ncompose.yaml written to %s\n", opts.outputPath)
 
 	return nil
-}
-
-// promptYesNo prints the question and reads a y/n answer from the scanner.
-// Returns true for "y"/"yes", false otherwise (default: false).
-func promptYesNo(scanner *bufio.Scanner, question string) bool {
-	fmt.Fprint(os.Stdout, question+" ")
-
-	if scanner.Scan() {
-		switch strings.TrimSpace(strings.ToLower(scanner.Text())) {
-		case "y", "yes":
-			return true
-		default:
-			return false
-		}
-	}
-
-	return false
 }
 
 func buildCompose(opts *composeOptions) string {
@@ -248,8 +242,12 @@ func writeObsServices(b *strings.Builder, opts *composeOptions) {
     ports:
       - ${GRAFANA_PORT:-3000}:3000
     volumes:
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
       - ./grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/grafana-datasources.yml
       - ./grafana/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/grafana-dashboards.yml
+      - ./grafana/prometheus.json:/var/lib/grafana/prometheus.json
+      - ./grafana/kerberos_runtime.json:/var/lib/grafana/kerberos_runtime.json
+      - ./grafana/kerberos_http.json:/var/lib/grafana/kerberos_http.json
       - grafana:/var/lib/grafana
 
   jaeger-init:

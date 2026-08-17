@@ -1,29 +1,38 @@
 package cmd
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 )
 
 const (
-	driverPostgres = "postgres"
-	driverSQLite   = "sqlite"
-	defaultKRBDB   = "kerberos"
+	driverPostgres         = "postgres"
+	driverSQLite           = "sqlite"
+	defaultKRBDB           = "kerberos"
+	defaultConnectorTarget = "http://kerberos:30001"
 )
 
-// configOptions holds the answers collected from the interactive config session.
+// configOptions holds all answers collected from the interactive config session.
 type configOptions struct {
+	// Kerberos gateway
 	backends        []backendEntry
 	includeAuth     bool
-	includeObs      bool
 	persistenceMode string // "sqlite" or "postgres"
 	outputPath      string
+
+	// Observability
+	includeObs bool
+	obsOpts    obsConfigOptions
+
+	// Admin-connector
+	includeConnector bool
+	connectorOpts    connectorOptions
 }
 
 type backendEntry struct {
@@ -32,13 +41,27 @@ type backendEntry struct {
 	port int
 }
 
+// obsConfigOptions holds the answers for the observability config section.
+type obsConfigOptions struct {
+	scrapeTargets    []string // e.g. ["kerberos","echo","connector","jaeger"]
+	grafanaDB        string   // "postgres" or "sqlite"
+	grafanaAnonymous bool
+}
+
+// connectorOptions holds the answers for the admin-connector config section.
+type connectorOptions struct {
+	targetURL       string
+	corsOrigin      string
+	persistenceMode string // "sqlite" or "postgres"
+}
+
 func newConfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Interactively generate a base Kerberos configuration file",
 		Long: `Walks you through a series of prompts to build a base Kerberos JSON
 configuration file. Mandatory sections are always included; optional sections
-(auth, observability, postgres persistence) can be skipped.`,
+(auth, observability, postgres persistence, admin-connector) can be skipped.`,
 		RunE: runConfig,
 	}
 
@@ -53,30 +76,36 @@ func runConfig(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	scanner := bufio.NewScanner(os.Stdin)
-	opts := &configOptions{outputPath: output}
-
-	fmt.Fprintln(os.Stdout, "=== Kerberos krb.json generator ===")
-	fmt.Fprintln(os.Stdout)
-
-	// Backend targets (mandatory — gateway needs at least one)
-	opts.backends = promptBackends(scanner)
-
-	// Optional: auth
-	opts.includeAuth = promptYesNo(scanner,
-		"Include the auth section (basic authentication)? [y/N]")
-
-	// Optional: observability
-	opts.includeObs = promptYesNo(scanner,
-		"Include the observability section? [y/N]")
-
-	// Optional: postgres persistence
-	if promptYesNo(scanner, "Use PostgreSQL as the persistence backend (default: SQLite)? [y/N]") {
-		opts.persistenceMode = driverPostgres
-	} else {
-		opts.persistenceMode = driverSQLite
+	opts := &configOptions{
+		outputPath: output,
+		connectorOpts: connectorOptions{
+			targetURL:       defaultConnectorTarget,
+			corsOrigin:      defaultConnectorTarget,
+			persistenceMode: driverSQLite,
+		},
+		obsOpts: obsConfigOptions{
+			grafanaDB:        driverPostgres,
+			grafanaAnonymous: true,
+		},
 	}
 
+	if err := promptKerberosSection(opts); err != nil {
+		return err
+	}
+
+	if opts.includeObs {
+		if err := promptObsSection(opts); err != nil {
+			return err
+		}
+	}
+
+	if opts.includeConnector {
+		if err := promptConnectorSection(opts); err != nil {
+			return err
+		}
+	}
+
+	// Write krb.json
 	content, err := buildConfig(opts)
 	if err != nil {
 		return fmt.Errorf("failed to build config: %w", err)
@@ -86,54 +115,239 @@ func runConfig(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
-	fmt.Fprintf(os.Stdout, "\nkrb.json written to %s\n", opts.outputPath)
+	fmt.Fprintf(os.Stdout, "krb.json written to %s\n", opts.outputPath)
+
+	// Write observability config files
+	if opts.includeObs {
+		if err := writeObsFiles(opts); err != nil {
+			return err
+		}
+	}
+
+	// Write connector.json
+	if opts.includeConnector {
+		connContent, err := buildConnectorJSON(&opts.connectorOpts)
+		if err != nil {
+			return fmt.Errorf("failed to build connector config: %w", err)
+		}
+
+		if err := os.WriteFile("connector.json", connContent, 0o600); err != nil {
+			return fmt.Errorf("failed to write connector.json: %w", err)
+		}
+
+		fmt.Fprintln(os.Stdout, "connector.json written to connector.json")
+	}
 
 	return nil
 }
 
-// promptBackends collects one or more backend target entries from the user.
-func promptBackends(scanner *bufio.Scanner) []backendEntry {
-	fmt.Fprintln(os.Stdout, "Configure gateway backend targets.")
-	fmt.Fprintln(
-		os.Stdout,
-		"(At least one backend is required. Press Enter with an empty name to finish.)",
+// promptKerberosSection runs the main Kerberos gateway configuration prompts.
+func promptKerberosSection(opts *configOptions) error {
+	if err := promptBackendsHuh(opts); err != nil {
+		return err
+	}
+
+	persistenceOpts := []huh.Option[string]{
+		huh.NewOption("SQLite (default, file-based)", driverSQLite),
+		huh.NewOption("PostgreSQL", driverPostgres),
+	}
+	opts.persistenceMode = driverSQLite
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewConfirm().
+				Title("Include the auth section?").
+				Description("Enables basic authentication for backend routes.").
+				Value(&opts.includeAuth),
+
+			huh.NewConfirm().
+				Title("Include the observability section?").
+				Description("Enables metrics and tracing for Kerberos.").
+				Value(&opts.includeObs),
+
+			huh.NewSelect[string]().
+				Title("Persistence backend").
+				Options(persistenceOpts...).
+				Value(&opts.persistenceMode),
+
+			huh.NewConfirm().
+				Title("Include the admin-connector?").
+				Description("Generates connector.json for the admin-connector service.").
+				Value(&opts.includeConnector),
+		),
 	)
-	fmt.Fprintln(os.Stdout)
 
-	var backends []backendEntry
+	if err := form.Run(); err != nil {
+		return fmt.Errorf("prompt cancelled: %w", err)
+	}
 
+	return nil
+}
+
+// promptBackendsHuh collects one or more backend target entries using huh.
+func promptBackendsHuh(opts *configOptions) error {
 	for {
-		name := promptString(
-			scanner,
-			fmt.Sprintf("  Backend %d name (e.g. \"my-api\"): ", len(backends)+1),
+		var (
+			name    string
+			host    string
+			portStr string
 		)
+
+		form := huh.NewForm(
+			huh.NewGroup(
+				huh.NewInput().
+					Title(fmt.Sprintf("Backend %d — name", len(opts.backends)+1)).
+					Description(`Press Enter with an empty name to finish (at least one required).`).
+					Placeholder("my-api").
+					Value(&name),
+			),
+		)
+
+		if err := form.Run(); err != nil {
+			return fmt.Errorf("prompt cancelled: %w", err)
+		}
+
+		name = strings.TrimSpace(name)
 		if name == "" {
-			if len(backends) == 0 {
-				fmt.Fprintln(os.Stdout, "  At least one backend is required. Please enter a name.")
+			if len(opts.backends) == 0 {
+				fmt.Fprintln(os.Stderr, "At least one backend is required.")
 				continue
 			}
 
 			break
 		}
 
-		host := promptString(scanner, "  Host (e.g. \"my-api\" or \"localhost\"): ")
-		if host == "" {
+		detailForm := huh.NewForm(
+			huh.NewGroup(
+				huh.NewInput().
+					Title(fmt.Sprintf("Backend %q — host", name)).
+					Placeholder("localhost").
+					Value(&host),
+
+				huh.NewInput().
+					Title(fmt.Sprintf("Backend %q — port", name)).
+					Placeholder("8080").
+					Value(&portStr),
+			),
+		)
+
+		if err := detailForm.Run(); err != nil {
+			return fmt.Errorf("prompt cancelled: %w", err)
+		}
+
+		if strings.TrimSpace(host) == "" {
 			host = "localhost"
 		}
 
-		port := parsePort(promptString(scanner, "  Port (e.g. 8080): "))
+		port := parsePort(portStr)
+		opts.backends = append(opts.backends, backendEntry{name: name, host: host, port: port})
 
-		backends = append(backends, backendEntry{name: name, host: host, port: port})
-		fmt.Fprintln(os.Stdout)
+		var addAnother bool
+		confirmForm := huh.NewForm(
+			huh.NewGroup(
+				huh.NewConfirm().
+					Title("Add another backend?").
+					Value(&addAnother),
+			),
+		)
 
-		if !promptYesNo(scanner, "  Add another backend? [y/N]") {
-			break
+		if err := confirmForm.Run(); err != nil {
+			return fmt.Errorf("prompt cancelled: %w", err)
 		}
 
-		fmt.Fprintln(os.Stdout)
+		if !addAnother {
+			break
+		}
 	}
 
-	return backends
+	return nil
+}
+
+// promptObsSection runs the observability configuration prompts.
+func promptObsSection(opts *configOptions) error {
+	opts.obsOpts.scrapeTargets = []string{defaultKRBDB}
+
+	grafanaDBOpts := []huh.Option[string]{
+		huh.NewOption("PostgreSQL", driverPostgres),
+		huh.NewOption("SQLite (Grafana default)", "sqlite3"),
+	}
+
+	scrapeOpts := []huh.Option[string]{
+		huh.NewOption("kerberos (port 9464)", "kerberos"),
+		huh.NewOption("echo (port 9463)", "echo"),
+		huh.NewOption("connector (port 9462)", "connector"),
+		huh.NewOption("jaeger (port 8888)", "jaeger"),
+	}
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewMultiSelect[string]().
+				Title("Prometheus scrape targets").
+				Description("Select services that should expose metrics to Prometheus.").
+				Options(scrapeOpts...).
+				Value(&opts.obsOpts.scrapeTargets),
+
+			huh.NewSelect[string]().
+				Title("Grafana database backend").
+				Options(grafanaDBOpts...).
+				Value(&opts.obsOpts.grafanaDB),
+
+			huh.NewConfirm().
+				Title("Enable Grafana anonymous access?").
+				Description("Allows viewing dashboards without logging in.").
+				Value(&opts.obsOpts.grafanaAnonymous),
+		),
+	)
+
+	if err := form.Run(); err != nil {
+		return fmt.Errorf("prompt cancelled: %w", err)
+	}
+
+	return nil
+}
+
+// promptConnectorSection runs the admin-connector configuration prompts.
+func promptConnectorSection(opts *configOptions) error {
+	persistenceOpts := []huh.Option[string]{
+		huh.NewOption("SQLite (default, file-based)", driverSQLite),
+		huh.NewOption("PostgreSQL", driverPostgres),
+	}
+	opts.connectorOpts.persistenceMode = driverSQLite
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().
+				Title("Kerberos admin target URL").
+				Description("The URL at which the admin-connector can reach Kerberos.").
+				Placeholder(defaultConnectorTarget).
+				Value(&opts.connectorOpts.targetURL),
+
+			huh.NewInput().
+				Title("Allowed CORS origin").
+				Description("The origin browsers are served from (used to allow cross-origin requests).").
+				Placeholder(defaultConnectorTarget).
+				Value(&opts.connectorOpts.corsOrigin),
+
+			huh.NewSelect[string]().
+				Title("Connector persistence backend").
+				Options(persistenceOpts...).
+				Value(&opts.connectorOpts.persistenceMode),
+		),
+	)
+
+	if err := form.Run(); err != nil {
+		return fmt.Errorf("prompt cancelled: %w", err)
+	}
+
+	if strings.TrimSpace(opts.connectorOpts.targetURL) == "" {
+		opts.connectorOpts.targetURL = defaultConnectorTarget
+	}
+
+	if strings.TrimSpace(opts.connectorOpts.corsOrigin) == "" {
+		opts.connectorOpts.corsOrigin = defaultConnectorTarget
+	}
+
+	return nil
 }
 
 func parsePort(raw string) int {
@@ -141,23 +355,10 @@ func parsePort(raw string) int {
 
 	port, err := strconv.Atoi(strings.TrimSpace(raw))
 	if err != nil || port < 1 || port > 65535 {
-		fmt.Fprintln(os.Stdout, "  Invalid port, defaulting to 8080.")
-
 		return defaultPort
 	}
 
 	return port
-}
-
-// promptString prints the question and reads a line from the scanner.
-func promptString(scanner *bufio.Scanner, question string) string {
-	fmt.Fprint(os.Stdout, question)
-
-	if scanner.Scan() {
-		return strings.TrimSpace(scanner.Text())
-	}
-
-	return ""
 }
 
 //nolint:cyclop // config builder requires branching per optional section
