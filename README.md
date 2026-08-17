@@ -8,8 +8,25 @@
 
 🐶🐶🐶
 
-Kerberos is an API gateway that:
+Kerberos is an API gateway for routing backend traffic with built-in observability and request controls. It is designed around a fixed request flow (Observability → Router → Custom components → Forwarder), where custom components can enforce security and contract validation before forwarding traffic to backend services.
 
-* produces helpful observability data
-* routes API calls to any number of configured backends
-* handles authentication and authorization needs, per configured backend
+## Currently supported features
+
+- Backend routing through `/gw/backend/<backend-name>/<backend-path>`
+  - Per-backend forwarding with host and port configuration
+  - Per-backend TLS configuration
+  - Per-backend CORS configuration
+  - Per-backend timeout management
+- OpenTelemetry-based tracing and request/response metrics
+- Request-flow debugging through admin debug sessions and captured flow transitions
+- OpenAPI request validation per backend
+- Authentication and authorization middleware in the gateway flow
+- Basic authentication with cookie-based session management
+  - Multi-tenant organisation model for backend-access users, groups, and group-based authorization
+  - Organisation-level administrator accounts for tenant user and group management
+- Admin API user model for platform administration and super-user access
+- Persistence backends: SQLite and PostgreSQL
+
+## Documentation
+
+Detailed documentation lives in [`/docs`](./docs). Start with [`/docs/README.md`](./docs/README.md) for the documentation index and entry point.
