@@ -14,13 +14,20 @@ import (
 )
 
 const (
-	driverPostgres         = "postgres"
-	driverSQLite           = "sqlite"
-	defaultKRBDB           = "kerberos"
-	defaultConnectorTarget = "http://kerberos:30001"
-	echoBackendName        = "echo"
-	echoBackendHost        = "echo"
-	echoBackendPort        = 15000
+	driverPostgres  = "postgres"
+	driverSQLite    = "sqlite"
+	defaultKRBDB    = "kerberos"
+	echoBackendName = "echo"
+	echoBackendHost = "echo"
+	echoBackendPort = 15000
+	jaegerName      = "jaeger"
+
+	// scrapeMetricsPort is the default Prometheus exporter port every service
+	// exposes its metrics on.
+	scrapeMetricsPort = 9464
+	// sqliteSharedPath is the SQLite file location on the shared krbdata volume,
+	// letting Kerberos and the admin-connector share one database file.
+	sqliteSharedPath = "/data/krb.db"
 )
 
 // configOptions holds all answers collected from the interactive config session.
@@ -55,7 +62,7 @@ type obsConfigOptions struct {
 
 // connectorOptions holds the answers for the admin-connector config section.
 type connectorOptions struct {
-	corsOrigin      string
+	allowAllOrigins bool
 	persistenceMode string // "sqlite" or "postgres"
 }
 
@@ -85,12 +92,11 @@ func runConfig(cmd *cobra.Command, _ []string) error {
 	opts := &configOptions{
 		outputPath: output,
 		connectorOpts: connectorOptions{
-			corsOrigin:      defaultConnectorTarget,
+			allowAllOrigins: true,
 			persistenceMode: driverSQLite,
 		},
 		persistenceMode: driverSQLite,
 		obsOpts: obsConfigOptions{
-			scrapeTargets:    []string{defaultKRBDB},
 			grafanaDB:        driverPostgres,
 			grafanaAnonymous: true,
 		},
@@ -299,6 +305,8 @@ func promptAddAnother() (bool, error) {
 // multi-group form so the user can move back and forth between sections with
 // shift+tab. Conditional groups are hidden until their toggle is enabled.
 func promptFixedSections(opts *configOptions) error {
+	opts.obsOpts.scrapeTargets = defaultScrapeTargets(opts)
+
 	form := huh.NewForm(
 		buildAuthGroup(opts),
 		buildObsToggleGroup(opts),
@@ -312,11 +320,18 @@ func promptFixedSections(opts *configOptions) error {
 		return fmt.Errorf("prompt cancelled: %w", err)
 	}
 
-	if strings.TrimSpace(opts.connectorOpts.corsOrigin) == "" {
-		opts.connectorOpts.corsOrigin = defaultConnectorTarget
+	return nil
+}
+
+// defaultScrapeTargets returns the scrape targets pre-selected by default:
+// kerberos, jaeger, and every registered router backend.
+func defaultScrapeTargets(opts *configOptions) []string {
+	targets := []string{defaultKRBDB, jaegerName}
+	for _, b := range opts.backends {
+		targets = append(targets, b.name)
 	}
 
-	return nil
+	return targets
 }
 
 // buildAuthGroup builds a dedicated authentication section with a per-backend
@@ -355,16 +370,19 @@ func buildObsOptionsGroup(opts *configOptions) *huh.Group {
 	}
 
 	scrapeOpts := []huh.Option[string]{
-		huh.NewOption("kerberos (port 9464)", "kerberos"),
-		huh.NewOption("echo (port 9464)", "echo"),
-		huh.NewOption("connector (port 9464)", "connector"),
-		huh.NewOption("jaeger (port 8888)", "jaeger"),
+		huh.NewOption(fmt.Sprintf("kerberos (port %d)", scrapeMetricsPort), defaultKRBDB),
+		huh.NewOption("jaeger (port 8888)", jaegerName),
+	}
+	for _, b := range opts.backends {
+		scrapeOpts = append(scrapeOpts, huh.NewOption(
+			fmt.Sprintf("%s (%s:%d)", b.name, b.host, scrapeMetricsPort), b.name))
 	}
 
 	return huh.NewGroup(
 		huh.NewMultiSelect[string]().
 			Title("Prometheus scrape targets").
-			Description("Select services that should expose metrics to Prometheus.").
+			Description("Select services that should expose metrics to Prometheus. "+
+				"The admin-connector is scraped automatically when included.").
 			Options(scrapeOpts...).
 			Value(&opts.obsOpts.scrapeTargets),
 
@@ -417,11 +435,11 @@ func buildConnectorConfigGroup(opts *configOptions) *huh.Group {
 	}
 
 	return huh.NewGroup(
-		huh.NewInput().
-			Title("Allowed CORS origin").
-			Description("The origin browsers are served from (used to allow cross-origin requests).").
-			Placeholder(defaultConnectorTarget).
-			Value(&opts.connectorOpts.corsOrigin),
+		huh.NewConfirm().
+			Title("Allow all CORS origins?").
+			Description("Yes allows any origin; No denies all cross-origin requests.").
+			WithButtonAlignment(lipgloss.Left).
+			Value(&opts.connectorOpts.allowAllOrigins),
 
 		huh.NewSelect[string]().
 			Title("Connector persistence backend").
@@ -524,6 +542,6 @@ func buildPersistenceSection(mode string) map[string]any {
 
 	return map[string]any{
 		"driver":  driverSQLite,
-		"address": "krb.db",
+		"address": sqliteSharedPath,
 	}
 }

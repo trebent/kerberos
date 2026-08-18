@@ -16,17 +16,15 @@ var grafanaDashboardRuntime []byte
 //go:embed assets/grafana/kerberos_http.json
 var grafanaDashboardHTTP []byte
 
-// scrapeTargetPorts maps each known scrape target to its default host:port.
-var scrapeTargetPorts = map[string]string{
-	defaultKRBDB: defaultKRBDB + ":9464",
-	"echo":       "echo:9464",
-	"connector":  "connector:9464",
-	"jaeger":     "jaeger:8888",
+// scrapeJob is a resolved Prometheus scrape target (job name + host:port).
+type scrapeJob struct {
+	name   string
+	target string
 }
 
 // writeObsFiles creates all observability config files in the current directory.
 func writeObsFiles(opts *configOptions) error {
-	prometheusData := []byte(buildPrometheusYML(&opts.obsOpts))
+	prometheusData := []byte(buildPrometheusYML(resolveScrapeJobs(opts)))
 	if err := writeObsFile("prometheus.yml", prometheusData); err != nil {
 		return err
 	}
@@ -67,21 +65,55 @@ func writeObsFile(path string, data []byte) error {
 	return nil
 }
 
-// buildPrometheusYML generates a prometheus.yml with scrape configs for the selected targets.
-func buildPrometheusYML(opts *obsConfigOptions) string {
+// resolveScrapeJobs turns the selected scrape targets into concrete host:port
+// jobs. kerberos and jaeger resolve to their well-known endpoints, every other
+// selected target is treated as a registered router backend scraped on the
+// default metrics port. The admin-connector is added automatically when the
+// connector is included in the deployment.
+func resolveScrapeJobs(opts *configOptions) []scrapeJob {
+	hosts := make(map[string]string, len(opts.backends))
+	for _, b := range opts.backends {
+		hosts[b.name] = b.host
+	}
+
+	jobs := make([]scrapeJob, 0, len(opts.obsOpts.scrapeTargets)+1)
+
+	for _, target := range opts.obsOpts.scrapeTargets {
+		switch target {
+		case defaultKRBDB:
+			jobs = append(
+				jobs,
+				scrapeJob{defaultKRBDB, fmt.Sprintf("%s:%d", defaultKRBDB, scrapeMetricsPort)},
+			)
+		case jaegerName:
+			jobs = append(jobs, scrapeJob{jaegerName, "jaeger:8888"})
+		default:
+			host, ok := hosts[target]
+			if !ok {
+				continue
+			}
+
+			jobs = append(jobs, scrapeJob{target, fmt.Sprintf("%s:%d", host, scrapeMetricsPort)})
+		}
+	}
+
+	if opts.includeConnector {
+		jobs = append(jobs, scrapeJob{"connector", fmt.Sprintf("connector:%d", scrapeMetricsPort)})
+	}
+
+	return jobs
+}
+
+// buildPrometheusYML generates a prometheus.yml with scrape configs for the given jobs.
+func buildPrometheusYML(jobs []scrapeJob) string {
 	var b strings.Builder
 
 	b.WriteString("global:\n  scrape_interval: 15s\n\nscrape_configs:\n")
 
-	for _, target := range opts.scrapeTargets {
-		hostPort, ok := scrapeTargetPorts[target]
-		if !ok {
-			continue
-		}
-
+	for _, job := range jobs {
 		fmt.Fprintf(&b,
 			"  - job_name: %s\n    static_configs:\n      - targets: [\"%s\"]\n",
-			target, hostPort,
+			job.name, job.target,
 		)
 	}
 

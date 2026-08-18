@@ -142,55 +142,70 @@ func TestBuildConfig_PostgresPersistence(t *testing.T) {
 	}
 }
 
-// ---- buildPrometheusYML ----
+// ---- resolveScrapeJobs / buildPrometheusYML ----
 
-func TestBuildPrometheusYML_AllTargets(t *testing.T) {
+func TestResolveScrapeJobs_BackendsAndConnector(t *testing.T) {
 	t.Parallel()
 
-	opts := &obsConfigOptions{
-		scrapeTargets: []string{"kerberos", "echo", "connector", "jaeger"},
+	opts := &configOptions{
+		backends: []backendEntry{
+			{name: "echo", host: "echo", port: 15000},
+			{name: "api", host: "api-host", port: 8080},
+		},
+		includeConnector: true,
+		obsOpts: obsConfigOptions{
+			scrapeTargets: []string{"kerberos", "jaeger", "echo", "api"},
+		},
 	}
 
-	yml := buildPrometheusYML(opts)
+	yml := buildPrometheusYML(resolveScrapeJobs(opts))
 
-	for _, target := range opts.scrapeTargets {
-		if !strings.Contains(yml, target) {
-			t.Errorf("expected target %q in prometheus.yml", target)
+	for _, want := range []string{
+		"kerberos:9464",
+		"jaeger:8888",
+		"echo:9464",
+		"api-host:9464",
+		"connector:9464",
+	} {
+		if !strings.Contains(yml, want) {
+			t.Errorf("expected %q in prometheus.yml, got:\n%s", want, yml)
 		}
-	}
-
-	if !strings.Contains(yml, "kerberos:9464") {
-		t.Error("expected kerberos:9464")
-	}
-
-	if !strings.Contains(yml, "echo:9464") {
-		t.Error("expected echo:9464")
-	}
-
-	if !strings.Contains(yml, "connector:9464") {
-		t.Error("expected connector:9464")
-	}
-
-	if !strings.Contains(yml, "jaeger:8888") {
-		t.Error("expected jaeger:8888")
 	}
 }
 
-func TestBuildPrometheusYML_SelectedTargets(t *testing.T) {
+func TestResolveScrapeJobs_NoEchoWhenNotRegistered(t *testing.T) {
 	t.Parallel()
 
-	opts := &obsConfigOptions{
-		scrapeTargets: []string{"kerberos"},
+	opts := &configOptions{
+		backends: []backendEntry{{name: "api", host: "api", port: 8080}},
+		obsOpts: obsConfigOptions{
+			scrapeTargets: []string{"kerberos", "echo", "api"},
+		},
 	}
 
-	yml := buildPrometheusYML(opts)
-
-	if !strings.Contains(yml, "kerberos:9464") {
-		t.Error("expected kerberos:9464")
-	}
+	yml := buildPrometheusYML(resolveScrapeJobs(opts))
 
 	if strings.Contains(yml, "echo") {
-		t.Error("echo should not be in output")
+		t.Errorf("echo should not appear when it was not registered as a backend:\n%s", yml)
+	}
+
+	if !strings.Contains(yml, "api:9464") {
+		t.Error("expected api:9464")
+	}
+}
+
+func TestResolveScrapeJobs_ConnectorOnlyWhenIncluded(t *testing.T) {
+	t.Parallel()
+
+	opts := &configOptions{
+		includeConnector: false,
+		obsOpts:          obsConfigOptions{scrapeTargets: []string{"kerberos"}},
+	}
+
+	yml := buildPrometheusYML(resolveScrapeJobs(opts))
+
+	if strings.Contains(yml, "connector") {
+		t.Errorf("connector should not be scraped when not included:\n%s", yml)
 	}
 }
 
@@ -300,7 +315,7 @@ func TestBuildCompose_NoEnvVarInjection(t *testing.T) {
 	opts := &composeOptions{
 		includeEcho:      true,
 		includeObsStack:  true,
-		includePostgres:  true,
+		includePostgres:  false,
 		includeConnector: true,
 	}
 
@@ -314,14 +329,37 @@ func TestBuildCompose_NoEnvVarInjection(t *testing.T) {
 		"ghcr.io/trebent/kerberos:latest",
 		"- 30000:30000",
 		"- 30001:30001",
-		"- 15000:15000",
-		"- 30100:30100",
-		"- 9464:9464",
-		"OTEL_EXPORTER_PROMETHEUS_PORT=9464",
+		"- 3000:3000",
+		"- 16686:16686",
+		"LOG_VERBOSITY=0",
+		"krbdata:/data",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("expected compose output to contain %q", want)
 		}
+	}
+
+	// Only kerberos gw/admin, grafana and jaeger publish host ports.
+	for _, notWant := range []string{
+		"- 9464:9464",
+		"- 15000:15000",
+		"- 30100:30100",
+		"- 9090:9090",
+		"LOG_VERBOSITY=20",
+	} {
+		if strings.Contains(out, notWant) {
+			t.Errorf("compose output should not contain %q", notWant)
+		}
+	}
+}
+
+func TestBuildCompose_SharedSqliteVolumeOmittedWithPostgres(t *testing.T) {
+	t.Parallel()
+
+	out := buildCompose(&composeOptions{includeConnector: true, includePostgres: true})
+
+	if strings.Contains(out, "krbdata") {
+		t.Errorf("krbdata volume should not be present when Postgres is enabled:\n%s", out)
 	}
 }
 
@@ -331,7 +369,7 @@ func TestBuildConnectorJSON_SQLite(t *testing.T) {
 	t.Parallel()
 
 	opts := &connectorOptions{
-		corsOrigin:      "http://localhost:3000",
+		allowAllOrigins: true,
 		persistenceMode: driverSQLite,
 	}
 
@@ -350,13 +388,12 @@ func TestBuildConnectorJSON_SQLite(t *testing.T) {
 		t.Fatal("missing origins section")
 	}
 
-	allowed, ok := origins["allowedOrigins"].([]any)
-	if !ok || len(allowed) == 0 {
-		t.Fatal("expected at least one allowed origin")
+	if origins["allowAll"] != true {
+		t.Errorf("expected allowAll=true, got %v", origins["allowAll"])
 	}
 
-	if allowed[0] != "http://localhost:3000" {
-		t.Errorf("expected origin http://localhost:3000, got %v", allowed[0])
+	if _, ok := origins["denyAll"]; ok {
+		t.Error("did not expect denyAll when allowAll is set")
 	}
 
 	persistence, ok := result["persistence"].(map[string]any)
@@ -367,13 +404,17 @@ func TestBuildConnectorJSON_SQLite(t *testing.T) {
 	if persistence["driver"] != driverSQLite {
 		t.Errorf("expected driver=sqlite, got %v", persistence["driver"])
 	}
+
+	if persistence["address"] != sqliteSharedPath {
+		t.Errorf("expected shared sqlite address %q, got %v", sqliteSharedPath, persistence["address"])
+	}
 }
 
-func TestBuildConnectorJSON_DefaultOrigin(t *testing.T) {
+func TestBuildConnectorJSON_DenyAll(t *testing.T) {
 	t.Parallel()
 
 	opts := &connectorOptions{
-		corsOrigin:      "",
+		allowAllOrigins: false,
 		persistenceMode: driverSQLite,
 	}
 
@@ -382,7 +423,17 @@ func TestBuildConnectorJSON_DefaultOrigin(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !strings.Contains(string(data), "http://kerberos:30001") {
-		t.Error("expected default origin http://kerberos:30001")
+	var result map[string]any
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+
+	origins, _ := result["origins"].(map[string]any)
+	if origins["denyAll"] != true {
+		t.Errorf("expected denyAll=true, got %v", origins["denyAll"])
+	}
+
+	if _, ok := origins["allowAll"]; ok {
+		t.Error("did not expect allowAll when denyAll is set")
 	}
 }

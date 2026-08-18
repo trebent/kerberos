@@ -7,15 +7,15 @@ import (
 
 // buildConnectorJSON generates a minimal connector.json.
 func buildConnectorJSON(opts *connectorOptions) ([]byte, error) {
-	origin := opts.corsOrigin
-	if origin == "" {
-		origin = defaultConnectorTarget
+	origins := map[string]any{}
+	if opts.allowAllOrigins {
+		origins["allowAll"] = true
+	} else {
+		origins["denyAll"] = true
 	}
 
 	root := map[string]any{
-		"origins": map[string]any{
-			"allowedOrigins": []string{origin},
-		},
+		"origins":     origins,
 		"persistence": buildPersistenceSection(opts.persistenceMode),
 	}
 

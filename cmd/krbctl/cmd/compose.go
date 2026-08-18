@@ -140,15 +140,9 @@ func writeKerberosService(b *strings.Builder, opts *composeOptions) {
     ports:
       - 30000:30000
       - 30001:30001
-`)
-
-	if opts.includeObsStack {
-		b.WriteString("      - 9464:9464\n")
-	}
-
-	b.WriteString(`    environment:
+    environment:
       - LOG_TO_CONSOLE=1
-      - LOG_VERBOSITY=20
+      - LOG_VERBOSITY=0
       - PORT=30000
       - ADMIN_PORT=30001
 `)
@@ -157,8 +151,13 @@ func writeKerberosService(b *strings.Builder, opts *composeOptions) {
 
 	b.WriteString(`    volumes:
       - ./krb.json:/krb.json:ro
-
 `)
+
+	if !opts.includePostgres {
+		b.WriteString("      - krbdata:/data\n")
+	}
+
+	b.WriteString("\n")
 }
 
 func writeEchoService(b *strings.Builder, opts *composeOptions) {
@@ -170,15 +169,7 @@ func writeEchoService(b *strings.Builder, opts *composeOptions) {
     image: "ghcr.io/trebent/kerberos/echo:latest"
     pull_policy: if_not_present
     restart: on-failure
-    ports:
-      - 15000:15000
-`)
-
-	if opts.includeObsStack {
-		b.WriteString("      - 9464:9464\n")
-	}
-
-	b.WriteString(`    environment:
+    environment:
       - PORT=15000
 `)
 
@@ -199,17 +190,9 @@ func writeConnectorService(b *strings.Builder, opts *composeOptions) {
       kerberos:
         condition: service_started
     restart: on-failure
-    ports:
-      - 30100:30100
-`)
-
-	if opts.includeObsStack {
-		b.WriteString("      - 9464:9464\n")
-	}
-
-	b.WriteString(`    environment:
+    environment:
       - LOG_TO_CONSOLE=true
-      - LOG_VERBOSITY=20
+      - LOG_VERBOSITY=0
       - PORT=30100
 `)
 
@@ -217,8 +200,13 @@ func writeConnectorService(b *strings.Builder, opts *composeOptions) {
 
 	b.WriteString(`    volumes:
       - ./connector.json:/connector.json:ro
-
 `)
+
+	if !opts.includePostgres {
+		b.WriteString("      - krbdata:/data\n")
+	}
+
+	b.WriteString("\n")
 }
 
 func writeObsServices(b *strings.Builder, opts *composeOptions) {
@@ -232,8 +220,6 @@ func writeObsServices(b *strings.Builder, opts *composeOptions) {
     command: ["--config.file=/prometheus.yml", "--storage.tsdb.path", "/prometheus/data",
               "--storage.tsdb.retention.size", "1GB"]
     restart: on-failure
-    ports:
-      - 9090:9090
     volumes:
       - ./prometheus.yml:/prometheus.yml
       - prometheus:/prometheus
@@ -296,6 +282,8 @@ func writeVolumes(b *strings.Builder, opts *composeOptions) {
 
 	if opts.includePostgres {
 		volumes = append(volumes, "  postgres:")
+	} else {
+		volumes = append(volumes, "  krbdata:")
 	}
 
 	if opts.includeObsStack {
