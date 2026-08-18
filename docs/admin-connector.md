@@ -25,89 +25,12 @@ The connector is configured via a single JSON file passed with the `--config` fl
 
 ### Config File
 
-```json
-{
-  "persistence": {
-    "driver": "sqlite",
-    "address": "krb.db"
-  }
-}
-```
+The config file supports the following high-level sections:
 
-All fields except `persistence` are optional.
-
-#### `persistence` (required)
-
-Must point to the same database used by Kerberos so the connector can validate sessions.
-
-```json
-"persistence": {
-  "driver": "sqlite",
-  "address": "/data/krb.db"
-}
-```
-
-For PostgreSQL:
-
-```json
-"persistence": {
-  "driver": "postgres",
-  "address": "localhost:5432",
-  "postgres": {
-    "database": "kerberos",
-    "username": "krb",
-    "password": "secret",
-    "sslMode": "require"
-  }
-}
-```
-
-#### `tls` (optional)
-
-Configures TLS for the connector's own listening server.
-
-```json
-"tls": {
-  "serverCertFile": "/certs/connector.pem",
-  "serverKeyFile": "/certs/connector-key.pem"
-}
-```
-
-When omitted, the connector listens on plain HTTP.
-
-#### `targetTls` (optional)
-
-Configures TLS for the upstream connection to the target.
-
-```json
-"targetTls": {
-  "rootCAFile": "/certs/admin-ca.pem",
-  "insecureSkipVerify": false
-}
-```
-
-| Field | Description |
-|---|---|
-| `rootCAFile` | Path to a PEM-encoded CA bundle used to verify the target's certificate. When omitted, the system certificate pool is used. |
-| `insecureSkipVerify` | Disables server certificate verification. Use only in non-production environments. |
-
-When `targetTls` is omitted, the connector proxies to the upstream using plain HTTP.
-
-#### `origins` (optional)
-
-Controls CORS and origin filtering for requests the connector receives from browsers. The same three options as the rest of Kerberos apply:
-
-```json
-"origins": {
-  "allowedOrigins": ["https://admin.example.com"]
-}
-```
-
-| Field | Description |
-|---|---|
-| `allowedOrigins` | List of specific allowed origins. Mutually exclusive with `allowAll`. |
-| `allowAll` | When `true`, the `Access-Control-Allow-Origin` header echoes back whatever `Origin` was received. Mutually exclusive with `allowedOrigins`. |
-| `denyAll` | When `true`, any request with an `Origin` header is rejected with `403`. Mutually exclusive with `allowedOrigins` and `allowAll`. |
+- **`persistence`** (required) — points to the same database used by Kerberos (SQLite or PostgreSQL) so the connector can validate sessions.
+- **`tls`** (optional) — configures TLS for the connector's own listening server.
+- **`targetTls`** (optional) — configures TLS for the outbound connection to the target.
+- **`origins`** (optional) — controls CORS / origin filtering for browser clients.
 
 ---
 
@@ -141,60 +64,5 @@ When observability is enabled, the connector emits the following OpenTelemetry m
 
 Each request also generates an OpenTelemetry span (server kind) containing the HTTP method and URL.
 
----
 
-## Minimal Example
 
-```json
-{
-  "persistence": {
-    "driver": "sqlite",
-    "address": "/data/krb.db"
-  },
-  "origins": {
-    "allowedOrigins": ["https://admin.example.com"]
-  }
-}
-```
-
-Start with:
-
-```sh
-TARGET=my-service:8080 ./admin-connector --config connector.json
-```
-
----
-
-## Annotated Production Example
-
-```json
-{
-  "persistence": {
-    "driver": "postgres",
-    "address": "db.internal:5432",
-    "postgres": {
-      "database": "kerberos",
-      "username": "krb",
-      "password": "secret",
-      "sslMode": "require"
-    }
-  },
-  "tls": {
-    "serverCertFile": "/certs/connector.pem",
-    "serverKeyFile": "/certs/connector-key.pem"
-  },
-  "targetTls": {
-    "rootCAFile": "/certs/internal-ca.pem"
-  },
-  "origins": {
-    "allowedOrigins": ["https://admin.example.com"]
-  }
-}
-```
-
-```sh
-TARGET=my-service.internal:8080 \
-PORT=443 \
-VERSION=1.2.3 \
-  ./admin-connector --config connector.json
-```
