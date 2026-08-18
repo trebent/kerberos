@@ -1,19 +1,19 @@
 # Admin Connector
 
-The admin connector is a standalone binary (`cmd/admin-connector`) that sits between a frontend application and the Kerberos admin API. It acts as a reverse proxy that enforces admin session authentication before forwarding requests to the admin API server.
+The admin connector is a standalone binary (`cmd/admin-connector`) that acts as an authenticating reverse proxy. It validates that incoming requests carry a valid Kerberos admin session cookie and, if so, forwards the request to any configured upstream service.
 
 ## Purpose
 
-The admin connector solves a common deployment problem: browsers cannot safely forward HTTP-only session cookies set by Kerberos to a backend API that is hosted on a different origin. The connector is deployed at an origin the browser trusts, validates that the incoming request carries a valid admin session cookie, and then proxies the request to the upstream admin API.
+The admin connector is used when a service should only be accessible to users who hold a valid Kerberos admin session. The connector reads the `session` cookie from each incoming request, checks it against the Kerberos admin session store, and either proxies the request to the configured `TARGET` or rejects it with `401 Unauthorized`.
 
 ```
-Browser → Admin Connector (same origin or allowed CORS origin) → Kerberos Admin API
+Client → Admin Connector (validates admin session cookie) → Target service
 ```
 
 The connector:
 
-1. Reads the `krb-admin-session` cookie from the incoming request.
-2. Queries the same persistence store as the Kerberos admin API to verify the session exists and has not expired.
+1. Reads the `session` cookie from the incoming request.
+2. Queries the Kerberos admin persistence store to verify the session exists and has not expired.
 3. Forwards the request to the configured upstream target if the session is valid.
 4. Returns `401 Unauthorized` if the session is missing or expired.
 
@@ -117,7 +117,7 @@ The connector is also configured through environment variables. These apply on t
 
 | Variable | Default | Description |
 |---|---|---|
-| `TARGET` | *(required)* | Host and port of the upstream Kerberos admin API, e.g. `localhost:9090`. |
+| `TARGET` | *(required)* | Host and port of the upstream service to forward authenticated requests to, e.g. `my-service:8080`. |
 | `PORT` | `30100` | Port on which the connector listens. |
 | `READ_TIMEOUT_SECONDS` | `5` | HTTP server read timeout in seconds. |
 | `WRITE_TIMEOUT_SECONDS` | `5` | HTTP server write timeout in seconds. |
@@ -160,7 +160,7 @@ Each request also generates an OpenTelemetry span (server kind) containing the H
 Start with:
 
 ```sh
-TARGET=localhost:9090 ./admin-connector --config connector.json
+TARGET=my-service:8080 ./admin-connector --config connector.json
 ```
 
 ---
@@ -193,7 +193,7 @@ TARGET=localhost:9090 ./admin-connector --config connector.json
 ```
 
 ```sh
-TARGET=admin-api.internal:9090 \
+TARGET=my-service.internal:8080 \
 PORT=443 \
 VERSION=1.2.3 \
   ./admin-connector --config connector.json
