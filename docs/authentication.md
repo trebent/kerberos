@@ -28,22 +28,23 @@ Backends can be configured with path exemptions that bypass authentication. Thes
 
 ## Basic Authentication
 
-Basic authentication is the primary authentication method supported by Kerberos. It uses session-based authentication with the following components:
+Basic authentication is the primary authentication method supported by Kerberos. It uses session-based authentication with the following components. Organisations, users, groups, and sessions managed by the basic authentication method are described in detail in the [Organisations](./organizations.md) document.
 
 ### Session Management
 
 - Sessions are created upon successful login via the `/api/auth/basic/organisations/{orgID}/login` endpoint
-- Each session is identified by a unique session ID returned in the `X-Krb-Session` header
+- Each session is identified by a unique session ID stored in a `session` HTTP-only cookie set on the response
 - Sessions have a 15-minute expiration time
-- Subsequent requests must include the session ID in the `X-Krb-Session` header
+- Subsequent requests must include the `session` cookie automatically sent by the browser (or HTTP client)
+- The session can be refreshed before expiry via the `/api/auth/basic/organisations/{orgID}/refresh` endpoint, which resets the 15-minute window
 - Users can logout via the `/api/auth/basic/organisations/{orgID}/logout` endpoint, which invalidates all their active sessions
 
 ### Authentication Process
 
 1. **Login**: Users provide username, password, and organisation ID
-2. **Session Creation**: On successful authentication, a session is created and its ID is returned
+2. **Session Creation**: On successful authentication, a session is created and its ID is stored in an HTTP-only `session` cookie returned in the response
 3. **Request Authentication**: For each authenticated request, the authorizer:
-   - Extracts the session ID from the `X-Krb-Session` header
+   - Extracts the session ID from the `session` cookie
    - Queries the database to validate the session
    - Checks if the session has expired
    - Adds `X-Krb-Org` and `X-Krb-User` headers to the request with the user's organisation and user IDs
@@ -89,7 +90,7 @@ Administrator accounts are automatically granted access to operations that would
 
 ### Super User Accounts
 
-In addition to organisation administrators, Kerberos supports super user accounts that have access to all auth API paths across all organisations. These accounts are typically used for system administration and are configured separately from regular organisation administrators. Super user accounts bypass most authorization checks and are intended for use by the administration API (note: the admin functionality is being moved and is not covered in this documentation).
+In addition to organisation administrators, Kerberos supports super user accounts that have access to all auth API paths across all organisations. These accounts are typically used for system administration and are configured separately from regular organisation administrators. Super user accounts bypass most authorization checks and are intended for use by the admin API. Super user credentials are configured in the `admin.superUser` section of the Kerberos configuration file.
 
 ### Creating Administrator Accounts
 
