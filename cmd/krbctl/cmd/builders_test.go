@@ -42,12 +42,11 @@ func TestBuildConfig_BasicBackend(t *testing.T) {
 	}
 }
 
-func TestBuildConfig_IncludesObs(t *testing.T) {
+func TestBuildConfig_AlwaysIncludesObs(t *testing.T) {
 	t.Parallel()
 
 	opts := &configOptions{
 		backends:        []backendEntry{{name: "api", host: "api", port: 9000}},
-		includeObs:      true,
 		persistenceMode: driverSQLite,
 	}
 
@@ -59,7 +58,62 @@ func TestBuildConfig_IncludesObs(t *testing.T) {
 	}
 
 	if _, ok := result["observability"]; !ok {
-		t.Error("expected observability section")
+		t.Error("expected observability section to always be present")
+	}
+}
+
+func TestBuildConfig_PerBackendAuth(t *testing.T) {
+	t.Parallel()
+
+	opts := &configOptions{
+		backends: []backendEntry{
+			{name: "secured", host: "secured", port: 8080, auth: true},
+			{name: "open", host: "open", port: 8081, auth: false},
+		},
+		persistenceMode: driverSQLite,
+	}
+
+	data, _ := buildConfig(opts)
+
+	var result map[string]any
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+
+	auth, ok := result["auth"].(map[string]any)
+	if !ok {
+		t.Fatal("expected auth section")
+	}
+
+	scheme, _ := auth["scheme"].(map[string]any)
+	mappings, ok := scheme["mappings"].([]any)
+	if !ok || len(mappings) != 1 {
+		t.Fatalf("expected exactly 1 auth mapping, got %v", scheme["mappings"])
+	}
+
+	mapping, _ := mappings[0].(map[string]any)
+	if mapping["backend"] != "secured" {
+		t.Errorf("expected auth mapping for 'secured', got %v", mapping["backend"])
+	}
+}
+
+func TestBuildConfig_NoAuthWhenNoneEnabled(t *testing.T) {
+	t.Parallel()
+
+	opts := &configOptions{
+		backends:        []backendEntry{{name: "open", host: "open", port: 8080, auth: false}},
+		persistenceMode: driverSQLite,
+	}
+
+	data, _ := buildConfig(opts)
+
+	var result map[string]any
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+
+	if _, ok := result["auth"]; ok {
+		t.Error("expected no auth section when no backend has auth enabled")
 	}
 }
 
@@ -109,12 +163,12 @@ func TestBuildPrometheusYML_AllTargets(t *testing.T) {
 		t.Error("expected kerberos:9464")
 	}
 
-	if !strings.Contains(yml, "echo:9463") {
-		t.Error("expected echo:9463")
+	if !strings.Contains(yml, "echo:9464") {
+		t.Error("expected echo:9464")
 	}
 
-	if !strings.Contains(yml, "connector:9462") {
-		t.Error("expected connector:9462")
+	if !strings.Contains(yml, "connector:9464") {
+		t.Error("expected connector:9464")
 	}
 
 	if !strings.Contains(yml, "jaeger:8888") {
@@ -235,6 +289,39 @@ func TestBuildJaegerYML(t *testing.T) {
 
 	if !strings.Contains(yml, "16686") {
 		t.Error("expected jaeger query port 16686")
+	}
+}
+
+// ---- buildCompose ----
+
+func TestBuildCompose_NoEnvVarInjection(t *testing.T) {
+	t.Parallel()
+
+	opts := &composeOptions{
+		includeEcho:      true,
+		includeObsStack:  true,
+		includePostgres:  true,
+		includeConnector: true,
+	}
+
+	out := buildCompose(opts)
+
+	if strings.Contains(out, "${") {
+		t.Error("compose output should not contain any ${...} env var injection")
+	}
+
+	for _, want := range []string{
+		"ghcr.io/trebent/kerberos:latest",
+		"- 30000:30000",
+		"- 30001:30001",
+		"- 15000:15000",
+		"- 30100:30100",
+		"- 9464:9464",
+		"OTEL_EXPORTER_PROMETHEUS_PORT=9464",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("expected compose output to contain %q", want)
+		}
 	}
 }
 

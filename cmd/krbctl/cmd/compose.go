@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 )
 
@@ -46,20 +47,24 @@ func runCompose(cmd *cobra.Command, _ []string) error {
 			huh.NewConfirm().
 				Title("Include the echo service?").
 				Description("Useful for testing backends.").
+				WithButtonAlignment(lipgloss.Left).
 				Value(&opts.includeEcho),
 
 			huh.NewConfirm().
 				Title("Include the observability stack?").
 				Description("Adds Prometheus, Grafana, and Jaeger services.").
+				WithButtonAlignment(lipgloss.Left).
 				Value(&opts.includeObsStack),
 
 			huh.NewConfirm().
 				Title("Include PostgreSQL as the persistence backend?").
 				Description("Uses SQLite by default if skipped.").
+				WithButtonAlignment(lipgloss.Left).
 				Value(&opts.includePostgres),
 
 			huh.NewConfirm().
 				Title("Include the admin-connector service?").
+				WithButtonAlignment(lipgloss.Left).
 				Value(&opts.includeConnector),
 		),
 	)
@@ -119,7 +124,7 @@ func writePostgresService(b *strings.Builder, opts *composeOptions) {
 
 func writeKerberosService(b *strings.Builder, opts *composeOptions) {
 	b.WriteString(`  kerberos:
-    image: "ghcr.io/trebent/kerberos:${VERSION:-unset}"
+    image: "ghcr.io/trebent/kerberos:latest"
     command: --config /krb.json
     pull_policy: if_not_present
 `)
@@ -133,23 +138,22 @@ func writeKerberosService(b *strings.Builder, opts *composeOptions) {
 
 	b.WriteString(`    restart: on-failure
     ports:
-      - ${KERBEROS_PORT:-30000}:${KERBEROS_PORT:-30000}
-      - ${KERBEROS_ADMIN_PORT:-30001}:${KERBEROS_ADMIN_PORT:-30001}
+      - 30000:30000
+      - 30001:30001
 `)
 
 	if opts.includeObsStack {
-		b.WriteString("      - ${KERBEROS_METRICS_PORT:-9464}:${KERBEROS_METRICS_PORT:-9464}\n")
+		b.WriteString("      - 9464:9464\n")
 	}
 
 	b.WriteString(`    environment:
       - LOG_TO_CONSOLE=1
-      - LOG_VERBOSITY=${LOG_VERBOSITY:-20}
-      - PORT=${KERBEROS_PORT:-30000}
-      - ADMIN_PORT=${KERBEROS_ADMIN_PORT:-30001}
-      - VERSION=${VERSION:-unset}
+      - LOG_VERBOSITY=20
+      - PORT=30000
+      - ADMIN_PORT=30001
 `)
 
-	writeOtelEnv(b, opts.includeObsStack, "kerberos", "${KERBEROS_METRICS_PORT:-9464}")
+	writeOtelEnv(b, opts.includeObsStack, "kerberos")
 
 	b.WriteString(`    volumes:
       - ./krb.json:/krb.json:ro
@@ -163,22 +167,22 @@ func writeEchoService(b *strings.Builder, opts *composeOptions) {
 	}
 
 	b.WriteString(`  echo:
-    image: "ghcr.io/trebent/kerberos/echo:${VERSION:-unset}"
+    image: "ghcr.io/trebent/kerberos/echo:latest"
     pull_policy: if_not_present
     restart: on-failure
     ports:
-      - ${ECHO_PORT:-15000}:${ECHO_PORT:-15000}
+      - 15000:15000
 `)
 
 	if opts.includeObsStack {
-		b.WriteString("      - ${ECHO_METRICS_PORT:-9463}:${ECHO_METRICS_PORT:-9463}\n")
+		b.WriteString("      - 9464:9464\n")
 	}
 
 	b.WriteString(`    environment:
-      - PORT=${ECHO_PORT:-15000}
+      - PORT=15000
 `)
 
-	writeOtelEnv(b, opts.includeObsStack, "echo", "${ECHO_METRICS_PORT:-9463}")
+	writeOtelEnv(b, opts.includeObsStack, "echo")
 	b.WriteString("\n")
 }
 
@@ -188,7 +192,7 @@ func writeConnectorService(b *strings.Builder, opts *composeOptions) {
 	}
 
 	b.WriteString(`  connector:
-    image: "ghcr.io/trebent/kerberos/admin-connector:${VERSION:-unset}"
+    image: "ghcr.io/trebent/kerberos/admin-connector:latest"
     command: --config /connector.json
     pull_policy: if_not_present
     depends_on:
@@ -196,21 +200,20 @@ func writeConnectorService(b *strings.Builder, opts *composeOptions) {
         condition: service_started
     restart: on-failure
     ports:
-      - ${CONNECTOR_PORT:-30100}:${CONNECTOR_PORT:-30100}
+      - 30100:30100
 `)
 
 	if opts.includeObsStack {
-		b.WriteString("      - ${CONNECTOR_METRICS_PORT:-9462}:${CONNECTOR_METRICS_PORT:-9462}\n")
+		b.WriteString("      - 9464:9464\n")
 	}
 
 	b.WriteString(`    environment:
       - LOG_TO_CONSOLE=true
-      - LOG_VERBOSITY=${LOG_VERBOSITY:-20}
-      - VERSION=${VERSION:-unset}
-      - PORT=${CONNECTOR_PORT:-30100}
+      - LOG_VERBOSITY=20
+      - PORT=30100
 `)
 
-	writeOtelEnv(b, opts.includeObsStack, "connector", "${CONNECTOR_METRICS_PORT:-9462}")
+	writeOtelEnv(b, opts.includeObsStack, "connector")
 
 	b.WriteString(`    volumes:
       - ./connector.json:/connector.json:ro
@@ -230,7 +233,7 @@ func writeObsServices(b *strings.Builder, opts *composeOptions) {
               "--storage.tsdb.retention.size", "1GB"]
     restart: on-failure
     ports:
-      - ${PROM_PORT:-9090}:9090
+      - 9090:9090
     volumes:
       - ./prometheus.yml:/prometheus.yml
       - prometheus:/prometheus
@@ -240,7 +243,7 @@ func writeObsServices(b *strings.Builder, opts *composeOptions) {
     pull_policy: if_not_present
     restart: on-failure
     ports:
-      - ${GRAFANA_PORT:-3000}:3000
+      - 3000:3000
     volumes:
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
       - ./grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/grafana-datasources.yml
@@ -275,13 +278,13 @@ func writeObsServices(b *strings.Builder, opts *composeOptions) {
 `)
 }
 
-func writeOtelEnv(b *strings.Builder, withObs bool, hostname, metricsPort string) {
+func writeOtelEnv(b *strings.Builder, withObs bool, hostname string) {
 	if withObs {
 		fmt.Fprintf(b, "      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317\n")
 		fmt.Fprintf(b, "      - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc\n")
 		fmt.Fprintf(b, "      - OTEL_METRICS_EXPORTER=prometheus\n")
 		fmt.Fprintf(b, "      - OTEL_EXPORTER_PROMETHEUS_HOST=%s\n", hostname)
-		fmt.Fprintf(b, "      - OTEL_EXPORTER_PROMETHEUS_PORT=%s\n", metricsPort)
+		fmt.Fprintf(b, "      - OTEL_EXPORTER_PROMETHEUS_PORT=9464\n")
 	} else {
 		b.WriteString("      - OTEL_METRICS_EXPORTER=none\n")
 		b.WriteString("      - OTEL_TRACES_EXPORTER=none\n")

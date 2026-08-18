@@ -19,8 +19,8 @@ var grafanaDashboardHTTP []byte
 // scrapeTargetPorts maps each known scrape target to its default host:port.
 var scrapeTargetPorts = map[string]string{
 	defaultKRBDB: defaultKRBDB + ":9464",
-	"echo":       "echo:9463",
-	"connector":  "connector:9462",
+	"echo":       "echo:9464",
+	"connector":  "connector:9464",
 	"jaeger":     "jaeger:8888",
 }
 
