@@ -4,7 +4,7 @@ The admin connector is a standalone binary (`cmd/admin-connector`) that acts as 
 
 ## Purpose
 
-The admin connector is used when a service should only be accessible to users who hold a valid Kerberos admin session. The connector reads the `session` cookie from each incoming request, checks it against the Kerberos admin session store, and either proxies the request to the configured `TARGET` or rejects it with `401 Unauthorized`.
+The admin connector is used when a service should only be accessible to users who hold a valid Kerberos admin session. The connector reads the session cookie from each incoming request, checks it against the Kerberos admin session store, and either proxies the request to the configured target or rejects it with `401 Unauthorized`.
 
 ```
 Client → Admin Connector (validates admin session cookie) → Target service
@@ -12,7 +12,7 @@ Client → Admin Connector (validates admin session cookie) → Target service
 
 The connector:
 
-1. Reads the `session` cookie from the incoming request.
+1. Reads the session cookie from the incoming request.
 2. Queries the Kerberos admin persistence store to verify the session exists and has not expired.
 3. Forwards the request to the configured upstream target if the session is valid.
 4. Returns `401 Unauthorized` if the session is missing or expired.
@@ -38,7 +38,7 @@ All fields except `persistence` are optional.
 
 #### `persistence` (required)
 
-Must point to the same database as the Kerberos admin API so the connector can validate sessions.
+Must point to the same database used by Kerberos so the connector can validate sessions.
 
 ```json
 "persistence": {
@@ -77,7 +77,7 @@ When omitted, the connector listens on plain HTTP.
 
 #### `targetTls` (optional)
 
-Configures TLS for the upstream connection to the Kerberos admin API.
+Configures TLS for the upstream connection to the target.
 
 ```json
 "targetTls": {
@@ -88,7 +88,7 @@ Configures TLS for the upstream connection to the Kerberos admin API.
 
 | Field | Description |
 |---|---|
-| `rootCAFile` | Path to a PEM-encoded CA bundle used to verify the admin API's certificate. When omitted, the system certificate pool is used. |
+| `rootCAFile` | Path to a PEM-encoded CA bundle used to verify the target's certificate. When omitted, the system certificate pool is used. |
 | `insecureSkipVerify` | Disables server certificate verification. Use only in non-production environments. |
 
 When `targetTls` is omitted, the connector proxies to the upstream using plain HTTP.
@@ -135,9 +135,9 @@ When observability is enabled, the connector emits the following OpenTelemetry m
 
 | Metric | Description |
 |---|---|
-| `admin_connector_calls_total` | Total number of requests forwarded to the admin API. |
+| `admin_connector_calls_total` | Total number of requests forwarded to the target. |
 | `admin_connector_calls_denied_total` | Total number of requests rejected due to missing or expired sessions. |
-| `admin_connector_callout_failures_total` | Total number of errors encountered while proxying to the upstream admin API. |
+| `admin_connector_callout_failures_total` | Total number of errors encountered while proxying to the target. |
 
 Each request also generates an OpenTelemetry span (server kind) containing the HTTP method and URL.
 
