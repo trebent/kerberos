@@ -22,11 +22,11 @@ links to the topic docs that are relevant to your change:
 | Doc | Covers |
 |---|---|
 | [`docs/configuration.md`](../../../docs/configuration.md) | Config loading pipeline, reference syntax, all config sections |
-| [`docs/flow-components.md`](../../../docs/flow-components.md) | FlowComponent interface and the request pipeline |
+| [`docs/dev/flow-components.md`](../../../docs/dev/flow-components.md) | FlowComponent interface and the request pipeline |
 | [`docs/authentication.md`](../../../docs/authentication.md) | Auth system and the authorizer middleware |
 | [`docs/routing.md`](../../../docs/routing.md) | HTTP handler call order |
 | [`docs/observability.md`](../../../docs/observability.md) | Metrics and tracing |
-| [`docs/middleware.md`](../../../docs/middleware.md) | oapi-codegen middleware ordering rules |
+| [`docs/dev/middleware.md`](../../../docs/dev/middleware.md) | oapi-codegen middleware ordering rules |
 | [`docs/organizations.md`](../../../docs/organizations.md) | Multi-tenant organisation model |
 
 Understanding the system layout prevents mis-placed code and wrong abstractions.
