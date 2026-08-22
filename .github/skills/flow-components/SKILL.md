@@ -14,7 +14,7 @@ argument-hint: 'Optional: the component to work on (observability, router, auth,
 - Understanding what context is available at a given point in the flow
 - Adding metadata to the admin API flow endpoint
 
-See [`docs/flow-components.md`](../../docs/flow-components.md) for a full reference.
+See [`docs/dev/flow-components.md`](../../../docs/dev/flow-components.md) for a full reference.
 
 ---
 

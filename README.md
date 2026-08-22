@@ -29,4 +29,8 @@ Kerberos is an API gateway for routing backend traffic with built-in observabili
 
 ## Documentation
 
-Detailed documentation lives in [`/docs`](./docs). Start with [`/docs/README.md`](./docs/README.md) for the documentation index and entry point.
+Detailed documentation lives in [`/docs`](./docs).
+
+- Start with [`/docs/README.md`](./docs/README.md) for the documentation index.
+- **User docs** explain how to deploy, configure, and operate Kerberos.
+- **Developer docs** (under [`/docs/dev`](./docs/dev)) cover contributor-facing internals and implementation details.
