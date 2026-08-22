@@ -66,7 +66,7 @@ func main() {
 		WithName("admin-connector"),
 	)
 
-	zerologr.Info("Starting admin connector", "port", port.Value())
+	zerologr.Info("Starting admin connector", "port", port.Value(), "target", target.Value())
 
 	signalCtx, signalCancel := signal.NotifyContext(
 		context.Background(),
