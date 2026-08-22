@@ -1,4 +1,4 @@
-name: Release krbctl CLI
+name: Release krbctl
 
 on:
   release:
@@ -53,9 +53,9 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/go-build
-          key: cli-release-go-build-${{ runner.os }}-${{ steps.build-cache-key.outputs.checksum }}
+          key: krbctl-release-go-build-${{ runner.os }}-${{ steps.build-cache-key.outputs.checksum }}
           restore-keys: |
-            cli-release-go-build-${{ runner.os }}-
+            krbctl-release-go-build-${{ runner.os }}-
 
       - name: Build release artifacts
         run: make krbctl/release VERSION=${{ github.ref_name }}

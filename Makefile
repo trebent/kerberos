@@ -228,6 +228,7 @@ docker/network/rm:
 
 echo/build:
 	$(call cecho,Building Echo binary...,$(BOLD_YELLOW))
+	@mkdir -p build
 	@CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o build/echo ./cmd/echo
 
 echo/docker/build:
@@ -332,10 +333,6 @@ krbctl/build:
 krbctl/install:
 	$(call cecho,Installing krbctl binary to $(GOBIN)...,$(BOLD_YELLOW))
 	@CGO_ENABLED=0 GOOS=linux go install -trimpath -ldflags="$(KRBCTL_LDFLAGS)" ./cmd/krbctl
-
-krbctl/test:
-	$(call cecho,Running krbctl tests...,$(BOLD_YELLOW))
-	@go test -v ./cmd/krbctl/... -failfast
 
 krbctl/release:
 	$(call cecho,Building krbctl release artifacts for version $(VERSION)...,$(BOLD_YELLOW))
