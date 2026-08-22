@@ -2,7 +2,7 @@
 
 HTTP handler call order:
 
-1. OTEL
+1. Observability
 2. Router (fetch backend)
 3. Forward (using router backend)
 

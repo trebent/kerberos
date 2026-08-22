@@ -4,6 +4,8 @@ This directory contains detailed documentation for Kerberos features.
 
 Current topic documents include:
 
+- [Admin Connector](./admin-connector.md)
+- [Admin Debugging](./admin-debugging.md)
 - [Authentication](./authentication.md)
 - [Configuration](./configuration.md)
 - [Flow Components](./flow-components.md)
