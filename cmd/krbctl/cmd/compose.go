@@ -164,7 +164,7 @@ func writeKerberosService(b *strings.Builder, opts *composeOptions) {
       - ./krb.json:/krb.json:ro
 `)
 
-	b.WriteString(fmt.Sprintf("      %s\n", krbDataMount(opts.includePostgres)))
+	fmt.Fprintf(b, "      %s\n", krbDataMount(opts.includePostgres))
 	b.WriteString("\n")
 }
 
@@ -203,6 +203,9 @@ func writeConnectorService(b *strings.Builder, opts *composeOptions) {
         condition: service_completed_successfully
 `)
 	}
+	b.WriteString(`    ports:
+      - 30100:30100
+`)
 	b.WriteString(`    restart: on-failure
     environment:
       - LOG_TO_CONSOLE=true
@@ -220,7 +223,7 @@ func writeConnectorService(b *strings.Builder, opts *composeOptions) {
       - ./connector.json:/connector.json:ro
 `)
 
-	b.WriteString(fmt.Sprintf("      %s\n", krbDataMount(opts.includePostgres)))
+	fmt.Fprintf(b, "      %s\n", krbDataMount(opts.includePostgres))
 	b.WriteString("\n")
 }
 
@@ -261,7 +264,7 @@ func writeObsServices(b *strings.Builder, opts *composeOptions) {
       - ./grafana/kerberos_http.json:/var/lib/grafana/kerberos_http.json
       - grafana:/var/lib/grafana
 `)
-	b.WriteString(fmt.Sprintf("      %s\n\n", krbDataMount(opts.includePostgres)))
+	fmt.Fprintf(b, "      %s\n\n", krbDataMount(opts.includePostgres))
 	b.WriteString(`  jaeger-init:
     image: busybox:1.38
     pull_policy: if_not_present

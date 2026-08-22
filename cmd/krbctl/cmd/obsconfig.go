@@ -159,7 +159,7 @@ func buildGrafanaINI(driver string, opts *obsConfigOptions) string {
 		b.WriteString("password = kerberos\n")
 	} else {
 		b.WriteString("type = sqlite3\n")
-		b.WriteString(fmt.Sprintf("path = %s\n", sqliteSharedPath))
+		fmt.Fprintf(&b, "path = %s\n", sqliteSharedPath)
 	}
 
 	b.WriteString("\n[auth.anonymous]\n")
