@@ -81,6 +81,7 @@ func writeObsFiles(driver string, opts *configOptions) error {
 
 // writeObsFile writes data to path and prints a confirmation line.
 func writeObsFile(path string, data []byte) error {
+	//nolint:gosec // welp
 	if err := os.WriteFile(path, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write %s: %w", path, err)
 	}

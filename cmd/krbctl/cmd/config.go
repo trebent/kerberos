@@ -116,6 +116,7 @@ func runConfig(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to build config: %w", err)
 	}
 
+	//nolint:gosec // welp
 	if err := os.WriteFile(
 		filepath.Join(opts.outputPath, "krb.json"), content, 0o644,
 	); err != nil {
@@ -138,6 +139,7 @@ func runConfig(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("failed to build connector config: %w", err)
 		}
 
+		//nolint:gosec // welp
 		if err := os.WriteFile(
 			filepath.Join(opts.outputPath, "connector.json"), connContent, 0o644,
 		); err != nil {

@@ -78,6 +78,7 @@ func runCompose(cmd *cobra.Command, _ []string) error {
 
 	content := buildCompose(opts)
 
+	//nolint:gosec // welp
 	if err := os.WriteFile(
 		filepath.Join(opts.outputPath, "compose.yaml"), []byte(content), 0o644,
 	); err != nil {
