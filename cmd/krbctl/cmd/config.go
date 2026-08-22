@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -27,15 +28,18 @@ const (
 	scrapeMetricsPort = 9464
 	// sqliteSharedPath is the SQLite file location on the shared krbdata volume,
 	// letting Kerberos and the admin-connector share one database file.
-	sqliteSharedPath = "/data/krb.db"
+	sqliteSharedPath = "/krbdata/krb.db"
 )
 
 // configOptions holds all answers collected from the interactive config session.
 type configOptions struct {
+	outputPath string
+
 	// Kerberos gateway
-	backends        []backendEntry
-	persistenceMode string // "sqlite" or "postgres"
-	outputPath      string
+	backends []backendEntry
+
+	// persistence driver selection
+	driver string // "sqlite" or "postgres"
 
 	// Observability stack (Prometheus/Grafana/Jaeger) config generation
 	includeObsStack bool
@@ -56,14 +60,12 @@ type backendEntry struct {
 // obsConfigOptions holds the answers for the observability stack config section.
 type obsConfigOptions struct {
 	scrapeTargets    []string // e.g. ["kerberos","echo","connector","jaeger"]
-	grafanaDB        string   // "postgres" or "sqlite"
 	grafanaAnonymous bool
 }
 
 // connectorOptions holds the answers for the admin-connector config section.
 type connectorOptions struct {
 	allowAllOrigins bool
-	persistenceMode string // "sqlite" or "postgres"
 }
 
 func newConfigCmd() *cobra.Command {
@@ -78,7 +80,7 @@ skipped.`,
 		RunE: runConfig,
 	}
 
-	cmd.Flags().StringP("output", "o", "krb.json", "Path to write the generated krb.json")
+	cmd.Flags().StringP("output", "o", ".", "Output path where config files will be written.")
 
 	return cmd
 }
@@ -93,11 +95,9 @@ func runConfig(cmd *cobra.Command, _ []string) error {
 		outputPath: output,
 		connectorOpts: connectorOptions{
 			allowAllOrigins: true,
-			persistenceMode: driverSQLite,
 		},
-		persistenceMode: driverSQLite,
+		driver: driverSQLite,
 		obsOpts: obsConfigOptions{
-			grafanaDB:        driverPostgres,
 			grafanaAnonymous: true,
 		},
 	}
@@ -116,7 +116,9 @@ func runConfig(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to build config: %w", err)
 	}
 
-	if err := os.WriteFile(opts.outputPath, content, 0o600); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(opts.outputPath, "krb.json"), content, 0o644,
+	); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
@@ -124,19 +126,21 @@ func runConfig(cmd *cobra.Command, _ []string) error {
 
 	// Write observability stack config files
 	if opts.includeObsStack {
-		if err := writeObsFiles(opts); err != nil {
+		if err := writeObsFiles(opts.driver, opts); err != nil {
 			return err
 		}
 	}
 
 	// Write connector.json
 	if opts.includeConnector {
-		connContent, err := buildConnectorJSON(&opts.connectorOpts)
+		connContent, err := buildConnectorJSON(opts.driver, &opts.connectorOpts)
 		if err != nil {
 			return fmt.Errorf("failed to build connector config: %w", err)
 		}
 
-		if err := os.WriteFile("connector.json", connContent, 0o600); err != nil {
+		if err := os.WriteFile(
+			filepath.Join(opts.outputPath, "connector.json"), connContent, 0o644,
+		); err != nil {
 			return fmt.Errorf("failed to write connector.json: %w", err)
 		}
 
@@ -308,10 +312,10 @@ func promptFixedSections(opts *configOptions) error {
 	opts.obsOpts.scrapeTargets = defaultScrapeTargets(opts)
 
 	form := huh.NewForm(
+		buildPersistenceGroup(opts),
 		buildAuthGroup(opts),
 		buildObsToggleGroup(opts),
 		buildObsOptionsGroup(opts),
-		buildPersistenceGroup(opts),
 		buildConnectorToggleGroup(opts),
 		buildConnectorConfigGroup(opts),
 	)
@@ -364,11 +368,6 @@ func buildObsToggleGroup(opts *configOptions) *huh.Group {
 // buildObsOptionsGroup builds the observability stack detail options, hidden
 // unless the observability stack toggle is enabled.
 func buildObsOptionsGroup(opts *configOptions) *huh.Group {
-	grafanaDBOpts := []huh.Option[string]{
-		huh.NewOption("PostgreSQL", driverPostgres),
-		huh.NewOption("SQLite (Grafana default)", "sqlite3"),
-	}
-
 	scrapeOpts := []huh.Option[string]{
 		huh.NewOption(fmt.Sprintf("kerberos (port %d)", scrapeMetricsPort), defaultKRBDB),
 		huh.NewOption("jaeger (port 8888)", jaegerName),
@@ -385,11 +384,6 @@ func buildObsOptionsGroup(opts *configOptions) *huh.Group {
 				"The admin-connector is scraped automatically when included.").
 			Options(scrapeOpts...).
 			Value(&opts.obsOpts.scrapeTargets),
-
-		huh.NewSelect[string]().
-			Title("Grafana database backend").
-			Options(grafanaDBOpts...).
-			Value(&opts.obsOpts.grafanaDB),
 
 		huh.NewConfirm().
 			Title("Enable Grafana anonymous access?").
@@ -411,7 +405,7 @@ func buildPersistenceGroup(opts *configOptions) *huh.Group {
 		huh.NewSelect[string]().
 			Title("Persistence backend").
 			Options(persistenceOpts...).
-			Value(&opts.persistenceMode),
+			Value(&opts.driver),
 	).Title("Persistence")
 }
 
@@ -429,22 +423,12 @@ func buildConnectorToggleGroup(opts *configOptions) *huh.Group {
 // buildConnectorConfigGroup builds the admin-connector config detail section,
 // hidden unless the admin-connector toggle is enabled.
 func buildConnectorConfigGroup(opts *configOptions) *huh.Group {
-	persistenceOpts := []huh.Option[string]{
-		huh.NewOption("SQLite (default, file-based)", driverSQLite),
-		huh.NewOption("PostgreSQL", driverPostgres),
-	}
-
 	return huh.NewGroup(
 		huh.NewConfirm().
 			Title("Allow all CORS origins?").
 			Description("Yes allows any origin; No denies all cross-origin requests.").
 			WithButtonAlignment(lipgloss.Left).
 			Value(&opts.connectorOpts.allowAllOrigins),
-
-		huh.NewSelect[string]().
-			Title("Connector persistence backend").
-			Options(persistenceOpts...).
-			Value(&opts.connectorOpts.persistenceMode),
 	).Title("Admin-connector config").
 		WithHideFunc(func() bool { return !opts.includeConnector })
 }
@@ -488,7 +472,7 @@ func buildConfig(opts *configOptions) ([]byte, error) {
 		root["auth"] = buildAuthSection(authBackends)
 	}
 
-	root["persistence"] = buildPersistenceSection(opts.persistenceMode)
+	root["persistence"] = buildPersistenceSection(opts.driver)
 
 	return json.MarshalIndent(root, "", "  ")
 }

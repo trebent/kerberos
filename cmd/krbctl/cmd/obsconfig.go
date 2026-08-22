@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -16,6 +17,9 @@ var grafanaDashboardRuntime []byte
 //go:embed assets/grafana/kerberos_http.json
 var grafanaDashboardHTTP []byte
 
+//go:embed assets/jaeger/config-ui.json
+var jaegerConfigUI []byte
+
 // scrapeJob is a resolved Prometheus scrape target (job name + host:port).
 type scrapeJob struct {
 	name   string
@@ -23,13 +27,16 @@ type scrapeJob struct {
 }
 
 // writeObsFiles creates all observability config files in the current directory.
-func writeObsFiles(opts *configOptions) error {
+func writeObsFiles(driver string, opts *configOptions) error {
 	prometheusData := []byte(buildPrometheusYML(resolveScrapeJobs(opts)))
-	if err := writeObsFile("prometheus.yml", prometheusData); err != nil {
+	if err := writeObsFile(
+		filepath.Join(opts.outputPath, "prometheus.yml"), prometheusData,
+	); err != nil {
 		return err
 	}
 
-	if err := os.MkdirAll("grafana", 0o750); err != nil {
+	grafanaDir := filepath.Join(opts.outputPath, "grafana")
+	if err := os.MkdirAll(grafanaDir, 0o750); err != nil {
 		return fmt.Errorf("failed to create grafana directory: %w", err)
 	}
 
@@ -37,12 +44,18 @@ func writeObsFiles(opts *configOptions) error {
 		path string
 		data []byte
 	}{
-		{"grafana/grafana.ini", []byte(buildGrafanaINI(&opts.obsOpts))},
-		{"grafana/grafana-datasources.yml", []byte(buildGrafanaDatasourcesYML())},
-		{"grafana/grafana-dashboards.yml", []byte(buildGrafanaDashboardsYML())},
-		{"grafana/prometheus.json", grafanaDashboardPrometheus},
-		{"grafana/kerberos_runtime.json", grafanaDashboardRuntime},
-		{"grafana/kerberos_http.json", grafanaDashboardHTTP},
+		{filepath.Join(grafanaDir, "grafana.ini"), []byte(buildGrafanaINI(driver, &opts.obsOpts))},
+		{
+			filepath.Join(grafanaDir, "grafana-datasources.yml"),
+			[]byte(buildGrafanaDatasourcesYML()),
+		},
+		{
+			filepath.Join(grafanaDir, "grafana-dashboards.yml"),
+			[]byte(buildGrafanaDashboardsYML()),
+		},
+		{filepath.Join(grafanaDir, "prometheus.json"), grafanaDashboardPrometheus},
+		{filepath.Join(grafanaDir, "kerberos_runtime.json"), grafanaDashboardRuntime},
+		{filepath.Join(grafanaDir, "kerberos_http.json"), grafanaDashboardHTTP},
 	}
 
 	for _, f := range grafanaFiles {
@@ -51,12 +64,24 @@ func writeObsFiles(opts *configOptions) error {
 		}
 	}
 
-	return writeObsFile("jaeger.yml", []byte(buildJaegerYML()))
+	if err := writeObsFile(
+		filepath.Join(opts.outputPath, "jaeger.yml"), []byte(buildJaegerYML()),
+	); err != nil {
+		return err
+	}
+
+	if err := writeObsFile(
+		filepath.Join(opts.outputPath, "jaeger-config-ui.json"), jaegerConfigUI,
+	); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // writeObsFile writes data to path and prints a confirmation line.
 func writeObsFile(path string, data []byte) error {
-	if err := os.WriteFile(path, data, 0o600); err != nil {
+	if err := os.WriteFile(path, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write %s: %w", path, err)
 	}
 
@@ -121,12 +146,12 @@ func buildPrometheusYML(jobs []scrapeJob) string {
 }
 
 // buildGrafanaINI generates a slim grafana.ini with only the sections used in this deployment.
-func buildGrafanaINI(opts *obsConfigOptions) string {
+func buildGrafanaINI(driver string, opts *obsConfigOptions) string {
 	var b strings.Builder
 
 	b.WriteString("[database]\n")
 
-	if opts.grafanaDB == driverPostgres {
+	if driver == driverPostgres {
 		b.WriteString("type = postgres\n")
 		b.WriteString("host = postgres:5432\n")
 		b.WriteString("name = kerberos\n")
@@ -134,6 +159,7 @@ func buildGrafanaINI(opts *obsConfigOptions) string {
 		b.WriteString("password = kerberos\n")
 	} else {
 		b.WriteString("type = sqlite3\n")
+		b.WriteString(fmt.Sprintf("path = %s\n", sqliteSharedPath))
 	}
 
 	b.WriteString("\n[auth.anonymous]\n")
@@ -210,7 +236,7 @@ extensions:
       traces: badger_store
       traces_archive: badger_archive
     ui:
-      config_file: /config-ui.json
+      config_file: /jaeger-config-ui.json
     http:
       endpoint: 0.0.0.0:16686
     grpc:

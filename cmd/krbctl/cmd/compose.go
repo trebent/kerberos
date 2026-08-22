@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/huh"
@@ -12,11 +13,13 @@ import (
 
 // composeOptions holds the answers collected from the interactive compose session.
 type composeOptions struct {
+	outputPath string
+
+	// Enablement flags.
 	includeEcho      bool
 	includeObsStack  bool
 	includePostgres  bool
 	includeConnector bool
-	outputPath       string
 }
 
 func newComposeCmd() *cobra.Command {
@@ -29,7 +32,7 @@ postgres, admin-connector, echo) can be included or skipped at each step.`,
 		RunE: runCompose,
 	}
 
-	cmd.Flags().StringP("output", "o", "compose.yaml", "Path to write the generated compose.yaml")
+	cmd.Flags().StringP("output", "o", ".", "Output path where compose.yaml will be written.")
 
 	return cmd
 }
@@ -75,7 +78,9 @@ func runCompose(cmd *cobra.Command, _ []string) error {
 
 	content := buildCompose(opts)
 
-	if err := os.WriteFile(opts.outputPath, []byte(content), 0o600); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(opts.outputPath, "compose.yaml"), []byte(content), 0o644,
+	); err != nil {
 		return fmt.Errorf("failed to write compose file: %w", err)
 	}
 
@@ -89,6 +94,7 @@ func buildCompose(opts *composeOptions) string {
 
 	b.WriteString("services:\n")
 	writePostgresService(&b, opts)
+	writeSQLiteInitService(&b, opts)
 	writeKerberosService(&b, opts)
 	writeEchoService(&b, opts)
 	writeConnectorService(&b, opts)
@@ -134,6 +140,11 @@ func writeKerberosService(b *strings.Builder, opts *composeOptions) {
       postgres:
         condition: service_healthy
 `)
+	} else {
+		b.WriteString(`    depends_on:
+      sqlite-init:
+        condition: service_completed_successfully
+`)
 	}
 
 	b.WriteString(`    restart: on-failure
@@ -153,10 +164,7 @@ func writeKerberosService(b *strings.Builder, opts *composeOptions) {
       - ./krb.json:/krb.json:ro
 `)
 
-	if !opts.includePostgres {
-		b.WriteString("      - krbdata:/data\n")
-	}
-
+	b.WriteString(fmt.Sprintf("      %s\n", krbDataMount(opts.includePostgres)))
 	b.WriteString("\n")
 }
 
@@ -189,12 +197,22 @@ func writeConnectorService(b *strings.Builder, opts *composeOptions) {
     depends_on:
       kerberos:
         condition: service_started
-    restart: on-failure
+`)
+	if !opts.includePostgres {
+		b.WriteString(`      sqlite-init:
+        condition: service_completed_successfully
+`)
+	}
+	b.WriteString(`    restart: on-failure
     environment:
       - LOG_TO_CONSOLE=true
       - LOG_VERBOSITY=0
       - PORT=30100
 `)
+
+	if opts.includeObsStack {
+		fmt.Fprintf(b, "      - TARGET=jaeger:16686\n")
+	}
 
 	writeOtelEnv(b, opts.includeObsStack, "connector")
 
@@ -202,10 +220,7 @@ func writeConnectorService(b *strings.Builder, opts *composeOptions) {
       - ./connector.json:/connector.json:ro
 `)
 
-	if !opts.includePostgres {
-		b.WriteString("      - krbdata:/data\n")
-	}
-
+	b.WriteString(fmt.Sprintf("      %s\n", krbDataMount(opts.includePostgres)))
 	b.WriteString("\n")
 }
 
@@ -228,7 +243,14 @@ func writeObsServices(b *strings.Builder, opts *composeOptions) {
     image: "grafana/grafana:13.1"
     pull_policy: if_not_present
     restart: on-failure
-    ports:
+`)
+	if !opts.includePostgres {
+		b.WriteString(`    depends_on:
+      sqlite-init:
+        condition: service_completed_successfully
+`)
+	}
+	b.WriteString(`    ports:
       - 3000:3000
     volumes:
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
@@ -238,8 +260,9 @@ func writeObsServices(b *strings.Builder, opts *composeOptions) {
       - ./grafana/kerberos_runtime.json:/var/lib/grafana/kerberos_runtime.json
       - ./grafana/kerberos_http.json:/var/lib/grafana/kerberos_http.json
       - grafana:/var/lib/grafana
-
-  jaeger-init:
+`)
+	b.WriteString(fmt.Sprintf("      %s\n\n", krbDataMount(opts.includePostgres)))
+	b.WriteString(`  jaeger-init:
     image: busybox:1.38
     pull_policy: if_not_present
     command: ["sh", "-c", "chown 10001:0 /jaeger"]
@@ -255,13 +278,42 @@ func writeObsServices(b *strings.Builder, opts *composeOptions) {
         condition: service_completed_successfully
     restart: on-failure
     command: --config /jaeger.yml
-    ports:
+`)
+	if !opts.includeConnector {
+		b.WriteString(`    ports:
       - 16686:16686
-    volumes:
+`)
+	}
+	b.WriteString(`    volumes:
       - ./jaeger.yml:/jaeger.yml
+      - ./jaeger-config-ui.json:/jaeger-config-ui.json
       - jaeger:/jaeger
 
 `)
+}
+
+func writeSQLiteInitService(b *strings.Builder, opts *composeOptions) {
+	if opts.includePostgres {
+		return
+	}
+
+	b.WriteString(`  sqlite-init:
+    image: busybox:1.38
+    pull_policy: if_not_present
+    command: ["sh", "-c", "chmod 0777 /krbdata && touch /krbdata/krb.db && chmod 0666 /krbdata/krb.db"]
+    restart: on-failure
+    volumes:
+      - krbdata:/krbdata
+
+`)
+}
+
+func krbDataMount(includePostgres bool) string {
+	if includePostgres {
+		return ""
+	}
+
+	return "- krbdata:/krbdata"
 }
 
 func writeOtelEnv(b *strings.Builder, withObs bool, hostname string) {

@@ -6,7 +6,7 @@ import (
 )
 
 // buildConnectorJSON generates a minimal connector.json.
-func buildConnectorJSON(opts *connectorOptions) ([]byte, error) {
+func buildConnectorJSON(driver string, opts *connectorOptions) ([]byte, error) {
 	origins := map[string]any{}
 	if opts.allowAllOrigins {
 		origins["allowAll"] = true
@@ -16,7 +16,7 @@ func buildConnectorJSON(opts *connectorOptions) ([]byte, error) {
 
 	root := map[string]any{
 		"origins":     origins,
-		"persistence": buildPersistenceSection(opts.persistenceMode),
+		"persistence": buildPersistenceSection(driver),
 	}
 
 	content, err := json.MarshalIndent(root, "", "  ")
