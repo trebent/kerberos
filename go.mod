@@ -8,8 +8,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.12.3
 	github.com/oapi-codegen/nethttp-middleware v1.2.0
-	github.com/oapi-codegen/runtime v1.6.0
 	github.com/spf13/cobra v1.9.1
+	github.com/oapi-codegen/runtime v1.7.0
 	github.com/trebent/envparser v1.0.8
 	github.com/trebent/zerologr v1.1.1
 	github.com/xeipuuv/gojsonschema v1.2.0
