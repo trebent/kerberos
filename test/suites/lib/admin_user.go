@@ -7,6 +7,10 @@ import (
 	adminapi "github.com/trebent/kerberos/test/client/admin"
 )
 
+// AllPermissionIDs is the base set of all available admin group permissions.
+// Tests that create admin groups should include these to avoid breaking permission-gated endpoints.
+var AllPermissionIDs = []int{1, 2, 3, 4, 5, 6, 7}
+
 // MustGetAdminUserID fetches the admin user list and returns the ID of the user with the given username.
 func MustGetAdminUserID(t *testing.T, requestEditor RequestEditorFn, name string) int {
 	t.Helper()

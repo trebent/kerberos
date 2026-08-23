@@ -245,7 +245,7 @@ func TestAdminUserGroupBindingsAssign(t *testing.T) {
 
 	grp1Resp, err := lib.AdminClient.CreateGroupWithResponse(
 		t.Context(),
-		adminapi.CreateGroupJSONRequestBody{Name: lib.GroupName(), PermissionIDs: allPermissionIDs},
+		adminapi.CreateGroupJSONRequestBody{Name: lib.GroupName(), PermissionIDs: lib.AllPermissionIDs},
 		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	lib.CheckErr(err, t)
@@ -254,7 +254,7 @@ func TestAdminUserGroupBindingsAssign(t *testing.T) {
 
 	grp2Resp, err := lib.AdminClient.CreateGroupWithResponse(
 		t.Context(),
-		adminapi.CreateGroupJSONRequestBody{Name: lib.GroupName(), PermissionIDs: allPermissionIDs},
+		adminapi.CreateGroupJSONRequestBody{Name: lib.GroupName(), PermissionIDs: lib.AllPermissionIDs},
 		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	lib.CheckErr(err, t)
@@ -308,7 +308,7 @@ func TestAdminUserGroupBindingsUpdate(t *testing.T) {
 
 	grp1Resp, err := lib.AdminClient.CreateGroupWithResponse(
 		t.Context(),
-		adminapi.CreateGroupJSONRequestBody{Name: lib.GroupName(), PermissionIDs: allPermissionIDs},
+		adminapi.CreateGroupJSONRequestBody{Name: lib.GroupName(), PermissionIDs: lib.AllPermissionIDs},
 		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	lib.CheckErr(err, t)
@@ -317,7 +317,7 @@ func TestAdminUserGroupBindingsUpdate(t *testing.T) {
 
 	grp2Resp, err := lib.AdminClient.CreateGroupWithResponse(
 		t.Context(),
-		adminapi.CreateGroupJSONRequestBody{Name: lib.GroupName(), PermissionIDs: allPermissionIDs},
+		adminapi.CreateGroupJSONRequestBody{Name: lib.GroupName(), PermissionIDs: lib.AllPermissionIDs},
 		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	lib.CheckErr(err, t)
@@ -326,7 +326,7 @@ func TestAdminUserGroupBindingsUpdate(t *testing.T) {
 
 	grp3Resp, err := lib.AdminClient.CreateGroupWithResponse(
 		t.Context(),
-		adminapi.CreateGroupJSONRequestBody{Name: lib.GroupName(), PermissionIDs: allPermissionIDs},
+		adminapi.CreateGroupJSONRequestBody{Name: lib.GroupName(), PermissionIDs: lib.AllPermissionIDs},
 		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	lib.CheckErr(err, t)
@@ -395,7 +395,7 @@ func TestAdminUserGroupBindingsClear(t *testing.T) {
 
 	grpResp, err := lib.AdminClient.CreateGroupWithResponse(
 		t.Context(),
-		adminapi.CreateGroupJSONRequestBody{Name: lib.GroupName(), PermissionIDs: allPermissionIDs},
+		adminapi.CreateGroupJSONRequestBody{Name: lib.GroupName(), PermissionIDs: lib.AllPermissionIDs},
 		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	lib.CheckErr(err, t)

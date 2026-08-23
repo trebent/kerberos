@@ -54,7 +54,7 @@ func TestAdminGetBackendOASAsAdminUser(t *testing.T) {
 	// Create a group with the oasviewer permission and assign the user to it.
 	grpResp, err := lib.AdminClient.CreateGroupWithResponse(
 		t.Context(),
-		adminapi.CreateGroupJSONRequestBody{Name: lib.GroupName(), PermissionIDs: allPermissionIDs},
+		adminapi.CreateGroupJSONRequestBody{Name: lib.GroupName(), PermissionIDs: lib.AllPermissionIDs},
 		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	lib.CheckErr(err, t)
