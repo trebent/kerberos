@@ -8,9 +8,9 @@ import (
 	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
 )
 
-// TestAuthBasicAPIOrganisationIsolation verifies that a session from one organisation
+// TestBasicAuthOrganisationIsolation verifies that a session from one organisation
 // cannot read or mutate any resource that belongs to a different organisation.
-func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
+func TestBasicAuthOrganisationIsolation(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	createOrg1, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
@@ -211,10 +211,10 @@ func TestAuthBasicAPIOrganisationIsolation(t *testing.T) {
 	lib.VerifyAuthBasicAPIErrorResponse(changePasswordCrossResp.JSON403, t)
 }
 
-// TestAuthBasicAPIOrgAdminListOrganisationsForbidden verifies that a session scoped to an
+// TestBasicAuthOrgAdminListOrganisationsForbidden verifies that a session scoped to an
 // organisation cannot list organisations (superuser-only operation).
 // The spec does not define a 403 body for ListOrganisations, so only the status is checked.
-func TestAuthBasicAPIOrgAdminListOrganisationsForbidden(t *testing.T) {
+func TestBasicAuthOrgAdminListOrganisationsForbidden(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
@@ -255,10 +255,10 @@ func TestAuthBasicAPIOrgAdminListOrganisationsForbidden(t *testing.T) {
 	lib.VerifyAuthBasicAPIErrorResponse(createResp.JSON403, t)
 }
 
-// TestAuthBasicAPINormalUserAccessControl verifies that a non-administrator user receives
+// TestBasicAuthNormalUserAccessControl verifies that a non-administrator user receives
 // 403 (with populated error body) for all admin-only operations, and can still successfully
 // retrieve their own user record.
-func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
+func TestBasicAuthNormalUserAccessControl(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	// Create a dedicated org for this test.
@@ -442,57 +442,4 @@ func TestAuthBasicAPINormalUserAccessControl(t *testing.T) {
 	lib.CheckErr(err, t)
 	lib.VerifyStatusCode(getUserSelfResp.StatusCode(), http.StatusOK, t)
 	lib.Matches(getUserSelfResp.JSON200.Id, regularUserID, t)
-}
-
-// TestAuthBasicRefreshNoRefreshCookie verifies that calling the refresh endpoint without a
-// refresh cookie returns 401. A missing session cookie alone does not cause a 401 — only the
-// missing refresh cookie matters here.
-func TestAuthBasicRefreshNoRefreshCookie(t *testing.T) {
-	t.Parallel()
-	resp, err := lib.BasicAuthClient.RefreshWithResponse(
-		t.Context(),
-		authbasicapi.Orgid(alwaysOrgID),
-	)
-	lib.CheckErr(err, t)
-	lib.VerifyStatusCode(resp.StatusCode(), http.StatusUnauthorized, t)
-	lib.VerifyAuthBasicAPIErrorResponse(resp.JSON401, t)
-}
-
-// TestAuthBasicRefresh verifies that the refresh endpoint issues a new session when called
-// with only the refresh cookie (no session cookie required).
-func TestAuthBasicRefresh(t *testing.T) {
-	t.Parallel()
-	superRequestEditor := lib.SuperLogin(t)
-
-	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
-		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: lib.OrgName()},
-		authbasicapi.RequestEditorFn(superRequestEditor),
-	)
-	lib.CheckErr(err, t)
-	lib.VerifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
-
-	orgID := createOrgResp.JSON201.Id
-
-	loginResp, err := lib.BasicAuthClient.LoginWithResponse(
-		t.Context(),
-		orgID,
-		authbasicapi.LoginJSONRequestBody{
-			Username: createOrgResp.JSON201.AdminUsername,
-			Password: createOrgResp.JSON201.AdminPassword,
-		},
-	)
-	lib.CheckErr(err, t)
-	lib.VerifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-
-	// Use only the refresh cookie — deliberately omit the session cookie to prove it is not required.
-	refreshEditor := lib.RefreshCookieRequestEditor(loginResp.HTTPResponse, t)
-
-	refreshResp, err := lib.BasicAuthClient.RefreshWithResponse(
-		t.Context(),
-		orgID,
-		authbasicapi.RequestEditorFn(refreshEditor),
-	)
-	lib.CheckErr(err, t)
-	lib.VerifyStatusCode(refreshResp.StatusCode(), http.StatusNoContent, t)
 }

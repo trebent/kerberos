@@ -10,9 +10,9 @@ import (
 
 // --- StartDebugSession ---
 
-// TestDebugStartSession verifies that a superuser can start a debug session and
+// TestAdminDebugStartSession verifies that a superuser can start a debug session and
 // the response body contains the correct fields.
-func TestDebugStartSession(t *testing.T) {
+func TestAdminDebugStartSession(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	resp, err := lib.AdminClient.StartDebugSessionWithResponse(
@@ -55,9 +55,9 @@ func TestDebugStartSession(t *testing.T) {
 	lib.VerifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
 }
 
-// TestDebugStartSessionConflict verifies that starting a second debug session for a
+// TestAdminDebugStartSessionConflict verifies that starting a second debug session for a
 // backend that already has an active session returns 409 conflict.
-func TestDebugStartSessionConflict(t *testing.T) {
+func TestAdminDebugStartSessionConflict(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 
@@ -90,9 +90,9 @@ func TestDebugStartSessionConflict(t *testing.T) {
 
 // --- ListDebugSessions ---
 
-// TestDebugListSessionsEmpty verifies that listing debug sessions for a backend with no
+// TestAdminDebugListSessionsEmpty verifies that listing debug sessions for a backend with no
 // sessions returns 200 with an empty list.
-func TestDebugListSessionsEmpty(t *testing.T) {
+func TestAdminDebugListSessionsEmpty(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 
@@ -115,8 +115,8 @@ func TestDebugListSessionsEmpty(t *testing.T) {
 	}
 }
 
-// TestDebugListSessionsContainsCreated verifies that a created session appears in the list.
-func TestDebugListSessionsContainsCreated(t *testing.T) {
+// TestAdminDebugListSessionsContainsCreated verifies that a created session appears in the list.
+func TestAdminDebugListSessionsContainsCreated(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	sessionID := lib.StartDebugSession(t, superRequestEditor, "echo")
@@ -153,8 +153,8 @@ func TestDebugListSessionsContainsCreated(t *testing.T) {
 
 // --- GetDebugSession ---
 
-// TestDebugGetSession verifies that an existing session can be retrieved by ID.
-func TestDebugGetSession(t *testing.T) {
+// TestAdminDebugGetSession verifies that an existing session can be retrieved by ID.
+func TestAdminDebugGetSession(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	sessionID := lib.StartDebugSession(t, superRequestEditor, "echo")
@@ -189,8 +189,8 @@ func TestDebugGetSession(t *testing.T) {
 	lib.VerifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
 }
 
-// TestDebugGetSessionNotFound verifies that requesting a non-existent session returns 404.
-func TestDebugGetSessionNotFound(t *testing.T) {
+// TestAdminDebugGetSessionNotFound verifies that requesting a non-existent session returns 404.
+func TestAdminDebugGetSessionNotFound(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 
@@ -207,8 +207,8 @@ func TestDebugGetSessionNotFound(t *testing.T) {
 
 // --- ExtendDebugSession ---
 
-// TestDebugExtendSession verifies that extending a session updates ExpiresAt.
-func TestDebugExtendSession(t *testing.T) {
+// TestAdminDebugExtendSession verifies that extending a session updates ExpiresAt.
+func TestAdminDebugExtendSession(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	sessionID := lib.StartDebugSession(t, superRequestEditor, "echo")
@@ -253,8 +253,8 @@ func TestDebugExtendSession(t *testing.T) {
 	lib.VerifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
 }
 
-// TestDebugExtendSessionNotFound verifies that extending a non-existent session returns 404.
-func TestDebugExtendSessionNotFound(t *testing.T) {
+// TestAdminDebugExtendSessionNotFound verifies that extending a non-existent session returns 404.
+func TestAdminDebugExtendSessionNotFound(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 
@@ -272,9 +272,9 @@ func TestDebugExtendSessionNotFound(t *testing.T) {
 
 // --- StopDebugSession ---
 
-// TestDebugStopSession verifies that stopping an active session returns 204 and marks
+// TestAdminDebugStopSession verifies that stopping an active session returns 204 and marks
 // the session as stopped.
-func TestDebugStopSession(t *testing.T) {
+func TestAdminDebugStopSession(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	sessionID := lib.StartDebugSession(t, superRequestEditor, "echo")
@@ -312,8 +312,8 @@ func TestDebugStopSession(t *testing.T) {
 	lib.VerifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
 }
 
-// TestDebugStopSessionNotFound verifies that stopping a non-existent session returns 404.
-func TestDebugStopSessionNotFound(t *testing.T) {
+// TestAdminDebugStopSessionNotFound verifies that stopping a non-existent session returns 404.
+func TestAdminDebugStopSessionNotFound(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 
@@ -330,9 +330,9 @@ func TestDebugStopSessionNotFound(t *testing.T) {
 
 // --- DeleteDebugSession ---
 
-// TestDebugDeleteSession verifies that deleting a session returns 204 and the session
+// TestAdminDebugDeleteSession verifies that deleting a session returns 204 and the session
 // is no longer retrievable.
-func TestDebugDeleteSession(t *testing.T) {
+func TestAdminDebugDeleteSession(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	sessionID := lib.StartDebugSession(t, superRequestEditor, "echo")
@@ -357,8 +357,8 @@ func TestDebugDeleteSession(t *testing.T) {
 	lib.VerifyStatusCode(getResp.StatusCode(), http.StatusNotFound, t)
 }
 
-// TestDebugDeleteSessionNotFound verifies that deleting a non-existent session returns 404.
-func TestDebugDeleteSessionNotFound(t *testing.T) {
+// TestAdminDebugDeleteSessionNotFound verifies that deleting a non-existent session returns 404.
+func TestAdminDebugDeleteSessionNotFound(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 
@@ -375,10 +375,10 @@ func TestDebugDeleteSessionNotFound(t *testing.T) {
 
 // --- ListDebugSessionCalls & GetDebugSessionCall ---
 
-// TestDebugListSessionCallsWithTransitions verifies that after a gateway request is made
+// TestAdminDebugListSessionCallsWithTransitions verifies that after a gateway request is made
 // during an active debug session, the call is recorded and flow transitions are populated
 // when includeTransitions=true.
-func TestDebugListSessionCallsWithTransitions(t *testing.T) {
+func TestAdminDebugListSessionCallsWithTransitions(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	sessionID := lib.StartDebugSession(t, superRequestEditor, "echo")
@@ -417,9 +417,9 @@ func TestDebugListSessionCallsWithTransitions(t *testing.T) {
 	}
 }
 
-// TestDebugListSessionCallsWithoutTransitions verifies that when includeTransitions=false,
+// TestAdminDebugListSessionCallsWithoutTransitions verifies that when includeTransitions=false,
 // FlowTransitions are not included in the response.
-func TestDebugListSessionCallsWithoutTransitions(t *testing.T) {
+func TestAdminDebugListSessionCallsWithoutTransitions(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	sessionID := lib.StartDebugSession(t, superRequestEditor, "echo")
@@ -459,8 +459,8 @@ func TestDebugListSessionCallsWithoutTransitions(t *testing.T) {
 	}
 }
 
-// TestDebugGetSessionCall verifies that a specific recorded call can be retrieved by ID.
-func TestDebugGetSessionCall(t *testing.T) {
+// TestAdminDebugGetSessionCall verifies that a specific recorded call can be retrieved by ID.
+func TestAdminDebugGetSessionCall(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	sessionID := lib.StartDebugSession(t, superRequestEditor, "echo")
@@ -516,8 +516,8 @@ func TestDebugGetSessionCall(t *testing.T) {
 	}
 }
 
-// TestDebugGetSessionCallNotFound verifies that requesting a non-existent call returns 404.
-func TestDebugGetSessionCallNotFound(t *testing.T) {
+// TestAdminDebugGetSessionCallNotFound verifies that requesting a non-existent call returns 404.
+func TestAdminDebugGetSessionCallNotFound(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	sessionID := lib.StartDebugSession(t, superRequestEditor, "echo")
@@ -546,9 +546,9 @@ func TestDebugGetSessionCallNotFound(t *testing.T) {
 
 // --- Full lifecycle ---
 
-// TestDebugFullFlow exercises the complete debug session lifecycle end-to-end:
+// TestAdminDebugFullFlow exercises the complete debug session lifecycle end-to-end:
 // start → get → hit gateway (records a call) → list calls → get call → stop → delete.
-func TestDebugFullFlow(t *testing.T) {
+func TestAdminDebugFullFlow(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	// Start.

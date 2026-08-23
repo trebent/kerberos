@@ -32,9 +32,9 @@ const (
 
 // --- GetPermissions ---
 
-// TestPermissionsGetPermissions verifies that any authenticated admin user can list
+// TestAdminPermissionsGetPermissions verifies that any authenticated admin user can list
 // available permissions.
-func TestPermissionsGetPermissions(t *testing.T) {
+func TestAdminPermissionsGetPermissions(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 
@@ -73,9 +73,9 @@ func TestPermissionsGetPermissions(t *testing.T) {
 
 // --- Superuser access ---
 
-// TestPermissionsSuperuserAccessAll verifies that the superuser can access every
+// TestAdminPermissionsSuperuserAccessAll verifies that the superuser can access every
 // permission-gated endpoint without being a member of any group.
-func TestPermissionsSuperuserAccessAll(t *testing.T) {
+func TestAdminPermissionsSuperuserAccessAll(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 
@@ -164,9 +164,9 @@ func TestPermissionsSuperuserAccessAll(t *testing.T) {
 
 // --- flowviewer permission ---
 
-// TestPermissionsFlowViewerAllowed verifies that an admin user with the flowviewer
+// TestAdminPermissionsFlowViewerAllowed verifies that an admin user with the flowviewer
 // permission can call GetFlow.
-func TestPermissionsFlowViewerAllowed(t *testing.T) {
+func TestAdminPermissionsFlowViewerAllowed(t *testing.T) {
 	t.Parallel()
 	superSession := lib.SuperLogin(t)
 	adminRequestEditor := lib.CreateAdminUserInGroup(t, superSession, []int{PermissionIDFlowViewer})
@@ -179,9 +179,9 @@ func TestPermissionsFlowViewerAllowed(t *testing.T) {
 	lib.VerifyStatusCode(resp.StatusCode(), http.StatusOK, t)
 }
 
-// TestPermissionsFlowViewerDeniedWithoutPermission verifies that an admin user without
+// TestAdminPermissionsFlowViewerDeniedWithoutPermission verifies that an admin user without
 // the flowviewer permission receives 403 when calling GetFlow.
-func TestPermissionsFlowViewerDeniedWithoutPermission(t *testing.T) {
+func TestAdminPermissionsFlowViewerDeniedWithoutPermission(t *testing.T) {
 	t.Parallel()
 	superSession := lib.SuperLogin(t)
 	// Give only oasviewer — no flowviewer.
@@ -195,9 +195,9 @@ func TestPermissionsFlowViewerDeniedWithoutPermission(t *testing.T) {
 	lib.VerifyStatusCode(resp.StatusCode(), http.StatusForbidden, t)
 }
 
-// TestPermissionsFlowViewerDeniedNoGroup verifies that an admin user in no group at all
+// TestAdminPermissionsFlowViewerDeniedNoGroup verifies that an admin user in no group at all
 // receives 403 when calling GetFlow.
-func TestPermissionsFlowViewerDeniedNoGroup(t *testing.T) {
+func TestAdminPermissionsFlowViewerDeniedNoGroup(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 
@@ -223,9 +223,9 @@ func TestPermissionsFlowViewerDeniedNoGroup(t *testing.T) {
 
 // --- oasviewer permission ---
 
-// TestPermissionsOASViewerAllowed verifies that an admin user with the oasviewer
+// TestAdminPermissionsOASViewerAllowed verifies that an admin user with the oasviewer
 // permission can call GetBackendOAS.
-func TestPermissionsOASViewerAllowed(t *testing.T) {
+func TestAdminPermissionsOASViewerAllowed(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDOASViewer})
@@ -239,9 +239,9 @@ func TestPermissionsOASViewerAllowed(t *testing.T) {
 	lib.VerifyStatusCode(resp.StatusCode(), http.StatusOK, t)
 }
 
-// TestPermissionsOASViewerDeniedWithoutPermission verifies that an admin user without
+// TestAdminPermissionsOASViewerDeniedWithoutPermission verifies that an admin user without
 // the oasviewer permission receives 403 when calling GetBackendOAS.
-func TestPermissionsOASViewerDeniedWithoutPermission(t *testing.T) {
+func TestAdminPermissionsOASViewerDeniedWithoutPermission(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 	// Give only flowviewer — no oasviewer.
@@ -258,10 +258,10 @@ func TestPermissionsOASViewerDeniedWithoutPermission(t *testing.T) {
 
 // --- basicauthorgadmin permission ---
 
-// TestPermissionsBasicAuthOrgAdminAllowed verifies that an admin user with the
+// TestAdminPermissionsBasicAuthOrgAdminAllowed verifies that an admin user with the
 // basicauthorgadmin permission can perform both read and write operations on the
 // basic auth API.
-func TestPermissionsBasicAuthOrgAdminAllowed(t *testing.T) {
+func TestAdminPermissionsBasicAuthOrgAdminAllowed(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDBasicAuthOrgAdmin})
@@ -297,10 +297,10 @@ func TestPermissionsBasicAuthOrgAdminAllowed(t *testing.T) {
 	lib.VerifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
 }
 
-// TestPermissionsBasicAuthOrgAdminDeniedWithoutPermission verifies that an admin user
+// TestAdminPermissionsBasicAuthOrgAdminDeniedWithoutPermission verifies that an admin user
 // without any basic auth permission cannot access the basic auth API. The middleware falls
 // through to session lookup (which does not recognise an admin session), returning 401.
-func TestPermissionsBasicAuthOrgAdminDeniedWithoutPermission(t *testing.T) {
+func TestAdminPermissionsBasicAuthOrgAdminDeniedWithoutPermission(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 	// Give only flowviewer — no basic auth permission.
@@ -318,9 +318,9 @@ func TestPermissionsBasicAuthOrgAdminDeniedWithoutPermission(t *testing.T) {
 
 // --- basicauthorgviewer permission ---
 
-// TestPermissionsBasicAuthOrgViewerReadAllowed verifies that an admin user with the
+// TestAdminPermissionsBasicAuthOrgViewerReadAllowed verifies that an admin user with the
 // basicauthorgviewer permission can call GET endpoints on the basic auth API.
-func TestPermissionsBasicAuthOrgViewerReadAllowed(t *testing.T) {
+func TestAdminPermissionsBasicAuthOrgViewerReadAllowed(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 
@@ -348,10 +348,10 @@ func TestPermissionsBasicAuthOrgViewerReadAllowed(t *testing.T) {
 	lib.VerifyStatusCode(listGroupsResp.StatusCode(), http.StatusOK, t)
 }
 
-// TestPermissionsBasicAuthOrgViewerWriteDenied verifies that an admin user with the
+// TestAdminPermissionsBasicAuthOrgViewerWriteDenied verifies that an admin user with the
 // basicauthorgviewer permission is denied for non-GET (write) endpoints on the basic
 // auth API.
-func TestPermissionsBasicAuthOrgViewerWriteDenied(t *testing.T) {
+func TestAdminPermissionsBasicAuthOrgViewerWriteDenied(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDBasicAuthOrgViewer})
@@ -377,11 +377,11 @@ func TestPermissionsBasicAuthOrgViewerWriteDenied(t *testing.T) {
 	lib.VerifyStatusCode(createUserResp.StatusCode(), http.StatusForbidden, t)
 }
 
-// TestPermissionsBasicAuthOrgViewerDeniedWithoutPermission verifies that an admin user
+// TestAdminPermissionsBasicAuthOrgViewerDeniedWithoutPermission verifies that an admin user
 // with no basic auth permission cannot access even GET endpoints on the basic auth API.
 // The middleware falls through to session lookup (which does not recognise an admin session),
 // returning 401.
-func TestPermissionsBasicAuthOrgViewerDeniedWithoutPermission(t *testing.T) {
+func TestAdminPermissionsBasicAuthOrgViewerDeniedWithoutPermission(t *testing.T) {
 	t.Parallel()
 	superSession := lib.SuperLogin(t)
 	orgID, _ := lib.OrgWithSession(t, superSession)
@@ -400,9 +400,9 @@ func TestPermissionsBasicAuthOrgViewerDeniedWithoutPermission(t *testing.T) {
 
 // --- Group response includes permissions ---
 
-// TestPermissionsGroupResponseIncludesPermissions verifies that the permissions field is
+// TestAdminPermissionsGroupResponseIncludesPermissions verifies that the permissions field is
 // present and accurate in the group create/get responses.
-func TestPermissionsGroupResponseIncludesPermissions(t *testing.T) {
+func TestAdminPermissionsGroupResponseIncludesPermissions(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 
@@ -449,10 +449,10 @@ func TestPermissionsGroupResponseIncludesPermissions(t *testing.T) {
 
 // --- adminusermgmtadmin permission ---
 
-// TestPermissionsAdminUserMgmtAdminAllowed verifies that an admin user with the
+// TestAdminPermissionsAdminUserMgmtAdminAllowed verifies that an admin user with the
 // adminusermgmtadmin permission can perform both read and write operations on the
 // admin user and group management endpoints.
-func TestPermissionsAdminUserMgmtAdminAllowed(t *testing.T) {
+func TestAdminPermissionsAdminUserMgmtAdminAllowed(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDAdminUserMgmtAdmin})
@@ -549,9 +549,9 @@ func TestPermissionsAdminUserMgmtAdminAllowed(t *testing.T) {
 
 // --- adminusermgmtviewer permission ---
 
-// TestPermissionsAdminUserMgmtViewerReadAllowed verifies that an admin user with the
+// TestAdminPermissionsAdminUserMgmtViewerReadAllowed verifies that an admin user with the
 // adminusermgmtviewer permission can call GET endpoints on the admin user/group mgmt API.
-func TestPermissionsAdminUserMgmtViewerReadAllowed(t *testing.T) {
+func TestAdminPermissionsAdminUserMgmtViewerReadAllowed(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDAdminUserMgmtViewer})
@@ -573,10 +573,10 @@ func TestPermissionsAdminUserMgmtViewerReadAllowed(t *testing.T) {
 	lib.VerifyStatusCode(listGroupsResp.StatusCode(), http.StatusOK, t)
 }
 
-// TestPermissionsAdminUserMgmtViewerWriteDenied verifies that an admin user with the
+// TestAdminPermissionsAdminUserMgmtViewerWriteDenied verifies that an admin user with the
 // adminusermgmtviewer permission is denied for non-GET (write) endpoints on the admin
 // user/group mgmt API.
-func TestPermissionsAdminUserMgmtViewerWriteDenied(t *testing.T) {
+func TestAdminPermissionsAdminUserMgmtViewerWriteDenied(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDAdminUserMgmtViewer})
@@ -600,9 +600,9 @@ func TestPermissionsAdminUserMgmtViewerWriteDenied(t *testing.T) {
 	lib.VerifyStatusCode(createGroupResp.StatusCode(), http.StatusForbidden, t)
 }
 
-// TestPermissionsAdminUserMgmtViewerDeniedWithoutPermission verifies that an admin user
+// TestAdminPermissionsAdminUserMgmtViewerDeniedWithoutPermission verifies that an admin user
 // with no user mgmt permission receives 403 when calling even GET user mgmt endpoints.
-func TestPermissionsAdminUserMgmtViewerDeniedWithoutPermission(t *testing.T) {
+func TestAdminPermissionsAdminUserMgmtViewerDeniedWithoutPermission(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 	// Give only flowviewer — no user mgmt permission.
@@ -616,9 +616,9 @@ func TestPermissionsAdminUserMgmtViewerDeniedWithoutPermission(t *testing.T) {
 	lib.VerifyStatusCode(listUsersResp.StatusCode(), http.StatusForbidden, t)
 }
 
-// TestPermissionsAdminUserMgmtViewerGetSelf verifies that an admin user
+// TestAdminPermissionsAdminUserMgmtViewerGetSelf verifies that an admin user
 // with no user mgmt permission can still get their own user information.
-func TestPermissionsAdminUserMgmtViewerGetSelf(t *testing.T) {
+func TestAdminPermissionsAdminUserMgmtViewerGetSelf(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 
@@ -644,9 +644,9 @@ func TestPermissionsAdminUserMgmtViewerGetSelf(t *testing.T) {
 	lib.Matches(listUsersResp.JSON200.Id, createResp.JSON201.Id, t)
 }
 
-// TestPermissionsNormalUserLogoutSuper verifies that a normal admin user, even with permissions to call the logout
+// TestAdminPermissionsNormalUserLogoutSuper verifies that a normal admin user, even with permissions to call the logout
 // endpoint, cannot log out the superuser.
-func TestPermissionsNormalUserLogoutSuper(t *testing.T) {
+func TestAdminPermissionsNormalUserLogoutSuper(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDAdminUserMgmtViewer})
 
@@ -659,9 +659,9 @@ func TestPermissionsNormalUserLogoutSuper(t *testing.T) {
 	lib.VerifyStatusCode(logoutResp.StatusCode(), http.StatusForbidden, t)
 }
 
-// TestPermissionsAdminUserChangePasswordWrongUser verifies that an admin user cannot change another user's
+// TestAdminPermissionsAdminUserChangePasswordWrongUser verifies that an admin user cannot change another user's
 // password without the appropriate permission.
-func TestPermissionsAdminUserChangePasswordWrongUser(t *testing.T) {
+func TestAdminPermissionsAdminUserChangePasswordWrongUser(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 
@@ -700,9 +700,9 @@ func TestPermissionsAdminUserChangePasswordWrongUser(t *testing.T) {
 
 // --- debugger permission ---
 
-// TestPermissionsDebuggerAllowed verifies that an admin user with the debugger permission
+// TestAdminPermissionsDebuggerAllowed verifies that an admin user with the debugger permission
 // can call StartDebugSession.
-func TestPermissionsDebuggerAllowed(t *testing.T) {
+func TestAdminPermissionsDebuggerAllowed(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDDebugger})
@@ -727,9 +727,9 @@ func TestPermissionsDebuggerAllowed(t *testing.T) {
 	lib.VerifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
 }
 
-// TestPermissionsDebuggerDenied verifies that an admin user without the debugger permission
+// TestAdminPermissionsDebuggerDenied verifies that an admin user without the debugger permission
 // receives 403 when calling StartDebugSession.
-func TestPermissionsDebuggerDenied(t *testing.T) {
+func TestAdminPermissionsDebuggerDenied(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 	// Give only flowviewer — no debugger.
