@@ -3,10 +3,11 @@ package security
 import (
 	"context"
 	"fmt"
-	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"net/url"
 	"testing"
+
+	lib "github.com/trebent/kerberos/test/lib"
 
 	adminapi "github.com/trebent/kerberos/test/client/admin"
 	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
@@ -101,7 +102,7 @@ func TestCORS_basicauth(t *testing.T) {
 func TestCORS_gateway(t *testing.T) {
 	t.Run("Non-browser request", func(t *testing.T) {
 		t.Parallel()
-		client := tlsClient(t)
+		client := lib.TLSClient(t, certDir)
 
 		// mtls-echo using denyAll means we should not see a returned CORS header.
 		resp, err := client.Get(fmt.Sprintf("https://localhost:%d/gw/backend/mtls-echo/hi", lib.GetPort()))
@@ -112,7 +113,7 @@ func TestCORS_gateway(t *testing.T) {
 
 	t.Run("Browser request, denyAll set", func(t *testing.T) {
 		t.Parallel()
-		client := tlsClient(t)
+		client := lib.TLSClient(t, certDir)
 
 		url, _ := url.Parse(fmt.Sprintf("https://localhost:%d/gw/backend/mtls-echo/hi", lib.GetPort()))
 		req := &http.Request{
@@ -133,7 +134,8 @@ func TestCORS_gateway(t *testing.T) {
 	// tls-echo using allowedOrigins means we should see a returned CORS header for a valid Origin.
 	t.Run("Browser request, valid Origin", func(t *testing.T) {
 		t.Parallel()
-		client := tlsClient(t)
+		client := lib.TLSClient(t, certDir)
+
 		url, _ := url.Parse(fmt.Sprintf("https://localhost:%d/gw/backend/tls-echo/hi", lib.GetPort()))
 		req := &http.Request{
 			Method: http.MethodGet,
@@ -153,7 +155,8 @@ func TestCORS_gateway(t *testing.T) {
 	// tls-echo using allowedOrigins means we should not see a returned CORS header for an invalid Origin.
 	t.Run("Browser request, invalid Origin", func(t *testing.T) {
 		t.Parallel()
-		client := tlsClient(t)
+		client := lib.TLSClient(t, certDir)
+
 		url, _ := url.Parse(fmt.Sprintf("https://localhost:%d/gw/backend/tls-echo/hi", lib.GetPort()))
 		req := &http.Request{
 			Method: http.MethodGet,
