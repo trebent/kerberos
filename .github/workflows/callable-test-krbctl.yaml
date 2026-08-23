@@ -48,6 +48,9 @@ jobs:
           restore-keys: |
             krbctl-test-go-build-${{ runner.os }}-
 
+      - name: Build krbctl
+        run: make build/krbctl
+
       - name: Run krbctl tests
         run: make test/krbctl/json
 
