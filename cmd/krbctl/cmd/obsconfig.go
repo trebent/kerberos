@@ -17,6 +17,12 @@ var grafanaDashboardRuntime []byte
 //go:embed assets/grafana/kerberos_http.json
 var grafanaDashboardHTTP []byte
 
+//go:embed assets/grafana/grafana-datasources.yml
+var grafanaDataSourceYML []byte
+
+//go:embed assets/grafana/grafana-dashboards.yml
+var grafanaDashboardsYML []byte
+
 //go:embed assets/jaeger/config-ui.json
 var jaegerConfigUI []byte
 
@@ -47,11 +53,11 @@ func writeObsFiles(driver string, opts *configOptions) error {
 		{filepath.Join(grafanaDir, "grafana.ini"), []byte(buildGrafanaINI(driver, &opts.obsOpts))},
 		{
 			filepath.Join(grafanaDir, "grafana-datasources.yml"),
-			[]byte(buildGrafanaDatasourcesYML()),
+			grafanaDataSourceYML,
 		},
 		{
 			filepath.Join(grafanaDir, "grafana-dashboards.yml"),
-			[]byte(buildGrafanaDashboardsYML()),
+			grafanaDashboardsYML,
 		},
 		{filepath.Join(grafanaDir, "prometheus.json"), grafanaDashboardPrometheus},
 		{filepath.Join(grafanaDir, "kerberos_runtime.json"), grafanaDashboardRuntime},
@@ -174,38 +180,6 @@ func buildGrafanaINI(driver string, opts *obsConfigOptions) string {
 	}
 
 	return b.String()
-}
-
-// buildGrafanaDatasourcesYML generates the Grafana datasource provisioning file.
-func buildGrafanaDatasourcesYML() string {
-	return `apiVersion: 1
-
-datasources:
-  - name: prometheus
-    type: prometheus
-    url: http://prometheus:9090
-    uid: prometheus
-`
-}
-
-// buildGrafanaDashboardsYML generates the Grafana dashboard provisioning file.
-func buildGrafanaDashboardsYML() string {
-	return `apiVersion: 1
-
-providers:
-  - name: "Prometheus status"
-    type: file
-    options:
-      path: /var/lib/grafana/prometheus.json
-  - name: "Kerberos runtime"
-    type: file
-    options:
-      path: /var/lib/grafana/kerberos_runtime.json
-  - name: "Kerberos HTTP"
-    type: file
-    options:
-      path: /var/lib/grafana/kerberos_http.json
-`
 }
 
 // buildJaegerYML returns the static Jaeger configuration.
