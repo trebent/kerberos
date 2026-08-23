@@ -10,7 +10,7 @@ import (
 	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
 )
 
-func TestAuthBasicCall(t *testing.T) {
+func TestGatewayAuthBasicCall(t *testing.T) {
 	loginResp, err := lib.BasicAuthClient.LoginWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
@@ -43,7 +43,7 @@ func TestAuthBasicCall(t *testing.T) {
 	}
 }
 
-func TestAuthBasicUnauthenticated(t *testing.T) {
+func TestGatewayAuthBasicUnauthenticated(t *testing.T) {
 	response := lib.Get(
 		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/hi", lib.GetHost(), lib.GetPort()),
 		t,
@@ -74,7 +74,7 @@ func TestAuthBasicUnauthenticated(t *testing.T) {
 	}
 }
 
-func TestAuthBasicUnauthenticatedExempted(t *testing.T) {
+func TestGatewayAuthBasicUnauthenticatedExempted(t *testing.T) {
 	response := lib.Get(
 		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/unprotected", lib.GetHost(), lib.GetPort()),
 		t,
@@ -106,7 +106,7 @@ func TestAuthBasicUnauthenticatedExempted(t *testing.T) {
 	}
 }
 
-func TestAuthBasicAuthorizedPleb(t *testing.T) {
+func TestGatewayAuthBasicAuthorizedPleb(t *testing.T) {
 	loginResp, err := lib.BasicAuthClient.LoginWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),

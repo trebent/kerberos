@@ -10,7 +10,7 @@ import (
 	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
 )
 
-func TestCookies_admin(t *testing.T) {
+func TestCookiesAdmin(t *testing.T) {
 	t.Run("Verify superuser cookie attributes", func(t *testing.T) {
 		t.Parallel()
 		resp, err := lib.AdminClient.LoginSuperuser(
@@ -42,7 +42,7 @@ func TestCookies_admin(t *testing.T) {
 	})
 }
 
-func TestCookies_basicauth(t *testing.T) {
+func TestCookiesBasicAuth(t *testing.T) {
 	t.Run("Verify basic auth cookie attributes", func(t *testing.T) {
 		t.Parallel()
 		loginResp, err := lib.BasicAuthClient.Login(

@@ -11,7 +11,7 @@ import (
 	authbasicapi "github.com/trebent/kerberos/internal/oapi/auth/basic"
 )
 
-func TestAuthorizer_Authenticated(t *testing.T) {
+func TestAuthorizerAuthenticated(t *testing.T) {
 	basic, err := New(&Opts{
 		AuthZConfig: map[string]*config.AuthZ{},
 		SQLClient:   testClient,
@@ -58,7 +58,7 @@ func TestAuthorizer_Authenticated(t *testing.T) {
 	}
 }
 
-func TestAuthorizer_AuthorizedGroup(t *testing.T) {
+func TestAuthorizerAuthorizedGroup(t *testing.T) {
 	groupName := uniqueName(t, "authZ-admin")
 	basic, err := New(&Opts{
 		AuthZConfig: map[string]*config.AuthZ{

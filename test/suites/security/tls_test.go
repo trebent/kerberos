@@ -42,8 +42,8 @@ func TestAdminAPIPlainHTTP(t *testing.T) {
 
 // ---- Gateway API ----
 
-// TestGWAPITLS_mTLS_echo verifies that the gateway API is reachable over TLS towards an mTLS enabled backend.
-func TestGWAPITLS_mTLS_echo(t *testing.T) {
+// TestGWAPImTLSEcho verifies that the gateway API is reachable over TLS towards an mTLS enabled backend.
+func TestGWAPImTLSEcho(t *testing.T) {
 	t.Parallel()
 
 	resp, err := lib.TLSClient(t, certDir).Get(fmt.Sprintf("https://localhost:%d/gw/backend/mtls-echo/hi", lib.GetPort()))
@@ -57,8 +57,8 @@ func TestGWAPITLS_mTLS_echo(t *testing.T) {
 	}
 }
 
-// TestGWAPITLS_TLS_echo verifies that the gateway API is reachable over TLS towards a TLS enabled backend.
-func TestGWAPITLS_TLS_echo(t *testing.T) {
+// TestGWAPITLSEcho verifies that the gateway API is reachable over TLS towards a TLS enabled backend.
+func TestGWAPITLSEcho(t *testing.T) {
 	t.Parallel()
 
 	resp, err := lib.TLSClient(t, certDir).Get(fmt.Sprintf("https://localhost:%d/gw/backend/tls-echo/hi", lib.GetPort()))

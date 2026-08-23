@@ -11,7 +11,7 @@ import (
 	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
 )
 
-func TestCORS_admin(t *testing.T) {
+func TestCORSAdmin(t *testing.T) {
 	t.Run("OPTIONS preflight with Origin - CORS headers returned", func(t *testing.T) {
 		t.Parallel()
 		url := fmt.Sprintf("http://%s:%d/api/admin/login", lib.GetHost(), lib.GetAdminPort())
@@ -60,7 +60,7 @@ func TestCORS_admin(t *testing.T) {
 	})
 }
 
-func TestCORS_basicauth(t *testing.T) {
+func TestCORSBasicAuth(t *testing.T) {
 	t.Run("OPTIONS preflight with Origin - CORS headers returned", func(t *testing.T) {
 		t.Parallel()
 		url := fmt.Sprintf("http://%s:%d/api/auth/basic/organisations/%d/login", lib.GetHost(), lib.GetAdminPort(), alwaysOrgID)
@@ -107,7 +107,7 @@ func TestCORS_basicauth(t *testing.T) {
 	})
 }
 
-func TestCORS_gateway(t *testing.T) {
+func TestCORSGateway(t *testing.T) {
 	baseURL := fmt.Sprintf("http://localhost:%d/gw/backend/echo", lib.GetPort())
 
 	// normal echo has allowAll, but since Origin is omitted, we should not see a returned CORS header.

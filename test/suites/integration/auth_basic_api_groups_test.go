@@ -8,9 +8,9 @@ import (
 	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
 )
 
-// TestGroupCreate verifies that a new group can be created within an organisation and that
+// TestBasicAuthGroupCreate verifies that a new group can be created within an organisation and that
 // the response contains the expected name and a valid ID.
-func TestGroupCreate(t *testing.T) {
+func TestBasicAuthGroupCreate(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	name := lib.GroupName()
@@ -28,8 +28,8 @@ func TestGroupCreate(t *testing.T) {
 	}
 }
 
-// TestGroupList verifies that a newly created group appears in the list response for its organisation.
-func TestGroupList(t *testing.T) {
+// TestBasicAuthGroupList verifies that a newly created group appears in the list response for its organisation.
+func TestBasicAuthGroupList(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	createResp, err := lib.BasicAuthClient.CreateGroupWithResponse(
@@ -57,8 +57,8 @@ func TestGroupList(t *testing.T) {
 	t.Fatalf("created group %d not found in list response", createdID)
 }
 
-// TestGroupGet verifies that a created group can be fetched by ID.
-func TestGroupGet(t *testing.T) {
+// TestBasicAuthGroupGet verifies that a created group can be fetched by ID.
+func TestBasicAuthGroupGet(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	name := lib.GroupName()
@@ -83,8 +83,8 @@ func TestGroupGet(t *testing.T) {
 	lib.Matches(getResp.JSON200.Name, name, t)
 }
 
-// TestGroupGetNotFound verifies that fetching a deleted group returns 404.
-func TestGroupGetNotFound(t *testing.T) {
+// TestBasicAuthGroupGetNotFound verifies that fetching a deleted group returns 404.
+func TestBasicAuthGroupGetNotFound(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
@@ -125,9 +125,9 @@ func TestGroupGetNotFound(t *testing.T) {
 	lib.VerifyStatusCode(getResp.StatusCode(), http.StatusNotFound, t)
 }
 
-// TestGroupUpdate verifies that a group's name can be changed and the updated value is
+// TestBasicAuthGroupUpdate verifies that a group's name can be changed and the updated value is
 // reflected in a subsequent get.
-func TestGroupUpdate(t *testing.T) {
+func TestBasicAuthGroupUpdate(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	createResp, err := lib.BasicAuthClient.CreateGroupWithResponse(
@@ -163,9 +163,9 @@ func TestGroupUpdate(t *testing.T) {
 	lib.Matches(getResp.JSON200.Name, newName, t)
 }
 
-// TestGroupUpdateConflict verifies that renaming a group to an already-taken name within the
+// TestBasicAuthGroupUpdateConflict verifies that renaming a group to an already-taken name within the
 // same organisation returns a conflict error.
-func TestGroupUpdateConflict(t *testing.T) {
+func TestBasicAuthGroupUpdateConflict(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	create1Resp, err := lib.BasicAuthClient.CreateGroupWithResponse(
@@ -198,9 +198,9 @@ func TestGroupUpdateConflict(t *testing.T) {
 	lib.VerifyAuthBasicAPIErrorResponse(updateResp.JSON409, t)
 }
 
-// TestGroupCreateConflict verifies that creating a group whose name already exists within the
+// TestBasicAuthGroupCreateConflict verifies that creating a group whose name already exists within the
 // same organisation returns a conflict error.
-func TestGroupCreateConflict(t *testing.T) {
+func TestBasicAuthGroupCreateConflict(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	name := lib.GroupName()
@@ -224,8 +224,8 @@ func TestGroupCreateConflict(t *testing.T) {
 	lib.VerifyAuthBasicAPIErrorResponse(conflictResp.JSON409, t)
 }
 
-// TestGroupDelete verifies that a deleted group is no longer accessible.
-func TestGroupDelete(t *testing.T) {
+// TestBasicAuthGroupDelete verifies that a deleted group is no longer accessible.
+func TestBasicAuthGroupDelete(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
@@ -266,9 +266,9 @@ func TestGroupDelete(t *testing.T) {
 	lib.VerifyStatusCode(getResp.StatusCode(), http.StatusNotFound, t)
 }
 
-// TestGroupCreateOASValidation verifies that creating a group with an empty name is
+// TestBasicAuthGroupCreateOASValidation verifies that creating a group with an empty name is
 // rejected with 400 by the OAS validator (name has minLength: 1).
-func TestGroupCreateOASValidation(t *testing.T) {
+func TestBasicAuthGroupCreateOASValidation(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	// Name below minLength: 1 — must be rejected.
@@ -283,9 +283,9 @@ func TestGroupCreateOASValidation(t *testing.T) {
 	lib.VerifyAuthBasicAPIErrorResponse(createResp.JSON400, t)
 }
 
-// TestGroupUpdateOASValidation verifies that updating a group with an empty name is
+// TestBasicAuthGroupUpdateOASValidation verifies that updating a group with an empty name is
 // rejected with 400 by the OAS validator (Group.name has minLength: 1).
-func TestGroupUpdateOASValidation(t *testing.T) {
+func TestBasicAuthGroupUpdateOASValidation(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	createResp, err := lib.BasicAuthClient.CreateGroupWithResponse(
@@ -310,9 +310,9 @@ func TestGroupUpdateOASValidation(t *testing.T) {
 	lib.VerifyAuthBasicAPIErrorResponse(updateResp.JSON400, t)
 }
 
-// TestGroupNoSession verifies that every group-scoped endpoint returns 401 with a
+// TestBasicAuthGroupNoSession verifies that every group-scoped endpoint returns 401 with a
 // populated error body when called without a session header.
-func TestGroupNoSession(t *testing.T) {
+func TestBasicAuthGroupNoSession(t *testing.T) {
 	// CreateGroup — no session.
 	createResp, err := lib.BasicAuthClient.CreateGroupWithResponse(
 		t.Context(),
@@ -364,8 +364,8 @@ func TestGroupNoSession(t *testing.T) {
 	lib.VerifyAuthBasicAPIErrorResponse(deleteResp.JSON401, t)
 }
 
-// TestGroupDeleteNotFound verifies deleting an already-deleted group.
-func TestGroupDeleteNotFound(t *testing.T) {
+// TestBasicAuthGroupDeleteNotFound verifies deleting an already-deleted group.
+func TestBasicAuthGroupDeleteNotFound(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
@@ -408,9 +408,9 @@ func TestGroupDeleteNotFound(t *testing.T) {
 	lib.VerifyStatusCode(deleteAgainResp.StatusCode(), http.StatusNoContent, t)
 }
 
-// TestGroupUpdateNotFound verifies that attempting to update a deleted group returns 404
+// TestBasicAuthGroupUpdateNotFound verifies that attempting to update a deleted group returns 404
 // (no body defined in spec).
-func TestGroupUpdateNotFound(t *testing.T) {
+func TestBasicAuthGroupUpdateNotFound(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(

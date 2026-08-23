@@ -13,7 +13,7 @@ import (
 	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
 )
 
-func TestCORS_admin(t *testing.T) {
+func TestCORSAdmin(t *testing.T) {
 	t.Run("Non-browser request", func(t *testing.T) {
 		t.Parallel()
 		client := lib.AdminResponsesTLSClient(t, certDir)
@@ -70,7 +70,7 @@ func TestCORS_admin(t *testing.T) {
 	})
 }
 
-func TestCORS_basicauth(t *testing.T) {
+func TestCORSBasicAuth(t *testing.T) {
 	t.Run("Browser request - denied", func(t *testing.T) {
 		t.Parallel()
 		client := lib.BasicAuthResponsesTLSClient(t, certDir)
@@ -99,7 +99,7 @@ func TestCORS_basicauth(t *testing.T) {
 	})
 }
 
-func TestCORS_gateway(t *testing.T) {
+func TestCORSGateway(t *testing.T) {
 	t.Run("Non-browser request", func(t *testing.T) {
 		t.Parallel()
 		client := lib.TLSClient(t, certDir)

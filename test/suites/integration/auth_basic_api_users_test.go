@@ -3,14 +3,16 @@ package integration
 import (
 	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
+	"slices"
 	"testing"
 
+	adminapi "github.com/trebent/kerberos/test/client/admin"
 	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
 )
 
-// TestUserCreate verifies that a new user can be created within an organisation and that
+// TestBasicAuthUserCreate verifies that a new user can be created within an organisation and that
 // the response contains the expected name and a valid ID.
-func TestUserCreate(t *testing.T) {
+func TestBasicAuthUserCreate(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	name := lib.Username()
@@ -28,8 +30,8 @@ func TestUserCreate(t *testing.T) {
 	}
 }
 
-// TestUserList verifies that a newly created user appears in the list response for its organisation.
-func TestUserList(t *testing.T) {
+// TestBasicAuthUserList verifies that a newly created user appears in the list response for its organisation.
+func TestBasicAuthUserList(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	createResp, err := lib.BasicAuthClient.CreateUserWithResponse(
@@ -57,8 +59,8 @@ func TestUserList(t *testing.T) {
 	t.Fatalf("created user %d not found in list response", createdID)
 }
 
-// TestUserGet verifies that a created user can be fetched by ID.
-func TestUserGet(t *testing.T) {
+// TestBasicAuthUserGet verifies that a created user can be fetched by ID.
+func TestBasicAuthUserGet(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	name := lib.Username()
@@ -83,8 +85,8 @@ func TestUserGet(t *testing.T) {
 	lib.Matches(getResp.JSON200.Name, name, t)
 }
 
-// TestUserGetNotFound verifies that fetching a deleted user returns 404.
-func TestUserGetNotFound(t *testing.T) {
+// TestBasicAuthUserGetNotFound verifies that fetching a deleted user returns 404.
+func TestBasicAuthUserGetNotFound(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
@@ -125,9 +127,9 @@ func TestUserGetNotFound(t *testing.T) {
 	lib.VerifyStatusCode(getResp.StatusCode(), http.StatusNotFound, t)
 }
 
-// TestUserUpdate verifies that a user's name can be changed and the updated value is
+// TestBasicAuthUserUpdate verifies that a user's name can be changed and the updated value is
 // reflected in a subsequent get.
-func TestUserUpdate(t *testing.T) {
+func TestBasicAuthUserUpdate(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	createResp, err := lib.BasicAuthClient.CreateUserWithResponse(
@@ -163,9 +165,9 @@ func TestUserUpdate(t *testing.T) {
 	lib.Matches(getResp.JSON200.Name, newName, t)
 }
 
-// TestUserUpdateConflict verifies that renaming a user to an already-taken name within the
+// TestBasicAuthUserUpdateConflict verifies that renaming a user to an already-taken name within the
 // same organisation returns a conflict error.
-func TestUserUpdateConflict(t *testing.T) {
+func TestBasicAuthUserUpdateConflict(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	create1Resp, err := lib.BasicAuthClient.CreateUserWithResponse(
@@ -198,9 +200,9 @@ func TestUserUpdateConflict(t *testing.T) {
 	lib.VerifyAuthBasicAPIErrorResponse(updateResp.JSON409, t)
 }
 
-// TestUserCreateConflict verifies that creating a user whose name already exists within the
+// TestBasicAuthUserCreateConflict verifies that creating a user whose name already exists within the
 // same organisation returns a conflict error.
-func TestUserCreateConflict(t *testing.T) {
+func TestBasicAuthUserCreateConflict(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	name := lib.Username()
@@ -224,8 +226,8 @@ func TestUserCreateConflict(t *testing.T) {
 	lib.VerifyAuthBasicAPIErrorResponse(conflictResp.JSON409, t)
 }
 
-// TestUserDelete verifies that a deleted user is no longer accessible.
-func TestUserDelete(t *testing.T) {
+// TestBasicAuthUserDelete verifies that a deleted user is no longer accessible.
+func TestBasicAuthUserDelete(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
@@ -266,9 +268,9 @@ func TestUserDelete(t *testing.T) {
 	lib.VerifyStatusCode(getResp.StatusCode(), http.StatusNotFound, t)
 }
 
-// TestUserCreateOASValidation verifies that creating a user with a name that is too short
+// TestBasicAuthUserCreateOASValidation verifies that creating a user with a name that is too short
 // or a password that is outside the allowed length range is rejected with 400.
-func TestUserCreateOASValidation(t *testing.T) {
+func TestBasicAuthUserCreateOASValidation(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	// Name below minLength: 5 — must be rejected.
@@ -305,9 +307,9 @@ func TestUserCreateOASValidation(t *testing.T) {
 	lib.VerifyAuthBasicAPIErrorResponse(longPasswordResp.JSON400, t)
 }
 
-// TestUserChangePassword verifies the full change-password flow: a user can log in,
+// TestBasicAuthUserChangePassword verifies the full change-password flow: a user can log in,
 // change their password, and then log in again with the new password.
-func TestUserChangePassword(t *testing.T) {
+func TestBasicAuthUserChangePassword(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
@@ -372,11 +374,11 @@ func TestUserChangePassword(t *testing.T) {
 	lib.VerifyAuthBasicAPIErrorResponse(oldLoginResp.JSON401, t)
 }
 
-// TestUserChangePasswordOASValidation verifies that the OAS validator rejects change-password
+// TestBasicAuthUserChangePasswordOASValidation verifies that the OAS validator rejects change-password
 // requests with credentials that violate the schema length constraints.
 // Note: the spec does not define a 400 response body for this endpoint, so only the
 // status code is checked.
-func TestUserChangePasswordOASValidation(t *testing.T) {
+func TestBasicAuthUserChangePasswordOASValidation(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	// oldPassword below minLength: 10 — must be rejected before auth checks.
@@ -402,9 +404,9 @@ func TestUserChangePasswordOASValidation(t *testing.T) {
 	lib.VerifyStatusCode(shortNewPwResp.StatusCode(), http.StatusBadRequest, t)
 }
 
-// TestUserNoSession verifies that every user-scoped endpoint returns 401 with a populated
+// TestBasicAuthUserNoSession verifies that every user-scoped endpoint returns 401 with a populated
 // error body when called without a session header.
-func TestUserNoSession(t *testing.T) {
+func TestBasicAuthUserNoSession(t *testing.T) {
 	// CreateUser — no session.
 	createResp, err := lib.BasicAuthClient.CreateUserWithResponse(
 		t.Context(),
@@ -488,8 +490,8 @@ func TestUserNoSession(t *testing.T) {
 	lib.VerifyAuthBasicAPIErrorResponse(changePwResp.JSON401, t)
 }
 
-// TestUserDeleteNotFound verifies deleting an already-deleted user.
-func TestUserDeleteNotFound(t *testing.T) {
+// TestBasicAuthUserDeleteNotFound verifies deleting an already-deleted user.
+func TestBasicAuthUserDeleteNotFound(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
@@ -532,9 +534,9 @@ func TestUserDeleteNotFound(t *testing.T) {
 	lib.VerifyStatusCode(deleteAgainResp.StatusCode(), http.StatusNoContent, t)
 }
 
-// TestUserUpdateNotFound verifies that attempting to update a deleted user returns 404
+// TestBasicAuthUserUpdateNotFound verifies that attempting to update a deleted user returns 404
 // (no body defined in spec).
-func TestUserUpdateNotFound(t *testing.T) {
+func TestBasicAuthUserUpdateNotFound(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
 	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
@@ -576,4 +578,261 @@ func TestUserUpdateNotFound(t *testing.T) {
 	)
 	lib.CheckErr(err, t)
 	lib.VerifyStatusCode(updateResp.StatusCode(), http.StatusNotFound, t)
+}
+
+// TestBasicAuthUserGroupBindingAssign verifies that groups can be assigned to a user and are returned
+// by GetUserGroups.
+func TestBasicAuthUserGroupBindingAssign(t *testing.T) {
+	superLoginResp, err := lib.AdminClient.LoginSuperuserWithResponse(
+		t.Context(),
+		adminapi.LoginSuperuserJSONRequestBody{ClientId: lib.SuperUserClientID, ClientSecret: lib.SuperUserClientSecret},
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
+	superRequestEditor := lib.SessionCookieRequestEditor(superLoginResp.HTTPResponse, t)
+
+	orgID, adminRequestEditor := lib.OrgWithSession(t, superRequestEditor)
+
+	groupAName := lib.GroupName()
+	createGroupA, err := lib.BasicAuthClient.CreateGroupWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.CreateGroupJSONRequestBody{Name: groupAName},
+		authbasicapi.RequestEditorFn(adminRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createGroupA.StatusCode(), http.StatusCreated, t)
+
+	groupBName := lib.GroupName()
+	createGroupB, err := lib.BasicAuthClient.CreateGroupWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.CreateGroupJSONRequestBody{Name: groupBName},
+		authbasicapi.RequestEditorFn(adminRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createGroupB.StatusCode(), http.StatusCreated, t)
+
+	createUserResp, err := lib.BasicAuthClient.CreateUserWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.CreateUserJSONRequestBody{Name: lib.Username(), Password: "password123"},
+		authbasicapi.RequestEditorFn(adminRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
+	userID := createUserResp.JSON201.Id
+
+	updateResp, err := lib.BasicAuthClient.UpdateUserGroupsWithResponse(
+		t.Context(),
+		orgID,
+		userID,
+		authbasicapi.UpdateUserGroupsJSONRequestBody{
+			{Id: createGroupA.JSON201.Id, Name: groupAName},
+			{Id: createGroupB.JSON201.Id, Name: groupBName},
+		},
+		authbasicapi.RequestEditorFn(adminRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(updateResp.StatusCode(), http.StatusOK, t)
+
+	getResp, err := lib.BasicAuthClient.GetUserGroupsWithResponse(
+		t.Context(),
+		orgID,
+		userID,
+		authbasicapi.RequestEditorFn(adminRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
+	groups := *getResp.JSON200
+	if !slices.ContainsFunc(groups, func(g authbasicapi.Group) bool { return g.Name == groupAName }) {
+		t.Fatalf("expected group %q in user groups, got %v", groupAName, groups)
+	}
+	if !slices.ContainsFunc(groups, func(g authbasicapi.Group) bool { return g.Name == groupBName }) {
+		t.Fatalf("expected group %q in user groups, got %v", groupBName, groups)
+	}
+}
+
+// TestBasicAuthUserGroupBindingReplace verifies that updating a user's groups replaces the previous
+// set entirely — groups removed from the request are no longer returned.
+func TestBasicAuthUserGroupBindingReplace(t *testing.T) {
+	superLoginResp, err := lib.AdminClient.LoginSuperuserWithResponse(
+		t.Context(),
+		adminapi.LoginSuperuserJSONRequestBody{ClientId: lib.SuperUserClientID, ClientSecret: lib.SuperUserClientSecret},
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
+	superRequestEditor := lib.SessionCookieRequestEditor(superLoginResp.HTTPResponse, t)
+
+	orgID, adminRequestEditor := lib.OrgWithSession(t, superRequestEditor)
+
+	groupAName := lib.GroupName()
+	createGroupA, err := lib.BasicAuthClient.CreateGroupWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.CreateGroupJSONRequestBody{Name: groupAName},
+		authbasicapi.RequestEditorFn(adminRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createGroupA.StatusCode(), http.StatusCreated, t)
+
+	groupBName := lib.GroupName()
+	createGroupB, err := lib.BasicAuthClient.CreateGroupWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.CreateGroupJSONRequestBody{Name: groupBName},
+		authbasicapi.RequestEditorFn(adminRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createGroupB.StatusCode(), http.StatusCreated, t)
+
+	createUserResp, err := lib.BasicAuthClient.CreateUserWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.CreateUserJSONRequestBody{Name: lib.Username(), Password: "password123"},
+		authbasicapi.RequestEditorFn(adminRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
+	userID := createUserResp.JSON201.Id
+
+	// Assign both groups initially.
+	initialUpdateResp, err := lib.BasicAuthClient.UpdateUserGroupsWithResponse(
+		t.Context(),
+		orgID,
+		userID,
+		authbasicapi.UpdateUserGroupsJSONRequestBody{
+			{Id: createGroupA.JSON201.Id, Name: groupAName},
+			{Id: createGroupB.JSON201.Id, Name: groupBName},
+		},
+		authbasicapi.RequestEditorFn(adminRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(initialUpdateResp.StatusCode(), http.StatusOK, t)
+
+	// Replace with only group B — group A should be removed.
+	replaceResp, err := lib.BasicAuthClient.UpdateUserGroupsWithResponse(
+		t.Context(),
+		orgID,
+		userID,
+		authbasicapi.UpdateUserGroupsJSONRequestBody{
+			{Id: createGroupB.JSON201.Id, Name: groupBName},
+		},
+		authbasicapi.RequestEditorFn(adminRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(replaceResp.StatusCode(), http.StatusOK, t)
+
+	getResp, err := lib.BasicAuthClient.GetUserGroupsWithResponse(
+		t.Context(),
+		orgID,
+		userID,
+		authbasicapi.RequestEditorFn(adminRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
+	groups := *getResp.JSON200
+	if slices.ContainsFunc(groups, func(g authbasicapi.Group) bool { return g.Name == groupAName }) {
+		t.Fatalf("group %q should have been removed after replace, got %v", groupAName, groups)
+	}
+	if !slices.ContainsFunc(groups, func(g authbasicapi.Group) bool { return g.Name == groupBName }) {
+		t.Fatalf("expected group %q to remain after replace, got %v", groupBName, groups)
+	}
+}
+
+// TestBasicAuthUserGroupBindingClear verifies that assigning an empty group list removes all group
+// memberships from the user.
+func TestBasicAuthUserGroupBindingClear(t *testing.T) {
+	superLoginResp, err := lib.AdminClient.LoginSuperuserWithResponse(
+		t.Context(),
+		adminapi.LoginSuperuserJSONRequestBody{ClientId: lib.SuperUserClientID, ClientSecret: lib.SuperUserClientSecret},
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(superLoginResp.StatusCode(), http.StatusNoContent, t)
+	superRequestEditor := lib.SessionCookieRequestEditor(superLoginResp.HTTPResponse, t)
+
+	orgID, adminRequestEditor := lib.OrgWithSession(t, superRequestEditor)
+
+	gName := lib.GroupName()
+	createGroupResp, err := lib.BasicAuthClient.CreateGroupWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.CreateGroupJSONRequestBody{Name: gName},
+		authbasicapi.RequestEditorFn(adminRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createGroupResp.StatusCode(), http.StatusCreated, t)
+
+	createUserResp, err := lib.BasicAuthClient.CreateUserWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.CreateUserJSONRequestBody{Name: lib.Username(), Password: "password123"},
+		authbasicapi.RequestEditorFn(adminRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
+	userID := createUserResp.JSON201.Id
+
+	// Assign the group first.
+	assignResp, err := lib.BasicAuthClient.UpdateUserGroupsWithResponse(
+		t.Context(),
+		orgID,
+		userID,
+		authbasicapi.UpdateUserGroupsJSONRequestBody{
+			{Id: createGroupResp.JSON201.Id, Name: gName},
+		},
+		authbasicapi.RequestEditorFn(adminRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(assignResp.StatusCode(), http.StatusOK, t)
+
+	// Clear all groups.
+	clearResp, err := lib.BasicAuthClient.UpdateUserGroupsWithResponse(
+		t.Context(),
+		orgID,
+		userID,
+		authbasicapi.UpdateUserGroupsJSONRequestBody{},
+		authbasicapi.RequestEditorFn(adminRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(clearResp.StatusCode(), http.StatusOK, t)
+
+	getResp, err := lib.BasicAuthClient.GetUserGroupsWithResponse(
+		t.Context(),
+		orgID,
+		userID,
+		authbasicapi.RequestEditorFn(adminRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
+	if len(*getResp.JSON200) != 0 {
+		t.Fatalf("expected empty groups after clear, got %v", *getResp.JSON200)
+	}
+}
+
+// TestBasicAuthUserGroupBindingGet verifies that GetUserGroups returns the expected groups for a user
+// that was set up with known group memberships in TestMain.
+func TestBasicAuthUserGroupBindingGet(t *testing.T) {
+	loginResp, err := lib.AdminClient.LoginSuperuserWithResponse(
+		t.Context(),
+		adminapi.LoginSuperuserJSONRequestBody{ClientId: lib.SuperUserClientID, ClientSecret: lib.SuperUserClientSecret},
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
+	superRequestEditor := lib.SessionCookieRequestEditor(loginResp.HTTPResponse, t)
+
+	getResp, err := lib.BasicAuthClient.GetUserGroupsWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.Userid(alwaysUserID),
+		authbasicapi.RequestEditorFn(superRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
+	groups := *getResp.JSON200
+	for _, expected := range []string{alwaysGroupStaff, alwaysGroupPleb, alwaysGroupDev} {
+		if !slices.ContainsFunc(groups, func(g authbasicapi.Group) bool { return g.Name == expected }) {
+			t.Fatalf("expected group %q in always-user groups, got %v", expected, groups)
+		}
+	}
 }

@@ -64,7 +64,7 @@ func TestPostgres(t *testing.T) {
 	}
 }
 
-func TestPostgres_NamedArgs(t *testing.T) {
+func TestPostgresNamedArgs(t *testing.T) {
 	db := postgres.New(&postgres.Opts{DSN: dsn(t)})
 
 	_, err := db.Exec(t.Context(), "CREATE TABLE IF NOT EXISTS _test_pg_named (id SERIAL PRIMARY KEY, name TEXT NOT NULL)")
