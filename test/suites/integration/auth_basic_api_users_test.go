@@ -1,6 +1,7 @@
 package integration
 
 import (
+	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"testing"
 
@@ -10,18 +11,18 @@ import (
 // TestUserCreate verifies that a new user can be created within an organisation and that
 // the response contains the expected name and a valid ID.
 func TestUserCreate(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	name := username()
-	createResp, err := basicAuthClient.CreateUserWithResponse(
+	name := lib.Username()
+	createResp, err := lib.BasicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateUserJSONRequestBody{Name: name, Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
-	matches(createResp.JSON201.Name, name, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+	lib.Matches(createResp.JSON201.Name, name, t)
 	if createResp.JSON201.Id == 0 {
 		t.Fatal("expected non-zero user ID in create response")
 	}
@@ -29,25 +30,25 @@ func TestUserCreate(t *testing.T) {
 
 // TestUserList verifies that a newly created user appears in the list response for its organisation.
 func TestUserList(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	createResp, err := basicAuthClient.CreateUserWithResponse(
+	createResp, err := lib.BasicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: lib.Username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
 	createdID := createResp.JSON201.Id
 
-	listResp, err := basicAuthClient.ListUsersWithResponse(
+	listResp, err := lib.BasicAuthClient.ListUsersWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(listResp.StatusCode(), http.StatusOK, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(listResp.StatusCode(), http.StatusOK, t)
 	for _, user := range *listResp.JSON200 {
 		if user.Id == createdID {
 			return
@@ -58,317 +59,317 @@ func TestUserList(t *testing.T) {
 
 // TestUserGet verifies that a created user can be fetched by ID.
 func TestUserGet(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	name := username()
-	createResp, err := basicAuthClient.CreateUserWithResponse(
+	name := lib.Username()
+	createResp, err := lib.BasicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateUserJSONRequestBody{Name: name, Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
 
-	getResp, err := basicAuthClient.GetUserWithResponse(
+	getResp, err := lib.BasicAuthClient.GetUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		createResp.JSON201.Id,
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
-	matches(getResp.JSON200.Id, createResp.JSON201.Id, t)
-	matches(getResp.JSON200.Name, name, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
+	lib.Matches(getResp.JSON200.Id, createResp.JSON201.Id, t)
+	lib.Matches(getResp.JSON200.Name, name, t)
 }
 
 // TestUserGetNotFound verifies that fetching a deleted user returns 404.
 func TestUserGetNotFound(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
+	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: lib.OrgName()},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
 	orgID := createOrgResp.JSON201.Id
 
-	createUserResp, err := basicAuthClient.CreateUserWithResponse(
+	createUserResp, err := lib.BasicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: lib.Username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
 	userID := createUserResp.JSON201.Id
 
-	deleteResp, err := basicAuthClient.DeleteUserWithResponse(
+	deleteResp, err := lib.BasicAuthClient.DeleteUserWithResponse(
 		t.Context(),
 		orgID,
 		userID,
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
 
-	getResp, err := basicAuthClient.GetUserWithResponse(
+	getResp, err := lib.BasicAuthClient.GetUserWithResponse(
 		t.Context(),
 		orgID,
 		userID,
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(getResp.StatusCode(), http.StatusNotFound, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(getResp.StatusCode(), http.StatusNotFound, t)
 }
 
 // TestUserUpdate verifies that a user's name can be changed and the updated value is
 // reflected in a subsequent get.
 func TestUserUpdate(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	createResp, err := basicAuthClient.CreateUserWithResponse(
+	createResp, err := lib.BasicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: lib.Username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
 	userID := createResp.JSON201.Id
 
-	newName := username()
-	updateResp, err := basicAuthClient.UpdateUserWithResponse(
+	newName := lib.Username()
+	updateResp, err := lib.BasicAuthClient.UpdateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		userID,
 		authbasicapi.UpdateUserJSONRequestBody{Name: newName},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(updateResp.StatusCode(), http.StatusOK, t)
-	matches(updateResp.JSON200.Name, newName, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(updateResp.StatusCode(), http.StatusOK, t)
+	lib.Matches(updateResp.JSON200.Name, newName, t)
 
-	getResp, err := basicAuthClient.GetUserWithResponse(
+	getResp, err := lib.BasicAuthClient.GetUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		userID,
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
-	matches(getResp.JSON200.Name, newName, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
+	lib.Matches(getResp.JSON200.Name, newName, t)
 }
 
 // TestUserUpdateConflict verifies that renaming a user to an already-taken name within the
 // same organisation returns a conflict error.
 func TestUserUpdateConflict(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	create1Resp, err := basicAuthClient.CreateUserWithResponse(
+	create1Resp, err := lib.BasicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: lib.Username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(create1Resp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(create1Resp.StatusCode(), http.StatusCreated, t)
 
-	create2Resp, err := basicAuthClient.CreateUserWithResponse(
+	create2Resp, err := lib.BasicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: lib.Username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(create2Resp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(create2Resp.StatusCode(), http.StatusCreated, t)
 
-	updateResp, err := basicAuthClient.UpdateUserWithResponse(
+	updateResp, err := lib.BasicAuthClient.UpdateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		create2Resp.JSON201.Id,
 		authbasicapi.UpdateUserJSONRequestBody{Name: create1Resp.JSON201.Name},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(updateResp.StatusCode(), http.StatusConflict, t)
-	verifyAuthBasicAPIErrorResponse(updateResp.JSON409, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(updateResp.StatusCode(), http.StatusConflict, t)
+	lib.VerifyAuthBasicAPIErrorResponse(updateResp.JSON409, t)
 }
 
 // TestUserCreateConflict verifies that creating a user whose name already exists within the
 // same organisation returns a conflict error.
 func TestUserCreateConflict(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	name := username()
-	createResp, err := basicAuthClient.CreateUserWithResponse(
+	name := lib.Username()
+	createResp, err := lib.BasicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateUserJSONRequestBody{Name: name, Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
 
-	conflictResp, err := basicAuthClient.CreateUserWithResponse(
+	conflictResp, err := lib.BasicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateUserJSONRequestBody{Name: name, Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(conflictResp.StatusCode(), http.StatusConflict, t)
-	verifyAuthBasicAPIErrorResponse(conflictResp.JSON409, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(conflictResp.StatusCode(), http.StatusConflict, t)
+	lib.VerifyAuthBasicAPIErrorResponse(conflictResp.JSON409, t)
 }
 
 // TestUserDelete verifies that a deleted user is no longer accessible.
 func TestUserDelete(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
+	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: lib.OrgName()},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
 	orgID := createOrgResp.JSON201.Id
 
-	createUserResp, err := basicAuthClient.CreateUserWithResponse(
+	createUserResp, err := lib.BasicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: lib.Username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
 	userID := createUserResp.JSON201.Id
 
-	deleteResp, err := basicAuthClient.DeleteUserWithResponse(
+	deleteResp, err := lib.BasicAuthClient.DeleteUserWithResponse(
 		t.Context(),
 		orgID,
 		userID,
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
 
-	getResp, err := basicAuthClient.GetUserWithResponse(
+	getResp, err := lib.BasicAuthClient.GetUserWithResponse(
 		t.Context(),
 		orgID,
 		userID,
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(getResp.StatusCode(), http.StatusNotFound, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(getResp.StatusCode(), http.StatusNotFound, t)
 }
 
 // TestUserCreateOASValidation verifies that creating a user with a name that is too short
 // or a password that is outside the allowed length range is rejected with 400.
 func TestUserCreateOASValidation(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
 	// Name below minLength: 5 — must be rejected.
-	shortNameResp, err := basicAuthClient.CreateUserWithResponse(
+	shortNameResp, err := lib.BasicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateUserJSONRequestBody{Name: "ab", Password: "validpassword"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(shortNameResp.StatusCode(), http.StatusBadRequest, t)
-	verifyAuthBasicAPIErrorResponse(shortNameResp.JSON400, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(shortNameResp.StatusCode(), http.StatusBadRequest, t)
+	lib.VerifyAuthBasicAPIErrorResponse(shortNameResp.JSON400, t)
 
 	// Password below minLength: 10 — must be rejected.
-	shortPasswordResp, err := basicAuthClient.CreateUserWithResponse(
+	shortPasswordResp, err := lib.BasicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "short"},
+		authbasicapi.CreateUserJSONRequestBody{Name: lib.Username(), Password: "short"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(shortPasswordResp.StatusCode(), http.StatusBadRequest, t)
-	verifyAuthBasicAPIErrorResponse(shortPasswordResp.JSON400, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(shortPasswordResp.StatusCode(), http.StatusBadRequest, t)
+	lib.VerifyAuthBasicAPIErrorResponse(shortPasswordResp.JSON400, t)
 
 	// Password above maxLength: 40 — must be rejected.
-	longPasswordResp, err := basicAuthClient.CreateUserWithResponse(
+	longPasswordResp, err := lib.BasicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "this-password-is-way-too-long-for-the-schema-limits"},
+		authbasicapi.CreateUserJSONRequestBody{Name: lib.Username(), Password: "this-password-is-way-too-long-for-the-schema-limits"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(longPasswordResp.StatusCode(), http.StatusBadRequest, t)
-	verifyAuthBasicAPIErrorResponse(longPasswordResp.JSON400, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(longPasswordResp.StatusCode(), http.StatusBadRequest, t)
+	lib.VerifyAuthBasicAPIErrorResponse(longPasswordResp.JSON400, t)
 }
 
 // TestUserChangePassword verifies the full change-password flow: a user can log in,
 // change their password, and then log in again with the new password.
 func TestUserChangePassword(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
+	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: lib.OrgName()},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
 	orgID := createOrgResp.JSON201.Id
 
 	oldPassword := "oldpassword123"
 	newPassword := "newpassword456"
-	name := username()
+	name := lib.Username()
 
-	createUserResp2, err := basicAuthClient.CreateUserWithResponse(
+	createUserResp2, err := lib.BasicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
 		authbasicapi.CreateUserJSONRequestBody{Name: name, Password: oldPassword},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createUserResp2.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createUserResp2.StatusCode(), http.StatusCreated, t)
 	userID2 := createUserResp2.JSON201.Id
 
-	loginResp, err := basicAuthClient.LoginWithResponse(
+	loginResp, err := lib.BasicAuthClient.LoginWithResponse(
 		t.Context(),
 		orgID,
 		authbasicapi.LoginJSONRequestBody{Username: name, Password: oldPassword},
 	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	orgUserRequestEditor := sessionCookieRequestEditor(loginResp.HTTPResponse, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
+	orgUserRequestEditor := lib.SessionCookieRequestEditor(loginResp.HTTPResponse, t)
 
-	changeResp, err := basicAuthClient.ChangePasswordWithResponse(
+	changeResp, err := lib.BasicAuthClient.ChangePasswordWithResponse(
 		t.Context(),
 		orgID,
 		userID2,
 		authbasicapi.ChangePasswordJSONRequestBody{OldPassword: oldPassword, Password: newPassword},
 		authbasicapi.RequestEditorFn(orgUserRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(changeResp.StatusCode(), http.StatusNoContent, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(changeResp.StatusCode(), http.StatusNoContent, t)
 
 	// Login with new password must succeed.
-	newLoginResp, err := basicAuthClient.LoginWithResponse(
+	newLoginResp, err := lib.BasicAuthClient.LoginWithResponse(
 		t.Context(),
 		orgID,
 		authbasicapi.LoginJSONRequestBody{Username: name, Password: newPassword},
 	)
-	checkErr(err, t)
-	verifyStatusCode(newLoginResp.StatusCode(), http.StatusNoContent, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(newLoginResp.StatusCode(), http.StatusNoContent, t)
 
 	// Login with old password must now fail.
-	oldLoginResp, err := basicAuthClient.LoginWithResponse(
+	oldLoginResp, err := lib.BasicAuthClient.LoginWithResponse(
 		t.Context(),
 		orgID,
 		authbasicapi.LoginJSONRequestBody{Username: name, Password: oldPassword},
 	)
-	checkErr(err, t)
-	verifyStatusCode(oldLoginResp.StatusCode(), http.StatusUnauthorized, t)
-	verifyAuthBasicAPIErrorResponse(oldLoginResp.JSON401, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(oldLoginResp.StatusCode(), http.StatusUnauthorized, t)
+	lib.VerifyAuthBasicAPIErrorResponse(oldLoginResp.JSON401, t)
 }
 
 // TestUserChangePasswordOASValidation verifies that the OAS validator rejects change-password
@@ -376,203 +377,203 @@ func TestUserChangePassword(t *testing.T) {
 // Note: the spec does not define a 400 response body for this endpoint, so only the
 // status code is checked.
 func TestUserChangePasswordOASValidation(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
 	// oldPassword below minLength: 10 — must be rejected before auth checks.
-	shortOldPwResp, err := basicAuthClient.ChangePasswordWithResponse(
+	shortOldPwResp, err := lib.BasicAuthClient.ChangePasswordWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.Userid(alwaysUserID),
 		authbasicapi.ChangePasswordJSONRequestBody{OldPassword: "short", Password: "validpassword123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(shortOldPwResp.StatusCode(), http.StatusBadRequest, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(shortOldPwResp.StatusCode(), http.StatusBadRequest, t)
 
 	// new password below minLength: 10 — must be rejected.
-	shortNewPwResp, err := basicAuthClient.ChangePasswordWithResponse(
+	shortNewPwResp, err := lib.BasicAuthClient.ChangePasswordWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.Userid(alwaysUserID),
 		authbasicapi.ChangePasswordJSONRequestBody{OldPassword: "validoldpassword", Password: "short"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(shortNewPwResp.StatusCode(), http.StatusBadRequest, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(shortNewPwResp.StatusCode(), http.StatusBadRequest, t)
 }
 
 // TestUserNoSession verifies that every user-scoped endpoint returns 401 with a populated
 // error body when called without a session header.
 func TestUserNoSession(t *testing.T) {
 	// CreateUser — no session.
-	createResp, err := basicAuthClient.CreateUserWithResponse(
+	createResp, err := lib.BasicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: lib.Username(), Password: "password123"},
 	)
-	checkErr(err, t)
-	verifyStatusCode(createResp.StatusCode(), http.StatusUnauthorized, t)
-	verifyAuthBasicAPIErrorResponse(createResp.JSON401, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusUnauthorized, t)
+	lib.VerifyAuthBasicAPIErrorResponse(createResp.JSON401, t)
 
 	// ListUsers — no session.
-	listResp, err := basicAuthClient.ListUsersWithResponse(
+	listResp, err := lib.BasicAuthClient.ListUsersWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 	)
-	checkErr(err, t)
-	verifyStatusCode(listResp.StatusCode(), http.StatusUnauthorized, t)
-	verifyAuthBasicAPIErrorResponse(listResp.JSON401, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(listResp.StatusCode(), http.StatusUnauthorized, t)
+	lib.VerifyAuthBasicAPIErrorResponse(listResp.JSON401, t)
 
 	// GetUser — no session.
-	getResp, err := basicAuthClient.GetUserWithResponse(
+	getResp, err := lib.BasicAuthClient.GetUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.Userid(alwaysUserID),
 	)
-	checkErr(err, t)
-	verifyStatusCode(getResp.StatusCode(), http.StatusUnauthorized, t)
-	verifyAuthBasicAPIErrorResponse(getResp.JSON401, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(getResp.StatusCode(), http.StatusUnauthorized, t)
+	lib.VerifyAuthBasicAPIErrorResponse(getResp.JSON401, t)
 
 	// UpdateUser — no session.
-	updateResp, err := basicAuthClient.UpdateUserWithResponse(
+	updateResp, err := lib.BasicAuthClient.UpdateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.Userid(alwaysUserID),
-		authbasicapi.UpdateUserJSONRequestBody{Id: int64(alwaysUserID), Name: username()},
+		authbasicapi.UpdateUserJSONRequestBody{Id: int64(alwaysUserID), Name: lib.Username()},
 	)
-	checkErr(err, t)
-	verifyStatusCode(updateResp.StatusCode(), http.StatusUnauthorized, t)
-	verifyAuthBasicAPIErrorResponse(updateResp.JSON401, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(updateResp.StatusCode(), http.StatusUnauthorized, t)
+	lib.VerifyAuthBasicAPIErrorResponse(updateResp.JSON401, t)
 
 	// DeleteUser — no session.
-	deleteResp, err := basicAuthClient.DeleteUserWithResponse(
+	deleteResp, err := lib.BasicAuthClient.DeleteUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.Userid(alwaysUserID),
 	)
-	checkErr(err, t)
-	verifyStatusCode(deleteResp.StatusCode(), http.StatusUnauthorized, t)
-	verifyAuthBasicAPIErrorResponse(deleteResp.JSON401, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(deleteResp.StatusCode(), http.StatusUnauthorized, t)
+	lib.VerifyAuthBasicAPIErrorResponse(deleteResp.JSON401, t)
 
 	// UpdateUserGroups — no session.
-	updateGroupsResp, err := basicAuthClient.UpdateUserGroupsWithResponse(
+	updateGroupsResp, err := lib.BasicAuthClient.UpdateUserGroupsWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.Userid(alwaysUserID),
 		authbasicapi.UpdateUserGroupsJSONRequestBody{},
 	)
-	checkErr(err, t)
-	verifyStatusCode(updateGroupsResp.StatusCode(), http.StatusUnauthorized, t)
-	verifyAuthBasicAPIErrorResponse(updateGroupsResp.JSON401, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(updateGroupsResp.StatusCode(), http.StatusUnauthorized, t)
+	lib.VerifyAuthBasicAPIErrorResponse(updateGroupsResp.JSON401, t)
 
 	// GetUserGroups — no session.
-	getGroupsResp, err := basicAuthClient.GetUserGroupsWithResponse(
+	getGroupsResp, err := lib.BasicAuthClient.GetUserGroupsWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.Userid(alwaysUserID),
 	)
-	checkErr(err, t)
-	verifyStatusCode(getGroupsResp.StatusCode(), http.StatusUnauthorized, t)
-	verifyAuthBasicAPIErrorResponse(getGroupsResp.JSON401, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(getGroupsResp.StatusCode(), http.StatusUnauthorized, t)
+	lib.VerifyAuthBasicAPIErrorResponse(getGroupsResp.JSON401, t)
 
 	// ChangePassword — no session.
-	changePwResp, err := basicAuthClient.ChangePasswordWithResponse(
+	changePwResp, err := lib.BasicAuthClient.ChangePasswordWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.Userid(alwaysUserID),
 		authbasicapi.ChangePasswordJSONRequestBody{OldPassword: "validoldpassword", Password: "validnewpassword"},
 	)
-	checkErr(err, t)
-	verifyStatusCode(changePwResp.StatusCode(), http.StatusUnauthorized, t)
-	verifyAuthBasicAPIErrorResponse(changePwResp.JSON401, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(changePwResp.StatusCode(), http.StatusUnauthorized, t)
+	lib.VerifyAuthBasicAPIErrorResponse(changePwResp.JSON401, t)
 }
 
 // TestUserDeleteNotFound verifies deleting an already-deleted user.
 func TestUserDeleteNotFound(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
+	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: lib.OrgName()},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
 	orgID := createOrgResp.JSON201.Id
 
-	createUserResp, err := basicAuthClient.CreateUserWithResponse(
+	createUserResp, err := lib.BasicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: lib.Username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
 	userID := createUserResp.JSON201.Id
 
 	// First delete succeeds.
-	deleteResp, err := basicAuthClient.DeleteUserWithResponse(
+	deleteResp, err := lib.BasicAuthClient.DeleteUserWithResponse(
 		t.Context(),
 		orgID,
 		userID,
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
 
 	// Second delete must return 404 (no body defined in spec).
-	deleteAgainResp, err := basicAuthClient.DeleteUserWithResponse(
+	deleteAgainResp, err := lib.BasicAuthClient.DeleteUserWithResponse(
 		t.Context(),
 		orgID,
 		userID,
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(deleteAgainResp.StatusCode(), http.StatusNoContent, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(deleteAgainResp.StatusCode(), http.StatusNoContent, t)
 }
 
 // TestUserUpdateNotFound verifies that attempting to update a deleted user returns 404
 // (no body defined in spec).
 func TestUserUpdateNotFound(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
+	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: lib.OrgName()},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
 	orgID := createOrgResp.JSON201.Id
 
-	createUserResp, err := basicAuthClient.CreateUserWithResponse(
+	createUserResp, err := lib.BasicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		orgID,
-		authbasicapi.CreateUserJSONRequestBody{Name: username(), Password: "password123"},
+		authbasicapi.CreateUserJSONRequestBody{Name: lib.Username(), Password: "password123"},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
 	userID := createUserResp.JSON201.Id
 
 	// Delete the user first.
-	deleteResp, err := basicAuthClient.DeleteUserWithResponse(
+	deleteResp, err := lib.BasicAuthClient.DeleteUserWithResponse(
 		t.Context(),
 		orgID,
 		userID,
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
 
 	// Update the deleted user must return 404 (no body defined in spec).
-	updateResp, err := basicAuthClient.UpdateUserWithResponse(
+	updateResp, err := lib.BasicAuthClient.UpdateUserWithResponse(
 		t.Context(),
 		orgID,
 		userID,
-		authbasicapi.UpdateUserJSONRequestBody{Id: userID, Name: username()},
+		authbasicapi.UpdateUserJSONRequestBody{Id: userID, Name: lib.Username()},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(updateResp.StatusCode(), http.StatusNotFound, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(updateResp.StatusCode(), http.StatusNotFound, t)
 }

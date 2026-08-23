@@ -1,6 +1,6 @@
 module github.com/trebent/kerberos/tools
 
-go 1.26.5
+go 1.26.6
 
 tool golang.org/x/vuln/cmd/govulncheck
 

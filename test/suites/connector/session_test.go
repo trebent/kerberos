@@ -2,6 +2,7 @@ package connector
 
 import (
 	"fmt"
+	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"net/url"
 	"testing"
@@ -15,16 +16,16 @@ func TestSession(t *testing.T) {
 			Method: "GET",
 			URL: &url.URL{
 				Scheme: "http",
-				Host:   fmt.Sprintf("%s:%d", getHost(), getConnectorPort()),
+				Host:   fmt.Sprintf("%s:%d", lib.GetHost(), lib.GetConnectorPort()),
 			},
 			Header: make(http.Header),
 		}
 
 		response, err := httpClient.Do(req)
-		checkErr(err, t)
+		lib.CheckErr(err, t)
 		defer response.Body.Close()
 
-		verifyStatusCode(response.StatusCode, http.StatusUnauthorized, t)
+		lib.VerifyStatusCode(response.StatusCode, http.StatusUnauthorized, t)
 	})
 
 	t.Run("invalid session cookie, unauthorized", func(t *testing.T) {
@@ -34,7 +35,7 @@ func TestSession(t *testing.T) {
 			Method: "GET",
 			URL: &url.URL{
 				Scheme: "http",
-				Host:   fmt.Sprintf("%s:%d", getHost(), getConnectorPort()),
+				Host:   fmt.Sprintf("%s:%d", lib.GetHost(), lib.GetConnectorPort()),
 			},
 			Header: make(http.Header),
 		}
@@ -44,10 +45,10 @@ func TestSession(t *testing.T) {
 		})
 
 		response, err := httpClient.Do(req)
-		checkErr(err, t)
+		lib.CheckErr(err, t)
 		defer response.Body.Close()
 
-		verifyStatusCode(response.StatusCode, http.StatusUnauthorized, t)
+		lib.VerifyStatusCode(response.StatusCode, http.StatusUnauthorized, t)
 	})
 
 	t.Run("session cookie is valid", func(t *testing.T) {
@@ -62,16 +63,16 @@ func TestSession(t *testing.T) {
 			Method: "GET",
 			URL: &url.URL{
 				Scheme: "http",
-				Host:   fmt.Sprintf("%s:%d", getHost(), getConnectorPort()),
+				Host:   fmt.Sprintf("%s:%d", lib.GetHost(), lib.GetConnectorPort()),
 			},
 			Header: make(http.Header),
 		}
 		req.AddCookie(cookie)
 
 		response, err := httpClient.Do(req)
-		checkErr(err, t)
+		lib.CheckErr(err, t)
 		defer response.Body.Close()
 
-		verifyStatusCode(response.StatusCode, http.StatusOK, t)
+		lib.VerifyStatusCode(response.StatusCode, http.StatusOK, t)
 	})
 }

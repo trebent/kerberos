@@ -2,6 +2,7 @@ package connector
 
 import (
 	"context"
+	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"os"
 	"testing"
@@ -12,10 +13,10 @@ import (
 func TestMain(m *testing.M) {
 	println("Running TestMain, setting up test foundation...")
 
-	loginResp, err := adminClient.LoginSuperuserWithResponse(
+	loginResp, err := lib.AdminClient.LoginSuperuserWithResponse(
 		context.Background(), adminapi.LoginSuperuserJSONRequestBody{
-			ClientId:     superUserClientID,
-			ClientSecret: superUserClientSecret,
+			ClientId:     lib.SuperUserClientID,
+			ClientSecret: lib.SuperUserClientSecret,
 		},
 	)
 	if err != nil {
@@ -24,13 +25,13 @@ func TestMain(m *testing.M) {
 	if loginResp.StatusCode() != http.StatusNoContent {
 		panic("superuser login response did not indicate success: " + loginResp.Status())
 	}
-	cookie, err := extractSessionCookie(loginResp.HTTPResponse)
+	cookie, err := lib.ExtractSessionCookie(loginResp.HTTPResponse)
 	if err != nil {
 		panic(err)
 	}
-	requestEditorSuper := makeRequestEditorFromCookie(cookie)
+	requestEditorSuper := lib.MakeRequestEditorFromCookie(cookie)
 
-	createAdminUserResp, err := adminClient.CreateUserWithResponse(
+	createAdminUserResp, err := lib.AdminClient.CreateUserWithResponse(
 		context.Background(),
 		adminapi.CreateUserJSONRequestBody{
 			Username: adminUser,

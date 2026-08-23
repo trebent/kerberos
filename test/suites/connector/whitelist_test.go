@@ -2,6 +2,7 @@ package connector
 
 import (
 	"fmt"
+	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"net/url"
 	"testing"
@@ -33,7 +34,7 @@ func testWhitelist(t *testing.T, origin string, expectAllowed bool) {
 		Method: http.MethodGet,
 		URL: &url.URL{
 			Scheme: "http",
-			Host:   fmt.Sprintf("%s:%d", getHost(), getConnectorPort()),
+			Host:   fmt.Sprintf("%s:%d", lib.GetHost(), lib.GetConnectorPort()),
 		},
 		Header: make(http.Header),
 	}
@@ -43,12 +44,12 @@ func testWhitelist(t *testing.T, origin string, expectAllowed bool) {
 	}
 
 	response, err := httpClient.Do(req)
-	checkErr(err, t)
+	lib.CheckErr(err, t)
 	_ = response.Body.Close()
 
 	if expectAllowed {
-		verifyStatusCode(response.StatusCode, http.StatusOK, t)
+		lib.VerifyStatusCode(response.StatusCode, http.StatusOK, t)
 	} else {
-		verifyStatusCode(response.StatusCode, http.StatusForbidden, t)
+		lib.VerifyStatusCode(response.StatusCode, http.StatusForbidden, t)
 	}
 }

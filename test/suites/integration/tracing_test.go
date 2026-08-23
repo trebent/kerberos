@@ -3,6 +3,7 @@ package integration
 import (
 	"errors"
 	"fmt"
+	lib "github.com/trebent/kerberos/test/lib"
 	"io"
 	"net/http"
 	"strings"
@@ -18,9 +19,9 @@ import (
 // Verifies that basic tracing works as expected.
 func TestTracingBasic(t *testing.T) {
 	start := time.Now()
-	response := get(fmt.Sprintf("http://%s:%d/gw/backend/echo/hi", getHost(), getPort()), t)
+	response := lib.Get(fmt.Sprintf("http://%s:%d/gw/backend/echo/hi", lib.GetHost(), lib.GetPort()), t)
 
-	decodedResponse := verifyGWResponse(response, http.StatusOK, t)
+	decodedResponse := lib.VerifyGWResponse(response, http.StatusOK, t)
 
 	traceParent, exists := decodedResponse.Headers["Traceparent"]
 	if !exists || len(traceParent) == 0 {
@@ -29,7 +30,7 @@ func TestTracingBasic(t *testing.T) {
 		t.Logf("Traceparent header: %s", traceParent[0])
 	}
 
-	conn, err := grpc.NewClient(fmt.Sprintf("localhost:%d", getJaegerAPIPort()), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(fmt.Sprintf("localhost:%d", lib.GetJaegerAPIPort()), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to connect to jaeger: %v", err)
 	}

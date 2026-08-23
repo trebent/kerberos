@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"testing"
 )
@@ -12,7 +13,7 @@ import (
 func TestGWHappy(t *testing.T) {
 	t.Parallel()
 
-	baseURL := fmt.Sprintf("http://localhost:%d/gw/backend/echo", getPort())
+	baseURL := fmt.Sprintf("http://localhost:%d/gw/backend/echo", lib.GetPort())
 	bodyData := []byte(`{"test": "value"}`)
 
 	cases := []struct {
@@ -38,7 +39,7 @@ func TestGWHappy(t *testing.T) {
 
 			// HEAD responses carry no body; verify the status code only.
 			if tc.method == http.MethodHead {
-				response := head(url, t)
+				response := lib.Head(url, t)
 				defer response.Body.Close()
 				if response.StatusCode != http.StatusOK {
 					t.Fatalf("unexpected status code: got %d, want %d", response.StatusCode, http.StatusOK)
@@ -57,8 +58,8 @@ func TestGWHappy(t *testing.T) {
 				t.Fatalf("failed to create request: %v", err)
 			}
 
-			response := do(req, t)
-			decoded := verifyGWResponse(response, http.StatusOK, t)
+			response := lib.Do(req, t)
+			decoded := lib.VerifyGWResponse(response, http.StatusOK, t)
 
 			if decoded.URL != tc.path {
 				t.Errorf("unexpected URL in response: got %s, want %s", decoded.URL, tc.path)
@@ -93,20 +94,20 @@ func TestGWNoBackend(t *testing.T) {
 
 	testData := "{\"test\": \"value\"}"
 	urlSegment := "/idontexist/"
-	url := fmt.Sprintf("http://localhost:%d/gw/backend%s", getPort(), urlSegment)
+	url := fmt.Sprintf("http://localhost:%d/gw/backend%s", lib.GetPort(), urlSegment)
 	t.Logf("Sending to non-existent backend url %s", url)
-	response := post(url, []byte(testData), t)
+	response := lib.Post(url, []byte(testData), t)
 
-	_ = verifyGWResponse(response, http.StatusNotFound, t)
+	_ = lib.VerifyGWResponse(response, http.StatusNotFound, t)
 }
 
 func TestGWBackendFormat(t *testing.T) {
 	t.Parallel()
 
 	testData := "{\"test\": \"value\"}"
-	url := fmt.Sprintf("http://localhost:%d/gw/back", getPort())
+	url := fmt.Sprintf("http://localhost:%d/gw/back", lib.GetPort())
 	t.Logf("Sending to funky url %s", url)
-	response := post(url, []byte(testData), t)
+	response := lib.Post(url, []byte(testData), t)
 
-	_ = verifyGWResponse(response, http.StatusBadRequest, t)
+	_ = lib.VerifyGWResponse(response, http.StatusBadRequest, t)
 }

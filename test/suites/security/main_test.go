@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"os"
 	"testing"
@@ -16,7 +17,7 @@ import (
 func TestMain(m *testing.M) {
 	println("Running TestMain, setting up test foundation...")
 
-	pool, err := getCAPool()
+	pool, err := lib.GetCAPool(certDir)
 	if err != nil {
 		panic(err)
 	}
@@ -31,7 +32,7 @@ func TestMain(m *testing.M) {
 	}
 
 	adminClient, err := adminapi.NewClientWithResponses(
-		fmt.Sprintf("https://%s:%d", getHost(), getAdminPort()),
+		fmt.Sprintf("https://%s:%d", lib.GetHost(), lib.GetAdminPort()),
 		adminapi.WithHTTPClient(httpClient),
 	)
 	if err != nil {
@@ -40,8 +41,8 @@ func TestMain(m *testing.M) {
 
 	loginResp, err := adminClient.LoginSuperuserWithResponse(
 		context.Background(), adminapi.LoginSuperuserJSONRequestBody{
-			ClientId:     superUserClientID,
-			ClientSecret: superUserClientSecret,
+			ClientId:     lib.SuperUserClientID,
+			ClientSecret: lib.SuperUserClientSecret,
 		},
 	)
 	if err != nil {
@@ -50,11 +51,11 @@ func TestMain(m *testing.M) {
 	if loginResp.StatusCode() != http.StatusNoContent {
 		panic("superuser login response did not indicate success: " + loginResp.Status())
 	}
-	cookie, err := extractSessionCookie(loginResp.HTTPResponse)
+	cookie, err := lib.ExtractSessionCookie(loginResp.HTTPResponse)
 	if err != nil {
 		panic(err)
 	}
-	requestEditorSuper := makeRequestEditorFromCookie(cookie)
+	requestEditorSuper := lib.MakeRequestEditorFromCookie(cookie)
 
 	createAdminUserResp, err := adminClient.CreateUserWithResponse(
 		context.Background(),
@@ -72,7 +73,7 @@ func TestMain(m *testing.M) {
 	}
 
 	basicAuthClient, err := authbasicapi.NewClientWithResponses(
-		fmt.Sprintf("https://%s:%d", getHost(), getAdminPort()),
+		fmt.Sprintf("https://%s:%d", lib.GetHost(), lib.GetAdminPort()),
 		authbasicapi.WithHTTPClient(httpClient),
 	)
 	if err != nil {

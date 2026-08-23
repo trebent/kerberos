@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+
+	lib "github.com/trebent/kerberos/test/lib"
 )
 
 // ---- Admin API ----
@@ -13,7 +15,7 @@ import (
 func TestAdminAPITLS(t *testing.T) {
 	t.Parallel()
 
-	resp, err := tlsClient(t).Get(fmt.Sprintf("https://localhost:%d/api/admin/flow", adminPort))
+	resp, err := tlsClient(t).Get(fmt.Sprintf("https://localhost:%d/api/admin/flow", lib.GetAdminPort()))
 	if err != nil {
 		t.Fatalf("HTTPS request failed: %v", err)
 	}
@@ -28,7 +30,7 @@ func TestAdminAPITLS(t *testing.T) {
 func TestAdminAPIPlainHTTP(t *testing.T) {
 	t.Parallel()
 
-	resp, err := plainClient().Get(fmt.Sprintf("http://localhost:%d/api/admin/flow", adminPort))
+	resp, err := plainClient().Get(fmt.Sprintf("http://localhost:%d/api/admin/flow", lib.GetAdminPort()))
 	if err != nil {
 		t.Fatalf("Unexpected error when sending plain HTTP request: %v", err)
 	}
@@ -44,7 +46,7 @@ func TestAdminAPIPlainHTTP(t *testing.T) {
 func TestGWAPITLS_mTLS_echo(t *testing.T) {
 	t.Parallel()
 
-	resp, err := tlsClient(t).Get(fmt.Sprintf("https://localhost:%d/gw/backend/mtls-echo/hi", kerberosPort))
+	resp, err := tlsClient(t).Get(fmt.Sprintf("https://localhost:%d/gw/backend/mtls-echo/hi", lib.GetPort()))
 	if err != nil {
 		t.Fatalf("HTTPS request failed: %v", err)
 	}
@@ -59,7 +61,7 @@ func TestGWAPITLS_mTLS_echo(t *testing.T) {
 func TestGWAPITLS_TLS_echo(t *testing.T) {
 	t.Parallel()
 
-	resp, err := tlsClient(t).Get(fmt.Sprintf("https://localhost:%d/gw/backend/tls-echo/hi", kerberosPort))
+	resp, err := tlsClient(t).Get(fmt.Sprintf("https://localhost:%d/gw/backend/tls-echo/hi", lib.GetPort()))
 	if err != nil {
 		t.Fatalf("HTTPS request failed: %v", err)
 	}
@@ -74,7 +76,7 @@ func TestGWAPITLS_TLS_echo(t *testing.T) {
 func TestGWAPIPlainHTTP(t *testing.T) {
 	t.Parallel()
 
-	resp, err := plainClient().Get(fmt.Sprintf("http://localhost:%d/gw/backend/mtls-echo/hi", kerberosPort))
+	resp, err := plainClient().Get(fmt.Sprintf("http://localhost:%d/gw/backend/mtls-echo/hi", lib.GetPort()))
 	if err != nil {
 		t.Fatalf("Unexpected error when sending plain HTTP request: %v", err)
 	}
