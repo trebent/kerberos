@@ -2,15 +2,14 @@ package lib
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"sync/atomic"
 )
 
 var a atomic.Int32
 
-// InitNames seeds the atomic counter used to generate unique names.
-// Call this from TestMain with a random seed.
-func InitNames(seed int32) {
-	a.Store(seed)
+func init() {
+	a.Store(rand.Int32())
 }
 
 // Username returns a guaranteed unique username.

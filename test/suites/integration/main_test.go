@@ -3,7 +3,6 @@ package integration
 import (
 	"context"
 	lib "github.com/trebent/kerberos/test/lib"
-	"math/rand/v2"
 	"net/http"
 	"os"
 	"testing"
@@ -14,9 +13,6 @@ import (
 
 func TestMain(m *testing.M) {
 	println("Running TestMain, setting up test foundation...")
-
-	// Init atomic iterator with random number
-	lib.InitNames(rand.Int32())
 
 	loginResp, err := lib.AdminClient.LoginSuperuserWithResponse(
 		context.Background(), adminapi.LoginSuperuserJSONRequestBody{
