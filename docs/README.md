@@ -1,17 +1,22 @@
 # Kerberos documentation
 
-This directory contains detailed documentation for Kerberos features.
+Kerberos documentation is split into two tracks:
 
-Current topic documents include:
+- **User docs**: operating and integrating Kerberos in deployments.
+- **Developer docs**: implementation and internal architecture details for contributors.
 
+## User docs
+
+- [Admin API](./admin-api.md)
 - [Admin Connector](./admin-connector.md)
 - [Admin Debugging](./admin-debugging.md)
 - [Authentication](./authentication.md)
 - [Configuration](./configuration.md)
-- [Flow Components](./flow-components.md)
-- [Middleware](./middleware.md)
+- [krbctl](./krbctl.md)
 - [Observability](./observability.md)
 - [Organisations](./organizations.md)
 - [Routing](./routing.md)
 
-More detailed feature-specific readmes will be added here over time.
+## Developer docs
+
+- [Developer docs index](./dev/README.md)
