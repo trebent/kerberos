@@ -12,7 +12,7 @@ import (
 func TestCookies_admin(t *testing.T) {
 	t.Run("Verify superuser cookie attributes", func(t *testing.T) {
 		t.Parallel()
-		client := adminResponsesTLSClient(t)
+		client := lib.AdminResponsesTLSClient(t, certDir)
 		resp, err := client.LoginSuperuser(
 			t.Context(),
 			adminapi.LoginSuperuserJSONRequestBody{
@@ -28,7 +28,7 @@ func TestCookies_admin(t *testing.T) {
 
 	t.Run("Verify admin user cookie attributes", func(t *testing.T) {
 		t.Parallel()
-		client := adminResponsesTLSClient(t)
+		client := lib.AdminResponsesTLSClient(t, certDir)
 		resp, err := client.Login(
 			t.Context(),
 			adminapi.LoginJSONRequestBody{
@@ -46,7 +46,7 @@ func TestCookies_admin(t *testing.T) {
 func TestCookies_basicauth(t *testing.T) {
 	t.Run("Verify basic auth cookie attributes", func(t *testing.T) {
 		t.Parallel()
-		client := basicAuthResponsesTLSClient(t)
+		client := lib.BasicAuthResponsesTLSClient(t, certDir)
 		loginResp, err := client.Login(t.Context(), orgID, authbasicapi.LoginJSONRequestBody{
 			Username: basicAuthUser,
 			Password: basicAuthPassword,

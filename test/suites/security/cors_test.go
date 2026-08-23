@@ -15,7 +15,7 @@ import (
 func TestCORS_admin(t *testing.T) {
 	t.Run("Non-browser request", func(t *testing.T) {
 		t.Parallel()
-		client := adminResponsesTLSClient(t)
+		client := lib.AdminResponsesTLSClient(t, certDir)
 		resp, err := client.LoginSuperuser(
 			t.Context(),
 			adminapi.LoginSuperuserJSONRequestBody{
@@ -31,7 +31,7 @@ func TestCORS_admin(t *testing.T) {
 
 	t.Run("Browser request, valid Origin", func(t *testing.T) {
 		t.Parallel()
-		client := adminResponsesTLSClient(t)
+		client := lib.AdminResponsesTLSClient(t, certDir)
 		resp, err := client.LoginSuperuser(
 			t.Context(),
 			adminapi.LoginSuperuserJSONRequestBody{
@@ -51,7 +51,7 @@ func TestCORS_admin(t *testing.T) {
 
 	t.Run("Browser request, invalid Origin", func(t *testing.T) {
 		t.Parallel()
-		client := adminResponsesTLSClient(t)
+		client := lib.AdminResponsesTLSClient(t, certDir)
 		resp, err := client.LoginSuperuser(
 			t.Context(),
 			adminapi.LoginSuperuserJSONRequestBody{
@@ -72,7 +72,7 @@ func TestCORS_admin(t *testing.T) {
 func TestCORS_basicauth(t *testing.T) {
 	t.Run("Browser request - denied", func(t *testing.T) {
 		t.Parallel()
-		client := basicAuthResponsesTLSClient(t)
+		client := lib.BasicAuthResponsesTLSClient(t, certDir)
 		resp, err := client.Login(t.Context(), orgID, authbasicapi.LoginJSONRequestBody{
 			Username: basicAuthUser,
 			Password: basicAuthPassword,
@@ -87,7 +87,7 @@ func TestCORS_basicauth(t *testing.T) {
 
 	t.Run("Non-browser request - accepted", func(t *testing.T) {
 		t.Parallel()
-		client := basicAuthResponsesTLSClient(t)
+		client := lib.BasicAuthResponsesTLSClient(t, certDir)
 		resp, err := client.Login(t.Context(), orgID, authbasicapi.LoginJSONRequestBody{
 			Username: basicAuthUser,
 			Password: basicAuthPassword,

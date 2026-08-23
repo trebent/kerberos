@@ -17,7 +17,7 @@ import (
 func TestMain(m *testing.M) {
 	println("Running TestMain, setting up test foundation...")
 
-	pool, err := getCAPool()
+	pool, err := lib.GetCAPool(certDir)
 	if err != nil {
 		panic(err)
 	}
