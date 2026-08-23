@@ -35,7 +35,7 @@ func TestValidateDirPath(t *testing.T) {
 	}
 }
 
-func TestValidateDirPath_File(t *testing.T) {
+func TestValidateDirPathFile(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()

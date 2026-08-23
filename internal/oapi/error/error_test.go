@@ -22,7 +22,7 @@ func TestResponseHandler(t *testing.T) {
 	}
 }
 
-func TestResponseHandler_UnknownError(t *testing.T) {
+func TestResponseHandlerUnknownError(t *testing.T) {
 	recorder := httptest.NewRecorder()
 
 	apierror.ResponseErrorHandler(recorder, nil, errors.New("unknown error"))
@@ -50,7 +50,7 @@ func TestRequestHandler(t *testing.T) {
 	}
 }
 
-func TestRequestHandler_UnknownError(t *testing.T) {
+func TestRequestHandlerUnknownError(t *testing.T) {
 	recorder := httptest.NewRecorder()
 
 	apierror.RequestErrorHandler(recorder, nil, errors.New("unknown error"))

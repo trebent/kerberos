@@ -58,7 +58,7 @@ func TestSQLite(t *testing.T) {
 	}
 }
 
-func TestSQLite_ForeignKey(t *testing.T) {
+func TestSQLiteForeignKey(t *testing.T) {
 	dsn := "test_fk.db"
 	defer func() {
 		if err := os.Remove(dsn); err != nil {
