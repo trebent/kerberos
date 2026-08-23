@@ -40,3 +40,7 @@ jobs:
     needs: image
     uses: ./.github/workflows/callable-test-connector.yaml
     secrets: inherit
+
+  krbctl-test:
+    uses: ./.github/workflows/callable-test-krbctl.yaml
+    secrets: inherit

@@ -1,0 +1,130 @@
+services:
+  postgres:
+    image: "postgres:18.4-alpine3.23"
+    pull_policy: if_not_present
+    environment:
+      - POSTGRES_DB=kerberos
+      - POSTGRES_USER=kerberos
+      - POSTGRES_PASSWORD=kerberos
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "psql -U kerberos -d kerberos -c 'SELECT 1' -q -t 2>/dev/null | grep -q 1"]
+      interval: 1s
+      timeout: 2s
+      retries: 10
+    volumes:
+      - postgres:/var/lib/postgresql/18/docker
+
+  kerberos:
+    image: "ghcr.io/trebent/kerberos:latest"
+    command: --config /krb.json
+    pull_policy: if_not_present
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: on-failure
+    ports:
+      - 30000:30000
+      - 30001:30001
+    environment:
+      - LOG_TO_CONSOLE=1
+      - LOG_VERBOSITY=0
+      - PORT=30000
+      - ADMIN_PORT=30001
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
+      - OTEL_METRICS_EXPORTER=prometheus
+      - OTEL_EXPORTER_PROMETHEUS_HOST=kerberos
+      - OTEL_EXPORTER_PROMETHEUS_PORT=9464
+    volumes:
+      - ./krb.json:/krb.json:ro
+      
+
+  echo:
+    image: "ghcr.io/trebent/kerberos/echo:latest"
+    pull_policy: if_not_present
+    restart: on-failure
+    environment:
+      - PORT=15000
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
+      - OTEL_METRICS_EXPORTER=prometheus
+      - OTEL_EXPORTER_PROMETHEUS_HOST=echo
+      - OTEL_EXPORTER_PROMETHEUS_PORT=9464
+
+  connector:
+    image: "ghcr.io/trebent/kerberos/admin-connector:latest"
+    command: --config /connector.json
+    pull_policy: if_not_present
+    depends_on:
+      kerberos:
+        condition: service_started
+    ports:
+      - 30100:30100
+    restart: on-failure
+    environment:
+      - LOG_TO_CONSOLE=true
+      - LOG_VERBOSITY=0
+      - PORT=30100
+      - TARGET=jaeger:16686
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
+      - OTEL_METRICS_EXPORTER=prometheus
+      - OTEL_EXPORTER_PROMETHEUS_HOST=connector
+      - OTEL_EXPORTER_PROMETHEUS_PORT=9464
+    volumes:
+      - ./connector.json:/connector.json:ro
+      
+
+  prometheus:
+    image: "prom/prometheus:v3"
+    pull_policy: if_not_present
+    command: ["--config.file=/prometheus.yml", "--storage.tsdb.path", "/prometheus/data",
+              "--storage.tsdb.retention.size", "1GB"]
+    restart: on-failure
+    volumes:
+      - ./prometheus.yml:/prometheus.yml
+      - prometheus:/prometheus
+
+  grafana:
+    image: "grafana/grafana:13.1"
+    pull_policy: if_not_present
+    restart: on-failure
+    ports:
+      - 3000:3000
+    volumes:
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/grafana-datasources.yml
+      - ./grafana/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/grafana-dashboards.yml
+      - ./grafana/prometheus.json:/var/lib/grafana/prometheus.json
+      - ./grafana/kerberos_runtime.json:/var/lib/grafana/kerberos_runtime.json
+      - ./grafana/kerberos_http.json:/var/lib/grafana/kerberos_http.json
+      - grafana:/var/lib/grafana
+      
+
+  jaeger-init:
+    image: busybox:1.38
+    pull_policy: if_not_present
+    command: ["sh", "-c", "chown 10001:0 /jaeger"]
+    restart: on-failure
+    volumes:
+      - jaeger:/jaeger
+
+  jaeger:
+    image: "jaegertracing/jaeger:2.20.0"
+    pull_policy: if_not_present
+    depends_on:
+      jaeger-init:
+        condition: service_completed_successfully
+    restart: on-failure
+    command: --config /jaeger.yml
+    volumes:
+      - ./jaeger.yml:/jaeger.yml
+      - ./jaeger-config-ui.json:/jaeger-config-ui.json
+      - jaeger:/jaeger
+
+volumes:
+  postgres:
+  prometheus:
+  grafana:
+  jaeger:

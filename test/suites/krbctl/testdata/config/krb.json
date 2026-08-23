@@ -1,0 +1,47 @@
+{
+  "auth": {
+    "methods": {
+      "basic": {}
+    },
+    "order": 1,
+    "scheme": {
+      "mappings": [
+        {
+          "backend": "api",
+          "exempt": [],
+          "method": "basic"
+        }
+      ]
+    }
+  },
+  "gateway": {
+    "router": {
+      "backends": [
+        {
+          "host": "echo",
+          "name": "echo",
+          "port": 15000
+        },
+        {
+          "host": "api",
+          "name": "api",
+          "port": 8080
+        }
+      ]
+    }
+  },
+  "observability": {
+    "enabled": true,
+    "runtimeMetrics": true
+  },
+  "persistence": {
+    "address": "postgres:5432",
+    "driver": "postgres",
+    "postgres": {
+      "database": "kerberos",
+      "password": "kerberos",
+      "sslMode": "disable",
+      "username": "kerberos"
+    }
+  }
+}
