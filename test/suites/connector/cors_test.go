@@ -2,6 +2,7 @@ package connector
 
 import (
 	"fmt"
+	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"net/url"
 	"testing"
@@ -18,12 +19,12 @@ func TestCORS(t *testing.T) {
 
 	t.Run("allowed origin, OPTIONS preflight", func(t *testing.T) {
 		t.Parallel()
-		url := fmt.Sprintf("http://%s:%d", getHost(), getConnectorPort())
-		resp := options(url, t, http.Header{"Origin": []string{"https://admin.trebent.test:30001"}})
+		url := fmt.Sprintf("http://%s:%d", lib.GetHost(), lib.GetConnectorPort())
+		resp := lib.Options(url, t, http.Header{"Origin": []string{"https://admin.trebent.test:30001"}})
 		defer resp.Body.Close()
-		verifyStatusCode(resp.StatusCode, http.StatusNoContent, t)
-		verifyHeader(resp.Header, "Access-Control-Allow-Origin", "https://admin.trebent.test:30001", t)
-		verifyHeader(resp.Header, "Access-Control-Allow-Credentials", "true", t)
+		lib.VerifyStatusCode(resp.StatusCode, http.StatusNoContent, t)
+		lib.VerifyHeader(resp.Header, "Access-Control-Allow-Origin", "https://admin.trebent.test:30001", t)
+		lib.VerifyHeader(resp.Header, "Access-Control-Allow-Credentials", "true", t)
 		if resp.Header.Get("Access-Control-Allow-Methods") == "" {
 			t.Fatal("Expected Access-Control-Allow-Methods to be set")
 		}
@@ -38,7 +39,7 @@ func testCORS(t *testing.T, origin string, expectCORSHeaders bool) {
 		Method: "GET",
 		URL: &url.URL{
 			Scheme: "http",
-			Host:   fmt.Sprintf("%s:%d", getHost(), getConnectorPort()),
+			Host:   fmt.Sprintf("%s:%d", lib.GetHost(), lib.GetConnectorPort()),
 		},
 		Header: make(http.Header),
 	}
@@ -48,15 +49,15 @@ func testCORS(t *testing.T, origin string, expectCORSHeaders bool) {
 	}
 
 	response, err := httpClient.Do(req)
-	checkErr(err, t)
+	lib.CheckErr(err, t)
 	defer response.Body.Close()
 
 	if expectCORSHeaders {
-		verifyStatusCode(response.StatusCode, http.StatusOK, t)
-		verifyHeader(response.Header, "Access-Control-Allow-Origin", origin, t)
-		verifyHeader(response.Header, "Access-Control-Allow-Credentials", "true", t)
+		lib.VerifyStatusCode(response.StatusCode, http.StatusOK, t)
+		lib.VerifyHeader(response.Header, "Access-Control-Allow-Origin", origin, t)
+		lib.VerifyHeader(response.Header, "Access-Control-Allow-Credentials", "true", t)
 	} else {
-		verifyStatusCode(response.StatusCode, http.StatusOK, t)
-		verifyHeaderMissing(response.Header, "Access-Control-Allow-Origin", t)
+		lib.VerifyStatusCode(response.StatusCode, http.StatusOK, t)
+		lib.VerifyHeaderMissing(response.Header, "Access-Control-Allow-Origin", t)
 	}
 }

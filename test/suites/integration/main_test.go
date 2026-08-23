@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	lib "github.com/trebent/kerberos/test/lib"
 	"math/rand/v2"
 	"net/http"
 	"os"
@@ -15,12 +16,12 @@ func TestMain(m *testing.M) {
 	println("Running TestMain, setting up test foundation...")
 
 	// Init atomic iterator with random number
-	a.Store(rand.Int32())
+	lib.InitNames(rand.Int32())
 
-	loginResp, err := adminClient.LoginSuperuserWithResponse(
+	loginResp, err := lib.AdminClient.LoginSuperuserWithResponse(
 		context.Background(), adminapi.LoginSuperuserJSONRequestBody{
-			ClientId:     superUserClientID,
-			ClientSecret: superUserClientSecret,
+			ClientId:     lib.SuperUserClientID,
+			ClientSecret: lib.SuperUserClientSecret,
 		},
 	)
 	if err != nil {
@@ -29,13 +30,13 @@ func TestMain(m *testing.M) {
 	if loginResp.StatusCode() != http.StatusNoContent {
 		panic("superuser login response did not indicate success: " + loginResp.Status())
 	}
-	cookie, err := extractSessionCookie(loginResp.HTTPResponse)
+	cookie, err := lib.ExtractSessionCookie(loginResp.HTTPResponse)
 	if err != nil {
 		panic(err)
 	}
-	requestEditorSuper := makeRequestEditorFromCookie(cookie)
+	requestEditorSuper := lib.MakeRequestEditorFromCookie(cookie)
 
-	createAdminUserResp, err := adminClient.CreateUserWithResponse(
+	createAdminUserResp, err := lib.AdminClient.CreateUserWithResponse(
 		context.Background(),
 		adminapi.CreateUserJSONRequestBody{
 			Username: alwaysAdminUser,
@@ -50,7 +51,7 @@ func TestMain(m *testing.M) {
 		panic("create admin user response did not indicate success: " + createAdminUserResp.Status())
 	}
 
-	orgResp, err := basicAuthClient.CreateOrganisationWithResponse(
+	orgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		context.Background(),
 		authbasicapi.CreateOrganisationJSONRequestBody{Name: alwaysOrg},
 		authbasicapi.RequestEditorFn(requestEditorSuper),
@@ -61,7 +62,7 @@ func TestMain(m *testing.M) {
 
 	if orgResp.StatusCode() != http.StatusCreated {
 		if orgResp.StatusCode() == http.StatusConflict {
-			orgListResp, err := basicAuthClient.ListOrganisationsWithResponse(
+			orgListResp, err := lib.BasicAuthClient.ListOrganisationsWithResponse(
 				context.Background(),
 				authbasicapi.RequestEditorFn(requestEditorSuper),
 			)
@@ -87,7 +88,7 @@ func TestMain(m *testing.M) {
 		alwaysOrgID = int(orgResp.JSON201.Id)
 	}
 
-	userResp, err := basicAuthClient.CreateUserWithResponse(
+	userResp, err := lib.BasicAuthClient.CreateUserWithResponse(
 		context.Background(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateUserJSONRequestBody{Name: alwaysUser, Password: alwaysUserPassword},
@@ -98,7 +99,7 @@ func TestMain(m *testing.M) {
 	}
 	if userResp.StatusCode() != http.StatusCreated {
 		if userResp.StatusCode() == http.StatusConflict {
-			userListResp, err := basicAuthClient.ListUsersWithResponse(
+			userListResp, err := lib.BasicAuthClient.ListUsersWithResponse(
 				context.Background(),
 				authbasicapi.Orgid(alwaysOrgID),
 				authbasicapi.RequestEditorFn(requestEditorSuper),
@@ -138,7 +139,7 @@ func TestMain(m *testing.M) {
 		panic("failed to find staff group id")
 	}
 
-	updateUserGroupsResp, err := basicAuthClient.UpdateUserGroupsWithResponse(
+	updateUserGroupsResp, err := lib.BasicAuthClient.UpdateUserGroupsWithResponse(
 		context.Background(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.Userid(alwaysUserID),
@@ -163,7 +164,7 @@ func TestMain(m *testing.M) {
 }
 
 func createOrGetGroup(name string, requestEditor authbasicapi.RequestEditorFn) int {
-	groupCreateResp, err := basicAuthClient.CreateGroupWithResponse(
+	groupCreateResp, err := lib.BasicAuthClient.CreateGroupWithResponse(
 		context.Background(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.CreateGroupJSONRequestBody{Name: name},
@@ -174,7 +175,7 @@ func createOrGetGroup(name string, requestEditor authbasicapi.RequestEditorFn) i
 	}
 	if groupCreateResp.StatusCode() != http.StatusCreated {
 		if groupCreateResp.StatusCode() == http.StatusConflict {
-			groupListResp, err := basicAuthClient.ListGroupsWithResponse(
+			groupListResp, err := lib.BasicAuthClient.ListGroupsWithResponse(
 				context.Background(),
 				authbasicapi.Orgid(alwaysOrgID),
 				requestEditor,

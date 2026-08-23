@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"os"
 	"testing"
@@ -18,10 +19,10 @@ import (
 func adminResponsesTLSClient(t *testing.T) *adminapi.ClientWithResponses {
 	t.Helper()
 	client, err := adminapi.NewClientWithResponses(
-		fmt.Sprintf("https://%s:%d", getHost(), getAdminPort()),
+		fmt.Sprintf("https://%s:%d", lib.GetHost(), lib.GetAdminPort()),
 		adminapi.WithHTTPClient(tlsClient(t)),
 	)
-	checkErr(err, t)
+	lib.CheckErr(err, t)
 	return client
 }
 
@@ -30,10 +31,10 @@ func adminResponsesTLSClient(t *testing.T) *adminapi.ClientWithResponses {
 func basicAuthResponsesTLSClient(t *testing.T) *authbasicapi.ClientWithResponses {
 	t.Helper()
 	client, err := authbasicapi.NewClientWithResponses(
-		fmt.Sprintf("https://%s:%d", getHost(), getAdminPort()),
+		fmt.Sprintf("https://%s:%d", lib.GetHost(), lib.GetAdminPort()),
 		authbasicapi.WithHTTPClient(tlsClient(t)),
 	)
-	checkErr(err, t)
+	lib.CheckErr(err, t)
 	return client
 }
 

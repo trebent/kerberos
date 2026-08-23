@@ -2,6 +2,7 @@ package integration
 
 import (
 	"fmt"
+	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"testing"
 
@@ -14,12 +15,12 @@ import (
 func TestMetricsBasic(t *testing.T) {
 	startMetrics := fetchMetrics(t)
 
-	url := fmt.Sprintf("http://%s:%d/gw/backend/echo/hi", getHost(), getPort())
-	_ = get(url, t)
-	_ = put(url, []byte("metrics test"), t)
-	_ = post(url, []byte("metrics test"), t)
-	_ = delete(url, t)
-	_ = patch(url, []byte("metrics test"), t)
+	url := fmt.Sprintf("http://%s:%d/gw/backend/echo/hi", lib.GetHost(), lib.GetPort())
+	_ = lib.Get(url, t)
+	_ = lib.Put(url, []byte("metrics test"), t)
+	_ = lib.Post(url, []byte("metrics test"), t)
+	_ = lib.Delete(url, t)
+	_ = lib.Patch(url, []byte("metrics test"), t)
 
 	endMetrics := fetchMetrics(t)
 	for metricName, endMetric := range endMetrics {
@@ -54,13 +55,13 @@ func TestMetricsBasic(t *testing.T) {
 
 func fetchMetrics(t *testing.T) map[string]*io_prometheus_client.MetricFamily {
 	// Verify metrics standings
-	t.Logf("Metrics host and port %s:%d", getHost(), getMetricsPort())
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s:%d/metrics", getHost(), getMetricsPort()), nil)
+	t.Logf("Metrics host and port %s:%d", lib.GetHost(), lib.GetMetricsPort())
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s:%d/metrics", lib.GetHost(), lib.GetMetricsPort()), nil)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
 	}
 
-	resp, err := client.Do(req)
+	resp, err := lib.Client.Do(req)
 	if err != nil {
 		t.Fatalf("Failed to send request: %v", err)
 	}

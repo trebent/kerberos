@@ -3,6 +3,7 @@ package security
 import (
 	"context"
 	"fmt"
+	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"net/url"
 	"testing"
@@ -18,14 +19,14 @@ func TestCORS_admin(t *testing.T) {
 		resp, err := client.LoginSuperuser(
 			t.Context(),
 			adminapi.LoginSuperuserJSONRequestBody{
-				ClientId:     superUserClientID,
-				ClientSecret: superUserClientSecret,
+				ClientId:     lib.SuperUserClientID,
+				ClientSecret: lib.SuperUserClientSecret,
 			},
 			// No request editor to set an Origin, should pass automatically.
 		)
-		checkErr(err, t)
-		verifyStatusCode(resp.StatusCode, http.StatusNoContent, t)
-		verifyHeaderMissing(resp.Header, "Access-Control-Allow-Origin", t)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(resp.StatusCode, http.StatusNoContent, t)
+		lib.VerifyHeaderMissing(resp.Header, "Access-Control-Allow-Origin", t)
 	})
 
 	t.Run("Browser request, valid Origin", func(t *testing.T) {
@@ -34,18 +35,18 @@ func TestCORS_admin(t *testing.T) {
 		resp, err := client.LoginSuperuser(
 			t.Context(),
 			adminapi.LoginSuperuserJSONRequestBody{
-				ClientId:     superUserClientID,
-				ClientSecret: superUserClientSecret,
+				ClientId:     lib.SuperUserClientID,
+				ClientSecret: lib.SuperUserClientSecret,
 			},
 			func(ctx context.Context, req *http.Request) error {
 				req.Header.Set("Origin", "http://www.safe.com")
 				return nil
 			},
 		)
-		checkErr(err, t)
-		verifyStatusCode(resp.StatusCode, http.StatusNoContent, t)
-		verifyHeader(resp.Header, "Access-Control-Allow-Origin", "http://www.safe.com", t)
-		verifyHeader(resp.Header, "Access-Control-Allow-Credentials", "true", t)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(resp.StatusCode, http.StatusNoContent, t)
+		lib.VerifyHeader(resp.Header, "Access-Control-Allow-Origin", "http://www.safe.com", t)
+		lib.VerifyHeader(resp.Header, "Access-Control-Allow-Credentials", "true", t)
 	})
 
 	t.Run("Browser request, invalid Origin", func(t *testing.T) {
@@ -54,17 +55,17 @@ func TestCORS_admin(t *testing.T) {
 		resp, err := client.LoginSuperuser(
 			t.Context(),
 			adminapi.LoginSuperuserJSONRequestBody{
-				ClientId:     superUserClientID,
-				ClientSecret: superUserClientSecret,
+				ClientId:     lib.SuperUserClientID,
+				ClientSecret: lib.SuperUserClientSecret,
 			},
 			func(ctx context.Context, req *http.Request) error {
 				req.Header.Set("Origin", "http://www.bad.com")
 				return nil
 			},
 		)
-		checkErr(err, t)
-		verifyStatusCode(resp.StatusCode, http.StatusForbidden, t)
-		verifyHeaderMissing(resp.Header, "Access-Control-Allow-Origin", t)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(resp.StatusCode, http.StatusForbidden, t)
+		lib.VerifyHeaderMissing(resp.Header, "Access-Control-Allow-Origin", t)
 	})
 }
 
@@ -79,9 +80,9 @@ func TestCORS_basicauth(t *testing.T) {
 			req.Header.Set("Origin", "http://www.safe.com")
 			return nil
 		})
-		checkErr(err, t)
-		verifyStatusCode(resp.StatusCode, http.StatusForbidden, t)
-		verifyHeaderMissing(resp.Header, "Access-Control-Allow-Origin", t)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(resp.StatusCode, http.StatusForbidden, t)
+		lib.VerifyHeaderMissing(resp.Header, "Access-Control-Allow-Origin", t)
 	})
 
 	t.Run("Non-browser request - accepted", func(t *testing.T) {
@@ -91,9 +92,9 @@ func TestCORS_basicauth(t *testing.T) {
 			Username: basicAuthUser,
 			Password: basicAuthPassword,
 		})
-		checkErr(err, t)
-		verifyStatusCode(resp.StatusCode, http.StatusNoContent, t)
-		verifyHeaderMissing(resp.Header, "Access-Control-Allow-Origin", t)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(resp.StatusCode, http.StatusNoContent, t)
+		lib.VerifyHeaderMissing(resp.Header, "Access-Control-Allow-Origin", t)
 	})
 }
 
@@ -103,17 +104,17 @@ func TestCORS_gateway(t *testing.T) {
 		client := tlsClient(t)
 
 		// mtls-echo using denyAll means we should not see a returned CORS header.
-		resp, err := client.Get(fmt.Sprintf("https://localhost:%d/gw/backend/mtls-echo/hi", getPort()))
-		checkErr(err, t)
-		verifyStatusCode(resp.StatusCode, http.StatusOK, t)
-		verifyHeaderMissing(resp.Header, "Access-Control-Allow-Origin", t)
+		resp, err := client.Get(fmt.Sprintf("https://localhost:%d/gw/backend/mtls-echo/hi", lib.GetPort()))
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(resp.StatusCode, http.StatusOK, t)
+		lib.VerifyHeaderMissing(resp.Header, "Access-Control-Allow-Origin", t)
 	})
 
 	t.Run("Browser request, denyAll set", func(t *testing.T) {
 		t.Parallel()
 		client := tlsClient(t)
 
-		url, _ := url.Parse(fmt.Sprintf("https://localhost:%d/gw/backend/mtls-echo/hi", getPort()))
+		url, _ := url.Parse(fmt.Sprintf("https://localhost:%d/gw/backend/mtls-echo/hi", lib.GetPort()))
 		req := &http.Request{
 			Method: http.MethodGet,
 			URL:    url,
@@ -124,16 +125,16 @@ func TestCORS_gateway(t *testing.T) {
 
 		// mtls-echo using denyAll means we should get denied.
 		resp, err := client.Do(req)
-		checkErr(err, t)
-		verifyStatusCode(resp.StatusCode, http.StatusForbidden, t)
-		verifyHeaderMissing(resp.Header, "Access-Control-Allow-Origin", t)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(resp.StatusCode, http.StatusForbidden, t)
+		lib.VerifyHeaderMissing(resp.Header, "Access-Control-Allow-Origin", t)
 	})
 
 	// tls-echo using allowedOrigins means we should see a returned CORS header for a valid Origin.
 	t.Run("Browser request, valid Origin", func(t *testing.T) {
 		t.Parallel()
 		client := tlsClient(t)
-		url, _ := url.Parse(fmt.Sprintf("https://localhost:%d/gw/backend/tls-echo/hi", getPort()))
+		url, _ := url.Parse(fmt.Sprintf("https://localhost:%d/gw/backend/tls-echo/hi", lib.GetPort()))
 		req := &http.Request{
 			Method: http.MethodGet,
 			URL:    url,
@@ -143,17 +144,17 @@ func TestCORS_gateway(t *testing.T) {
 		}
 
 		resp, err := client.Do(req)
-		checkErr(err, t)
-		verifyStatusCode(resp.StatusCode, http.StatusOK, t)
-		verifyHeader(resp.Header, "Access-Control-Allow-Origin", "http://www.safe.com", t)
-		verifyHeader(resp.Header, "Access-Control-Allow-Credentials", "true", t)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(resp.StatusCode, http.StatusOK, t)
+		lib.VerifyHeader(resp.Header, "Access-Control-Allow-Origin", "http://www.safe.com", t)
+		lib.VerifyHeader(resp.Header, "Access-Control-Allow-Credentials", "true", t)
 	})
 
 	// tls-echo using allowedOrigins means we should not see a returned CORS header for an invalid Origin.
 	t.Run("Browser request, invalid Origin", func(t *testing.T) {
 		t.Parallel()
 		client := tlsClient(t)
-		url, _ := url.Parse(fmt.Sprintf("https://localhost:%d/gw/backend/tls-echo/hi", getPort()))
+		url, _ := url.Parse(fmt.Sprintf("https://localhost:%d/gw/backend/tls-echo/hi", lib.GetPort()))
 		req := &http.Request{
 			Method: http.MethodGet,
 			URL:    url,
@@ -163,8 +164,8 @@ func TestCORS_gateway(t *testing.T) {
 		}
 
 		resp, err := client.Do(req)
-		checkErr(err, t)
-		verifyStatusCode(resp.StatusCode, http.StatusForbidden, t)
-		verifyHeaderMissing(resp.Header, "Access-Control-Allow-Origin", t)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(resp.StatusCode, http.StatusForbidden, t)
+		lib.VerifyHeaderMissing(resp.Header, "Access-Control-Allow-Origin", t)
 	})
 }

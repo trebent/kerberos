@@ -1,4 +1,4 @@
-package integration
+package lib
 
 import (
 	"bytes"
@@ -18,131 +18,116 @@ type EchoResponse struct {
 	Body    json.RawMessage     `json:"body,omitempty"`
 }
 
-func get(url string, t *testing.T, headers ...http.Header) *http.Response {
+func Get(url string, t *testing.T, headers ...http.Header) *http.Response {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
 	}
-
-	return do(req, t, headers...)
+	return Do(req, t, headers...)
 }
 
-func protectedGet(url string, t *testing.T, session *http.Cookie) *http.Response {
+func ProtectedGet(url string, t *testing.T, session *http.Cookie) *http.Response {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
 	}
-
 	req.AddCookie(session)
-
-	return do(req, t)
+	return Do(req, t)
 }
 
-func post(url string, body []byte, t *testing.T, headers ...http.Header) *http.Response {
+func Post(url string, body []byte, t *testing.T, headers ...http.Header) *http.Response {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
 	}
-
-	return do(req, t, headers...)
+	return Do(req, t, headers...)
 }
 
-func put(url string, body []byte, t *testing.T, headers ...http.Header) *http.Response {
+func Put(url string, body []byte, t *testing.T, headers ...http.Header) *http.Response {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
 	}
-
-	return do(req, t, headers...)
+	return Do(req, t, headers...)
 }
 
-func delete(url string, t *testing.T, headers ...http.Header) *http.Response {
+func Delete(url string, t *testing.T, headers ...http.Header) *http.Response {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
 	}
-
-	return do(req, t, headers...)
+	return Do(req, t, headers...)
 }
 
-func patch(url string, body []byte, t *testing.T, headers ...http.Header) *http.Response {
+func Patch(url string, body []byte, t *testing.T, headers ...http.Header) *http.Response {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodPatch, url, bytes.NewBuffer(body))
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
 	}
-
-	return do(req, t, headers...)
+	return Do(req, t, headers...)
 }
 
-func trace(url string, t *testing.T, headers ...http.Header) *http.Response {
+func Trace(url string, t *testing.T, headers ...http.Header) *http.Response {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodTrace, url, nil)
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
 	}
-
-	return do(req, t, headers...)
+	return Do(req, t, headers...)
 }
 
-func head(url string, t *testing.T, headers ...http.Header) *http.Response {
+func Head(url string, t *testing.T, headers ...http.Header) *http.Response {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodHead, url, nil)
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
 	}
-
-	return do(req, t, headers...)
+	return Do(req, t, headers...)
 }
 
-func options(url string, t *testing.T, headers ...http.Header) *http.Response {
+func Options(url string, t *testing.T, headers ...http.Header) *http.Response {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodOptions, url, nil)
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
 	}
-
-	return do(req, t, headers...)
+	return Do(req, t, headers...)
 }
 
-func do(req *http.Request, t *testing.T, headers ...http.Header) *http.Response {
+func Do(req *http.Request, t *testing.T, headers ...http.Header) *http.Response {
 	t.Helper()
-	for _, headers := range headers {
-		for key, values := range headers {
+	for _, h := range headers {
+		for key, values := range h {
 			req.Header[key] = values
 		}
 	}
-
-	resp, err := client.Do(req)
+	resp, err := Client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to send request: %v", err)
 	}
-
 	return resp
 }
 
-func verifyGWResponse(resp *http.Response, expectedCode int, t *testing.T) *EchoResponse {
+func VerifyGWResponse(resp *http.Response, expectedCode int, t *testing.T) *EchoResponse {
 	t.Helper()
 	defer resp.Body.Close()
-
 	if resp.StatusCode != expectedCode {
 		t.Fatalf("unexpected status code: got %d, want %d", resp.StatusCode, expectedCode)
 	}
-
 	response := &EchoResponse{}
 	if err := json.NewDecoder(resp.Body).Decode(response); err != nil {
 		t.Fatalf("failed to decode response body: %v", err)
 	}
-
 	return response
 }
 
-func verifyAdminAPIErrorResponse(er *adminapi.APIErrorResponse, t *testing.T) {
+func VerifyAdminAPIErrorResponse(er *adminapi.APIErrorResponse, t *testing.T) {
 	t.Helper()
 	if er != nil {
 		if len(er.Errors) == 0 {
@@ -153,7 +138,7 @@ func verifyAdminAPIErrorResponse(er *adminapi.APIErrorResponse, t *testing.T) {
 	}
 }
 
-func verifyAuthBasicAPIErrorResponse(er *authbasicapi.APIErrorResponse, t *testing.T) {
+func VerifyAuthBasicAPIErrorResponse(er *authbasicapi.APIErrorResponse, t *testing.T) {
 	t.Helper()
 	if er != nil {
 		if len(er.Errors) == 0 {
@@ -164,14 +149,14 @@ func verifyAuthBasicAPIErrorResponse(er *authbasicapi.APIErrorResponse, t *testi
 	}
 }
 
-func matches[T comparable](one, two T, t *testing.T) {
+func Matches[T comparable](one, two T, t *testing.T) {
 	t.Helper()
 	if one != two {
 		t.Fatalf("%v is not equal to %v", one, two)
 	}
 }
 
-func containsAll[T comparable](source, reference []T, t *testing.T) {
+func ContainsAll[T comparable](source, reference []T, t *testing.T) {
 	t.Helper()
 	for _, item := range source {
 		if !slices.Contains(reference, item) {

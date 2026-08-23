@@ -8,9 +8,6 @@ const (
 	adminPort    = 30001
 	echoPort     = 15000
 
-	superUserClientID     = "admin"
-	superUserClientSecret = "secret"
-
 	adminUser         = "security-admin"
 	adminUserPassword = "security-admin-password"
 

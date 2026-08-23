@@ -1,6 +1,7 @@
 package security
 
 import (
+	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"testing"
 
@@ -15,13 +16,13 @@ func TestCookies_admin(t *testing.T) {
 		resp, err := client.LoginSuperuser(
 			t.Context(),
 			adminapi.LoginSuperuserJSONRequestBody{
-				ClientId:     superUserClientID,
-				ClientSecret: superUserClientSecret,
+				ClientId:     lib.SuperUserClientID,
+				ClientSecret: lib.SuperUserClientSecret,
 			},
 			// No request editor to set an Origin, should pass automatically.
 		)
-		checkErr(err, t)
-		verifyStatusCode(resp.StatusCode, http.StatusNoContent, t)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(resp.StatusCode, http.StatusNoContent, t)
 		validateAdminCookieAttributes(resp.Cookies(), t)
 	})
 
@@ -36,8 +37,8 @@ func TestCookies_admin(t *testing.T) {
 			},
 			// No request editor to set an Origin, should pass automatically.
 		)
-		checkErr(err, t)
-		verifyStatusCode(resp.StatusCode, http.StatusNoContent, t)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(resp.StatusCode, http.StatusNoContent, t)
 		validateAdminCookieAttributes(resp.Cookies(), t)
 	})
 }
@@ -50,8 +51,8 @@ func TestCookies_basicauth(t *testing.T) {
 			Username: basicAuthUser,
 			Password: basicAuthPassword,
 		})
-		checkErr(err, t)
-		verifyStatusCode(loginResp.StatusCode, http.StatusNoContent, t)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(loginResp.StatusCode, http.StatusNoContent, t)
 		var refresh, session, csrf bool
 		for _, cookie := range loginResp.Cookies() {
 			switch cookie.Name {

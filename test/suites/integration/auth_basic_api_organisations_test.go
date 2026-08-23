@@ -1,6 +1,7 @@
 package integration
 
 import (
+	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"testing"
 
@@ -10,17 +11,17 @@ import (
 // TestOrganisationCreate verifies that a superuser can create an organisation and
 // that the response includes the generated admin credentials.
 func TestOrganisationCreate(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	name := orgName()
-	createResp, err := basicAuthClient.CreateOrganisationWithResponse(
+	name := lib.OrgName()
+	createResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		authbasicapi.CreateOrganisationJSONRequestBody{Name: name},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
-	matches(createResp.JSON201.Name, name, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+	lib.Matches(createResp.JSON201.Name, name, t)
 	if createResp.JSON201.AdminUsername == "" {
 		t.Fatal("expected non-empty admin username in create response")
 	}
@@ -34,23 +35,23 @@ func TestOrganisationCreate(t *testing.T) {
 
 // TestOrganisationList verifies that a newly created organisation appears in the list response.
 func TestOrganisationList(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	createResp, err := basicAuthClient.CreateOrganisationWithResponse(
+	createResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: lib.OrgName()},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
 	createdID := createResp.JSON201.Id
 
-	listResp, err := basicAuthClient.ListOrganisationsWithResponse(
+	listResp, err := lib.BasicAuthClient.ListOrganisationsWithResponse(
 		t.Context(),
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(listResp.StatusCode(), http.StatusOK, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(listResp.StatusCode(), http.StatusOK, t)
 	for _, org := range *listResp.JSON200 {
 		if org.Id == createdID {
 			return
@@ -61,185 +62,185 @@ func TestOrganisationList(t *testing.T) {
 
 // TestOrganisationGet verifies that a created organisation can be fetched by ID.
 func TestOrganisationGet(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	name := orgName()
-	createResp, err := basicAuthClient.CreateOrganisationWithResponse(
+	name := lib.OrgName()
+	createResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		authbasicapi.CreateOrganisationJSONRequestBody{Name: name},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
 
-	getResp, err := basicAuthClient.GetOrganisationWithResponse(
+	getResp, err := lib.BasicAuthClient.GetOrganisationWithResponse(
 		t.Context(),
 		createResp.JSON201.Id,
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
-	matches(getResp.JSON200.Id, createResp.JSON201.Id, t)
-	matches(getResp.JSON200.Name, name, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
+	lib.Matches(getResp.JSON200.Id, createResp.JSON201.Id, t)
+	lib.Matches(getResp.JSON200.Name, name, t)
 }
 
 // TestOrganisationGetNotFound verifies that fetching a deleted organisation returns 404.
 func TestOrganisationGetNotFound(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	createResp, err := basicAuthClient.CreateOrganisationWithResponse(
+	createResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: lib.OrgName()},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
 	orgID := createResp.JSON201.Id
 
-	deleteResp, err := basicAuthClient.DeleteOrganisationWithResponse(
+	deleteResp, err := lib.BasicAuthClient.DeleteOrganisationWithResponse(
 		t.Context(),
 		orgID,
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
 
-	getResp, err := basicAuthClient.GetOrganisationWithResponse(
+	getResp, err := lib.BasicAuthClient.GetOrganisationWithResponse(
 		t.Context(),
 		orgID,
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(getResp.StatusCode(), http.StatusNotFound, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(getResp.StatusCode(), http.StatusNotFound, t)
 }
 
 // TestOrganisationUpdate verifies that an organisation's name can be changed and the
 // updated value is reflected in a subsequent get.
 func TestOrganisationUpdate(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	createResp, err := basicAuthClient.CreateOrganisationWithResponse(
+	createResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: lib.OrgName()},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
 	orgID := createResp.JSON201.Id
 
-	newName := orgName()
-	updateResp, err := basicAuthClient.UpdateOrganisationWithResponse(
+	newName := lib.OrgName()
+	updateResp, err := lib.BasicAuthClient.UpdateOrganisationWithResponse(
 		t.Context(),
 		orgID,
 		authbasicapi.UpdateOrganisationJSONRequestBody{Name: newName},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(updateResp.StatusCode(), http.StatusOK, t)
-	matches(updateResp.JSON200.Name, newName, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(updateResp.StatusCode(), http.StatusOK, t)
+	lib.Matches(updateResp.JSON200.Name, newName, t)
 
-	getResp, err := basicAuthClient.GetOrganisationWithResponse(
+	getResp, err := lib.BasicAuthClient.GetOrganisationWithResponse(
 		t.Context(),
 		orgID,
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
-	matches(getResp.JSON200.Name, newName, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
+	lib.Matches(getResp.JSON200.Name, newName, t)
 }
 
 // TestOrganisationUpdateConflict verifies that renaming an organisation to an already-taken
 // name returns a conflict error.
 func TestOrganisationUpdateConflict(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	create1Resp, err := basicAuthClient.CreateOrganisationWithResponse(
+	create1Resp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: lib.OrgName()},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(create1Resp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(create1Resp.StatusCode(), http.StatusCreated, t)
 
-	create2Resp, err := basicAuthClient.CreateOrganisationWithResponse(
+	create2Resp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: lib.OrgName()},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(create2Resp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(create2Resp.StatusCode(), http.StatusCreated, t)
 
-	updateResp, err := basicAuthClient.UpdateOrganisationWithResponse(
+	updateResp, err := lib.BasicAuthClient.UpdateOrganisationWithResponse(
 		t.Context(),
 		create2Resp.JSON201.Id,
 		authbasicapi.UpdateOrganisationJSONRequestBody{Name: create1Resp.JSON201.Name},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(updateResp.StatusCode(), http.StatusConflict, t)
-	verifyAuthBasicAPIErrorResponse(updateResp.JSON409, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(updateResp.StatusCode(), http.StatusConflict, t)
+	lib.VerifyAuthBasicAPIErrorResponse(updateResp.JSON409, t)
 }
 
 // TestOrganisationCreateConflict verifies that creating an organisation whose name is already
 // taken returns a conflict error.
 func TestOrganisationCreateConflict(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	name := orgName()
-	createResp, err := basicAuthClient.CreateOrganisationWithResponse(
+	name := lib.OrgName()
+	createResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		authbasicapi.CreateOrganisationJSONRequestBody{Name: name},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
 
-	conflictResp, err := basicAuthClient.CreateOrganisationWithResponse(
+	conflictResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		authbasicapi.CreateOrganisationJSONRequestBody{Name: name},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(conflictResp.StatusCode(), http.StatusConflict, t)
-	verifyAuthBasicAPIErrorResponse(conflictResp.JSON409, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(conflictResp.StatusCode(), http.StatusConflict, t)
+	lib.VerifyAuthBasicAPIErrorResponse(conflictResp.JSON409, t)
 }
 
 // TestOrganisationDelete verifies that a deleted organisation is no longer accessible.
 func TestOrganisationDelete(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	createResp, err := basicAuthClient.CreateOrganisationWithResponse(
+	createResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: lib.OrgName()},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
 	orgID := createResp.JSON201.Id
 
-	deleteResp, err := basicAuthClient.DeleteOrganisationWithResponse(
+	deleteResp, err := lib.BasicAuthClient.DeleteOrganisationWithResponse(
 		t.Context(),
 		orgID,
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
 }
 
 // TestOrganisationCreateDenied verifies that an organisation-scoped session cannot create
 // new organisations.
 func TestOrganisationCreateDenied(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
+	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: lib.OrgName()},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
 
-	orgLoginResp, err := basicAuthClient.LoginWithResponse(
+	orgLoginResp, err := lib.BasicAuthClient.LoginWithResponse(
 		t.Context(),
 		createOrgResp.JSON201.Id,
 		authbasicapi.LoginJSONRequestBody{
@@ -247,49 +248,49 @@ func TestOrganisationCreateDenied(t *testing.T) {
 			Password: createOrgResp.JSON201.AdminPassword,
 		},
 	)
-	checkErr(err, t)
-	verifyStatusCode(orgLoginResp.StatusCode(), http.StatusNoContent, t)
-	orgAdminRequestEditor := sessionCookieRequestEditor(orgLoginResp.HTTPResponse, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(orgLoginResp.StatusCode(), http.StatusNoContent, t)
+	orgAdminRequestEditor := lib.SessionCookieRequestEditor(orgLoginResp.HTTPResponse, t)
 
-	denyResp, err := basicAuthClient.CreateOrganisationWithResponse(
+	denyResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: lib.OrgName()},
 		authbasicapi.RequestEditorFn(orgAdminRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(denyResp.StatusCode(), http.StatusForbidden, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(denyResp.StatusCode(), http.StatusForbidden, t)
 }
 
 // TestOrganisationCreateOASValidation verifies that creating an organisation with an empty
 // name is rejected with 400 by the OAS validator.
 func TestOrganisationCreateOASValidation(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
 	// Name below minLength: 1 — must be rejected.
-	createResp, err := basicAuthClient.CreateOrganisationWithResponse(
+	createResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
 		authbasicapi.CreateOrganisationJSONRequestBody{Name: ""},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createResp.StatusCode(), http.StatusBadRequest, t)
-	verifyAuthBasicAPIErrorResponse(createResp.JSON400, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusBadRequest, t)
+	lib.VerifyAuthBasicAPIErrorResponse(createResp.JSON400, t)
 }
 
 // TestOrganisationLogin verifies that a user can log in to their organisation and receives
 // a session token in the response header.
 func TestOrganisationLogin(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
+	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: lib.OrgName()},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
 
-	loginResp, err := basicAuthClient.LoginWithResponse(
+	loginResp, err := lib.BasicAuthClient.LoginWithResponse(
 		t.Context(),
 		createOrgResp.JSON201.Id,
 		authbasicapi.LoginJSONRequestBody{
@@ -297,25 +298,25 @@ func TestOrganisationLogin(t *testing.T) {
 			Password: createOrgResp.JSON201.AdminPassword,
 		},
 	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	_ = sessionCookieRequestEditor(loginResp.HTTPResponse, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
+	_ = lib.SessionCookieRequestEditor(loginResp.HTTPResponse, t)
 }
 
 // TestOrganisationLoginInvalidCredentials verifies that a login attempt with the wrong
 // password returns 401.
 func TestOrganisationLoginInvalidCredentials(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	createOrgResp, err := basicAuthClient.CreateOrganisationWithResponse(
+	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: lib.OrgName()},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
 
-	loginResp, err := basicAuthClient.LoginWithResponse(
+	loginResp, err := lib.BasicAuthClient.LoginWithResponse(
 		t.Context(),
 		createOrgResp.JSON201.Id,
 		authbasicapi.LoginJSONRequestBody{
@@ -323,15 +324,15 @@ func TestOrganisationLoginInvalidCredentials(t *testing.T) {
 			Password: "wrongpassword1",
 		},
 	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusUnauthorized, t)
-	verifyAuthBasicAPIErrorResponse(loginResp.JSON401, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(loginResp.StatusCode(), http.StatusUnauthorized, t)
+	lib.VerifyAuthBasicAPIErrorResponse(loginResp.JSON401, t)
 }
 
 // TestOrganisationLogout verifies that logging out invalidates the session token so that
 // subsequent authenticated requests are rejected with 401.
 func TestOrganisationLogout(t *testing.T) {
-	loginResp, err := basicAuthClient.LoginWithResponse(
+	loginResp, err := lib.BasicAuthClient.LoginWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.LoginJSONRequestBody{
@@ -339,120 +340,120 @@ func TestOrganisationLogout(t *testing.T) {
 			Password: alwaysUserPassword,
 		},
 	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	basicRequestEditor := sessionCookieRequestEditor(loginResp.HTTPResponse, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
+	basicRequestEditor := lib.SessionCookieRequestEditor(loginResp.HTTPResponse, t)
 
 	// Verify the session is valid before logging out.
-	getUserResp, err := basicAuthClient.GetUserWithResponse(
+	getUserResp, err := lib.BasicAuthClient.GetUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.Userid(alwaysUserID),
 		authbasicapi.RequestEditorFn(basicRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(getUserResp.StatusCode(), http.StatusOK, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(getUserResp.StatusCode(), http.StatusOK, t)
 
-	logoutResp, err := basicAuthClient.LogoutWithResponse(
+	logoutResp, err := lib.BasicAuthClient.LogoutWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.RequestEditorFn(basicRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(logoutResp.StatusCode(), http.StatusNoContent, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(logoutResp.StatusCode(), http.StatusNoContent, t)
 
 	// The old session must now be rejected.
-	getUserAfterLogoutResp, err := basicAuthClient.GetUserWithResponse(
+	getUserAfterLogoutResp, err := lib.BasicAuthClient.GetUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.Userid(alwaysUserID),
 		authbasicapi.RequestEditorFn(basicRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(getUserAfterLogoutResp.StatusCode(), http.StatusUnauthorized, t)
-	verifyAuthBasicAPIErrorResponse(getUserAfterLogoutResp.JSON401, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(getUserAfterLogoutResp.StatusCode(), http.StatusUnauthorized, t)
+	lib.VerifyAuthBasicAPIErrorResponse(getUserAfterLogoutResp.JSON401, t)
 }
 
 // TestOrganisationNoSession verifies that every organisation-scoped endpoint returns 401
 // with a populated error body when called without a session header.
 func TestOrganisationNoSession(t *testing.T) {
 	// CreateOrganisation — no session.
-	createResp, err := basicAuthClient.CreateOrganisationWithResponse(
+	createResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: lib.OrgName()},
 	)
-	checkErr(err, t)
-	verifyStatusCode(createResp.StatusCode(), http.StatusUnauthorized, t)
-	verifyAuthBasicAPIErrorResponse(createResp.JSON401, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusUnauthorized, t)
+	lib.VerifyAuthBasicAPIErrorResponse(createResp.JSON401, t)
 
 	// ListOrganisations — no session.
-	listResp, err := basicAuthClient.ListOrganisationsWithResponse(t.Context())
-	checkErr(err, t)
-	verifyStatusCode(listResp.StatusCode(), http.StatusUnauthorized, t)
-	verifyAuthBasicAPIErrorResponse(listResp.JSON401, t)
+	listResp, err := lib.BasicAuthClient.ListOrganisationsWithResponse(t.Context())
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(listResp.StatusCode(), http.StatusUnauthorized, t)
+	lib.VerifyAuthBasicAPIErrorResponse(listResp.JSON401, t)
 
 	// GetOrganisation — no session.
-	getResp, err := basicAuthClient.GetOrganisationWithResponse(
+	getResp, err := lib.BasicAuthClient.GetOrganisationWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 	)
-	checkErr(err, t)
-	verifyStatusCode(getResp.StatusCode(), http.StatusUnauthorized, t)
-	verifyAuthBasicAPIErrorResponse(getResp.JSON401, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(getResp.StatusCode(), http.StatusUnauthorized, t)
+	lib.VerifyAuthBasicAPIErrorResponse(getResp.JSON401, t)
 
 	// UpdateOrganisation — no session.
-	updateResp, err := basicAuthClient.UpdateOrganisationWithResponse(
+	updateResp, err := lib.BasicAuthClient.UpdateOrganisationWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.UpdateOrganisationJSONRequestBody{Id: int64(alwaysOrgID), Name: orgName()},
+		authbasicapi.UpdateOrganisationJSONRequestBody{Id: int64(alwaysOrgID), Name: lib.OrgName()},
 	)
-	checkErr(err, t)
-	verifyStatusCode(updateResp.StatusCode(), http.StatusUnauthorized, t)
-	verifyAuthBasicAPIErrorResponse(updateResp.JSON401, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(updateResp.StatusCode(), http.StatusUnauthorized, t)
+	lib.VerifyAuthBasicAPIErrorResponse(updateResp.JSON401, t)
 
 	// DeleteOrganisation — no session.
-	deleteResp, err := basicAuthClient.DeleteOrganisationWithResponse(
+	deleteResp, err := lib.BasicAuthClient.DeleteOrganisationWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 	)
-	checkErr(err, t)
-	verifyStatusCode(deleteResp.StatusCode(), http.StatusUnauthorized, t)
-	verifyAuthBasicAPIErrorResponse(deleteResp.JSON401, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(deleteResp.StatusCode(), http.StatusUnauthorized, t)
+	lib.VerifyAuthBasicAPIErrorResponse(deleteResp.JSON401, t)
 
 	// Logout — no session.
-	logoutResp, err := basicAuthClient.LogoutWithResponse(
+	logoutResp, err := lib.BasicAuthClient.LogoutWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 	)
-	checkErr(err, t)
-	verifyStatusCode(logoutResp.StatusCode(), http.StatusUnauthorized, t)
-	verifyAuthBasicAPIErrorResponse(logoutResp.JSON401, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(logoutResp.StatusCode(), http.StatusUnauthorized, t)
+	lib.VerifyAuthBasicAPIErrorResponse(logoutResp.JSON401, t)
 }
 
 // TestOrganisationCrossOrgForbidden verifies that GetOrganisation and DeleteOrganisation
 // return 403 with a populated error body when called with a session from a different
 // organisation.
 func TestOrganisationCrossOrgForbidden(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
 	// Create two organisations; each login produces a session scoped to that org.
-	createOrg1, err := basicAuthClient.CreateOrganisationWithResponse(
+	createOrg1, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: lib.OrgName()},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createOrg1.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createOrg1.StatusCode(), http.StatusCreated, t)
 
-	createOrg2, err := basicAuthClient.CreateOrganisationWithResponse(
+	createOrg2, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: lib.OrgName()},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createOrg2.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createOrg2.StatusCode(), http.StatusCreated, t)
 
-	loginOrg2, err := basicAuthClient.LoginWithResponse(
+	loginOrg2, err := lib.BasicAuthClient.LoginWithResponse(
 		t.Context(),
 		createOrg2.JSON201.Id,
 		authbasicapi.LoginJSONRequestBody{
@@ -460,59 +461,59 @@ func TestOrganisationCrossOrgForbidden(t *testing.T) {
 			Password: createOrg2.JSON201.AdminPassword,
 		},
 	)
-	checkErr(err, t)
-	verifyStatusCode(loginOrg2.StatusCode(), http.StatusNoContent, t)
-	orgAdminRequestEditor := sessionCookieRequestEditor(loginOrg2.HTTPResponse, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(loginOrg2.StatusCode(), http.StatusNoContent, t)
+	orgAdminRequestEditor := lib.SessionCookieRequestEditor(loginOrg2.HTTPResponse, t)
 
 	// GetOrganisation for org1 using org2 session — must be 403.
-	getOrg1Resp, err := basicAuthClient.GetOrganisationWithResponse(
+	getOrg1Resp, err := lib.BasicAuthClient.GetOrganisationWithResponse(
 		t.Context(),
 		createOrg1.JSON201.Id,
 		authbasicapi.RequestEditorFn(orgAdminRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(getOrg1Resp.StatusCode(), http.StatusForbidden, t)
-	verifyAuthBasicAPIErrorResponse(getOrg1Resp.JSON403, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(getOrg1Resp.StatusCode(), http.StatusForbidden, t)
+	lib.VerifyAuthBasicAPIErrorResponse(getOrg1Resp.JSON403, t)
 
 	// DeleteOrganisation for org1 using org2 session — must be 403.
-	deleteOrg1Resp, err := basicAuthClient.DeleteOrganisationWithResponse(
+	deleteOrg1Resp, err := lib.BasicAuthClient.DeleteOrganisationWithResponse(
 		t.Context(),
 		createOrg1.JSON201.Id,
 		authbasicapi.RequestEditorFn(orgAdminRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(deleteOrg1Resp.StatusCode(), http.StatusForbidden, t)
-	verifyAuthBasicAPIErrorResponse(deleteOrg1Resp.JSON403, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(deleteOrg1Resp.StatusCode(), http.StatusForbidden, t)
+	lib.VerifyAuthBasicAPIErrorResponse(deleteOrg1Resp.JSON403, t)
 }
 
 // TestOrganisationDeleteNotFound verifies deleting an already-deleted organisation.
 func TestOrganisationDeleteNotFound(t *testing.T) {
-	superRequestEditor := superLogin(t)
+	superRequestEditor := lib.SuperLogin(t)
 
-	createResp, err := basicAuthClient.CreateOrganisationWithResponse(
+	createResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
 		t.Context(),
-		authbasicapi.CreateOrganisationJSONRequestBody{Name: orgName()},
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: lib.OrgName()},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
 	orgID := createResp.JSON201.Id
 
 	// First delete succeeds.
-	deleteResp, err := basicAuthClient.DeleteOrganisationWithResponse(
+	deleteResp, err := lib.BasicAuthClient.DeleteOrganisationWithResponse(
 		t.Context(),
 		orgID,
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
 
 	// Second delete must return 404 (no body defined in spec).
-	deleteAgainResp, err := basicAuthClient.DeleteOrganisationWithResponse(
+	deleteAgainResp, err := lib.BasicAuthClient.DeleteOrganisationWithResponse(
 		t.Context(),
 		orgID,
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
-	checkErr(err, t)
-	verifyStatusCode(deleteAgainResp.StatusCode(), http.StatusNoContent, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(deleteAgainResp.StatusCode(), http.StatusNoContent, t)
 }

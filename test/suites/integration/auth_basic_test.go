@@ -2,6 +2,7 @@ package integration
 
 import (
 	"fmt"
+	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"strconv"
 	"testing"
@@ -10,7 +11,7 @@ import (
 )
 
 func TestAuthBasicCall(t *testing.T) {
-	loginResp, err := basicAuthClient.LoginWithResponse(
+	loginResp, err := lib.BasicAuthClient.LoginWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.LoginJSONRequestBody{
@@ -18,18 +19,18 @@ func TestAuthBasicCall(t *testing.T) {
 			Password: alwaysUserPassword,
 		},
 	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	sessionCookie, err := extractSessionCookie(loginResp.HTTPResponse)
-	checkErr(err, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
+	sessionCookie, err := lib.ExtractSessionCookie(loginResp.HTTPResponse)
+	lib.CheckErr(err, t)
 
-	response := protectedGet(
-		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/hi", getHost(), getPort()),
+	response := lib.ProtectedGet(
+		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/hi", lib.GetHost(), lib.GetPort()),
 		t,
 		sessionCookie,
 	)
 
-	echoResponse := verifyGWResponse(response, http.StatusOK, t)
+	echoResponse := lib.VerifyGWResponse(response, http.StatusOK, t)
 	requestHeaders := http.Header(echoResponse.Headers)
 	if requestHeaders.Get("x-krb-org") != strconv.Itoa(int(alwaysOrgID)) {
 		t.Fatalf("OrgID %s did not match expected %d", requestHeaders.Get("x-krb-org"), alwaysOrgID)
@@ -43,12 +44,12 @@ func TestAuthBasicCall(t *testing.T) {
 }
 
 func TestAuthBasicUnauthenticated(t *testing.T) {
-	response := get(
-		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/hi", getHost(), getPort()),
+	response := lib.Get(
+		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/hi", lib.GetHost(), lib.GetPort()),
 		t,
 	)
 
-	echoResponse := verifyGWResponse(response, http.StatusUnauthorized, t)
+	echoResponse := lib.VerifyGWResponse(response, http.StatusUnauthorized, t)
 	requestHeaders := http.Header(echoResponse.Headers)
 	if vals := requestHeaders.Values("x-krb-user"); len(vals) != 0 {
 		t.Fatal("User ID should not have been set")
@@ -58,13 +59,13 @@ func TestAuthBasicUnauthenticated(t *testing.T) {
 		t.Fatal("Org ID should not have been set")
 	}
 
-	response = get(
-		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/hi", getHost(), getPort()),
+	response = lib.Get(
+		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/hi", lib.GetHost(), lib.GetPort()),
 		t,
 		http.Header{"x-krb-session": {"fake"}},
 	)
 
-	echoResponse = verifyGWResponse(response, http.StatusUnauthorized, t)
+	echoResponse = lib.VerifyGWResponse(response, http.StatusUnauthorized, t)
 	if _, ok := echoResponse.Headers["x-krb-user"]; ok {
 		t.Fatal("User ID should not have been set")
 	}
@@ -74,12 +75,12 @@ func TestAuthBasicUnauthenticated(t *testing.T) {
 }
 
 func TestAuthBasicUnauthenticatedExempted(t *testing.T) {
-	response := get(
-		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/unprotected", getHost(), getPort()),
+	response := lib.Get(
+		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/unprotected", lib.GetHost(), lib.GetPort()),
 		t,
 	)
 
-	echoResponse := verifyGWResponse(response, http.StatusOK, t)
+	echoResponse := lib.VerifyGWResponse(response, http.StatusOK, t)
 	requestHeaders := http.Header(echoResponse.Headers)
 	if vals := requestHeaders.Values("x-krb-user"); len(vals) != 0 {
 		t.Fatal("User ID should not have been set")
@@ -89,12 +90,12 @@ func TestAuthBasicUnauthenticatedExempted(t *testing.T) {
 		t.Fatal("Org ID should not have been set")
 	}
 
-	response = get(
-		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/unprotected/nested", getHost(), getPort()),
+	response = lib.Get(
+		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/unprotected/nested", lib.GetHost(), lib.GetPort()),
 		t,
 	)
 
-	echoResponse = verifyGWResponse(response, http.StatusOK, t)
+	echoResponse = lib.VerifyGWResponse(response, http.StatusOK, t)
 	requestHeaders = http.Header(echoResponse.Headers)
 	if vals := requestHeaders.Values("x-krb-user"); len(vals) != 0 {
 		t.Fatal("User ID should not have been set")
@@ -106,7 +107,7 @@ func TestAuthBasicUnauthenticatedExempted(t *testing.T) {
 }
 
 func TestAuthBasicAuthorizedPleb(t *testing.T) {
-	loginResp, err := basicAuthClient.LoginWithResponse(
+	loginResp, err := lib.BasicAuthClient.LoginWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
 		authbasicapi.LoginJSONRequestBody{
@@ -114,18 +115,18 @@ func TestAuthBasicAuthorizedPleb(t *testing.T) {
 			Password: alwaysUserPassword,
 		},
 	)
-	checkErr(err, t)
-	verifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
-	sessionCookie, err := extractSessionCookie(loginResp.HTTPResponse)
-	checkErr(err, t)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
+	sessionCookie, err := lib.ExtractSessionCookie(loginResp.HTTPResponse)
+	lib.CheckErr(err, t)
 
-	response := protectedGet(
-		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/long/hello", getHost(), getPort()),
+	response := lib.ProtectedGet(
+		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/long/hello", lib.GetHost(), lib.GetPort()),
 		t,
 		sessionCookie,
 	)
 
-	echoResponse := verifyGWResponse(response, http.StatusOK, t)
+	echoResponse := lib.VerifyGWResponse(response, http.StatusOK, t)
 	requestHeaders := http.Header(echoResponse.Headers)
 	if vals := requestHeaders.Values("x-krb-user"); len(vals) == 0 {
 		t.Fatal("User ID should have been set")
