@@ -1,6 +1,6 @@
 module github.com/trebent/kerberos/test
 
-go 1.26.5
+go 1.26.6
 
 require (
 	github.com/jaegertracing/jaeger-idl v0.9.0
