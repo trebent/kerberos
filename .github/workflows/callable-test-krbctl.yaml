@@ -49,7 +49,7 @@ jobs:
             krbctl-test-go-build-${{ runner.os }}-
 
       - name: Build krbctl
-        run: make build/krbctl
+        run: make krbctl/build
 
       - name: Run krbctl tests
         run: make test/krbctl/json
