@@ -467,6 +467,15 @@ test/connector/json:
 	@mkdir -p build
 	@cd test/suites/connector && go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/connector-test-output.json
 
+test/krbctl: krbctl/build
+	$(call cecho,Running krbctl tests for Kerberos...,$(BOLD_YELLOW))
+	@cd test/suites/krbctl && KRBCTL_BIN=$(CURDIR)/build/krbctl go test -v ./... -count=1 -failfast
+
+test/krbctl/json: krbctl/build
+	$(call cecho,Running krbctl tests for Kerberos...,$(BOLD_YELLOW))
+	@mkdir -p build
+	@cd test/suites/krbctl && KRBCTL_BIN=$(CURDIR)/build/krbctl go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/krbctl-test-output.json
+
 test/unit:
 	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build

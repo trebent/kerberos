@@ -23,6 +23,10 @@ const (
 	echoBackendPort = 15000
 	jaegerName      = "jaeger"
 
+	// defaultBackendHost is the fallback host used when a backend is registered
+	// without an explicit host.
+	defaultBackendHost = "localhost"
+
 	// scrapeMetricsPort is the default Prometheus exporter port every service
 	// exposes its metrics on.
 	scrapeMetricsPort = 9464
@@ -81,12 +85,36 @@ skipped.`,
 	}
 
 	cmd.Flags().StringP("output", "o", ".", "Output path where config files will be written.")
+	cmd.Flags().BoolP("non-interactive", "y", false,
+		"Skip prompts and build the configuration from flag values.")
+	cmd.Flags().Bool("echo-backend", false,
+		"Register the built-in echo service as a router backend. (non-interactive mode only)")
+	cmd.Flags().StringArray("backend", nil,
+		"Router backend as 'name=..,host=..,port=..,auth=..' (repeatable). (non-interactive mode only)")
+	cmd.Flags().String("driver", driverSQLite,
+		"Persistence driver: sqlite or postgres. (non-interactive mode only)")
+	cmd.Flags().Bool("obs-stack", false,
+		"Generate observability stack config files. (non-interactive mode only)")
+	cmd.Flags().Bool("grafana-anonymous", true,
+		"Enable Grafana anonymous access. (non-interactive mode only)")
+	cmd.Flags().StringArray("scrape-target", nil,
+		"Prometheus scrape target (repeatable); defaults to kerberos, jaeger and all backends. "+
+			"(non-interactive mode only)")
+	cmd.Flags().Bool("connector", false,
+		"Include the admin-connector (generates connector.json). (non-interactive mode only)")
+	cmd.Flags().Bool("connector-allow-all-origins", true,
+		"Allow all CORS origins for the admin-connector. (non-interactive mode only)")
 
 	return cmd
 }
 
 func runConfig(cmd *cobra.Command, _ []string) error {
 	output, err := cmd.Flags().GetString("output")
+	if err != nil {
+		return err
+	}
+
+	nonInteractive, err := cmd.Flags().GetBool("non-interactive")
 	if err != nil {
 		return err
 	}
@@ -102,11 +130,11 @@ func runConfig(cmd *cobra.Command, _ []string) error {
 		},
 	}
 
-	if err := promptBackends(opts); err != nil {
-		return err
-	}
-
-	if err := promptFixedSections(opts); err != nil {
+	if nonInteractive {
+		if err := collectConfigFromFlags(cmd, opts); err != nil {
+			return err
+		}
+	} else if err := collectConfigInteractive(opts); err != nil {
 		return err
 	}
 
@@ -150,6 +178,148 @@ func runConfig(cmd *cobra.Command, _ []string) error {
 	}
 
 	return nil
+}
+
+// collectConfigInteractive drives the interactive prompt sequence, populating
+// opts with the user's answers.
+func collectConfigInteractive(opts *configOptions) error {
+	if err := promptBackends(opts); err != nil {
+		return err
+	}
+
+	if err := promptFixedSections(opts); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// collectConfigFromFlags populates opts from the command's flag values for
+// non-interactive runs.
+func collectConfigFromFlags(cmd *cobra.Command, opts *configOptions) error {
+	echoBackend, err := cmd.Flags().GetBool("echo-backend")
+	if err != nil {
+		return err
+	}
+
+	if echoBackend {
+		opts.backends = append(opts.backends, backendEntry{
+			name: echoBackendName,
+			host: echoBackendHost,
+			port: echoBackendPort,
+		})
+	}
+
+	backendSpecs, err := cmd.Flags().GetStringArray("backend")
+	if err != nil {
+		return err
+	}
+
+	for _, spec := range backendSpecs {
+		backend, err := parseBackendFlag(spec)
+		if err != nil {
+			return fmt.Errorf("parse backend %q: %w", spec, err)
+		}
+
+		opts.backends = append(opts.backends, backend)
+	}
+
+	if len(opts.backends) == 0 {
+		return errors.New("at least one backend is required (use --echo-backend or --backend)")
+	}
+
+	if opts.driver, err = cmd.Flags().GetString("driver"); err != nil {
+		return err
+	}
+
+	if opts.driver != driverSQLite && opts.driver != driverPostgres {
+		return fmt.Errorf("invalid driver %q: must be %q or %q",
+			opts.driver, driverSQLite, driverPostgres)
+	}
+
+	if opts.includeObsStack, err = cmd.Flags().GetBool("obs-stack"); err != nil {
+		return err
+	}
+
+	if opts.obsOpts.grafanaAnonymous, err = cmd.Flags().GetBool("grafana-anonymous"); err != nil {
+		return err
+	}
+
+	scrapeTargets, err := cmd.Flags().GetStringArray("scrape-target")
+	if err != nil {
+		return err
+	}
+
+	if len(scrapeTargets) > 0 {
+		opts.obsOpts.scrapeTargets = scrapeTargets
+	} else {
+		opts.obsOpts.scrapeTargets = defaultScrapeTargets(opts)
+	}
+
+	if opts.includeConnector, err = cmd.Flags().GetBool("connector"); err != nil {
+		return err
+	}
+
+	if opts.connectorOpts.allowAllOrigins, err = cmd.Flags().GetBool(
+		"connector-allow-all-origins"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// parseBackendFlag parses a single --backend spec of the form
+// "name=..,host=..,port=..,auth=..". Only name is mandatory; host defaults to
+// localhost, port to the default backend port, and auth to false.
+func parseBackendFlag(spec string) (backendEntry, error) {
+	backend := backendEntry{host: defaultBackendHost}
+
+	for _, part := range strings.Split(spec, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		key, val, ok := strings.Cut(part, "=")
+		if !ok {
+			return backendEntry{}, fmt.Errorf("invalid segment %q: expected key=value", part)
+		}
+
+		key = strings.TrimSpace(key)
+		val = strings.TrimSpace(val)
+
+		switch key {
+		case "name":
+			backend.name = val
+		case "host":
+			backend.host = val
+		case "port":
+			backend.port = parsePort(val)
+		case "auth":
+			auth, err := strconv.ParseBool(val)
+			if err != nil {
+				return backendEntry{}, fmt.Errorf("invalid auth %q: %w", val, err)
+			}
+
+			backend.auth = auth
+		default:
+			return backendEntry{}, fmt.Errorf("unknown key %q", key)
+		}
+	}
+
+	if backend.name == "" {
+		return backendEntry{}, errors.New("backend name is required")
+	}
+
+	if backend.host == "" {
+		backend.host = defaultBackendHost
+	}
+
+	if backend.port == 0 {
+		backend.port = parsePort("")
+	}
+
+	return backend, nil
 }
 
 // promptBackends collects one or more backend target entries using huh. The echo
@@ -260,7 +430,7 @@ func promptBackendDetails(opts *configOptions, name string) error {
 		huh.NewGroup(
 			huh.NewInput().
 				Title(fmt.Sprintf("Backend %q — host", name)).
-				Placeholder("localhost").
+				Placeholder(defaultBackendHost).
 				Value(&host),
 
 			huh.NewInput().
@@ -275,7 +445,7 @@ func promptBackendDetails(opts *configOptions, name string) error {
 	}
 
 	if strings.TrimSpace(host) == "" {
-		host = "localhost"
+		host = defaultBackendHost
 	}
 
 	opts.backends = append(opts.backends, backendEntry{

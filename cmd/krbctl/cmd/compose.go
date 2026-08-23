@@ -33,6 +33,15 @@ postgres, admin-connector, echo) can be included or skipped at each step.`,
 	}
 
 	cmd.Flags().StringP("output", "o", ".", "Output path where compose.yaml will be written.")
+	cmd.Flags().BoolP("non-interactive", "y", false,
+		"Skip prompts and build compose.yaml from flag values.")
+	cmd.Flags().Bool("echo", false, "Include the echo service. (non-interactive mode only)")
+	cmd.Flags().Bool("obs-stack", false,
+		"Include the observability stack. (non-interactive mode only)")
+	cmd.Flags().Bool("postgres", false,
+		"Use PostgreSQL as the persistence backend. (non-interactive mode only)")
+	cmd.Flags().Bool("connector", false,
+		"Include the admin-connector service. (non-interactive mode only)")
 
 	return cmd
 }
@@ -43,8 +52,38 @@ func runCompose(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
+	nonInteractive, err := cmd.Flags().GetBool("non-interactive")
+	if err != nil {
+		return err
+	}
+
 	opts := &composeOptions{outputPath: output}
 
+	if nonInteractive {
+		if err := collectComposeFromFlags(cmd, opts); err != nil {
+			return err
+		}
+	} else if err := collectComposeInteractive(opts); err != nil {
+		return err
+	}
+
+	content := buildCompose(opts)
+
+	//nolint:gosec // welp
+	if err := os.WriteFile(
+		filepath.Join(opts.outputPath, "compose.yaml"), []byte(content), 0o644,
+	); err != nil {
+		return fmt.Errorf("failed to write compose file: %w", err)
+	}
+
+	fmt.Fprintf(os.Stdout, "\ncompose.yaml written to %s\n", opts.outputPath)
+
+	return nil
+}
+
+// collectComposeInteractive drives the interactive huh form, populating opts
+// with the user's answers.
+func collectComposeInteractive(opts *composeOptions) error {
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewConfirm().
@@ -76,16 +115,29 @@ func runCompose(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("prompt cancelled: %w", err)
 	}
 
-	content := buildCompose(opts)
+	return nil
+}
 
-	//nolint:gosec // welp
-	if err := os.WriteFile(
-		filepath.Join(opts.outputPath, "compose.yaml"), []byte(content), 0o644,
-	); err != nil {
-		return fmt.Errorf("failed to write compose file: %w", err)
+// collectComposeFromFlags populates opts from the command's flag values for
+// non-interactive runs.
+func collectComposeFromFlags(cmd *cobra.Command, opts *composeOptions) error {
+	var err error
+
+	if opts.includeEcho, err = cmd.Flags().GetBool("echo"); err != nil {
+		return err
 	}
 
-	fmt.Fprintf(os.Stdout, "\ncompose.yaml written to %s\n", opts.outputPath)
+	if opts.includeObsStack, err = cmd.Flags().GetBool("obs-stack"); err != nil {
+		return err
+	}
+
+	if opts.includePostgres, err = cmd.Flags().GetBool("postgres"); err != nil {
+		return err
+	}
+
+	if opts.includeConnector, err = cmd.Flags().GetBool("connector"); err != nil {
+		return err
+	}
 
 	return nil
 }

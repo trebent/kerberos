@@ -1,0 +1,15 @@
+{
+  "origins": {
+    "allowAll": true
+  },
+  "persistence": {
+    "address": "postgres:5432",
+    "driver": "postgres",
+    "postgres": {
+      "database": "kerberos",
+      "password": "kerberos",
+      "sslMode": "disable",
+      "username": "kerberos"
+    }
+  }
+}

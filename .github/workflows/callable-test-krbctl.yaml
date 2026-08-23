@@ -1,0 +1,64 @@
+name: krbctl tests
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  krbctl-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Golang
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: test/suites/go.mod
+          cache: false
+
+      - name: Compute build cache key
+        id: build-cache-key
+        run: |
+          checksum=$(
+            {
+              cat go.mod
+              [ -f go.sum ] && cat go.sum
+              cat Makefile
+              find cmd/krbctl -type f -name '*.go' -print0 | sort -z | xargs -0 cat
+              cat test/suites/go.mod test/suites/go.sum
+              find test/suites/krbctl -type f -print0 | sort -z | xargs -0 cat
+            } | md5sum | awk '{print $1}'
+          )
+          echo "checksum=$checksum" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Go module cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: krbctl-test-go-mod-${{ runner.os }}-${{ hashFiles('test/suites/go.sum') }}
+
+      - name: Cache Go build cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: krbctl-test-go-build-${{ runner.os }}-${{ steps.build-cache-key.outputs.checksum }}
+          restore-keys: |
+            krbctl-test-go-build-${{ runner.os }}-
+
+      - name: Build krbctl
+        run: make build/krbctl
+
+      - name: Run krbctl tests
+        run: make test/krbctl/json
+
+      - name: Publish krbctl test results
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        if: always()
+        with:
+          name: krbctl Tests
+          path: build/krbctl-test-output.json
+          reporter: golang-json
+          fail-on-error: "false"
