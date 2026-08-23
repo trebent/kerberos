@@ -103,11 +103,11 @@ services:
     ports:
       - ${GRAFANA_PORT:-3000}:3000
     volumes:
-      - ../../config/grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/grafana-datasources.yml
-      - ../../config/grafana/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/grafana-dashboards.yml
-      - ../../config/grafana/prometheus.json:/var/lib/grafana/prometheus.json
-      - ../../config/grafana/kerberos_runtime.json:/var/lib/grafana/kerberos_runtime.json
-      - ../../config/grafana/kerberos_http.json:/var/lib/grafana/kerberos_http.json
+      - ../../../cmd/krbctl/cmd/assets/grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/grafana-datasources.yml
+      - ../../../cmd/krbctl/cmd/assets/grafana/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/grafana-dashboards.yml
+      - ../../../cmd/krbctl/cmd/assets/grafana/prometheus.json:/var/lib/grafana/prometheus.json
+      - ../../../cmd/krbctl/cmd/assets/grafana/kerberos_runtime.json:/var/lib/grafana/kerberos_runtime.json
+      - ../../../cmd/krbctl/cmd/assets/grafana/kerberos_http.json:/var/lib/grafana/kerberos_http.json
       - ../../config/grafana/grafana.ini:/etc/grafana/grafana.ini
 
   jaeger-init:
@@ -131,7 +131,7 @@ services:
       - 16686:16686
     volumes:
       - ../../config/jaeger/jaeger.yml:/jaeger.yml
-      - ../../config/jaeger/config-ui.json:/config-ui.json
+      - ../../../cmd/krbctl/cmd/assets/jaeger/config-ui.json:/config-ui.json
       - jaeger:/jaeger
 
 volumes:
