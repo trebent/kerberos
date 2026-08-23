@@ -109,7 +109,7 @@ services:
     # No port-exposure needed. The connector proxies it, and the gRPC endpoint isn't tested in the connector suite.
     volumes:
       - ../../config/jaeger/jaeger.yml:/jaeger.yml
-      - ../../../cmd/krbctl/cmd/assetsjaeger/config-ui.json:/config-ui.json
+      - ../../../cmd/krbctl/cmd/assets/jaeger/config-ui.json:/config-ui.json
       - jaeger:/jaeger
 
 volumes:
