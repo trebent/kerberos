@@ -70,7 +70,7 @@ services:
       - LOG_VERBOSITY=${LOG_VERBOSITY:-20}
       - VERSION=${VERSION:-unset}
       - PORT=${CONNECTOR_PORT:-30100}
-      - TARGET=jaeger:16686
+      - TARGET=echo:15000
     volumes:
       - ../../config/connector:/config:ro
 
@@ -81,9 +81,6 @@ services:
       context: ../../..
       dockerfile: ./docker/echo.Dockerfile
     restart: on-failure
-    ports:
-      - ${ECHO_PORT:-15000}:${ECHO_PORT:-15000}
-      - ${ECHO_METRICS_PORT:-9463}:${ECHO_METRICS_PORT:-9463}
     environment:
       - PORT=${ECHO_PORT:-15000}
       - OTEL_METRICS_EXPORTER=none
@@ -106,7 +103,8 @@ services:
         condition: service_completed_successfully
     restart: on-failure
     command: --config /jaeger.yml
-    # No port-exposure needed. The connector proxies it, and the gRPC endpoint isn't tested in the connector suite.
+    ports:
+      - ${JAEGER_PORT:-16686}:${JAEGER_PORT:-16686}
     volumes:
       - ../../config/jaeger/jaeger.yml:/jaeger.yml
       - ../../../cmd/krbctl/cmd/assets/jaeger/config-ui.json:/config-ui.json

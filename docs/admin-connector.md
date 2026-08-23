@@ -39,7 +39,7 @@ The config file supports the following high-level sections:
 The connector is also configured through environment variables. These apply on top of (or instead of) the config file fields and control the runtime behaviour of the binary itself.
 
 | Variable | Default | Description |
-|---|---|---|
+| --- | --- | --- |
 | `TARGET` | *(required)* | Host and port of the upstream service to forward authenticated requests to, e.g. `my-service:8080`. |
 | `PORT` | `30100` | Port on which the connector listens. |
 | `READ_TIMEOUT_SECONDS` | `5` | HTTP server read timeout in seconds. |
@@ -57,12 +57,9 @@ The connector is also configured through environment variables. These apply on t
 When observability is enabled, the connector emits the following OpenTelemetry metrics:
 
 | Metric | Description |
-|---|---|
+| --- | --- |
 | `admin_connector_calls_total` | Total number of requests forwarded to the target. |
 | `admin_connector_calls_denied_total` | Total number of requests rejected due to missing or expired sessions. |
 | `admin_connector_callout_failures_total` | Total number of errors encountered while proxying to the target. |
 
 Each request also generates an OpenTelemetry span (server kind) containing the HTTP method and URL.
-
-
-
