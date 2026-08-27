@@ -89,6 +89,3 @@ func TestMetrics(t *testing.T) {
 		}
 	}
 }
-
-func TestTraces(t *testing.T) {
-}
