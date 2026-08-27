@@ -8,7 +8,7 @@ import (
 )
 
 // Verifies that basic metrics are present and incremented as expected.
-func TestMetricsBasic(t *testing.T) {
+func TestGWMetrics(t *testing.T) {
 	startMetrics := lib.FetchMetrics(lib.GetHost(), lib.GetMetricsPort(), t)
 
 	url := fmt.Sprintf("http://%s:%d/gw/backend/echo/hi", lib.GetHost(), lib.GetPort())

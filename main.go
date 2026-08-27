@@ -26,6 +26,7 @@ import (
 	"github.com/trebent/kerberos/internal/db/postgres"
 	"github.com/trebent/kerberos/internal/db/sqlite"
 	"github.com/trebent/kerberos/internal/oas"
+	"github.com/trebent/kerberos/internal/otel"
 	"github.com/trebent/kerberos/internal/response"
 	"github.com/trebent/zerologr"
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
@@ -297,8 +298,8 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
 		// Since it's important for individual API implementors to have control over CORS/CSRF
-		// settings, the only general middleware is for logging.
-		Handler: loggingMiddleware(adminMux),
+		// settings, the only general middleware is for logging and observability.
+		Handler: otel.Middleware("krb-admin", loggingMiddleware(adminMux)),
 	}
 
 	gwErrChan := make(chan error, 1)

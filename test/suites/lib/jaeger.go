@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc"
 )
 
+// FindSpansByService finds spans for the given service name and returns them.
 func FindSpansByService(conn *grpc.ClientConn, serviceName string, start time.Time, spanCount int, t testing.TB) []*model.Span {
 	t.Logf("Service Name: %v", serviceName)
 
@@ -71,6 +72,7 @@ func FindSpansByService(conn *grpc.ClientConn, serviceName string, start time.Ti
 	}
 }
 
+// FindEchoSpans finds spans for the echo service with the given trace ID and returns them.
 func FindEchoSpans(conn *grpc.ClientConn, traceID model.TraceID, start time.Time, spanCount int, t testing.TB) []*model.Span {
 	t.Logf("Trace ID: %v", traceID)
 
