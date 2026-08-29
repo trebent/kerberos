@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/trebent/kerberos/internal/response"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
@@ -41,6 +42,14 @@ func MetricsMiddleware(metrics *StdHTTPMetrics, next http.Handler) http.Handler 
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		start := time.Now()
 		next.ServeHTTP(w, req)
-		metrics.Bump(req.Context(), w, req.Body, req, time.Since(start))
+
+		var bw *response.BodyWrapper
+		// Wrap the request body to extract size
+		if req.Body != nil && req.Body != http.NoBody {
+			//nolint:errcheck // no point
+			bw = req.Body.(*response.BodyWrapper)
+		}
+
+		metrics.Bump(req.Context(), w, bw, req, time.Since(start))
 	})
 }

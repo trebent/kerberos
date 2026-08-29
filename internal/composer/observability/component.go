@@ -137,7 +137,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		apierror.ErrorHandler(wrapped, req, err)
 		krbAttributes := extractKrbAttributes(ctx)
 		//nolint:errcheck // no point
-		o.metrics.Bump(ctx, wrapped.(*response.Wrapper), nil, req, 0, krbAttributes...)
+		o.metrics.Bump(ctx, wrapped, nil, req, 0, krbAttributes...)
 
 		span.SetStatus(codes.Error, http.StatusText(http.StatusBadRequest))
 		span.SetAttributes(krbAttributes...)
@@ -164,6 +164,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var bw *response.BodyWrapper
 	// Wrap the request body to extract size
 	if req.Body != nil && req.Body != http.NoBody {
+		zerologr.Info("DEBUG: wrapping request body to extract size")
 		// Wrapped body to extract size.
 		bw, _ = response.NewBodyWrapper(req.Body).(*response.BodyWrapper)
 		req.Body = bw

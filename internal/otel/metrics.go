@@ -2,7 +2,6 @@ package otel
 
 import (
 	"context"
-	"io"
 	"net/http"
 	"time"
 
@@ -111,7 +110,7 @@ func StandardHTTPMetrics(prefix, version string) (*StdHTTPMetrics, error) {
 func (s *StdHTTPMetrics) Bump(
 	ctx context.Context,
 	responseWrapper http.ResponseWriter,
-	bodyWrapper io.ReadCloser,
+	bodyWrapper *response.BodyWrapper,
 	req *http.Request,
 	duration time.Duration,
 	attributes ...attribute.KeyValue,
@@ -125,9 +124,9 @@ func (s *StdHTTPMetrics) Bump(
 
 	// Request
 	var reqBytes int64
-	if bodyWrapper != nil && bodyWrapper != http.NoBody {
+	if bodyWrapper != nil {
 		//nolint:errcheck // no point
-		reqBytes = bodyWrapper.(*response.BodyWrapper).NumBytes()
+		reqBytes = bodyWrapper.NumBytes()
 	}
 
 	s.requestCountCounter.Add(ctx, 1, requestMeta, krbMetricMeta)
