@@ -3,6 +3,7 @@ package otel
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -10,9 +11,9 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// Middleware returns an HTTP middleware that adds OpenTelemetry tracing and metrics to the request context.
-func Middleware(scopeName string, next http.Handler) http.Handler {
-	tracer := otel.Tracer(scopeName)
+// TracingMiddleware returns an HTTP middleware that adds an OpenTelemetry trace to the request context.
+func TracingMiddleware(scopeName, version string, next http.Handler) http.Handler {
+	tracer := otel.Tracer(scopeName, trace.WithInstrumentationVersion(version))
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		ctx := otel.GetTextMapPropagator().
 			Extract(req.Context(), propagation.HeaderCarrier(req.Header))
@@ -34,4 +35,12 @@ func spanStartOpts(req *http.Request) []trace.SpanStartOption {
 	opts[2] = trace.WithAttributes(semconv.HTTPURL(req.URL.String()))
 
 	return opts
+}
+
+func MetricsMiddleware(metrics *StdHTTPMetrics, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		start := time.Now()
+		next.ServeHTTP(w, req)
+		metrics.Bump(req.Context(), w, req.Body, req, time.Since(start))
+	})
 }

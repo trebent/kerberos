@@ -21,7 +21,7 @@ func SelectCORSMiddleware(
 	}
 
 	if allowAll {
-		return CORSMiddleware()
+		return MirrorCORSMiddleware()
 	}
 
 	if len(allowedOrigins) > 0 {
@@ -58,9 +58,9 @@ func HasOrigin(r *http.Request) bool {
 	return r.Header.Get("Origin") != ""
 }
 
-// CORSMiddleware is a middleware that adds CORS headers to the response. Input Origin
+// MirrorCORSMiddleware is a middleware that adds CORS headers to the response. Input Origin
 // are mirrored back in the Access-Control-Allow-Origin header, allowing any origin to access the resource.
-func CORSMiddleware() func(http.Handler) http.Handler {
+func MirrorCORSMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			zerologr.V(20).Info("CORS middleware: attaching CORS headers")

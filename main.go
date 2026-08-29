@@ -286,6 +286,12 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			//nolint:errcheck // guaranteed
 			wrapper := response.NewResponseWrapper(w).(*response.Wrapper)
+
+			if r.Body != nil && r.Body != http.NoBody {
+				bw, _ := response.NewBodyWrapper(r.Body).(*response.BodyWrapper)
+				r.Body = bw
+			}
+
 			next.ServeHTTP(wrapper, r)
 			zerologr.Info(
 				fmt.Sprintf("%s %s %d", r.Method, r.URL.Path, wrapper.StatusCode()),
@@ -293,13 +299,21 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 		})
 	}
 
+	metrics, err := otel.StandardHTTPMetrics("admin.", Version.Value())
+	if err != nil {
+		return fmt.Errorf("failed to initialize OpenTelemetry metrics: %w", err)
+	}
 	adminServer := http.Server{
 		Addr:         fmt.Sprintf(":%d", AdminPort.Value()),
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
 		// Since it's important for individual API implementors to have control over CORS/CSRF
 		// settings, the only general middleware is for logging and observability.
-		Handler: otel.Middleware("krb-admin", loggingMiddleware(adminMux)),
+		Handler: loggingMiddleware(
+			otel.MetricsMiddleware(
+				metrics, otel.TracingMiddleware("krb-admin", Version.Value(), adminMux),
+			),
+		),
 	}
 
 	gwErrChan := make(chan error, 1)
