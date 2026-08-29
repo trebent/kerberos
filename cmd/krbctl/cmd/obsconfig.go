@@ -26,6 +26,9 @@ var grafanaDashboardsYML []byte
 //go:embed assets/jaeger/config-ui.json
 var jaegerConfigUI []byte
 
+//go:embed assets/jaeger/jaeger.yml
+var jaegerYML []byte
+
 // scrapeJob is a resolved Prometheus scrape target (job name + host:port).
 type scrapeJob struct {
 	name   string
@@ -71,7 +74,7 @@ func writeObsFiles(driver string, opts *configOptions) error {
 	}
 
 	if err := writeObsFile(
-		filepath.Join(opts.outputPath, "jaeger.yml"), []byte(buildJaegerYML()),
+		filepath.Join(opts.outputPath, "jaeger.yml"), jaegerYML,
 	); err != nil {
 		return err
 	}
@@ -180,74 +183,4 @@ func buildGrafanaINI(driver string, opts *obsConfigOptions) string {
 	}
 
 	return b.String()
-}
-
-// buildJaegerYML returns the static Jaeger configuration.
-func buildJaegerYML() string {
-	return `service:
-  extensions: [jaeger_storage, jaeger_query]
-  pipelines:
-    traces:
-      receivers: [otlp]
-      processors: [batch]
-      exporters: [jaeger_storage_exporter]
-  telemetry:
-    resource:
-      service.name: jaeger
-    metrics:
-      level: detailed
-      readers:
-        - pull:
-            exporter:
-              prometheus:
-                host: 0.0.0.0
-                port: 8888
-    logs:
-      level: info
-
-extensions:
-  jaeger_query:
-    storage:
-      traces: badger_store
-      traces_archive: badger_archive
-    ui:
-      config_file: /jaeger-config-ui.json
-    http:
-      endpoint: 0.0.0.0:16686
-    grpc:
-      endpoint: 0.0.0.0:16685
-  jaeger_storage:
-    backends:
-      badger_store:
-        badger:
-          directories:
-            keys: "/jaeger/"
-            values: "/jaeger/"
-          ephemeral: false
-          ttl:
-            spans: 48h
-          metrics_update_interval: 10s
-      badger_archive:
-        badger:
-          directories:
-            keys: "/jaeger/archive/"
-            values: "/jaeger/archive/"
-          ephemeral: false
-          ttl:
-            spans: 72h
-          metrics_update_interval: 10s
-
-receivers:
-  otlp:
-    protocols:
-      grpc:
-        endpoint: "0.0.0.0:4317"
-
-processors:
-  batch:
-
-exporters:
-  jaeger_storage_exporter:
-    trace_storage: badger_store
-`
 }

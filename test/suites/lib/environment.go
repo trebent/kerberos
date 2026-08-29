@@ -6,12 +6,13 @@ import (
 )
 
 const (
-	defaultHost              = "localhost"
-	defaultKerberosPort      = 30000
-	defaultAdminPort         = 30001
-	defaultMetricsPort       = 9464
-	defaultJaegerReadAPIPort = 16685
-	defaultConnectorPort     = 30100
+	defaultHost                 = "localhost"
+	defaultKerberosPort         = 30000
+	defaultAdminPort            = 30001
+	defaultMetricsPort          = 9464
+	defaultJaegerReadAPIPort    = 16685
+	defaultConnectorPort        = 30100
+	defaultConnectorMetricsPort = 9462
 )
 
 func GetHost() string {
@@ -88,6 +89,20 @@ func GetConnectorPort() int {
 	decoded, err := strconv.Atoi(val)
 	if err != nil {
 		return defaultConnectorPort
+	}
+
+	return decoded
+}
+
+func GetConnectorMetricsPort() int {
+	val, found := os.LookupEnv("KRB_FT_CONNECTOR_METRICS_PORT")
+	if !found {
+		return defaultConnectorMetricsPort
+	}
+
+	decoded, err := strconv.Atoi(val)
+	if err != nil {
+		return defaultConnectorMetricsPort
 	}
 
 	return decoded

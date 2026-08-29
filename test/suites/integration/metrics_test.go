@@ -1,19 +1,18 @@
 package integration
 
 import (
+	"context"
 	"fmt"
-	lib "github.com/trebent/kerberos/test/lib"
-	"net/http"
 	"testing"
 
-	io_prometheus_client "github.com/prometheus/client_model/go"
-	"github.com/prometheus/common/expfmt"
-	"github.com/prometheus/common/model"
+	adminapi "github.com/trebent/kerberos/test/client/admin"
+	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
+	lib "github.com/trebent/kerberos/test/lib"
 )
 
-// Verifies that basic metrics are present and incremented as expected.
-func TestMetricsBasic(t *testing.T) {
-	startMetrics := fetchMetrics(t)
+// Verifies that basic metrics are present and incremented as expected for GW calls.
+func TestGWMetrics(t *testing.T) {
+	startMetrics := lib.FetchMetrics(lib.GetHost(), lib.GetMetricsPort(), t)
 
 	url := fmt.Sprintf("http://%s:%d/gw/backend/echo/hi", lib.GetHost(), lib.GetPort())
 	_ = lib.Get(url, t)
@@ -22,7 +21,7 @@ func TestMetricsBasic(t *testing.T) {
 	_ = lib.Delete(url, t)
 	_ = lib.Patch(url, []byte("metrics test"), t)
 
-	endMetrics := fetchMetrics(t)
+	endMetrics := lib.FetchMetrics(lib.GetHost(), lib.GetMetricsPort(), t)
 	for metricName, endMetric := range endMetrics {
 		switch metricName {
 		case "request_count_total":
@@ -30,9 +29,9 @@ func TestMetricsBasic(t *testing.T) {
 
 			startCount := float64(0)
 			if startMetric, exists := startMetrics[metricName]; exists {
-				startCount = getCounterValue(startMetric)
+				startCount = lib.GetCounterValue(startMetric, t)
 			}
-			endCount := getCounterValue(endMetric)
+			endCount := lib.GetCounterValue(endMetric, t)
 
 			if endCount-startCount != 5.0 {
 				t.Errorf("metric %s did not increment as expected: got %f, want %f", metricName, endCount-startCount, 5.0)
@@ -42,9 +41,9 @@ func TestMetricsBasic(t *testing.T) {
 
 			startCount := float64(0)
 			if startMetric, exists := startMetrics[metricName]; exists {
-				startCount = getCounterValue(startMetric)
+				startCount = lib.GetCounterValue(startMetric, t)
 			}
-			endCount := getCounterValue(endMetric)
+			endCount := lib.GetCounterValue(endMetric, t)
 
 			if endCount-startCount != 5.0 {
 				t.Errorf("metric %s did not increment as expected: got %f, want %f", metricName, endCount-startCount, 5.0)
@@ -53,41 +52,84 @@ func TestMetricsBasic(t *testing.T) {
 	}
 }
 
-func fetchMetrics(t *testing.T) map[string]*io_prometheus_client.MetricFamily {
-	// Verify metrics standings
-	t.Logf("Metrics host and port %s:%d", lib.GetHost(), lib.GetMetricsPort())
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s:%d/metrics", lib.GetHost(), lib.GetMetricsPort()), nil)
-	if err != nil {
-		t.Fatalf("Failed to create request: %v", err)
-	}
+// Verifies that basic metrics are present and incremented as expected for admin API calls.
+func TestAdminMetrics(t *testing.T) {
+	startMetrics := lib.FetchMetrics(lib.GetHost(), lib.GetMetricsPort(), t)
 
-	resp, err := lib.Client.Do(req)
-	if err != nil {
-		t.Fatalf("Failed to send request: %v", err)
-	}
-	defer resp.Body.Close()
+	_, _ = lib.AdminClient.LoginSuperuserWithResponse(
+		context.Background(), adminapi.LoginSuperuserJSONRequestBody{
+			ClientId:     lib.SuperUserClientID,
+			ClientSecret: lib.SuperUserClientSecret,
+		},
+	)
 
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("Unexpected status code: got %d, want %d", resp.StatusCode, http.StatusOK)
-	}
+	endMetrics := lib.FetchMetrics(lib.GetHost(), lib.GetMetricsPort(), t)
+	for metricName, endMetric := range endMetrics {
+		switch metricName {
+		case "admin_request_count_total":
+			t.Log("Verifying admin_request_count_total metric")
 
-	parser := expfmt.NewTextParser(model.LegacyValidation)
-	metrics, err := parser.TextToMetricFamilies(resp.Body)
-	if err != nil {
-		t.Fatalf("Failed to parse metrics: %v", err)
-	}
+			startCount := float64(0)
+			if startMetric, exists := startMetrics[metricName]; exists {
+				startCount = lib.GetCounterValue(startMetric, t)
+			}
+			endCount := lib.GetCounterValue(endMetric, t)
 
-	return metrics
+			if endCount-startCount != 1.0 {
+				t.Errorf("metric %s did not increment as expected: got %f, want %f", metricName, endCount-startCount, 5.0)
+			}
+		case "admin_response_total":
+			t.Log("Verifying admin_response_total metric")
+
+			startCount := float64(0)
+			if startMetric, exists := startMetrics[metricName]; exists {
+				startCount = lib.GetCounterValue(startMetric, t)
+			}
+			endCount := lib.GetCounterValue(endMetric, t)
+
+			if endCount-startCount != 1.0 {
+				t.Errorf("metric %s did not increment as expected: got %f, want %f", metricName, endCount-startCount, 5.0)
+			}
+		}
+	}
 }
 
-func getCounterValue(metricFamily *io_prometheus_client.MetricFamily) float64 {
-	if metricFamily.GetType() != io_prometheus_client.MetricType_COUNTER {
-		panic("getCounterValue called on non-counter metric")
-	}
+// Verifies that basic metrics are present and incremented as expected for basic auth calls.
+func TestBasicAuthMetrics(t *testing.T) {
+	startMetrics := lib.FetchMetrics(lib.GetHost(), lib.GetMetricsPort(), t)
 
-	var total float64
-	for _, metric := range metricFamily.GetMetric() {
-		total += metric.GetCounter().GetValue()
+	_, _ = lib.BasicAuthClient.LoginWithResponse(t.Context(), authbasicapi.Orgid(alwaysOrgID), authbasicapi.LoginJSONRequestBody{
+		Username: alwaysUser,
+		Password: alwaysUserPassword,
+	})
+
+	endMetrics := lib.FetchMetrics(lib.GetHost(), lib.GetMetricsPort(), t)
+	for metricName, endMetric := range endMetrics {
+		switch metricName {
+		case "admin_request_count_total":
+			t.Log("Verifying admin_request_count_total metric")
+
+			startCount := float64(0)
+			if startMetric, exists := startMetrics[metricName]; exists {
+				startCount = lib.GetCounterValue(startMetric, t)
+			}
+			endCount := lib.GetCounterValue(endMetric, t)
+
+			if endCount-startCount != 1.0 {
+				t.Errorf("metric %s did not increment as expected: got %f, want %f", metricName, endCount-startCount, 5.0)
+			}
+		case "admin_response_total":
+			t.Log("Verifying admin_response_total metric")
+
+			startCount := float64(0)
+			if startMetric, exists := startMetrics[metricName]; exists {
+				startCount = lib.GetCounterValue(startMetric, t)
+			}
+			endCount := lib.GetCounterValue(endMetric, t)
+
+			if endCount-startCount != 1.0 {
+				t.Errorf("metric %s did not increment as expected: got %f, want %f", metricName, endCount-startCount, 5.0)
+			}
+		}
 	}
-	return total
 }

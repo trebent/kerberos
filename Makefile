@@ -440,6 +440,10 @@ test/protected-echo:
 	$(call cecho,Sending a test request to protected-echo...,$(BOLD_YELLOW))
 	curl -X GET -i localhost:$(KERBEROS_PORT)/gw/backend/protected-echo/hi
 
+test/flow:
+	$(call cecho,Fetching the flow from KRB...,$(BOLD_YELLOW))
+	curl -X GET -i localhost:$(KERBEROS_ADMIN_PORT)/api/admin/flow
+
 test/integration:
 	$(call cecho,Running integration tests for Kerberos...,$(BOLD_YELLOW))
 	@cd test/suites/integration && go test -v ./... -count=1 -failfast

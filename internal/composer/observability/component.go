@@ -15,12 +15,12 @@ import (
 	"github.com/trebent/kerberos/internal/config"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
+	intotel "github.com/trebent/kerberos/internal/otel"
 	"github.com/trebent/kerberos/internal/response"
 	"github.com/trebent/zerologr"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
 	"go.opentelemetry.io/otel/trace"
@@ -34,12 +34,10 @@ type (
 		logger   logr.Logger
 		debugger debug.Debugger
 
-		spanOpts                 []trace.SpanStartOption
-		requestCounter           metric.Int64Counter
-		requestSizeHistogram     metric.Int64Histogram
-		requestDurationHistogram metric.Float64Histogram
-		responseCounter          metric.Int64Counter
-		responseSizeHistogram    metric.Int64Histogram
+		tracer   trace.Tracer
+		spanOpts []trace.SpanStartOption
+
+		metrics *intotel.StdHTTPMetrics
 	}
 	Opts struct {
 		Cfg *config.ObservabilityConfig
@@ -52,20 +50,10 @@ type (
 
 const (
 	tracerName = "krb"
-
-	requestCounterName           = "request.count"
-	requestSizeHistogramName     = "request.size"
-	requestDurationHistogramName = "request.duration"
-
-	responseCounterName       = "response"
-	responseSizeHistogramName = "response.size"
 )
 
 // nolint: gochecknoglobals
-var (
-	tracer                        = otel.Tracer(tracerName)
-	_      composer.FlowComponent = (*obs)(nil)
-)
+var _ composer.FlowComponent = (*obs)(nil)
 
 func NewComponent(opts *Opts) composer.FlowComponent {
 	logger := zerologr.WithName("request")
@@ -74,66 +62,11 @@ func NewComponent(opts *Opts) composer.FlowComponent {
 		return dummyComponent(logger, opts)
 	}
 
-	meter := otel.GetMeterProvider().Meter(
-		"github.com/trebent/kerberos",
-		metric.WithInstrumentationVersion(opts.Version),
-	)
-
-	requestCountCounter, err := meter.Int64Counter(
-		requestCounterName,
-		metric.WithDescription("Measures the number of HTTP requests."),
-	)
-	must(err)
-
-	requestSizeHistogram, err := meter.Int64Histogram(
-		requestSizeHistogramName,
-		metric.WithUnit("By"),
-		metric.WithDescription("Measures the size of HTTP request bodies."),
-		metric.WithExplicitBucketBoundaries(
-			0,
-			100,
-			1000,
-			10000,
-			100000,
-			1000000,
-			10000000,
-			100000000,
-		),
-	)
-	must(err)
-
-	requestDurationHistogram, err := meter.Float64Histogram(
-		requestDurationHistogramName,
-		metric.WithUnit("ms"),
-		metric.WithDescription("Measures the time spent handling HTTP requests."),
-		metric.WithExplicitBucketBoundaries(1, 10, 100, 1000, 10000),
-	)
-	must(err)
-
-	responseCounter, err := meter.Int64Counter(
-		responseCounterName,
-		metric.WithDescription("Keeps track of HTTP response status code counts."),
-	)
-	must(err)
-
-	responseSizeHistogram, err := meter.Int64Histogram(
-		responseSizeHistogramName,
-		metric.WithUnit("By"),
-		metric.WithDescription("Measures the size of HTTP response bodies."),
-		metric.WithExplicitBucketBoundaries(
-			0,
-			100,
-			1000,
-			10000,
-			100000,
-			1000000,
-			10000000,
-			100000000,
-		),
-	)
+	metrics, err := intotel.StandardHTTPMetrics("", opts.Version)
 	must(err)
 
 	return &obs{
+		tracer: otel.Tracer(tracerName, trace.WithInstrumentationVersion(opts.Version)),
 		spanOpts: []trace.SpanStartOption{
 			trace.WithSpanKind(trace.SpanKindServer),
 		},
@@ -141,11 +74,7 @@ func NewComponent(opts *Opts) composer.FlowComponent {
 		logger:   logger,
 		debugger: opts.Debugger,
 
-		requestCounter:           requestCountCounter,
-		requestSizeHistogram:     requestSizeHistogram,
-		requestDurationHistogram: requestDurationHistogram,
-		responseCounter:          responseCounter,
-		responseSizeHistogram:    responseSizeHistogram,
+		metrics: metrics,
 	}
 }
 
@@ -186,7 +115,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// Check request trace context
 	ctx := otel.GetTextMapPropagator().Extract(req.Context(), propagation.HeaderCarrier(req.Header))
-	ctx, span := tracer.Start(
+	ctx, span := o.tracer.Start(
 		ctx,
 		fmt.Sprintf("%s %s", req.Method, req.URL.String()),
 		o.spanStartOpts(req)...,
@@ -201,9 +130,6 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// - response body size
 	wrapped := response.NewResponseWrapper(w)
 
-	// Wrapped body to extract size.
-	bw, _ := response.NewBodyWrapper(req.Body).(*response.BodyWrapper)
-
 	// Extract the backend backendName to enable debugging and context enrichment early on.
 	backendName, err := router.GetBackendName(req)
 	if err != nil {
@@ -211,7 +137,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		apierror.ErrorHandler(wrapped, req, err)
 		krbAttributes := extractKrbAttributes(ctx)
 		//nolint:errcheck // no point
-		o.bumpMetrics(ctx, wrapped.(*response.Wrapper), bw, req, 0, krbAttributes)
+		o.metrics.Bump(ctx, wrapped.(*response.Wrapper), nil, req, 0, krbAttributes...)
 
 		span.SetStatus(codes.Error, http.StatusText(http.StatusBadRequest))
 		span.SetAttributes(krbAttributes...)
@@ -235,8 +161,11 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	ctx = logr.NewContext(ctx, rLogger)
 
+	var bw *response.BodyWrapper
 	// Wrap the request body to extract size
 	if req.Body != nil && req.Body != http.NoBody {
+		// Wrapped body to extract size.
+		bw, _ = response.NewBodyWrapper(req.Body).(*response.BodyWrapper)
 		req.Body = bw
 	}
 
@@ -265,7 +194,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	wrapper, _ := wrapped.(*response.Wrapper)
 	krbAttributes := extractKrbAttributes(wrapper.GetRequestContext())
 
-	o.bumpMetrics(ctx, wrapper, bw, req, duration, krbAttributes)
+	o.metrics.Bump(ctx, wrapper, bw, req, duration, krbAttributes...)
 
 	span.SetStatus(wrapper.SpanStatus())
 	span.SetAttributes(krbAttributes...)
@@ -283,35 +212,6 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		debug.CallResultSuccess,
 		"",
 	)
-}
-
-func (o *obs) bumpMetrics(
-	ctx context.Context,
-	wrapper *response.Wrapper,
-	bw *response.BodyWrapper,
-	req *http.Request,
-	duration time.Duration,
-	attributes []attribute.KeyValue,
-) {
-	// Update metrics, can't separate request and response handling since the handler is
-	// called by ServeHTTP, no
-	statusCodeOpt := metric.WithAttributes(semconv.HTTPStatusCode(wrapper.StatusCode()))
-	requestMeta := metric.WithAttributes(semconv.HTTPMethod(req.Method))
-	krbMetricMeta := metric.WithAttributes(attributes...)
-
-	// Request
-	o.requestCounter.Add(ctx, 1, requestMeta, krbMetricMeta)
-	o.requestSizeHistogram.Record(ctx, bw.NumBytes(), requestMeta, krbMetricMeta)
-	o.requestDurationHistogram.Record(
-		ctx,
-		float64(duration/time.Millisecond),
-		requestMeta,
-		krbMetricMeta,
-	)
-
-	// Response
-	o.responseCounter.Add(ctx, 1, statusCodeOpt, requestMeta, krbMetricMeta)
-	o.responseSizeHistogram.Record(ctx, wrapper.NumBytes(), requestMeta, krbMetricMeta)
 }
 
 func must(err error) {

@@ -1,23 +1,20 @@
 package integration
 
 import (
-	"errors"
 	"fmt"
-	lib "github.com/trebent/kerberos/test/lib"
-	"io"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/jaegertracing/jaeger-idl/model/v1"
-	tracingv2 "github.com/jaegertracing/jaeger-idl/proto-gen/api_v2"
+	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
+	lib "github.com/trebent/kerberos/test/lib"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// Verifies that basic tracing works as expected.
-func TestTracingBasic(t *testing.T) {
+// Verifies that basic tracing works as expected. Verify both krb and echo services are found.
+func TestGWTracing(t *testing.T) {
 	start := time.Now()
 	response := lib.Get(fmt.Sprintf("http://%s:%d/gw/backend/echo/hi", lib.GetHost(), lib.GetPort()), t)
 
@@ -36,83 +33,51 @@ func TestTracingBasic(t *testing.T) {
 	}
 	defer conn.Close()
 
-	spans := findSpans(conn, decodeTraceParent(traceParent[0], t), start, 2, t)
-	for _, span := range spans {
-		t.Logf("Found span %s belonging to trace %s", span.SpanID, span.TraceID)
+	echoSpans := lib.FindEchoSpans(conn, lib.DecodeTraceParent(traceParent[0], t), start, 2, t)
+	for _, span := range echoSpans {
+		t.Logf("Found 'echo' span %s belonging to trace %s", span.SpanID, span.TraceID)
+	}
+
+	krbSpans := lib.FindSpansByService(conn, "krb", start, 2, t)
+	for _, span := range krbSpans {
+		t.Logf("Found 'krb' span %s belonging to trace %s", span.SpanID, span.TraceID)
 	}
 }
 
-func findSpans(conn *grpc.ClientConn, traceID model.TraceID, start time.Time, spanCount int, t *testing.T) []*model.Span {
-	t.Logf("Trace ID: %v", traceID)
+func TestAdminAPITracing(t *testing.T) {
+	start := time.Now()
+	_ = lib.SuperLogin(t)
 
-	begin := time.Now()
-	defer func(b time.Time) {
-		t.Logf("Took %s to find the spans", time.Since(b).String())
-	}(begin)
-	timeout := begin.Add(15 * time.Second)
-	spans := make(map[string]*model.Span, 0)
-
-	// Small initial delay to hopefully fetch on try #1
-	time.Sleep(2 * time.Second)
-
-	for {
-		if time.Now().After(timeout) {
-			t.Fatalf("Timed out waiting for %d spans", spanCount)
-		}
-
-		t.Log("Listing traces...")
-		client := tracingv2.NewQueryServiceClient(conn)
-		findTracesClient, err := client.FindTraces(t.Context(), &tracingv2.FindTracesRequest{
-			Query: &tracingv2.TraceQueryParameters{
-				ServiceName:  "echo",
-				StartTimeMin: start,
-				StartTimeMax: time.Now(),
-			},
-		})
-		if err != nil {
-			t.Fatalf("Failed to initialise get trace client: %v", err)
-		}
-
-		for {
-			t.Log("Get span chunk...")
-			chunk, err := findTracesClient.Recv()
-			if err != nil && !errors.Is(err, io.EOF) {
-				t.Fatalf("Error when receiving span chunk: %v", err)
-			}
-
-			for _, span := range chunk.GetSpans() {
-				t.Logf("Inspecting span %v", span)
-
-				if span.TraceID == traceID {
-					t.Log("Found a matching trace ID")
-
-					spans[span.SpanID.String()] = &span
-				}
-
-				if len(spans) == spanCount {
-					spanSlice := make([]*model.Span, 0, 2)
-					for _, span := range spans {
-						spanSlice = append(spanSlice, span)
-					}
-					return spanSlice
-				}
-			}
-
-			if errors.Is(err, io.EOF) {
-				t.Logf("Got EOF, breaking")
-				break
-			}
-		}
-
-		time.Sleep(500 * time.Millisecond)
-	}
-}
-
-func decodeTraceParent(traceParent string, t *testing.T) model.TraceID {
-	split := strings.Split(traceParent, "-")
-	traceID, err := model.TraceIDFromString(split[1])
+	conn, err := grpc.NewClient(fmt.Sprintf("localhost:%d", lib.GetJaegerAPIPort()), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		t.Fatalf("Error decoding trace parent: %v", err)
+		t.Fatalf("Failed to connect to jaeger: %v", err)
 	}
-	return traceID
+	defer conn.Close()
+
+	krbSpans := lib.FindSpansByService(conn, "krb", start, 1, t)
+	for _, span := range krbSpans {
+		t.Logf("Found 'krb' span %s belonging to trace %s", span.SpanID, span.TraceID)
+	}
+}
+
+func TestBasicAuthTracing(t *testing.T) {
+	start := time.Now()
+
+	resp, err := lib.BasicAuthClient.LoginWithResponse(t.Context(), authbasicapi.Orgid(alwaysOrgID), authbasicapi.LoginJSONRequestBody{
+		Username: alwaysUser,
+		Password: alwaysUserPassword,
+	})
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(resp.StatusCode(), http.StatusNoContent, t)
+
+	conn, err := grpc.NewClient(fmt.Sprintf("localhost:%d", lib.GetJaegerAPIPort()), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatalf("Failed to connect to jaeger: %v", err)
+	}
+	defer conn.Close()
+
+	krbSpans := lib.FindSpansByService(conn, "krb", start, 1, t)
+	for _, span := range krbSpans {
+		t.Logf("Found 'krb' span %s belonging to trace %s", span.SpanID, span.TraceID)
+	}
 }
