@@ -2,4 +2,14 @@
 !go.mod
 !go.sum
 !cmd/admin-connector/
-!internal/
+!internal/db/
+!internal/admin/
+!internal/util/http/
+!internal/util/password/
+!internal/response/
+!internal/otel/
+!internal/oapi/
+!internal/env/
+!internal/config/
+!internal/security/
+internal/**/*_test.go

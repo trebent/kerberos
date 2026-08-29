@@ -4,13 +4,6 @@
 !main.go
 !env.go
 !internal/
-!internal/**/
-!internal/**/*.go
-!internal/**/dbschema/
-!internal/**/dbschema/*.sql
-!internal/config/
-!internal/config/schemas/
-!internal/config/schemas/*.json
 !openapi/
 !openapi/**
 !poc/poc.json
