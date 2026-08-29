@@ -25,7 +25,7 @@ extensions:
       traces: badger_store
       traces_archive: badger_archive
     ui:
-      config_file: /config-ui.json
+      config_file: /jaeger-config-ui.json
     http:
       endpoint: 0.0.0.0:16686
     grpc:
@@ -39,7 +39,7 @@ extensions:
             values: "/jaeger/"
           ephemeral: false
           ttl:
-            spans: 48h # 2 days
+            spans: 48h
           metrics_update_interval: 10s
       badger_archive:
         badger:
@@ -48,7 +48,7 @@ extensions:
             values: "/jaeger/archive/"
           ephemeral: false
           ttl:
-            spans: 72h # 3 days
+            spans: 72h
           metrics_update_interval: 10s
 
 receivers:
