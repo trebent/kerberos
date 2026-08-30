@@ -4,7 +4,7 @@
 
 Before preparing **any** implementation in this repository, read the design skill:
 
-```
+```bash
 .github/skills/design/SKILL.md
 ```
 
@@ -18,7 +18,7 @@ The following skills live in `.github/skills/` and cover specific areas of the
 codebase. Use them when working in the relevant area:
 
 | Skill | When to use |
-|---|---|
+| --- | --- |
 | `design` | Before any implementation — read first |
 | `configuration` | Adding or modifying config sections or schemas |
 | `flow-components` | Implementing or debugging FlowComponents |
@@ -30,6 +30,6 @@ codebase. Use them when working in the relevant area:
 Custom multi-step agents are defined in `.github/agents/`:
 
 | Agent | Purpose |
-|---|---|
+| --- | --- |
 | `oas-updater` | Full lifecycle of adding/modifying an API endpoint |
 | `testing-and-validation` | Runs all CI checks locally and reports results |

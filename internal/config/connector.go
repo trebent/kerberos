@@ -1,8 +1,7 @@
 package config
 
 type ConnectorConfig struct {
-	// Origins holds configuration for CORS origins. In addition, Origins other than the allowed ones
-	// will be rejected with a 403 response.
+	// Origins holds configuration for CORS origins.
 	Origins *Origins `json:"origins,omitempty"`
 
 	// Persistence holds configuration for the persistence layer.
