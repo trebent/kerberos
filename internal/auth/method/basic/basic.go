@@ -259,14 +259,10 @@ func (a *basic) RegisterRoutes(
 		},
 	})
 
-	// Go 1.22+ ServeMux performs method matching, so OPTIONS requests are rejected
-	// with 405 before middleware runs. Always register a wildcard OPTIONS handler:
-	// when CORS is configured it short-circuits here; when it is the passthrough,
-	// OAS validation runs as next and rejects OPTIONS naturally.
-	methodNotAllowed := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+	noContent := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
 	})
-	mux.HandleFunc("OPTIONS /api/auth/basic/{path...}", corsMw(methodNotAllowed).ServeHTTP)
+	mux.HandleFunc("OPTIONS /api/auth/basic/{path...}", corsMw(noContent).ServeHTTP)
 
 	return nil
 }
