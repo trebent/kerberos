@@ -29,7 +29,7 @@ import (
 type (
 	obs struct {
 		next composer.FlowComponent
-		cfg  *config.ObservabilityConfig
+		cfg  *config.Observability
 
 		logger   logr.Logger
 		debugger debug.Debugger
@@ -40,7 +40,7 @@ type (
 		metrics *intotel.StdHTTPMetrics
 	}
 	Opts struct {
-		Cfg *config.ObservabilityConfig
+		Cfg *config.Observability
 
 		Version string
 

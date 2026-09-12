@@ -27,10 +27,10 @@ type (
 		// Converted to ready-to-use handlers in Next() once the downstream is known.
 		factories  map[string]func(http.Handler) http.Handler
 		validators map[string]http.Handler
-		cfg        *config.OASConfig
+		cfg        *config.OAS
 	}
 	Opts struct {
-		Cfg *config.OASConfig
+		Cfg *config.OAS
 	}
 )
 

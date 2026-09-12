@@ -34,7 +34,7 @@ type (
 		// that needs to satisfy the admin extension that does not matter.
 		RegisterRoutes(
 			mux *http.ServeMux,
-			cfg *config.AuthConfig,
+			cfg *config.Auth,
 			middleware ...authbasicapi.StrictMiddlewareFunc,
 		) error
 	}
@@ -214,7 +214,7 @@ func (a *basic) Authorized(req *http.Request) error {
 // RegisterRoutes registers the API routes for the basic auth method.
 func (a *basic) RegisterRoutes(
 	mux *http.ServeMux,
-	cfg *config.AuthConfig,
+	cfg *config.Auth,
 	middleware ...authbasicapi.StrictMiddlewareFunc,
 ) error {
 	data, err := os.ReadFile(fmt.Sprintf("%s/%s", a.oasDir, authBasicSpecification))

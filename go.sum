@@ -160,6 +160,10 @@ github.com/stretchr/testify v1.12.1 h1:EuwCh5fleGS7H32xRwO3wRGT7DxrDhLAT6FF8MpWD
 github.com/stretchr/testify v1.12.1/go.mod h1:MDEgiDPPsNp5cuIrHPPCyornHKgEVbtFUmoNlxoYthg=
 github.com/trebent/envparser v1.0.8 h1:0PbtlGtUoEIBBAU+dByzAmXDq/CCW+1fPhhoOQDAPMA=
 github.com/trebent/envparser v1.0.8/go.mod h1:tt01YGq91TkGHfWqDWX3r1eKNWByubGzcnsp+N5uDjg=
+github.com/trebent/schemer v0.0.0-20260912093310-b180ddeee656 h1:h4FobfRwW9w4F2JDD3joZJeU0hKtYP/B9B9ZcJLnGk8=
+github.com/trebent/schemer v0.0.0-20260912093310-b180ddeee656/go.mod h1:HUWpadWjyL0T5FXNU0mk6Q1DLZQaaO4pUUWyWrdC3q8=
+github.com/trebent/schemer v0.1.0 h1:2qEzGLEjv4A7CPhAL2ew+7wS2ldRKN9ve0lW8cjlUDs=
+github.com/trebent/schemer v0.1.0/go.mod h1:HUWpadWjyL0T5FXNU0mk6Q1DLZQaaO4pUUWyWrdC3q8=
 github.com/trebent/zerologr v1.1.1 h1:dtDy6IYHX0A1QVvTN7/oUwb3WiWQa8jpR37n84L+dms=
 github.com/trebent/zerologr v1.1.1/go.mod h1:ceOLoPe5er9EJzylbwoSiw6j/Ssc+oYGJX8JrIVtqy4=
 github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f/go.mod h1:N2zxlSyiKSe5eX1tZViRH5QA0qijqEDrYZiPEAiq3wU=
