@@ -15,7 +15,7 @@ func BenchmarkObs_Standard(b *testing.B) {
 	zerologr.Set(zerologr.New(&zerologr.Opts{Console: true, V: 20}))
 
 	comp := obs.NewComponent(&obs.Opts{
-		Cfg:     &config.ObservabilityConfig{},
+		Cfg:     &config.Observability{},
 		Version: "1.0.0",
 	})
 	dummy := composer.Dummy{

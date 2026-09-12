@@ -96,7 +96,7 @@ func main() {
 
 	cleanup, err := obs.Instrument(
 		signalCtx,
-		cfg.ObservabilityConfig,
+		cfg.ObsCfg,
 		serviceName,
 		Version.Value(),
 	)
@@ -117,7 +117,7 @@ func main() {
 
 // newDBClient constructs a db.SQLClient based on the persistence configuration.
 // When no persistence config is provided, SQLite in current workdir is used (legacy default).
-func newDBClient(cfg *config.PersistenceConfig) db.SQLClient {
+func newDBClient(cfg *config.Persistence) db.SQLClient {
 	if cfg.Driver == "sqlite" {
 		zerologr.Info("Using SQLite persistence")
 		return sqlite.New(&sqlite.Opts{DSN: cfg.Address})
@@ -157,7 +157,7 @@ func newDBClient(cfg *config.PersistenceConfig) db.SQLClient {
 
 // setupConfig sets up the configuration map and registers all necessary
 // configurations. It returns the configuration map after calling Parse().
-func setupConfig() (*config.RootConfig, error) {
+func setupConfig() (*config.Kerberos, error) {
 	zerologr.Info("Setting up configuration...")
 
 	data, err := os.ReadFile(configPath)
@@ -165,18 +165,20 @@ func setupConfig() (*config.RootConfig, error) {
 		return nil, err
 	}
 
-	cfg := config.New()
-	cfg.Load(data)
-
 	zerologr.Info("Configuration data loaded")
+
+	cfg := config.NewKerberos()
+	sch := config.NewKerberosSchemer()
+	sch.Load(data)
 
 	zerologr.Info("Parsing configurations...")
 
 	// Parse configurations.
 	//nolint: govet
-	if err := cfg.Parse(); err != nil {
+	if err := sch.Parse(cfg); err != nil {
 		return nil, err
 	}
+	cfg.PostProcess()
 
 	zerologr.Info("Configuration parsed successfully")
 
@@ -187,17 +189,17 @@ func setupConfig() (*config.RootConfig, error) {
 // It returns an error if the server fails to start and when stopping. If
 // the server is stopped, it returns http.ErrServerClosed.
 // nolint: funlen,gocognit // welp
-func startServer(ctx context.Context, cfg *config.RootConfig) error {
+func startServer(ctx context.Context, cfg *config.Kerberos) error {
 	adminMux := http.NewServeMux()
 	gwMux := http.NewServeMux()
-	db := newDBClient(cfg.PersistenceConfig)
+	db := newDBClient(cfg.PersistenceCfg)
 
 	// Even though the admin configuration is optional, it's always available. The admin initialisation
 	// output is used to configure and prepare other internal components for administration.
 	zerologr.Info("Loading admin")
 	adm, err := admin.New(
 		&admin.Opts{
-			Cfg:       cfg.AdminConfig,
+			Cfg:       cfg.AdminCfg,
 			Mux:       adminMux,
 			SQLClient: db,
 			OASDir:    OASDirectory.Value(),
@@ -209,13 +211,13 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 
 	zerologr.Info("Loading observability")
 	observability := obs.NewComponent(&obs.Opts{
-		Cfg:      cfg.ObservabilityConfig,
+		Cfg:      cfg.ObsCfg,
 		Version:  Version.Value(),
 		Debugger: adm.GetDebugger(),
 	})
 
 	zerologr.Info("Loading router")
-	router := router.NewComponent(&router.Opts{Cfg: cfg.GatewayConfig.Router})
+	router := router.NewComponent(&router.Opts{Cfg: cfg.GatewayCfg.Router})
 
 	zerologr.Info("Loading custom")
 	customFlowComponents := make([]composer.FlowComponent, 0)
@@ -223,7 +225,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	if cfg.AuthEnabled() {
 		zerologr.Info("Loading auth")
 		authorizer, err := auth.NewComponent(&auth.Opts{
-			Cfg:       cfg.AuthConfig,
+			Cfg:       cfg.AuthCfg,
 			SQLClient: db,
 			OASDir:    OASDirectory.Value(),
 		})
@@ -241,7 +243,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 	if cfg.OASEnabled() {
 		zerologr.Info("Loading OAS validator")
 		oasValidator := oas.NewComponent(&oas.Opts{
-			Cfg: cfg.OASConfig,
+			Cfg: cfg.OASCfg,
 		})
 		customFlowComponents = append(customFlowComponents, oasValidator)
 
@@ -253,7 +255,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 
 	zerologr.Info("Loading forwarder")
 	forwarder, err := forwarder.NewComponent(&forwarder.Opts{
-		Backends: cfg.GatewayConfig.Router.Backends,
+		Backends: cfg.GatewayCfg.Router.Backends,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to initialize forwarder: %w", err)
@@ -318,7 +320,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 
 	gwErrChan := make(chan error, 1)
 	go func() {
-		if tlsCfg := cfg.GatewayConfig.TLS; tlsCfg != nil {
+		if tlsCfg := cfg.GatewayCfg.TLS; tlsCfg != nil {
 			gwErrChan <- gwServer.ListenAndServeTLS(tlsCfg.CertFile, tlsCfg.KeyFile)
 			return
 		}
@@ -327,7 +329,7 @@ func startServer(ctx context.Context, cfg *config.RootConfig) error {
 
 	adminErrChan := make(chan error, 1)
 	go func() {
-		if tlsCfg := cfg.AdminConfig.API.TLS; tlsCfg != nil {
+		if tlsCfg := cfg.AdminCfg.API.TLS; tlsCfg != nil {
 			adminErrChan <- adminServer.ListenAndServeTLS(tlsCfg.CertFile, tlsCfg.KeyFile)
 			return
 		}

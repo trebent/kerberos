@@ -13,6 +13,7 @@ require (
 	github.com/oapi-codegen/runtime v1.7.0
 	github.com/spf13/cobra v1.10.2
 	github.com/trebent/envparser v1.0.8
+	github.com/trebent/schemer v0.1.0
 	github.com/trebent/zerologr v1.1.1
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.opentelemetry.io/contrib/exporters/autoexport v0.71.0

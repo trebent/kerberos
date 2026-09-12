@@ -30,7 +30,7 @@ type (
 		OASDir string
 
 		// Admin configuration.
-		Cfg *config.AdminConfig
+		Cfg *config.Admin
 	}
 	Admin struct {
 		// Mux is the HTTP ServeMux on which the admin API is registered.

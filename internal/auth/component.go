@@ -30,7 +30,7 @@ type (
 	}
 	Opts struct {
 		// Auth configuration.
-		Cfg *config.AuthConfig
+		Cfg *config.Auth
 
 		// SQL client.
 		SQLClient db.SQLClient
@@ -41,7 +41,7 @@ type (
 	authorizer struct {
 		next composer.FlowComponent
 
-		cfg   *config.AuthConfig
+		cfg   *config.Auth
 		basic basic.Basic
 		db    db.SQLClient
 	}

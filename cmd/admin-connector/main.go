@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -98,27 +97,24 @@ func main() {
 	}
 }
 
-func loadConfig(path string) (*config.ConnectorConfig, error) {
+func loadConfig(path string) (*config.Connector, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	cfg := config.ConnectorConfig{
-		Origins: &config.Origins{
-			AllowAll:       false,
-			DenyAll:        false,
-			AllowedOrigins: []string{},
-		},
-	}
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	cfg := config.NewConnector()
+	sch := config.NewConnectorSchemer()
+	sch.Load(data)
+
+	if err := sch.Parse(cfg); err != nil {
+		return nil, err
 	}
 
-	return &cfg, nil
+	return cfg, nil
 }
 
-func startServer(signalCtx context.Context, cfg *config.ConnectorConfig) error {
+func startServer(signalCtx context.Context, cfg *config.Connector) error {
 	mux := http.NewServeMux()
 	isServerTLS := isServerTLSEnabled(cfg)
 	isTargetTLS := isTargetTLSEnabled(cfg)
@@ -199,11 +195,11 @@ func startServer(signalCtx context.Context, cfg *config.ConnectorConfig) error {
 	return nil
 }
 
-func isTargetTLSEnabled(cfg *config.ConnectorConfig) bool {
+func isTargetTLSEnabled(cfg *config.Connector) bool {
 	return cfg.TargetTLS != nil
 }
 
-func isServerTLSEnabled(cfg *config.ConnectorConfig) bool {
+func isServerTLSEnabled(cfg *config.Connector) bool {
 	if cfg.TLS == nil {
 		return false
 	}
@@ -219,7 +215,7 @@ func getScheme(isTLS bool) string {
 	return "http"
 }
 
-func createSQLClient(cfg *config.PersistenceConfig) (db.SQLClient, error) {
+func createSQLClient(cfg *config.Persistence) (db.SQLClient, error) {
 	if cfg == nil {
 		return nil, errors.New("persistence config is nil")
 	}

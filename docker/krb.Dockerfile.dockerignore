@@ -5,6 +5,5 @@
 !env.go
 !internal/
 !openapi/
-!openapi/**
 !poc/poc.json
 internal/**/*_test.go
