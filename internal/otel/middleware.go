@@ -26,6 +26,8 @@ func TracingMiddleware(scopeName, version string, next http.Handler) http.Handle
 		defer span.End()
 
 		next.ServeHTTP(w, req.WithContext(ctx))
+		//nolint:errcheck // contract guarantee
+		span.SetStatus(w.(*response.Wrapper).SpanStatus())
 	})
 }
 
