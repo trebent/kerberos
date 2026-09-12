@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://trebent.com/kerberos/schemas/config_schema.json",
+  "type": "object",
+  "properties": {
+    "persistence": {
+      "$ref": "http://trebent.com/kerberos/schemas/persistence_schema.json"
+    },
+    "origins": {
+      "$ref": "http://trebent.com/kerberos/schemas/origins_schema.json"
+    },
+    "tls": {
+      "type": "object",
+      "description": "Server TLS settings for the connector proxy.",
+      "properties": {
+        "serverCertFile": {
+          "type": "string",
+          "description": "Path to a PEM-encoded server certificate."
+        },
+        "serverKeyFile": {
+          "type": "string",
+          "description": "Path to a PEM-encoded server key."
+        }
+      },
+      "required": [
+        "serverCertFile",
+        "serverKeyFile"
+      ],
+      "additionalProperties": false
+    },
+    "targetTls": {
+      "type": "object",
+      "description": "TLS settings for the proxied service behind the connector.",
+      "properties": {
+        "rootCAFile": {
+          "type": "string",
+          "description": "Path to a PEM-encoded CA bundle used to verify the backend's certificate."
+        },
+        "insecureSkipVerify": {
+          "type": "boolean",
+          "default": false,
+          "description": "Disables server certificate verification."
+        }
+      },
+      "required": [
+        "serverCertFile",
+        "serverKeyFile"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "persistence"
+  ]
+}

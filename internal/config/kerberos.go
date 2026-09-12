@@ -1,12 +1,26 @@
 package config
 
 import (
+	_ "embed"
+
 	utilhttp "github.com/trebent/kerberos/internal/util/http"
+	"github.com/trebent/schemer"
+	"github.com/xeipuuv/gojsonschema"
 )
 
 type (
-	// OASConfig holds configuration for OAS-based request routing and validation.
-	OASConfig struct {
+	// Kerberos is the root configuration object for Kerberos.
+	Kerberos struct {
+		GatewayCfg     Gateway        `json:"gateway"`
+		OASCfg         *OAS           `json:"oas,omitempty"`
+		AuthCfg        *Auth          `json:"auth,omitempty"`
+		AdminCfg       *Admin         `json:"admin,omitempty"`
+		ObsCfg         *Observability `json:"observability,omitempty"`
+		PersistenceCfg *Persistence   `json:"persistence,omitempty"`
+	}
+
+	// OAS holds configuration for OAS-based request routing and validation.
+	OAS struct {
 		Order    int                  `json:"order"`
 		Mappings []*OASBackendMapping `json:"mappings"`
 	}
@@ -19,8 +33,8 @@ type (
 		ValidateBody bool `json:"validateBody"`
 	}
 
-	// GatewayConfig holds configuration for the API gateway.
-	GatewayConfig struct {
+	// Gateway holds configuration for the API gateway.
+	Gateway struct {
 		Router *Router    `json:"router"`
 		TLS    *ServerTLS `json:"tls,omitempty"`
 	}
@@ -29,6 +43,8 @@ type (
 	Router struct {
 		Backends []*RouterBackend `json:"backends"`
 	}
+
+	// RouterBackend is a single router entry for a backend proxied by Kerberos.
 	RouterBackend struct {
 		Name      string `json:"name"`
 		Host      string `json:"host"`
@@ -39,6 +55,7 @@ type (
 		Origins *Origins    `json:"origins,omitempty"`
 		TLS     *BackendTLS `json:"tls,omitempty"`
 	}
+
 	// BackendTLS holds per-backend TLS settings.
 	// When nil, the forwarder uses plain HTTP for that backend.
 	BackendTLS struct {
@@ -54,51 +71,66 @@ type (
 		InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
 	}
 
-	// ObservabilityConfig holds configuration for observability features.
-	ObservabilityConfig struct {
+	// Observability holds configuration for observability features.
+	Observability struct {
 		Enabled        bool `json:"enabled"`
 		RuntimeMetrics bool `json:"runtimeMetrics"`
 	}
 
-	// AuthConfig holds configuration for authentication and authorization.
-	AuthConfig struct {
+	// Auth holds configuration for authentication and authorization.
+	Auth struct {
 		Methods *AuthMethods `json:"methods"`
 		Scheme  *AuthScheme  `json:"scheme"`
 		Order   int          `json:"order"`
 	}
+
+	// AuthMethods contain the configured methods of authentication and authorization.
 	AuthMethods struct {
 		Basic *AuthMethodBasic `json:"basic"`
 	}
+
+	// AuthMethodBasic is the Kerberos basic authentication method, where manages user sessions.
+	AuthMethodBasic struct {
+		API *AuthMethodBasicAPI `json:"api,omitempty"`
+	}
+
+	// AuthMethodBasicAPI contain settings for the administrative API side of the basic authentication mechanism.
+	AuthMethodBasicAPI struct {
+		Cookies *Cookies `json:"cookies,omitempty"`
+		Origins *Origins `json:"origins,omitempty"`
+	}
+
+	// AuthScheme maps backends to AuthMethods.
 	AuthScheme struct {
 		Mappings []*AuthMapping `json:"mappings"`
 	}
+
+	// AuthMapping contain the mapping between backend and method, as well as custom overrides for authN and authZ.
 	AuthMapping struct {
 		Backend       string   `json:"backend"`
 		Method        string   `json:"method"`
 		Exempt        []string `json:"exempt"`
 		Authorization *AuthZ   `json:"authorization"`
 	}
+
+	// AuthZ specifies the authorization scheme for a backend.
 	AuthZ struct {
 		Groups []string            `json:"groups"`
 		Paths  map[string][]string `json:"paths"`
 	}
-	AuthMethodBasic struct {
-		API *AuthMethodBasicAPI `json:"api,omitempty"`
-	}
-	AuthMethodBasicAPI struct {
-		Cookies *Cookies `json:"cookies,omitempty"`
-		Origins *Origins `json:"origins,omitempty"`
-	}
 
-	// AdminConfig holds configuration for the admin API.
-	AdminConfig struct {
+	// Admin holds configuration for the admin API.
+	Admin struct {
 		SuperUser *SuperUser `json:"superUser"`
 		API       *AdminAPI  `json:"api,omitempty"`
 	}
+
+	// SuperUser contains the provisioned credentials for the kerbeos super user.
 	SuperUser struct {
 		ClientID     string `json:"clientId"`
 		ClientSecret string `json:"clientSecret"`
 	}
+
 	// AdminAPI holds configuration for the admin API.
 	AdminAPI struct {
 		// Cookies contain cookie settings for the csrf, session, and refresh cookies.
@@ -109,57 +141,69 @@ type (
 		// TLS holds configuration for TLS settings for the admin API.
 		TLS *ServerTLS `json:"tls,omitempty"`
 	}
-
-	Cookies struct {
-		// Domain is the domain setting for cookies, this translates directly to Domain=<value> for cookies.
-		Domain string `json:"domain,omitempty"`
-		// SameSite is the SameSite setting for cookies, this translates directly to SameSite=<value> for cookies.
-		SameSite string `json:"sameSite,omitempty"`
-	}
-
-	// Origins holds configuration for CORS origins.
-	Origins struct {
-		// AllowedOrigins is a list of allowed origins for CORS.
-		AllowedOrigins []string `json:"allowedOrigins,omitempty"`
-		// AllowAll indicates whether to allow all origins for CORS. Mutually exclusive with 'allowedOrigins'.
-		// AllowAll will mean the Access-Control-Allow-Origin header is set to whatever Origin was received.
-		AllowAll bool `json:"allowAll,omitempty"`
-		// DenyAll denies any request with an Origin header, effectively disabling cross-site access.
-		// Mutually exclusive with 'allowedOrigins' and 'allowAll'.
-		DenyAll bool `json:"denyAll,omitempty"`
-	}
-
-	ServerTLS struct {
-		CertFile string `json:"serverCertFile"`
-		KeyFile  string `json:"serverKeyFile"`
-	}
-
-	// PersistenceConfig holds configuration for the backing database.
-	PersistenceConfig struct {
-		// Driver selects the database backend: "sqlite" or "postgres".
-		Driver string `json:"driver"`
-		// Address is the database address. For postgres: host. For sqlite: file path.
-		Address string `json:"address"`
-
-		// Postgres contains specific configuration for the postgres driver. Ignored for other drivers.
-		*Postgres `json:"postgres,omitempty"`
-	}
-	Postgres struct {
-		// Database is the database name (postgres only).
-		Database string `json:"database"`
-		// Username is the database user (postgres only).
-		Username *string `json:"username,omitempty"`
-		// Password is the database password (postgres only).
-		Password *string `json:"password,omitempty"`
-		// SSLMode controls TLS for postgres connections (e.g. "disable", "require", "verify-full").
-		SSLMode *string `json:"sslMode,omitempty"`
-	}
 )
+
+//go:embed schemas/config_schema.json
+var configSchema []byte
+
+//go:embed schemas/admin_schema.json
+var adminSchema []byte
+
+//go:embed schemas/auth_schema.json
+var authSchema []byte
+
+//go:embed schemas/gateway_schema.json
+var gatewaySchema []byte
+
+//go:embed schemas/oas_schema.json
+var oasSchema []byte
+
+//go:embed schemas/observability_schema.json
+var observabilitySchema []byte
+
+//go:embed schemas/ordered_schema.json
+var orderedSchema []byte
+
+//go:embed schemas/router_schema.json
+var routerSchema []byte
 
 const defaultCalloutTimeoutMs = 5000
 
-func newAdminConfig() *AdminConfig {
-	return &AdminConfig{
+// NewKerberos returns a *Kerberos with default values set, note that you need to call PostProcess after parsing as well.
+func NewKerberos() *Kerberos {
+	return &Kerberos{
+		AdminCfg:       newAdminConfig(),
+		ObsCfg:         newObservabilityConfig(),
+		PersistenceCfg: newPersistenceConfig(),
+	}
+}
+
+// NewKerberosSchema returns a schemer.Schemer prepped with Kerberos schemas for validation and parsing.
+func NewKerberosSchemer() *schemer.Schemer {
+	return schemer.New(getKerberosSchema(), getKerberosSupportingSchemas()...)
+}
+
+func getKerberosSchema() gojsonschema.JSONLoader {
+	return gojsonschema.NewBytesLoader(configSchema)
+}
+
+func getKerberosSupportingSchemas() []gojsonschema.JSONLoader {
+	return []gojsonschema.JSONLoader{
+		gojsonschema.NewBytesLoader(adminSchema),
+		gojsonschema.NewBytesLoader(authSchema),
+		gojsonschema.NewBytesLoader(gatewaySchema),
+		gojsonschema.NewBytesLoader(oasSchema),
+		gojsonschema.NewBytesLoader(observabilitySchema),
+		gojsonschema.NewBytesLoader(orderedSchema),
+		gojsonschema.NewBytesLoader(routerSchema),
+		gojsonschema.NewBytesLoader(cookiesSchema),
+		gojsonschema.NewBytesLoader(originsSchema),
+		gojsonschema.NewBytesLoader(persistenceSchema),
+	}
+}
+
+func newAdminConfig() *Admin {
+	return &Admin{
 		API: &AdminAPI{
 			Cookies: &Cookies{
 				SameSite: utilhttp.SameSiteStrict,
@@ -175,21 +219,48 @@ func newAdminConfig() *AdminConfig {
 	}
 }
 
-func newObservabilityConfig() *ObservabilityConfig {
-	return &ObservabilityConfig{
+func newObservabilityConfig() *Observability {
+	return &Observability{
 		Enabled:        true,
 		RuntimeMetrics: true,
 	}
 }
 
-func newPersistenceConfig() *PersistenceConfig {
-	return &PersistenceConfig{
+func newPersistenceConfig() *Persistence {
+	return &Persistence{
 		Driver:  "sqlite",
 		Address: "krb.db",
 	}
 }
 
-func (ac *AuthConfig) postProcess() {
+// PostProcess tweaks some default values after parsing.
+func (kc *Kerberos) PostProcess() {
+	kc.GatewayCfg.postProcess()
+
+	if kc.OASCfg != nil {
+		kc.OASCfg.postProcess()
+	}
+
+	if kc.AuthCfg != nil {
+		kc.AuthCfg.postProcess()
+	}
+
+	kc.AdminCfg.postProcess()
+	kc.ObsCfg.postProcess()
+	kc.PersistenceCfg.postProcess()
+}
+
+// AuthEnabled returns true if auth is enabled.
+func (kc *Kerberos) AuthEnabled() bool {
+	return kc.AuthCfg != nil
+}
+
+// OASEnabled returns true if OAS validation is enabled.
+func (kc *Kerberos) OASEnabled() bool {
+	return kc.OASCfg != nil
+}
+
+func (ac *Auth) postProcess() {
 	// Populate basic auth default values IF basic auth is enabled. This is done here since the whole "auth"
 	// block is optional configuration.
 	if ac.Methods.Basic != nil && ac.Methods.Basic.API == nil {
@@ -207,17 +278,17 @@ func (ac *AuthConfig) postProcess() {
 	}
 }
 
-func (gc *GatewayConfig) postProcess() {
+func (gc *Gateway) postProcess() {
 	for _, b := range gc.Router.Backends {
 		if b.TimeoutMs == 0 {
 			b.TimeoutMs = defaultCalloutTimeoutMs
 		}
 	}
 }
-func (pc *PersistenceConfig) postProcess()   {}
-func (oc *ObservabilityConfig) postProcess() {}
-func (ac *AdminConfig) postProcess()         {}
-func (oc *OASConfig) postProcess() {
+func (pc *Persistence) postProcess()   {}
+func (oc *Observability) postProcess() {}
+func (ac *Admin) postProcess()         {}
+func (oc *OAS) postProcess() {
 	for _, m := range oc.Mappings {
 		if m.Options == nil {
 			m.Options = &OASBackendMappingOpts{ValidateBody: true}

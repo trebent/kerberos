@@ -20,7 +20,7 @@ import (
 func TestComponentWithBodyValidation(t *testing.T) {
 	mux := http.NewServeMux()
 	opts := &Opts{
-		Cfg: &config.OASConfig{
+		Cfg: &config.OAS{
 			Mappings: []*config.OASBackendMapping{
 				{
 					Backend:       "test-backend",
@@ -86,7 +86,7 @@ func TestComponentWithBodyValidation(t *testing.T) {
 func TestComponentWithoutBodyValidation(t *testing.T) {
 	mux := http.NewServeMux()
 	opts := &Opts{
-		Cfg: &config.OASConfig{
+		Cfg: &config.OAS{
 			Mappings: []*config.OASBackendMapping{
 				{
 					Backend:       "test-backend",
@@ -130,7 +130,7 @@ func TestComponentWithoutBodyValidation(t *testing.T) {
 
 func TestComponentGetOAS(t *testing.T) {
 	opts := &Opts{
-		Cfg: &config.OASConfig{
+		Cfg: &config.OAS{
 			Mappings: []*config.OASBackendMapping{
 				{
 					Backend:       "test-backend",

@@ -14,7 +14,7 @@ import (
 )
 
 func TestObservabilityDisabled(t *testing.T) {
-	cfg := &config.ObservabilityConfig{
+	cfg := &config.Observability{
 		Enabled: false,
 	}
 
@@ -52,7 +52,7 @@ func TestObservabilityDisabled(t *testing.T) {
 }
 
 func TestObservability(t *testing.T) {
-	cfg := &config.ObservabilityConfig{
+	cfg := &config.Observability{
 		Enabled:        true,
 		RuntimeMetrics: false,
 	}

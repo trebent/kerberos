@@ -12,7 +12,7 @@ import (
 // If it does not return an error, make sure to call shutdown for proper cleanup.
 func Instrument(
 	ctx context.Context,
-	cfg *config.ObservabilityConfig,
+	cfg *config.Observability,
 	serviceName,
 	serviceVersion string,
 ) (func(context.Context) error, error) {

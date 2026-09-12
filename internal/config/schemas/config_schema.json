@@ -2,6 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "http://trebent.com/kerberos/schemas/config_schema.json",
   "type": "object",
+  "description": "Kerberos API gateway configuration.",
   "properties": {
     "gateway": {
       "$ref": "http://trebent.com/kerberos/schemas/gateway_schema.json"
