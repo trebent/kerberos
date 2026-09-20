@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
 	adminext "github.com/trebent/kerberos/internal/admin/extensions"
 	"github.com/trebent/kerberos/internal/auth/method"
 	"github.com/trebent/kerberos/internal/auth/method/basic"
@@ -203,7 +202,7 @@ func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 func (a *authorizer) RegisterRoutes(
 	mux *http.ServeMux,
-	middleware ...strictnethttp.StrictHTTPMiddlewareFunc,
+	middleware ...func(http.Handler) http.Handler,
 ) error {
 	if a.basic != nil {
 		if err := a.basic.RegisterRoutes(mux, a.cfg, middleware...); err != nil {

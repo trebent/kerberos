@@ -76,11 +76,11 @@ func New(opts *Opts) (*Admin, error) {
 		return nil, fmt.Errorf("failed to create SSI: %w", err)
 	}
 
-	adminSessionMiddleware := SessionMiddleware(ssi)
+	adminSessionMiddleware := StrictSessionMiddleware(ssi)
 	strictHandler := adminapi.NewStrictHandlerWithOptions(
 		ssi,
 		[]adminapi.StrictMiddlewareFunc{
-			RequireSessionMiddleware(),
+			StrictRequireSessionMiddleware(),
 			adminSessionMiddleware,
 		},
 		adminapi.StrictHTTPServerOptions{
@@ -140,6 +140,6 @@ func (a *Admin) SetOASBackend(backend adminext.OASBackend) {
 func (a *Admin) RegisterAPIProvider(apiProvider adminext.APIProvider) error {
 	return apiProvider.RegisterRoutes(
 		a.mux,
-		SessionMiddleware(a.ssi),
+		VanillaSessionMiddleware(a.ssi),
 	)
 }

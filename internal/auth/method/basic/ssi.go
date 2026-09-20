@@ -417,6 +417,27 @@ func (i *impl) GetUser(
 	return authbasicapi.GetUser200JSONResponse{Id: u.Id, Name: u.Name, Groups: &groups}, nil
 }
 
+func (i *impl) GetMe(
+	ctx context.Context,
+	req authbasicapi.GetMeRequestObject,
+) (authbasicapi.GetMeResponseObject, error) {
+	userID := userFromContext(ctx)
+
+	u, err := dbGetUser(ctx, i.db, req.OrgID, userID)
+	if err != nil {
+		zerologr.Error(err, "Failed to get self")
+		return authbasicapi.GetMe500JSONResponse(apiErrInternal), nil
+	}
+
+	groups, err := dbGetUserGroups(ctx, i.db, req.OrgID, userID)
+	if err != nil {
+		zerologr.Error(err, "Failed to get user groups")
+		return authbasicapi.GetMe500JSONResponse(apiErrInternal), nil
+	}
+
+	return authbasicapi.GetMe200JSONResponse{Id: userID, Name: u.Name, Groups: &groups}, nil
+}
+
 // GetUserGroups implements [StrictServerInterface].
 func (i *impl) GetUserGroups(
 	ctx context.Context,

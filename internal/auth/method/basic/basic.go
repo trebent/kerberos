@@ -35,7 +35,7 @@ type (
 		RegisterRoutes(
 			mux *http.ServeMux,
 			cfg *config.Auth,
-			middleware ...authbasicapi.StrictMiddlewareFunc,
+			middleware ...func(http.Handler) http.Handler,
 		) error
 	}
 	basic struct {
@@ -215,7 +215,7 @@ func (a *basic) Authorized(req *http.Request) error {
 func (a *basic) RegisterRoutes(
 	mux *http.ServeMux,
 	cfg *config.Auth,
-	middleware ...authbasicapi.StrictMiddlewareFunc,
+	middleware ...func(http.Handler) http.Handler,
 ) error {
 	data, err := os.ReadFile(fmt.Sprintf("%s/%s", a.oasDir, authBasicSpecification))
 	if err != nil {
@@ -228,16 +228,9 @@ func (a *basic) RegisterRoutes(
 	}
 
 	ssi := newSSI(a.sqlClient, cfg.Methods.Basic.API.Cookies)
-	authMiddleware := make([]authbasicapi.StrictMiddlewareFunc, len(middleware)+1)
-	authMiddleware[0] = AuthMiddleware(ssi)
-
-	for i := range middleware {
-		authMiddleware[i+1] = middleware[i]
-	}
-
 	strictHandler := authbasicapi.NewStrictHandlerWithOptions(
 		ssi,
-		authMiddleware,
+		[]authbasicapi.StrictMiddlewareFunc{AuthMiddleware(ssi)},
 		authbasicapi.StrictHTTPServerOptions{
 			RequestErrorHandlerFunc:  apierror.RequestErrorHandler,
 			ResponseErrorHandlerFunc: apierror.ResponseErrorHandler,
@@ -250,13 +243,19 @@ func (a *basic) RegisterRoutes(
 		cfg.Methods.Basic.API.Origins.DenyAll,
 	)
 
+	vanillaMiddleware := make([]authbasicapi.MiddlewareFunc, 0, 3+len(middleware))
+	for i := range middleware {
+		vanillaMiddleware = append(vanillaMiddleware, authbasicapi.MiddlewareFunc(middleware[i]))
+	}
+	vanillaMiddleware = append(vanillaMiddleware, []authbasicapi.MiddlewareFunc{
+		security.CSRFMiddlewareWithExemptions([]string{"/login"}),
+		oas.ValidationMiddleware(spec),
+		corsMw,
+	}...)
+
 	_ = authbasicapi.HandlerWithOptions(strictHandler, authbasicapi.StdHTTPServerOptions{
-		BaseRouter: mux,
-		Middlewares: []authbasicapi.MiddlewareFunc{
-			security.CSRFMiddlewareWithExemptions([]string{"/login"}),
-			oas.ValidationMiddleware(spec),
-			corsMw,
-		},
+		BaseRouter:  mux,
+		Middlewares: vanillaMiddleware,
 	})
 
 	noContent := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

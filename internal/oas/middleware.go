@@ -10,6 +10,7 @@ import (
 	nethttpmiddleware "github.com/oapi-codegen/nethttp-middleware"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/composer/debug"
+	"github.com/trebent/zerologr"
 )
 
 type contextKey string
@@ -80,6 +81,7 @@ func ValidationMiddleware(spec *openapi3.T) func(http.Handler) http.Handler {
 		)(actualHandler)
 
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			zerologr.V(20).Info("Running OAS middleware")
 			// Inject per-request start time into context so both the success handler
 			// and the error handler closure can read accurate timing.
 			ctx := context.WithValue(req.Context(), debugStartKey, time.Now())
