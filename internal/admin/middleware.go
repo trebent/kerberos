@@ -68,7 +68,8 @@ func StrictSessionMiddleware(
 			request any,
 		) (any, error) {
 			zerologr.V(20).Info("Running admin session middleware")
-			return f(processSession(r, apiImpl.sqlClient), w, r, request)
+			ctx := processSession(r, apiImpl.sqlClient)
+			return f(ctx, w, r.WithContext(ctx), request)
 		}
 	}
 }
