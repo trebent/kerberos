@@ -50,7 +50,13 @@ type (
 	}
 )
 
-const authBasicSpecification = "auth_basic.yaml"
+const (
+	authBasicSpecification = "auth_basic.yaml"
+
+	HeaderGroups = "X-Krb-Groups"
+	HeaderUser   = "X-Krb-User"
+	HeaderOrg    = "X-Krb-Org"
+)
 
 var (
 	_ Basic = (*basic)(nil)
@@ -134,8 +140,8 @@ func (a *basic) Authenticated(req *http.Request) error {
 		return apierror.ErrUnauthorized
 	}
 
-	req.Header.Set("X-Krb-Org", strconv.Itoa(int(session.OrgID)))
-	req.Header.Set("X-Krb-User", strconv.Itoa(int(session.UserID)))
+	req.Header.Set(HeaderOrg, strconv.Itoa(int(session.OrgID)))
+	req.Header.Set(HeaderUser, strconv.Itoa(int(session.UserID)))
 
 	return nil
 }
@@ -181,12 +187,12 @@ func (a *basic) Authorized(req *http.Request) error {
 	}
 
 	// Fetch the user's groups.
-	orgID, err := strconv.ParseInt(req.Header.Get("X-Krb-Org"), 10, 64)
+	orgID, err := strconv.ParseInt(req.Header.Get(HeaderOrg), 10, 64)
 	if err != nil {
 		zerologr.Error(err, "Failed to parse org ID header")
 		return apierror.ErrISE
 	}
-	userID, err := strconv.ParseInt(req.Header.Get("X-Krb-User"), 10, 64)
+	userID, err := strconv.ParseInt(req.Header.Get(HeaderUser), 10, 64)
 	if err != nil {
 		zerologr.Error(err, "Failed to parse user ID header")
 		return apierror.ErrISE
@@ -198,7 +204,7 @@ func (a *basic) Authorized(req *http.Request) error {
 	}
 
 	for _, g := range userGroups {
-		req.Header.Add("X-Krb-Groups", g.Name)
+		req.Header.Add(HeaderGroups, g.Name)
 	}
 
 	for _, usergroup := range userGroups {
