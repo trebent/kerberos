@@ -142,6 +142,10 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 					administratorValidator(session.Administrator),
 					ownerUserValidator(session.UserID, r),
 				)
+			case "GetMe":
+				zerologr.V(20).Info("Validating auth for GetMe user path")
+				validation = make([]error, 1)
+				validation[0] = orgValidator(session.OrgID, r)
 			case
 				"UpdateUser",
 				"DeleteUser",
