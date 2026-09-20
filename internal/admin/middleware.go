@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
 	admindb "github.com/trebent/kerberos/internal/admin/db"
+	"github.com/trebent/kerberos/internal/db"
 	adminapigen "github.com/trebent/kerberos/internal/oapi/admin"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
 	"github.com/trebent/kerberos/internal/security"
@@ -26,12 +26,30 @@ const (
 	adminContextRefresh adminContextKey = 3
 )
 
-// SessionMiddleware provides context population of administration session information.
+// VanillaSessionMiddleware is the same as StrictSessionMiddleware but uses stdlib http types.
+func VanillaSessionMiddleware(
+	ssi adminapigen.StrictServerInterface,
+) func(http.Handler) http.Handler {
+	apiImpl, ok := ssi.(*impl)
+	if !ok {
+		panic("expected admin api *impl")
+	}
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			zerologr.V(20).Info("Running vanilla admin session middleware")
+			ctx := processSession(r.Context(), r, apiImpl.sqlClient)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// StrictSessionMiddleware provides context population of administration session information.
 // If put in front of a handler, the context to the handler will contain information that can
 // be used to determine if a KRB admin made the call, or if it was external.
 //
 //nolint:gocognit // it's not that bad
-func SessionMiddleware(
+func StrictSessionMiddleware(
 	ssi adminapigen.StrictServerInterface,
 ) adminapigen.StrictMiddlewareFunc {
 	apiImpl, ok := ssi.(*impl)
@@ -40,9 +58,9 @@ func SessionMiddleware(
 	}
 
 	return func(
-		f nethttp.StrictHTTPHandlerFunc,
+		f adminapigen.StrictHandlerFunc,
 		_ string,
-	) nethttp.StrictHTTPHandlerFunc {
+	) adminapigen.StrictHandlerFunc {
 		return func(
 			ctx context.Context,
 			w http.ResponseWriter,
@@ -50,77 +68,81 @@ func SessionMiddleware(
 			request any,
 		) (any, error) {
 			zerologr.V(20).Info("Running admin session middleware")
-
-			if len(r.Cookies()) == 0 {
-				zerologr.V(20).Info("No cookies found, continuing without session")
-				return f(ctx, w, r, request)
-			}
-
-			if len(r.CookiesNamed(security.RefreshCookieName)) == 0 {
-				zerologr.V(20).Info("No refresh cookie found")
-			} else {
-				ctx = context.WithValue(
-					ctx,
-					adminContextRefresh,
-					r.CookiesNamed(security.RefreshCookieName)[0].Value,
-				)
-			}
-
-			if len(r.CookiesNamed(security.SessionCookieName)) == 0 {
-				zerologr.V(20).Info("No session cookie found, continuing without session")
-				return f(ctx, w, r, request)
-			}
-
-			cookie := r.CookiesNamed(security.SessionCookieName)[0]
-
-			// No session at all to verify.
-			if cookie.Value == "" {
-				return f(ctx, w, r, request)
-			}
-
-			session, err := admindb.GetSession(ctx, apiImpl.sqlClient, cookie.Value)
-			// Not found among sessions, just continue. Remember this middleware does NOT enforce
-			// auth, it only populates metadata.
-			if err != nil {
-				return f(ctx, w, r, request)
-			}
-
-			// Current time is after expiry, do NOT populate the context.
-			if time.Now().UnixMilli() > session.Expires {
-				return f(ctx, w, r, request)
-			}
-
-			ctx = context.WithValue(ctx, adminContextSession, session)
-			if session.IsSuper {
-				ctx = context.WithValue(ctx, adminContextIsSuperUser, true)
-			} else {
-				// Populate the user's permissions from their group memberships.
-				permIDs, err := admindb.GetUserPermissionIDs(ctx, apiImpl.sqlClient, session.UserID)
-				if err != nil {
-					zerologr.Error(
-						err,
-						"Failed to fetch user permissions for session; continuing with no permissions",
-						"userID",
-						session.UserID,
-					)
-					// Continue without permissions rather than blocking the request — the endpoint
-					// will deny access if a permission is required.
-					permIDs = []int64{}
-				}
-				session.Permissions = permIDs
-				ctx = context.WithValue(ctx, adminContextPermissions, permIDs)
-			}
-
-			return f(ctx, w, r, request)
+			ctx = processSession(ctx, r, apiImpl.sqlClient)
+			return f(ctx, w, r.WithContext(ctx), request)
 		}
 	}
 }
 
-func RequireSessionMiddleware() adminapigen.StrictMiddlewareFunc {
+func processSession(ctx context.Context, r *http.Request, db db.SQLClient) context.Context {
+	if len(r.Cookies()) == 0 {
+		zerologr.V(20).Info("No cookies found, continuing without session")
+		return ctx
+	}
+
+	if len(r.CookiesNamed(security.RefreshCookieName)) == 0 {
+		zerologr.V(20).Info("No refresh cookie found")
+	} else {
+		ctx = context.WithValue(
+			ctx,
+			adminContextRefresh,
+			r.CookiesNamed(security.RefreshCookieName)[0].Value,
+		)
+	}
+
+	if len(r.CookiesNamed(security.SessionCookieName)) == 0 {
+		zerologr.V(20).Info("No session cookie found, continuing without session")
+		return ctx
+	}
+
+	cookie := r.CookiesNamed(security.SessionCookieName)[0]
+
+	// No session at all to verify.
+	if cookie.Value == "" {
+		return ctx
+	}
+
+	session, err := admindb.GetSession(ctx, db, cookie.Value)
+	// Not found among sessions, just continue. Remember this middleware does NOT enforce
+	// auth, it only populates metadata.
+	if err != nil {
+		return ctx
+	}
+
+	// Current time is after expiry, do NOT populate the context.
+	if time.Now().UnixMilli() > session.Expires {
+		return ctx
+	}
+
+	ctx = context.WithValue(ctx, adminContextSession, session)
+	if session.IsSuper {
+		ctx = context.WithValue(ctx, adminContextIsSuperUser, true)
+	} else {
+		// Populate the user's permissions from their group memberships.
+		permIDs, err := admindb.GetUserPermissionIDs(ctx, db, session.UserID)
+		if err != nil {
+			zerologr.Error(
+				err,
+				"Failed to fetch user permissions for session; continuing with no permissions",
+				"userID",
+				session.UserID,
+			)
+			// Continue without permissions rather than blocking the request — the endpoint
+			// will deny access if a permission is required.
+			permIDs = []int64{}
+		}
+		session.Permissions = permIDs
+		ctx = context.WithValue(ctx, adminContextPermissions, permIDs)
+	}
+
+	return ctx
+}
+
+func StrictRequireSessionMiddleware() adminapigen.StrictMiddlewareFunc {
 	return func(
-		f nethttp.StrictHTTPHandlerFunc,
+		f adminapigen.StrictHandlerFunc,
 		operationID string,
-	) nethttp.StrictHTTPHandlerFunc {
+	) adminapigen.StrictHandlerFunc {
 		return func(
 			ctx context.Context,
 			w http.ResponseWriter,

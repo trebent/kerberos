@@ -3,7 +3,6 @@ package adminext
 import (
 	"net/http"
 
-	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
 )
@@ -29,7 +28,7 @@ type (
 		// The extension should use a unique path prefix to avoid conflicts with other extensions.
 		RegisterRoutes(
 			mux *http.ServeMux,
-			middleware ...strictnethttp.StrictHTTPMiddlewareFunc,
+			middleware ...func(http.Handler) http.Handler,
 		) error
 	}
 )

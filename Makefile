@@ -55,7 +55,7 @@ codegen: install/deps
 	@go generate ./...
 
 	$(call cecho,Running codegen for integration tests...,$(BOLD_YELLOW))
-	@cd test/suites/integration && go generate ./...
+	@cd test/suites && go generate ./...
 
 run:
 	$(call cecho,Running Kerberos...,$(BOLD_YELLOW))
@@ -361,10 +361,10 @@ krbctl/release:
 	$(call cecho,krbctl release artifacts written to build/release.,$(BOLD_GREEN))
 
 install/deps:
-	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.6.0
+	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0
 
 install/lint:
-	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(GOBIN) v2.12.2
+	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(GOBIN) v2.13.2
 
 # This uses the integration test suite to provision Kerberos with test data created by the main entrypoint of the integration test suite.
 krb/provision:
@@ -376,7 +376,7 @@ krb/superuser-login:
 	curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/admin/superuser/login \
 		-H "Content-Type: application/json" \
 		-d '{"clientId":"$(SUPERUSER_CLIENT_ID)","clientSecret":"$(SUPERUSER_CLIENT_SECRET)"}'
-	
+
 krb/admin-login:
 	$(call cecho,Logging in with basic auth to Kerberos...,$(BOLD_YELLOW))
 	curl -s -o /dev/null -D - -X POST localhost:$(KERBEROS_ADMIN_PORT)/api/admin/login \
@@ -441,6 +441,10 @@ test/protected-echo:
 	curl -X GET -i localhost:$(KERBEROS_PORT)/gw/backend/protected-echo/hi
 
 test/flow:
+	$(call cecho,Fetching the flow from KRB...,$(BOLD_YELLOW))
+	curl -X GET -i localhost:$(KERBEROS_ADMIN_PORT)/api/admin/flow
+
+test/basic-auth:
 	$(call cecho,Fetching the flow from KRB...,$(BOLD_YELLOW))
 	curl -X GET -i localhost:$(KERBEROS_ADMIN_PORT)/api/admin/flow
 

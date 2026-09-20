@@ -29,7 +29,7 @@ func TestAdminSessionMiddleware(t *testing.T) {
 	}
 	ssiImpl := ssi.(*impl)
 
-	mw := SessionMiddleware(ssiImpl)
+	mw := StrictSessionMiddleware(ssiImpl)
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -94,7 +94,7 @@ func TestAdminSessionMiddleware(t *testing.T) {
 }
 
 func TestAdminRequireSessionMiddleware(t *testing.T) {
-	mw := RequireSessionMiddleware()
+	mw := StrictRequireSessionMiddleware()
 
 	handler := mw(func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
 		return nil, nil

@@ -550,6 +550,33 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
 
+  /api/auth/basic/organisations/{orgID}/users/me:
+    parameters:
+      - $ref: "#/components/parameters/orgid"
+    get:
+      tags:
+        - users
+      operationId: GetMe
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+          description: Got user self.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Failed to get the user.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+
   /api/auth/basic/organisations/{orgID}/users/{userID}:
     parameters:
       - $ref: "#/components/parameters/orgid"

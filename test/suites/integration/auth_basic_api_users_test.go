@@ -1,10 +1,11 @@
 package integration
 
 import (
-	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"slices"
 	"testing"
+
+	lib "github.com/trebent/kerberos/test/lib"
 
 	adminapi "github.com/trebent/kerberos/test/client/admin"
 	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
@@ -57,6 +58,41 @@ func TestBasicAuthUserList(t *testing.T) {
 		}
 	}
 	t.Fatalf("created user %d not found in list response", createdID)
+}
+
+// TestBasicAuthMeGet verifies that a created user can fetch it's own user info.
+func TestBasicAuthMeGet(t *testing.T) {
+	superRequestEditor := lib.SuperLogin(t)
+
+	name := lib.Username()
+	createResp, err := lib.BasicAuthClient.CreateUserWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.CreateUserJSONRequestBody{Name: name, Password: "password123"},
+		authbasicapi.RequestEditorFn(superRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+
+	loginResp, err := lib.BasicAuthClient.LoginWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.LoginJSONRequestBody{
+			Username: name, Password: "password123",
+		},
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+
+	getResp, err := lib.BasicAuthClient.GetMeWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.RequestEditorFn(lib.SessionCookieRequestEditor(loginResp.HTTPResponse, t)),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
+	lib.Matches(getResp.JSON200.Id, createResp.JSON201.Id, t)
+	lib.Matches(getResp.JSON200.Name, name, t)
 }
 
 // TestBasicAuthUserGet verifies that a created user can be fetched by ID.
