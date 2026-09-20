@@ -38,7 +38,7 @@ func VanillaSessionMiddleware(
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			zerologr.V(20).Info("Running vanilla admin session middleware")
-			ctx := processSession(r, apiImpl.sqlClient)
+			ctx := processSession(r.Context(), r, apiImpl.sqlClient)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -62,21 +62,19 @@ func StrictSessionMiddleware(
 		_ string,
 	) adminapigen.StrictHandlerFunc {
 		return func(
-			_ context.Context,
+			ctx context.Context,
 			w http.ResponseWriter,
 			r *http.Request,
 			request any,
 		) (any, error) {
 			zerologr.V(20).Info("Running admin session middleware")
-			ctx := processSession(r, apiImpl.sqlClient)
+			ctx = processSession(ctx, r, apiImpl.sqlClient)
 			return f(ctx, w, r.WithContext(ctx), request)
 		}
 	}
 }
 
-func processSession(r *http.Request, db db.SQLClient) context.Context {
-	ctx := r.Context()
-
+func processSession(ctx context.Context, r *http.Request, db db.SQLClient) context.Context {
 	if len(r.Cookies()) == 0 {
 		zerologr.V(20).Info("No cookies found, continuing without session")
 		return ctx
