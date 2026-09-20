@@ -41,8 +41,8 @@ func OrgFromContext(ctx context.Context) (string, bool) {
 
 // GroupsFromContext returns the groups from the given context if one exists. If a value is found,
 // value, true is returned, otherwise an empty string and false.
-func GroupsFromContext(ctx context.Context) (string, bool) {
-	return extractFromContext(ctx, GroupsKey{})
+func GroupsFromContext(ctx context.Context) ([]string, bool) {
+	return extractSliceFromContext(ctx, GroupsKey{})
 }
 
 func extractFromContext(ctx context.Context, key any) (string, bool) {
@@ -55,6 +55,16 @@ func extractFromContext(ctx context.Context, key any) (string, bool) {
 	return val.(string), true
 }
 
+func extractSliceFromContext(ctx context.Context, key any) ([]string, bool) {
+	val := ctx.Value(key)
+	if val == nil {
+		return []string{}, false
+	}
+
+	//nolint:errcheck // tightly controlled
+	return val.([]string), true
+}
+
 func setUser(ctx context.Context, r *http.Request) context.Context {
 	if val := r.Header.Get(basic.HeaderUser); val != "" {
 		ctx = context.WithValue(ctx, UserKey{}, val)
@@ -64,7 +74,7 @@ func setUser(ctx context.Context, r *http.Request) context.Context {
 }
 
 func setOrg(ctx context.Context, r *http.Request) context.Context {
-	if val := r.Header.Get(basic.HeaderUser); val != "" {
+	if val := r.Header.Get(basic.HeaderOrg); val != "" {
 		ctx = context.WithValue(ctx, OrgKey{}, val)
 	}
 
@@ -72,7 +82,7 @@ func setOrg(ctx context.Context, r *http.Request) context.Context {
 }
 
 func setGroups(ctx context.Context, r *http.Request) context.Context {
-	if val := r.Header.Get(basic.HeaderUser); val != "" {
+	if val := r.Header.Values(basic.HeaderGroups); len(val) != 0 {
 		ctx = context.WithValue(ctx, GroupsKey{}, val)
 	}
 
