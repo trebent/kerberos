@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/trebent/kerberos/test/lib"
+	"github.com/trebent/kerberos/test/suites/lib"
 )
 
 func TestMetrics(t *testing.T) {

@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	adminapi "github.com/trebent/kerberos/test/client/admin"
-	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
+	adminapi "github.com/trebent/kerberos/pkg/admin/client"
+	authbasicapi "github.com/trebent/kerberos/pkg/auth/client"
 )
 
 // AdminResponsesTLSClient returns an adminapi.ClientWithResponses that verifies the server cert against

@@ -2,10 +2,11 @@ package connector
 
 import (
 	"fmt"
-	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"net/url"
 	"testing"
+
+	lib "github.com/trebent/kerberos/test/suites/lib"
 )
 
 // Verifies only configured whitelist entries are allowed to talk to the connector.

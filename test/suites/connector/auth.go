@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	adminapi "github.com/trebent/kerberos/test/client/admin"
-	lib "github.com/trebent/kerberos/test/lib"
+	adminapi "github.com/trebent/kerberos/pkg/admin/client"
+	lib "github.com/trebent/kerberos/test/suites/lib"
 )
 
 func loginAndGetSessionCookie(t *testing.T) *http.Cookie {

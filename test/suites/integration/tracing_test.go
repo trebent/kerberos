@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
-	lib "github.com/trebent/kerberos/test/lib"
+	authbasicapi "github.com/trebent/kerberos/pkg/auth/client"
+	lib "github.com/trebent/kerberos/test/suites/lib"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

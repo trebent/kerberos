@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	adminapi "github.com/trebent/kerberos/test/client/admin"
-	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
-	lib "github.com/trebent/kerberos/test/lib"
+	adminapi "github.com/trebent/kerberos/pkg/admin/client"
+	authbasicapi "github.com/trebent/kerberos/pkg/auth/client"
+	lib "github.com/trebent/kerberos/test/suites/lib"
 )
 
 // Verifies that basic metrics are present and incremented as expected for GW calls.

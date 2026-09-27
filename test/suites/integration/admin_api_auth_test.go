@@ -1,11 +1,12 @@
 package integration
 
 import (
-	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"testing"
 
-	adminapi "github.com/trebent/kerberos/test/client/admin"
+	lib "github.com/trebent/kerberos/test/suites/lib"
+
+	adminapi "github.com/trebent/kerberos/pkg/admin/client"
 )
 
 func TestAdminLoginSuperuser(t *testing.T) {

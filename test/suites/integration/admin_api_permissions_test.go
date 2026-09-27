@@ -1,12 +1,13 @@
 package integration
 
 import (
-	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"testing"
 
-	adminapi "github.com/trebent/kerberos/test/client/admin"
-	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
+	lib "github.com/trebent/kerberos/test/suites/lib"
+
+	adminapi "github.com/trebent/kerberos/pkg/admin/client"
+	authbasicapi "github.com/trebent/kerberos/pkg/auth/client"
 )
 
 // Permission IDs are the fixed permission IDs bootstrapped by the server.
