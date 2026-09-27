@@ -597,6 +597,7 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+
 	// ListDebugSessions performs a GET /api/admin/debug/{backend}/sessions (the `ListDebugSessions` operationId) request.
 	ListDebugSessions(ctx context.Context, backend string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -2528,6 +2529,7 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+
 	// ListDebugSessionsWithResponse performs a GET /api/admin/debug/{backend}/sessions (the `ListDebugSessions` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
