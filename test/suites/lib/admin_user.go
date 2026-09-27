@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	adminapi "github.com/trebent/kerberos/test/client/admin"
+	adminapi "github.com/trebent/kerberos/pkg/admin/client"
 )
 
 // AllPermissionIDs is the base set of all available admin group permissions.

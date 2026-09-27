@@ -2,12 +2,13 @@ package integration
 
 import (
 	"fmt"
-	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"strconv"
 	"testing"
 
-	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
+	lib "github.com/trebent/kerberos/test/suites/lib"
+
+	authbasicapi "github.com/trebent/kerberos/pkg/auth/client"
 )
 
 func TestGatewayAuthBasicCall(t *testing.T) {

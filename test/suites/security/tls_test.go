@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	lib "github.com/trebent/kerberos/test/lib"
+	lib "github.com/trebent/kerberos/test/suites/lib"
 )
 
 // ---- Admin API ----

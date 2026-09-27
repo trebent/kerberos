@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	adminapi "github.com/trebent/kerberos/test/client/admin"
+	adminapi "github.com/trebent/kerberos/pkg/admin/client"
 )
 
 // StartDebugSession starts a debug session for the given backend and returns its ID.

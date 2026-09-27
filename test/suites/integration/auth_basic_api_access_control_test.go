@@ -1,11 +1,12 @@
 package integration
 
 import (
-	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"testing"
 
-	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
+	lib "github.com/trebent/kerberos/test/suites/lib"
+
+	authbasicapi "github.com/trebent/kerberos/pkg/auth/client"
 )
 
 // TestBasicAuthOrganisationIsolation verifies that a session from one organisation

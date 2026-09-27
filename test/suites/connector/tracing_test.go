@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	lib "github.com/trebent/kerberos/test/lib"
+	lib "github.com/trebent/kerberos/test/suites/lib"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

@@ -2,10 +2,11 @@ package connector
 
 import (
 	"fmt"
-	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"net/url"
 	"testing"
+
+	lib "github.com/trebent/kerberos/test/suites/lib"
 )
 
 func TestSession(t *testing.T) {

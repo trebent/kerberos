@@ -4,14 +4,15 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"os"
 	"testing"
 	"time"
 
-	adminapi "github.com/trebent/kerberos/test/client/admin"
-	authbasicapi "github.com/trebent/kerberos/test/client/auth/basic"
+	lib "github.com/trebent/kerberos/test/suites/lib"
+
+	adminapi "github.com/trebent/kerberos/pkg/admin/client"
+	authbasicapi "github.com/trebent/kerberos/pkg/auth/client"
 )
 
 func TestMain(m *testing.M) {

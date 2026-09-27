@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	lib "github.com/trebent/kerberos/test/lib"
 	"net/http"
 	"testing"
+
+	lib "github.com/trebent/kerberos/test/suites/lib"
 )
 
 // Validate happy path forwarding for all HTTP methods.
