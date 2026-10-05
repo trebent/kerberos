@@ -164,7 +164,6 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var bw *response.BodyWrapper
 	// Wrap the request body to extract size
 	if req.Body != nil && req.Body != http.NoBody {
-		zerologr.Info("DEBUG: wrapping request body to extract size")
 		// Wrapped body to extract size.
 		bw, _ = response.NewBodyWrapper(req.Body).(*response.BodyWrapper)
 		req.Body = bw
