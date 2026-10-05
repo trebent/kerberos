@@ -153,7 +153,7 @@ func (a *basic) Authorized(req *http.Request) error {
 	backend := req.Context().Value(composer.BackendContextKey).(string)
 
 	authZ, ok := a.config[backend]
-	if !ok {
+	if !ok || authZ == nil {
 		zerologr.V(50).Info("No authorization scheme defined for backend " + backend)
 		return nil
 	}

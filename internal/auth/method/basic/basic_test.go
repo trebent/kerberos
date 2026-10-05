@@ -94,8 +94,8 @@ func TestAuthorizerAuthorizedGroup(t *testing.T) {
 		t.Fatal("Expected no error when creating request")
 	}
 	req.AddCookie(&http.Cookie{Name: "session", Value: "session"})
-	req.Header.Add("X-Krb-Org", strconv.Itoa(int(orgID)))
-	req.Header.Add("X-Krb-User", strconv.Itoa(int(userID)))
+	req.Header.Add(HeaderOrg, strconv.Itoa(int(orgID)))
+	req.Header.Add(HeaderUser, strconv.Itoa(int(userID)))
 	req = req.WithContext(context.WithValue(req.Context(), composer.BackendContextKey, "backend"))
 
 	if err := basic.Authorized(req); err != nil {
@@ -114,5 +114,36 @@ func TestAuthorizerAuthorizedGroup(t *testing.T) {
 
 	if err := basic.Authorized(req); err == nil {
 		t.Fatal("Expected an error when user is not authorized")
+	}
+}
+
+func TestAuthorizerNoAuthZ(t *testing.T) {
+	basic, err := New(&Opts{
+		AuthZConfig: map[string]*config.AuthZ{
+			"backend": nil,
+		},
+		SQLClient: testClient,
+		OASDir:    "something",
+	})
+	if err != nil {
+		t.Fatalf("Expected no error when creating authorizer: %v", err)
+	}
+
+	orgID, _ := mustCreateOrg(t, uniqueName(t, "authZ-test-org"))
+	userID := mustCreateUser(t, orgID, uniqueName(t, "authZ-test-user"))
+
+	if err := dbCreateSession(t.Context(), testClient, userID, orgID, "refresh", "session"); err != nil {
+		t.Fatal("Expected no error when creating session")
+	}
+
+	req, err := http.NewRequest("GET", "/api/v1/some/path", nil)
+	if err != nil {
+		t.Fatal("Expected no error when creating request")
+	}
+	req.AddCookie(&http.Cookie{Name: "session", Value: "session"})
+	req = req.WithContext(context.WithValue(req.Context(), composer.BackendContextKey, "backend"))
+
+	if err := basic.Authorized(req); err != nil {
+		t.Fatal("Expected no error when user is authorized")
 	}
 }
