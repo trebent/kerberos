@@ -84,23 +84,27 @@ CREATE TABLE IF NOT EXISTS admin_debug_session_call_flow_transitions (
   FOREIGN KEY(call_id) REFERENCES admin_debug_session_calls(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- Trigger function shared by all tables with an `updated` column.
-CREATE OR REPLACE FUNCTION set_updated_timestamp()
+CREATE OR REPLACE FUNCTION touch_updated()
 RETURNS TRIGGER AS $$
 BEGIN
-  NEW.updated = CURRENT_TIMESTAMP;
+  IF OLD.updated = NEW.updated THEN
+    NEW.updated := now();
+  END IF;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE TRIGGER admin_group_updated
 BEFORE UPDATE ON admin_groups
-FOR EACH ROW EXECUTE FUNCTION set_updated_timestamp();
+FOR EACH ROW 
+EXECUTE FUNCTION touch_updated();
 
 CREATE OR REPLACE TRIGGER admin_user_updated
 BEFORE UPDATE ON admin_users
-FOR EACH ROW EXECUTE FUNCTION set_updated_timestamp();
+FOR EACH ROW 
+EXECUTE FUNCTION touch_updated();
 
 CREATE OR REPLACE TRIGGER admin_group_bindings_updated
 BEFORE UPDATE ON admin_group_bindings
-FOR EACH ROW EXECUTE FUNCTION set_updated_timestamp();
+FOR EACH ROW 
+EXECUTE FUNCTION touch_updated();

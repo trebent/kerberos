@@ -2,6 +2,7 @@ package admindb
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
@@ -604,6 +605,46 @@ func TestDBUsers(t *testing.T) {
 		_, err := LoginLookup(ctx, testClient, "no-such-user")
 		if !errors.Is(err, db.ErrRowNotFound) {
 			t.Fatalf("expected errNoUser, got %v", err)
+		}
+	})
+
+	t.Run("timestamps", func(t *testing.T) {
+		name := uniqueName(t, "timestamp")
+		userID, err := CreateUser(ctx, testClient, name, "salt", "hashed")
+		if err != nil {
+			t.Fatalf("dbCreateUser error: %v", err)
+		}
+
+		// SQLite only has second-level resolution.
+		if testClient.Dialect() == db.SQLiteDialect {
+			time.Sleep(1100 * time.Millisecond)
+		}
+
+		err = UpdateUser(ctx, testClient, userID, uniqueName(t, "timestamp"))
+		if err != nil {
+			t.Fatalf("Failed to update user: %v", err)
+		}
+
+		rows, err := testClient.Query(ctx, "SELECT created, updated FROM admin_users WHERE id = @id", sql.Named("id", userID))
+		if err != nil {
+			t.Fatalf("Failed to select users: %v", err)
+		}
+
+		if !rows.Next() {
+			if err := rows.Err(); err != nil {
+				t.Fatalf("Rows next returned an error: %v", err)
+			}
+			t.Fatal("Rows next did not contains any rows")
+		}
+		defer rows.Close()
+
+		var created, updated db.TimeString
+		if err := rows.Scan(&created, &updated); err != nil {
+			t.Fatalf("Failed to scan timestamps: %v", err)
+		}
+
+		if !updated.Time.After(created.Time) {
+			t.Fatal("Created time must be before updated time")
 		}
 	})
 }

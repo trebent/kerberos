@@ -2,11 +2,13 @@ package basic
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/trebent/kerberos/internal/db"
 	authbasicapi "github.com/trebent/kerberos/internal/oapi/auth/basic"
 )
 
@@ -339,6 +341,45 @@ func TestDBUsers(t *testing.T) {
 		_, err := dbLoginLookup(ctx, testClient, orgID, "no-such-user")
 		if !errors.Is(err, errNoUser) {
 			t.Fatalf("expected errNoUser, got %v", err)
+		}
+	})
+
+	t.Run("timestamps", func(t *testing.T) {
+		name := uniqueName(t, "timestamp")
+		userID, err := dbCreateUser(ctx, testClient, name, "salt", "hashed", orgID)
+		if err != nil {
+			t.Fatalf("dbCreateUser error: %v", err)
+		}
+
+		// longer wait, second resolution timestamps
+		if testClient.Dialect() == db.SQLiteDialect {
+			time.Sleep(1100 * time.Millisecond)
+		}
+
+		if err := dbUpdateUser(ctx, testClient, orgID, userID, uniqueName(t, "timestamp")); err != nil {
+			t.Fatalf("dbUpdateUser error: %v", err)
+		}
+
+		rows, err := testClient.Query(ctx, "SELECT created, updated FROM users WHERE id = @id;", sql.Named("id", userID))
+		if err != nil {
+			t.Fatalf("Error when selecting user: %v", err)
+		}
+
+		if !rows.Next() {
+			if err := rows.Err(); err != nil {
+				t.Fatalf("Error fetching user row: %v", err)
+			}
+			t.Fatalf("User row does not exist")
+		}
+		defer rows.Close()
+
+		var created, updated db.TimeString
+		if err := rows.Scan(&created, &updated); err != nil {
+			t.Fatalf("Scanning failed. %v", err)
+		}
+
+		if !updated.Time.After(created.Time) {
+			t.Fatal("Expected updated time to be after creation")
 		}
 	})
 }

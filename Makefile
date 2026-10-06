@@ -392,7 +392,6 @@ krb/basic-auth-login:
 postgres/run: postgres/stop
 	$(call cecho,Running PostgreSQL for Kerberos...,$(BOLD_YELLOW))
 	@docker run -d \
-	--rm \
 	-p 5432:5432 \
 	-e POSTGRES_USER=kerberos \
 	-e POSTGRES_PASSWORD=kerberos \
@@ -409,6 +408,7 @@ postgres/run: postgres/stop
 postgres/stop:
 	$(call cecho,Stopping PostgreSQL for Kerberos...,$(BOLD_YELLOW))
 	@docker stop kerberos-postgres || true
+	@docker rm kerberos-postgres || true
 
 static-analysis/lint:
 	$(call cecho,Running linter for Kerberos...,$(BOLD_YELLOW))
@@ -495,7 +495,7 @@ test/unit/json:
 	@go test -v -json -coverprofile=build/coverage.out -covermode=atomic ./... -timeout 20s -failfast > build/unit-test-output.json
 
 # admin tests run with -p 1 since there are two main appliers of the same schema.
-test/unit/postgres: postgres/run
+test/unit/postgres:
 	$(call cecho,Running unit tests (admin, basic auth) for Kerberos with PostgreSQL...,$(BOLD_YELLOW))
 	cd internal/admin && go test -v -p 1 ./... -timeout 20s -failfast -tags=postgres_integration
 	cd internal/auth/method/basic && go test -v ./... -timeout 20s -failfast -tags=postgres_integration

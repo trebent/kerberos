@@ -117,8 +117,12 @@ jobs:
           restore-keys: |
             unit-test-postgres-go-build-${{ runner.os }}-
 
+      - name: Run postgres
+        run: make postgres/run
+
       - name: Run unit tests with PostgreSQL
         run: make test/unit/postgres
 
       - name: Stop postgres
+        if: always()
         run: make postgres/stop
