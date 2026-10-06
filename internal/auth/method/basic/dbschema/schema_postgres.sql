@@ -52,3 +52,34 @@ CREATE TABLE IF NOT EXISTS sessions (
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY(organisation_id) REFERENCES organisations(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
+
+CREATE OR REPLACE FUNCTION touch_updated()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF OLD.updated = NEW.updated THEN
+    NEW.updated := now();
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER organisations_updated
+BEFORE UPDATE ON organisations
+FOR EACH ROW
+EXECUTE FUNCTION touch_updated();
+
+CREATE OR REPLACE TRIGGER groups_updated
+BEFORE UPDATE ON groups
+FOR EACH ROW
+EXECUTE FUNCTION touch_updated();
+
+CREATE OR REPLACE TRIGGER groups_bindings_updated
+BEFORE UPDATE ON group_bindings
+FOR EACH ROW
+EXECUTE FUNCTION touch_updated();
+
+CREATE OR REPLACE TRIGGER users_updated
+BEFORE UPDATE ON users
+FOR EACH ROW
+EXECUTE FUNCTION touch_updated();
+

@@ -874,5 +874,3 @@ func dbUpdateUserGroupBindings(
 
 	return nil
 }
-
-// (queryer and queryReturningID have been moved to internal/db.QueryReturningID)
