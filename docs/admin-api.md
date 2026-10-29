@@ -404,4 +404,4 @@ The standard Go cookie jar sends `Secure` cookies over plain `http://` only to `
 - [Organisations](./organizations.md): the basic-auth API that admin sessions can also manage.
 - [Admin connector](./admin-connector.md): protect internal tools behind the admin login.
 - [Deployment](./deployment.md): ports, `OAS_DIRECTORY`, security checklist.
-- [`../openapi/admin.yaml`](../openapi/admin.yaml): the API contract. A rendered reference is published from `pages/index.html`.
+- [`../openapi/admin.yaml`](../openapi/admin.yaml): the API contract.

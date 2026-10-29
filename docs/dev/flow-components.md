@@ -101,7 +101,7 @@ Sub-components that implement `Ordered` are sorted by their `Order()` value. Com
 
 Both are optional and only included when their respective config sections are present.
 
-**Authorizer** — Checks that the request is authenticated (`session` cookie) and authorized (group membership) against the mapping defined in the `auth` config. Calls `next` on success or exempt paths; writes `401`/`403` on failure.
+**Authorizer** — Checks that the request is authenticated (`session` cookie) and authorised (group membership) against the mapping defined in the `auth` config. Calls `next` on success or exempt paths; writes `401`/`403` on failure.
 
 **OAS Validator** — Validates the incoming request (path, method, parameters, and optionally body) against the OpenAPI specification mapped to the current backend. Calls `next` if validation passes; writes `404` for an unknown path or method and `400` for an invalid request. Backends without a spec mapping are passed through unchanged.
 

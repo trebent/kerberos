@@ -165,7 +165,7 @@ When the resolved file breaks the schema, startup fails with one error that list
 
 Notes on reading these messages:
 
-- Every message starts with `schema validation failed: %!w(<nil>), `. The `%!w(<nil>)` fragment is a formatting artifact and does not mean anything. The real problems follow it.
+- Every message starts with `schema validation failed: %!w(<nil>), `. The `%!w(<nil>)` fragment is a formatting artefact and does not mean anything. The real problems follow it.
 - Field paths use `.` for array indexes (`backends.0.port`), unlike `${ref:...}` paths, which use `[0]`. `(root)` means the top level of the file.
 - Problems with an `origins` object (for example `allowAll` together with `allowedOrigins`) can show up as several lines, including `Must validate "then" as "if" was valid`. Look for the line that names a specific key.
 

@@ -81,7 +81,7 @@ Kerberos removes `/gw/backend/<backend-name>` from the path before forwarding. T
 
 Kerberos never adds a prefix of its own. If your backend serves its API under `/api`, clients must include it: `/gw/backend/echo/api/...`.
 
-The [request validation](./request-validation.md) and [authentication](./authentication.md) settings, such as OpenAPI paths, exempt paths and authorization path patterns, all match against the stripped, backend-relative path.
+The [request validation](./request-validation.md) and [authentication](./authentication.md) settings, such as OpenAPI paths, exempt paths and authorisation path patterns, all match against the stripped, backend-relative path.
 
 ### Other paths on the gateway port
 
@@ -116,7 +116,7 @@ Kerberos builds the upstream URL as `http://<host>:<port><backend-path>`, or `ht
 - **`Host`.** `Host` is set to the backend's `host:port`, not the host the client used.
 - **Body.** The body is streamed to the backend. When a body is present, it is sent with `Transfer-Encoding: chunked` instead of the client's `Content-Length`.
 - **Trace context.** When observability is enabled, Kerberos sets the W3C `traceparent` and `baggage` headers so the backend continues Kerberos' trace. When observability is disabled, trace headers sent by the client pass through unchanged.
-- **Identity headers.** When the backend is protected by [authentication](./authentication.md), Kerberos adds `X-Krb-Org`, `X-Krb-User` and, when group authorization applies, `X-Krb-Groups` for an authenticated caller.
+- **Identity headers.** When the backend is protected by [authentication](./authentication.md), Kerberos adds `X-Krb-Org`, `X-Krb-User` and, when group authorisation applies, `X-Krb-Groups` for an authenticated caller.
 
 Kerberos does **not** forward the query string, and it does **not** add `X-Forwarded-For`, `X-Forwarded-Host`, `X-Forwarded-Proto`, `Forwarded` or `Via` headers. See [Limitations](#limitations).
 

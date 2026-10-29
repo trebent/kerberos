@@ -278,9 +278,9 @@ Verbosity levels in use:
 | Level | What is added |
 | --- | --- |
 | `0` | Startup and shutdown messages, errors, and per-request messages (see below). |
-| `10` | Successful basic-auth logins (with username) and basic-auth API authorization failures. |
+| `10` | Successful basic-auth logins (with username) and basic-auth API authorisation failures. |
 | `20` | Decisions inside middleware and components: sessions and cookies found or missing, CSRF and CORS checks, which auth method is used, OAS middleware, debug-session matching, forwarding. Useful for troubleshooting a misbehaving route. |
-| `50` | Authentication and authorization steps for each gateway request, and completion of each backend call. |
+| `50` | Authentication and authorisation steps for each gateway request, and completion of each backend call. |
 | `100` | Very verbose: every response header copied from the backend, each response write, and configuration parsing details. |
 
 > At `LOG_VERBOSITY=100` the configuration parser logs the resolved configuration, including the values of `${env:...}` references. Secrets such as the superuser client secret or database password end up in the log. Do not use this level in production.

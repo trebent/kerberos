@@ -78,12 +78,8 @@ All documentation lives in **[`docs/`](./docs/README.md)**. Pick a starting poin
 | Run it in production | [Deployment](./docs/deployment.md) and its [production checklist](./docs/deployment.md#production-checklist) |
 | Write or change the config file | [Configuration](./docs/configuration.md) |
 | Put a login in front of a backend | [Authentication](./docs/authentication.md) |
-| Read the HTTP API reference | [Rendered API reference](https://trebent.github.io/kerberos/), or the OpenAPI files in [`openapi/`](./openapi) |
+| Read the HTTP API reference | The OpenAPI contracts in [`openapi/`](./openapi) |
 | Contribute to Kerberos | [Developer documentation](./docs/dev/README.md) |
-
-## Project status
-
-Kerberos is under active development, and releases follow the tags on the [releases page](https://github.com/trebent/kerberos/releases). The docs say plainly what is not supported yet. Read the *Limitations* and *Things to know* sections before you rely on a feature. For example, the gateway does not yet forward query strings or add `X-Forwarded-*` headers (see [Routing: limitations](./docs/routing.md#limitations)).
 
 ## Contributing
 

@@ -356,7 +356,7 @@ curl -i -b alice.txt -X POST http://localhost:30000/gw/backend/echo/hi \
 
 - [Configuration](./configuration.md): the configuration file format, environment references and all sections.
 - [Routing](./routing.md): registering your own backends, timeouts and forwarding behaviour.
-- [Authentication](./authentication.md): protecting backends, exempt paths and group-based authorization.
+- [Authentication](./authentication.md): protecting backends, exempt paths and group-based authorisation.
 - [Observability](./observability.md): metrics, tracing and dashboards (try `--obs-stack` with `krbctl`).
 - [Deployment](./deployment.md): running Kerberos in production, environment variables and a security checklist.
 - [krbctl](./krbctl.md): every `krbctl` option, including PostgreSQL, the observability stack and the admin-connector.

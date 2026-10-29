@@ -27,7 +27,7 @@ New to Kerberos? Follow [Getting started](./getting-started.md) to run it locall
 
 | You are… | Read these first |
 | --- | --- |
-| **Evaluating Kerberos** | The [project README](../README.md) for the feature overview, then [Getting started](./getting-started.md). The *Limitations* and *Things to know* sections at the end of each page list what is not supported yet. |
+| **Evaluating Kerberos** | The [project README](../README.md) for the feature overview, then [Getting started](./getting-started.md) |
 | **Deploying and operating it** | [Deployment](./deployment.md) (with its production checklist), [Configuration](./configuration.md), [Persistence](./persistence.md), [TLS](./tls.md), [Observability](./observability.md) |
 | **Putting your service behind it** | [Routing](./routing.md), [Authentication](./authentication.md) (identity headers and the Go middleware), [Request validation](./request-validation.md), [CORS](./cors.md) |
 | **Building a login page or client** | [Sessions](./sessions.md), [Organisations](./organizations.md), [CORS](./cors.md), and the [API reference](#api-reference) |
@@ -49,7 +49,7 @@ New to Kerberos? Follow [Getting started](./getting-started.md) to run it locall
 
 ## Users and access control
 
-- [Authentication and authorization](./authentication.md): protecting gateway backends so that only logged-in organisation users, optionally limited by group, can reach them. Kerberos passes the caller's identity to the backend in `X-Krb-*` headers, and Go backends can read it with the `pkg/auth` middleware.
+- [Authentication and authorisation](./authentication.md): protecting gateway backends so that only logged-in organisation users, optionally limited by group, can reach them. Kerberos passes the caller's identity to the backend in `X-Krb-*` headers, and Go backends can read it with the `pkg/auth` middleware.
 - [Sessions and cookies](./sessions.md): how login, refresh and logout work for both the basic-auth API and the Admin API. Covers the session, refresh and CSRF cookies, their lifetimes, CSRF protection and cookie settings.
 - [Organisations, users and groups](./organizations.md): the multi-tenant model behind basic authentication and the basic-auth API that manages it. Explains who can do what, with a walkthrough from creating an organisation to a user's first login.
 - [Admin API](./admin-api.md): the platform administration interface on the admin port. Covers the superuser, admin users and groups, permissions, inspecting the request flow and OpenAPI specifications, and the Go client.
@@ -71,8 +71,6 @@ The HTTP APIs are described by OpenAPI contracts in [`../openapi/`](../openapi/)
 - [`gateway.yaml`](../openapi/gateway.yaml): the gateway port.
 - [`admin.yaml`](../openapi/admin.yaml): the Admin API.
 - [`auth_basic.yaml`](../openapi/auth_basic.yaml): the basic-auth API.
-
-A [rendered reference](https://trebent.github.io/kerberos/) is published with GitHub Pages from [`pages/index.html`](../pages/index.html).
 
 ## Developer documentation
 

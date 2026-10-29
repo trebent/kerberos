@@ -1,4 +1,4 @@
-# Authentication and authorization
+# Authentication and authorisation
 
 Kerberos can protect the backends behind the gateway so that only logged-in users reach them, and optionally only users in specific groups. You enable it with the `auth` section of the configuration file: Kerberos then checks every gateway request for a mapped backend before forwarding it, and tells the backend who the caller is through `X-Krb-*` request headers.
 
@@ -9,7 +9,7 @@ Kerberos currently offers one authentication method, **basic**:
 1. Users belong to an **organisation** and can be members of **groups** within it. Organisations, users and groups are managed through the basic-auth API. See [Organisations](./organizations.md).
 2. A user logs in by sending a username and password to the basic-auth API on the **admin port** (`POST /api/auth/basic/organisations/{orgID}/login`). Kerberos answers with a `session` cookie (plus `refresh` and `csrf` cookies). See [Sessions](./sessions.md) for cookie lifetimes, refresh and logout.
 3. The client calls a backend through the **gateway port** (`/gw/backend/<name>/...`) and sends the `session` cookie along.
-4. Kerberos looks up the session, applies the backend's authorization rules, adds identity headers and forwards the request. Requests that fail the checks are answered by Kerberos with `401` or `403` and never reach the backend.
+4. Kerberos looks up the session, applies the backend's authorisation rules, adds identity headers and forwards the request. Requests that fail the checks are answered by Kerberos with `401` or `403` and never reach the backend.
 
 Backends that have no entry in `auth.scheme.mappings` are not protected at all.
 
@@ -89,12 +89,12 @@ The order matters when you also use request validation: if auth runs first, an u
 |---|---|---|---|
 | `backend` | string | yes | Name of a backend in `gateway.router.backends`. You can use `${ref:gateway.router.backends[1].name}` to avoid repeating it (see [Configuration](./configuration.md)). |
 | `method` | string | yes | Authentication method. Only `basic` is supported. |
-| `exempt` | array of strings | no | Path patterns that skip authentication and authorization completely. |
+| `exempt` | array of strings | no | Path patterns that skip authentication and authorisation completely. |
 | `authorization` | object | no | Group requirements. Without it, any logged-in user is allowed. |
 | `authorization.groups` | array of strings | no (min. 1 item if set) | Group names required for every path of the backend. The user must be in **any one** of them. |
 | `authorization.paths` | object | no | Map of path pattern to array of group names (min. 1 item). For matching paths these groups are required **instead of** `authorization.groups`. |
 
-Use one mapping per backend. If a backend is listed more than once, the exemptions of the first mapping and the authorization of the last mapping are used, which is rarely what you want.
+Use one mapping per backend. If a backend is listed more than once, the exemptions of the first mapping and the authorisation of the last mapping are used, which is rarely what you want.
 
 ## What happens on each request
 
@@ -103,7 +103,7 @@ For each request to `/gw/backend/<name>/...`, Kerberos does the following after 
 1. **Backend not mapped**: the request is forwarded unchanged.
 2. **Path matches an `exempt` pattern**: the request is forwarded unchanged. No session is needed and no identity headers are added.
 3. **Session check**: the request must carry a non-empty `session` cookie that belongs to an existing, unexpired basic-auth session. Otherwise Kerberos responds `401` with `{"errors":["Unauthorized"]}`. On success, `X-Krb-User` and `X-Krb-Org` are set on the forwarded request.
-4. **Authorization**:
+4. **Authorisation**:
    - If the mapping has no `authorization`, the request is allowed.
    - If the path matches a pattern in `authorization.paths`, the user must be in one of that pattern's groups.
    - Otherwise, if `authorization.groups` is set, the user must be in one of those groups.
@@ -133,7 +133,7 @@ Things to know:
 - The query string is not part of the path and is ignored.
 - Patterns are not checked when the configuration is loaded. A malformed pattern (for example an unclosed `[`) in `exempt` makes every request to that backend fail with `500`; in `authorization.paths` it makes requests fail with `403`.
 
-## Authorization semantics
+## Authorisation semantics
 
 - **Any of the listed groups.** A user needs to be a member of at least one listed group, not all of them.
 - **Groups are matched by name.** Kerberos looks up the groups the user belongs to in their own organisation and compares group names. Two organisations that both have a group called `staff` both satisfy `"groups": ["staff"]`.

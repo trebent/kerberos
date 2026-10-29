@@ -18,7 +18,7 @@ Read the design rules in [`.github/skills/design/SKILL.md`](../../.github/skills
 | `main.go`, `env.go` | The Kerberos gateway entry point and its environment variables |
 | `cmd/` | Other binaries: `admin-connector`, `echo` (test backend) and `krbctl` |
 | `internal/composer/` | The request flow: observability, router, custom block and forwarder |
-| `internal/auth/`, `internal/oas/` | The authorizer (with its auth methods, including basic auth and its API) and the OpenAPI validator |
+| `internal/auth/`, `internal/oas/` | The `authorizer` (with its auth methods, including basic auth and its API) and the OpenAPI validator |
 | `internal/admin/` | The Admin API, including debug sessions |
 | `internal/config/` | Config loading, reference resolution and the JSON schemas (`schemas/`) |
 | `internal/db/` | SQLite and PostgreSQL persistence |
@@ -54,4 +54,4 @@ The `security` and `connector` suites follow the same pattern (`make compose/<su
 
 ## Keeping the docs current
 
-If your change alters behaviour that a user can see, such as a config key, a status code, a header or a default, update the matching page under `docs/` in the same pull request. The user docs describe actual behaviour, including gaps and quirks, in their *Things to know* and *Limitations* sections. When you fix one of those gaps, remove its entry.
+If your change alters behaviour that a user can see, such as a config key, a status code, a header or a default, update the matching page under `docs/` in the same pull request. The user docs describe actual behaviour, so keep them in step with the code.
