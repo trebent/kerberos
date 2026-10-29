@@ -252,8 +252,33 @@ footer a:hover { color: var(--text); }
 .api-tabs button:hover { color: var(--text); }
 .api-tabs button[aria-selected="true"] { color: var(--text); background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
 .api-tabs .port { font: 11px var(--mono); color: var(--accent); margin-left: 6px; }
-#redoc-container { padding-top: 60px; background: #fff; min-height: 100vh; }
-.api-status { padding: 120px 20px; text-align: center; color: #5b6070; font-family: var(--font); }
+#redoc-container { padding-top: 104px; background: #fff; min-height: 100vh; }
+#redoc-container[hidden], #source-container[hidden] { display: none; }
+
+.spec-bar {
+  position: fixed;
+  top: 60px;
+  left: 0;
+  right: 0;
+  z-index: 9;
+  height: 44px;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+}
+.spec-bar .wrap { height: 100%; display: flex; align-items: center; gap: 16px; }
+.spec-file { font-size: 13px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.view-toggle { display: inline-flex; margin-left: auto; border: 1px solid var(--border); border-radius: 8px; padding: 2px; flex-shrink: 0; }
+.view-toggle button { background: transparent; border: 0; color: var(--text-muted); font: 500 13px var(--font); padding: 4px 12px; border-radius: 6px; cursor: pointer; }
+.view-toggle button[aria-pressed="true"] { background: var(--accent-soft); color: var(--text); }
+.spec-link { font-size: 13px; font-weight: 600; white-space: nowrap; }
+
+#source-container { padding: 124px 20px 48px; max-width: var(--max); margin: 0 auto; }
+.source-head { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--bg-code); border: 1px solid #232836; border-bottom: 0; border-radius: var(--radius) var(--radius) 0 0; font: 12px var(--mono); color: #9aa1b2; }
+.spec-source { margin: 0; background: var(--bg-code); color: #e6e8ee; border: 1px solid #232836; border-radius: 0 0 var(--radius) var(--radius); padding: 16px 0; overflow-x: auto; font-size: 13px; line-height: 1.6; counter-reset: line; }
+.spec-source .line { display: block; padding: 0 20px 0 0; white-space: pre; }
+.spec-source .line::before { counter-increment: line; content: counter(line); display: inline-block; width: 56px; padding-right: 16px; margin-right: 4px; text-align: right; color: #4a5266; user-select: none; }
+.spec-source .line:target { background: rgba(255, 122, 61, 0.15); }
+.api-status { padding: 80px 20px; text-align: center; color: #5b6070; font-family: var(--font); }
 
 @media (max-width: 720px) {
   .api-page .brand .name { display: none; }

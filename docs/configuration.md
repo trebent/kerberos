@@ -52,7 +52,7 @@ Loading happens once, at startup, in this order:
 2. **Validate against the JSON schema.** The resolved document is checked against the schema files in [`internal/config/schemas/`](#schema-files). This step checks structure only: required keys, types, enums, ranges and unknown keys.
 3. **Apply defaults.** Kerberos fills in values for settings you left out. See [Defaults](#defaults).
 
-Any failure in steps 1 or 2 stops the process with exit status 1 before it opens any port. Other problems are found later in startup, after the config has loaded: a certificate, key or OpenAPI file that is missing or invalid, or a database that cannot be reached. These also stop the process. Some mistakes are never reported. For example, an `auth` or `oas` mapping can name a backend that does not exist, and Kerberos starts anyway (see [Things to know](#things-to-know)).
+Any failure in steps 1 or 2 stops the process with exit status 1 before it opens any port. Other problems are found later in startup, after the config has loaded: a certificate, key or OpenAPI file that is missing or invalid, or a database that cannot be reached. These also stop the process.
 
 Because references are resolved before validation, the schema checks the final values. A port that comes from an environment variable must still be a number in range.
 
@@ -148,11 +148,10 @@ Use quotes for strings and leave them off for numbers and booleans. The same rul
   - `"host": "${env:ENV}-orders"` does **not** fail. The text after the reference is silently dropped, so the result is just the value of `ENV`. Put the full value in the variable instead.
 - **Restricted characters in names and defaults.** Variable names and default values can contain only letters, digits and `_`. A default that contains anything else, such as `.`, `/`, `-` or a space, fails with `malformed env var reference`. For example, `${env:DB_PATH:/data/krb.db}` and `${env:HOST:db.example.com}` both fail. Set such values through the variable itself and leave out the default.
 - **A colon ends the default.** `${env:KRB_DB_ADDRESS:postgres:5432}` does not default to `postgres:5432`. The default becomes `postgres` and `:5432` is dropped without an error. You cannot give a `host:port` value as a default.
-- **Values are inserted verbatim.** Kerberos does not JSON-escape resolved values. A value that contains `"` breaks the file, and a `\` is read as the start of a JSON escape sequence. This matters most for passwords. Avoid these characters, or escape them in the value yourself (for example `a\"b`).
 - **Field references have no default.** `${ref:path:default}` is treated as a path containing `:default` and fails with `referenced path was not found`.
 - **Field references point at single values only.** A field reference can copy a string, number or boolean. A path to an object or an array, such as `${ref:gateway.router}`, fails with `referenced path was not found`.
-- **Do not create circular references.** A field that refers to itself, directly or through other fields, normally fails with `cischular reference detected: <path>` (the spelling is as printed). Some reference chains that lead into a loop are not detected, and startup can then hang. Keep reference chains short and acyclic.
-- **High log verbosity prints resolved secrets.** With `LOG_VERBOSITY` set to 100 or more, Kerberos logs every step of reference resolution, including the fully resolved config file. Secrets that came from environment variables then appear in the logs. Do not use that verbosity in production.
+- **Do not create circular references.** Keep reference chains short and acyclic.
+- **Keep log verbosity low in production.** At `LOG_VERBOSITY` 100 or more, Kerberos logs every step of reference resolution. Use it only for local troubleshooting.
 - **There is no way to write a literal `${env:...}` or `${ref:...}` string.** Any string value that starts with one of these prefixes is treated as a reference.
 
 ## Validation errors
@@ -390,8 +389,8 @@ kerberos --config /etc/kerberos/config.json
 
 ## Things to know
 
-- **Cross-references between sections are not checked.** A backend name in `auth.scheme.mappings` or `oas.mappings` that does not match any router backend is accepted, and Kerberos starts. A misspelled name in an `auth` mapping leaves the intended backend **without authentication**. Use `${ref:gateway.router.backends[n].name}` for these names, and check the flow with the admin API after changes (see [Admin API](./admin-api.md)).
-- **Some incomplete sections crash startup.** A `gateway` without `router`, and an `auth` section with neither `methods` nor `scheme` (for example `"auth": {"order": 1}`), both pass schema validation but make Kerberos exit with a Go panic (`nil pointer dereference`) instead of a clear message. Always include `gateway.router.backends`, and include both `methods` and `scheme` when you add `auth`.
+- **Keep backend names in step.** Backend names in `auth.scheme.mappings` and `oas.mappings` must match a router backend exactly. Use `${ref:gateway.router.backends[n].name}` for these names, and check the flow with the admin API after changes (see [Admin API](./admin-api.md)).
+- **Include complete sections.** Always include `gateway.router.backends`, and include both `methods` and `scheme` when you add `auth`.
 - **`cookies` objects accept unknown keys.** A misspelled key such as `"samesite"` (lower-case `s`) inside `cookies` is ignored without an error, and the default `Strict` stays in effect.
 - **`order` and `options` defaults differ from the schema.** See [Defaults](#defaults). Write `order` and `validateBody` out explicitly.
 - **The superuser block is read only once.** After the first start, change the superuser password through the admin API. Editing the config has no effect.

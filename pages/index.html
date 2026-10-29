@@ -183,7 +183,7 @@
           <div class="split-text">
             <span class="tag">Configure</span>
             <h2>One JSON file. No surprises.</h2>
-            <p>The whole gateway is described in a single config file, validated against a JSON schema at startup, so a typo stops the process instead of silently changing behaviour.</p>
+            <p>The whole gateway is described in a single config file, validated against a JSON schema at startup, so an unknown or misspelt key stops the process with a clear error.</p>
             <ul class="checks">
               <li>Pull secrets from the environment with <code>${env:NAME}</code></li>
               <li>Keep names in sync with <code>${ref:path.to.field}</code></li>

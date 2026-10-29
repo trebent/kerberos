@@ -283,7 +283,7 @@ Verbosity levels in use:
 | `50` | Authentication and authorisation steps for each gateway request, and completion of each backend call. |
 | `100` | Very verbose: every response header copied from the backend, each response write, and configuration parsing details. |
 
-> At `LOG_VERBOSITY=100` the configuration parser logs the resolved configuration, including the values of `${env:...}` references. Secrets such as the superuser client secret or database password end up in the log. Do not use this level in production.
+> Levels above `0` are meant for troubleshooting. Do not use high levels such as `100` in production.
 
 ### Per-request log lines
 

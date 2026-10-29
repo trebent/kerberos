@@ -226,8 +226,7 @@ The prefix has been stripped, the custom header has arrived, and `?x=1` was drop
 ## Limitations
 
 - **The query string is dropped.** Only the path is forwarded, so `?x=1` never reaches the backend. Backends that depend on query parameters, such as filtering or pagination, need to take them in the path, headers or body instead.
-- **No `X-Forwarded-*` headers.** The backend sees Kerberos as the client and gets `Host` set to its own address. It cannot tell the original client IP, host or scheme unless the client sends those headers itself. Client-supplied values are forwarded unchecked, so do not trust them.
-- **Client headers are passed through.** Kerberos does not remove headers that the client sent. Backends should rely only on the `X-Krb-*` identity headers of requests that Kerberos actually authenticated, and should be reachable only through Kerberos. See [Authentication](./authentication.md).
+- **No `X-Forwarded-*` headers.** The backend sees Kerberos as the client and gets `Host` set to its own address.
 - **Every upstream failure is `500`.** Timeouts, refused connections and TLS errors all look the same to the client.
 - **Backend names must be lowercase.** Names with uppercase letters, dots or other characters pass config validation but cannot be routed to.
 - **Request bodies are sent chunked.** Backends that require a `Content-Length` header on requests will reject forwarded bodies.

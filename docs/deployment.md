@@ -86,7 +86,7 @@ Kerberos reads the following variables at startup. Names have no prefix. A varia
 
 Port values below 1000 are rejected, so Kerberos cannot listen on `80` or `443` directly. Put a load balancer or port mapping in front of it.
 
-Do not run production with a high `LOG_VERBOSITY`. From level `30`, rejected basic-auth requests have all their request headers logged, including cookies.
+Keep `LOG_VERBOSITY` at `0` in production. Higher levels are meant for troubleshooting and log request details.
 
 Kerberos also honours the standard OpenTelemetry environment variables (`OTEL_TRACES_EXPORTER`, `OTEL_METRICS_EXPORTER`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_PROMETHEUS_HOST`, `OTEL_EXPORTER_PROMETHEUS_PORT`, `OTEL_TRACES_SAMPLER`, `OTEL_TRACES_SAMPLER_ARG` and others). They are described in [Observability](./observability.md). Two points matter for deployment:
 
@@ -234,7 +234,7 @@ If you use PostgreSQL, Kerberos exits at startup when it cannot reach the databa
 
 - [ ] **Change the superuser secret.** The default superuser is `admin` / `secret`. The configured credentials are only used to create the superuser on the first start against an empty database; changing the configuration later has no effect. Set a strong `admin.superUser.clientSecret` before the first start, and change the password through the admin API (`PUT /api/admin/superuser/password`) afterwards. See [Admin API](./admin-api.md).
 - [ ] **Enable TLS** on the gateway and admin servers, or terminate TLS in front of them. Kerberos's session cookies are always marked `Secure`, so browser logins only work over HTTPS. See [TLS](./tls.md).
-- [ ] **Make backends reachable only through Kerberos.** Kerberos sets `X-Krb-Org` and `X-Krb-User` (and adds `X-Krb-Groups`) for authenticated requests, but does not remove `X-Krb-*` headers that clients send. A backend that is reachable directly, or a route without authentication or with exempt paths, can receive forged identity headers. Keep backends on a private network, and only trust these headers on routes that Kerberos authenticates. See [Authentication](./authentication.md).
+- [ ] **Make backends reachable only through Kerberos.** Keep backends on a private network so that every request passes through Kerberos's checks, and rely on the `X-Krb-*` identity headers only on routes that Kerberos authenticates. See [Authentication](./authentication.md).
 - [ ] **Restrict access to the admin port** to the networks that need it.
 - [ ] **Use PostgreSQL** if you run more than one replica, and back it up. With SQLite, keep the database on a persistent volume and run a single replica. See [Persistence](./persistence.md).
 - [ ] **Configure telemetry deliberately.** Point the OTLP exporter at a collector or set exporters to `none`, expose the Prometheus port if you scrape metrics, and set a trace sampler such as `OTEL_TRACES_SAMPLER=parentbased_traceidratio` with `OTEL_TRACES_SAMPLER_ARG=0.1`. The default samples every trace. See [Observability](./observability.md).

@@ -302,7 +302,6 @@ The connector serves HTTPS only when both `tls.serverCertFile` and `tls.serverKe
 - **No TLS tuning.** You cannot configure the minimum or maximum TLS version, cipher suites, curves or ALPN protocols. Kerberos uses the Go standard library defaults: TLS 1.2 and 1.3 with Go's default cipher suites.
 - **No client-certificate authentication on the Kerberos ports.** The gateway and admin ports do not request or verify client certificates. mTLS is only available on the connection from Kerberos to backends. If you need client certificates at the edge, check them in a proxy in front of Kerberos.
 - **HTTPS only, no redirect.** When server TLS is enabled on a port, plain HTTP on that port is rejected with `400`. Kerberos cannot serve HTTP and HTTPS on the same port, and it cannot redirect HTTP to HTTPS.
-- **No HSTS.** Kerberos does not send `Strict-Transport-Security` or other security response headers. Add them at a proxy if you need them.
 - **Certificates are read only at startup.** Restart Kerberos after rotating them.
 - **One CA setting per backend.** A file in `rootCAFile` replaces the system pool for that backend. It does not add to it.
 - **Backend connections use HTTP/1.1**, including over TLS.

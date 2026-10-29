@@ -79,7 +79,7 @@ curl -i -c su.jar -b su.jar -X PUT http://localhost:30001/api/admin/superuser/pa
   -d '{"oldPassword": "secret", "newPassword": "a-long-random-passphrase"}'
 ```
 
-A successful change returns `204`. A wrong `oldPassword` returns `400`. Changing the password does not end superuser sessions that already exist. The superuser's name (`clientId`) cannot be changed through the API.
+A successful change returns `204`. A wrong `oldPassword` returns `400`. The superuser's name (`clientId`) cannot be changed through the API.
 
 ### What the superuser can do
 
@@ -94,7 +94,7 @@ Use the superuser to set up admin groups and admin users, then use those account
 
 ## Admin users and admin groups
 
-An **admin user** has a username and a password. Usernames are unique, and they share one namespace with the superuser: you cannot create an admin user with the superuser's name (`409`). The API requires only that a password is non-empty. Kerberos does not enforce a length or strength policy for admin users, so set your own.
+An **admin user** has a username and a password. Usernames are unique, and they share one namespace with the superuser: you cannot create an admin user with the superuser's name (`409`). Use long, random passwords.
 
 An **admin group** has a unique name and a set of permissions. Groups are the only way to give an admin user permissions. A user with no groups can log in, read `/api/admin/me` and `/api/admin/permissions`, and manage their own account, but nothing else.
 
@@ -117,7 +117,7 @@ The set of permissions is fixed. Their IDs are stable and are the same on every 
 - A user's permissions are the **union** of the permissions of all groups they belong to. There are no deny rules.
 - Permissions are looked up **on every request**, not when the user logs in. Adding a user to a group, removing them from one, changing a group's permissions or deleting a group takes effect on the user's next request. The user does not need to log in again.
 - Every admin user can read and rename their own account and change their own password, whatever their permissions.
-- Deleting an admin user ends all of that user's sessions straight away. Changing a user's password does not end their sessions.
+- Deleting an admin user ends all of that user's sessions straight away.
 - Deleting a group removes its memberships. Its members lose the permissions it granted.
 
 ## Behaviour
@@ -388,11 +388,10 @@ The standard Go cookie jar sends `Secure` cookies over plain `http://` only to `
 
 - **Bootstrap credentials apply once.** Editing `admin.superUser` after the first start has no effect. Change the password with `PUT /api/admin/superuser/password`.
 - **Superuser logout ends every superuser session.**
-- **Password changes do not end sessions**, for both the superuser and admin users. Deleting an admin user does end that user's sessions.
+- **Deleting an admin user ends that user's sessions.**
 - **Admins cannot reset another user's password** without knowing the old one.
 - **Renaming a user that does not exist** (`PUT /users/{userID}` with an unknown ID) returns `204` and changes nothing.
 - **Group writes are not all-or-nothing.** An unknown or duplicate ID in `permissionIDs` returns `500`. On `POST /groups` the group has already been created at that point, with no permissions. On `PUT /groups/{groupID}` the new name has already been saved. Check the result with `GET /groups` and correct it. `PUT /users/{userID}/groups` with an unknown group ID also returns `500`, but in that case nothing changes.
-- **No password policy.** Admin user and superuser passwords only have to be non-empty.
 - **Sessions are stored in the database**, so a restart keeps them, and replicas that share a database (PostgreSQL) share them. Debug-session capture state is held in memory. See [Admin debugging](./admin-debugging.md).
 
 ## Related docs

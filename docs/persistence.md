@@ -136,7 +136,7 @@ Each driver has its own set of schema statements. Kerberos cannot convert data f
 - **`address` must be exactly `host:port`.** Kerberos splits the value on `:`, so a missing port, a URL such as `postgres://...`, or an IPv6 literal makes startup fail. For an IPv6 server, use a hostname that resolves to it.
 - **Set credentials as a pair.** `username` and `password` are sent only when both are present. If you set only one of them, Kerberos connects without credentials and the driver falls back to its defaults, such as the operating system user name.
 - **Set `sslMode` explicitly.** If you leave it out, the PostgreSQL driver defaults to `require`, so a server without TLS rejects the connection. Use `disable` only on trusted local networks, and prefer `verify-full` in production.
-- **Avoid spaces, quotes and backslashes in values.** Connection values are passed to the driver without quoting, so a password, user name or database name that contains whitespace, `'` or `\` may not be parsed correctly.
+- **Avoid spaces, quotes and backslashes in values.**
 
 ### Startup when the database is unavailable
 

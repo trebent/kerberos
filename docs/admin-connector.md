@@ -27,14 +27,14 @@ For every request, the connector:
 
 Things to know about the check:
 
-- **Any admin login is enough.** The connector does not look at admin groups or permissions. An admin user with no permissions at all gets through, the same as the superuser.
+- **Admin logins only.** Any valid admin user or superuser session is accepted.
 - **Organisation user sessions are not accepted.** A `session` cookie from a basic-auth (organisation) login gets `401`, even though the cookie has the same name.
 - **The connector does not talk to Kerberos.** It only reads the shared database, so it must point at the same database as Kerberos (see [Persistence](#persistence)).
 - **The connector never refreshes sessions.** Admin sessions last 15 minutes. When the session expires, the tool behind the connector starts answering `401` until the user refreshes the session or logs in again on the Admin API. See [Sessions](./sessions.md).
 
 ### What is forwarded
 
-The request reaches the target with the same method, path, query string, body and headers, including the `Cookie` header. The target therefore sees the user's `session`, `csrf` and other cookies for that host. Differences from the original request:
+The request reaches the target with the same method, path, query string, body and headers, including the `Cookie` header. Differences from the original request:
 
 - The `Host` header is set to the target's host.
 - Any incoming `X-Forwarded-For`, `X-Forwarded-Host`, `X-Forwarded-Proto` and `Forwarded` headers are removed, and the connector does not add new ones.
@@ -278,12 +278,9 @@ Each request is also logged with its method, path and status code.
 ## Limitations
 
 - **`targetTls` cannot be used yet.** The configuration schema rejects every `targetTls` block, whatever it contains, so the connector refuses to start with one. The connector therefore always reaches its target over plain HTTP. Keep the connection between the connector and the target on a private network.
-- **No permission checks.** Every admin user and the superuser get through. If only some admins should see a tool, the connector cannot express that.
 - **One target per connector.** Run one connector per tool, each on its own port or host name.
 - **Short timeouts by default.** The 5-second write timeout also limits how long the target may take to answer. Raise `WRITE_TIMEOUT_SECONDS` for slow queries, and do not expect long-lived streaming responses to work.
 - **No session refresh.** Sessions expire after 15 minutes and must be refreshed on the Admin API.
-- **Database errors drop the connection.** If the session lookup fails for a reason other than "not found" (for example, the database is unreachable or Kerberos has not created its tables yet), the connector closes the connection without sending a response.
-- **Cookies reach the target.** The tool behind the connector receives the user's admin `session` cookie. Only put tools you trust behind the connector.
 - **No `X-Forwarded-*` headers.** The target does not learn the client address or the original host and scheme. Tools that build absolute URLs from those headers may need their external URL configured explicitly.
 
 ## Related docs

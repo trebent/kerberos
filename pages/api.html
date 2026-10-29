@@ -33,7 +33,26 @@
     </div>
   </header>
 
+  <div class="spec-bar">
+    <div class="wrap wrap-full">
+      <code class="spec-file" id="spec-file">openapi/gateway.yaml</code>
+      <div class="view-toggle" role="group" aria-label="View">
+        <button type="button" data-view="reference" aria-pressed="true">Reference</button>
+        <button type="button" data-view="source" aria-pressed="false">Source</button>
+      </div>
+      <a class="spec-link" id="spec-download" href="#" download>Download</a>
+      <a class="spec-link hide-sm" id="spec-github" href="https://github.com/trebent/kerberos/tree/main/openapi">GitHub</a>
+    </div>
+  </div>
+
   <div id="redoc-container"><p class="api-status">Loading API reference…</p></div>
+  <div id="source-container" hidden>
+    <div class="source-head">
+      <span id="source-meta"></span>
+      <button class="copy" type="button" id="source-copy">Copy</button>
+    </div>
+    <pre class="spec-source"><code id="source-code"></code></pre>
+  </div>
 
   <script>
     // The deploy workflow copies openapi/ next to this page. When previewing
@@ -43,6 +62,8 @@
       admin: 'admin.yaml',
       auth: 'auth_basic.yaml',
     };
+    const views = ['reference', 'source'];
+    const barHeight = 104;
 
     const theme = {
       colors: { primary: { main: '#c2410c' } },
@@ -56,6 +77,8 @@
       codeBlock: { backgroundColor: '#0b0d12' },
     };
 
+    const state = { api: null, view: null, url: null, text: null };
+
     async function specUrl(file) {
       for (const base of ['openapi/', '../openapi/']) {
         try {
@@ -66,31 +89,104 @@
       return null;
     }
 
-    async function show(name) {
-      if (!apis[name]) name = 'gateway';
+    function escapeHtml(text) {
+      return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // Minimal YAML highlighting: comments, keys, quoted strings, $refs and numbers.
+    function highlightLine(line) {
+      const html = escapeHtml(line);
+      const comment = html.match(/^(\s*)(#.*)$/);
+      if (comment) return comment[1] + '<span class="c">' + comment[2] + '</span>';
+      return html
+        .replace(/^(\s*-?\s*)([A-Za-z0-9_$\/{}.\-"']+)(:)(?=\s|$)/, '$1<span class="k">$2</span>$3')
+        .replace(/(:\s+|-\s+)("[^"]*"|'[^']*')/g, '$1<span class="s">$2</span>')
+        .replace(/(:\s+)(-?\d+(\.\d+)?)\s*$/, '$1<span class="n">$2</span>');
+    }
+
+    function renderSource(text) {
+      const lines = text.replace(/\n$/, '').split('\n');
+      document.getElementById('source-code').innerHTML = lines
+        .map((line, i) => '<span class="line" id="L' + (i + 1) + '">' + (highlightLine(line) || ' ') + '</span>')
+        .join('');
+      document.getElementById('source-meta').textContent =
+        apis[state.api] + ' · ' + lines.length + ' lines';
+    }
+
+    function setView(view) {
+      state.view = views.includes(view) ? view : 'reference';
+      document.querySelectorAll('[data-view]').forEach((b) => {
+        b.setAttribute('aria-pressed', String(b.dataset.view === state.view));
+      });
+      document.getElementById('redoc-container').hidden = state.view !== 'reference';
+      document.getElementById('source-container').hidden = state.view !== 'source';
+      const url = new URL(window.location);
+      url.searchParams.set('view', state.view);
+      history.replaceState(null, '', url);
+    }
+
+    function failed() {
+      const message = '<p class="api-status">The specification could not be loaded. The contracts are in the <a href="https://github.com/trebent/kerberos/tree/main/openapi">openapi/ directory</a> on GitHub.</p>';
+      document.getElementById('redoc-container').innerHTML = message;
+      document.getElementById('source-code').innerHTML = '';
+      document.getElementById('source-meta').textContent = 'Not available';
+    }
+
+    async function show(name, view) {
+      state.api = apis[name] ? name : 'gateway';
       document.querySelectorAll('[data-api]').forEach((tab) => {
-        tab.setAttribute('aria-selected', String(tab.dataset.api === name));
+        tab.setAttribute('aria-selected', String(tab.dataset.api === state.api));
       });
       const url = new URL(window.location);
-      url.searchParams.set('api', name);
+      url.searchParams.set('api', state.api);
       history.replaceState(null, '', url);
+      setView(view || state.view);
+
+      const file = apis[state.api];
+      document.getElementById('spec-file').textContent = 'openapi/' + file;
+      document.getElementById('spec-github').href = 'https://github.com/trebent/kerberos/blob/main/openapi/' + file;
+
+      state.url = await specUrl(file);
+      if (!state.url) return failed();
+      const download = document.getElementById('spec-download');
+      download.href = state.url;
+      download.setAttribute('download', file);
+
+      try {
+        state.text = await (await fetch(state.url)).text();
+        renderSource(state.text);
+      } catch {
+        return failed();
+      }
 
       const container = document.getElementById('redoc-container');
-      const spec = await specUrl(apis[name]);
-      if (!spec || typeof Redoc === 'undefined') {
-        container.innerHTML = '<p class="api-status">The API reference could not be loaded. The contracts are in the <a href="https://github.com/trebent/kerberos/tree/main/openapi">openapi/ directory</a> on GitHub.</p>';
+      if (typeof Redoc === 'undefined') {
+        container.innerHTML = '<p class="api-status">The interactive reference could not be loaded. Switch to <b>Source</b> to read the specification.</p>';
         return;
       }
       container.innerHTML = '';
-      Redoc.init(spec, { hideDownloadButton: false, scrollYOffset: 60, theme }, container);
+      Redoc.init(state.url, { scrollYOffset: barHeight, theme }, container);
       window.scrollTo(0, 0);
     }
 
     document.querySelectorAll('[data-api]').forEach((tab) => {
       tab.addEventListener('click', () => show(tab.dataset.api));
     });
+    document.querySelectorAll('[data-view]').forEach((button) => {
+      button.addEventListener('click', () => { setView(button.dataset.view); window.scrollTo(0, 0); });
+    });
+    document.getElementById('source-copy').addEventListener('click', async (e) => {
+      try {
+        await navigator.clipboard.writeText(state.text || '');
+        e.target.textContent = 'Copied';
+      } catch {
+        e.target.textContent = 'Copy failed';
+      }
+      setTimeout(() => { e.target.textContent = 'Copy'; }, 1500);
+    });
 
-    show(new URLSearchParams(window.location.search).get('api'));
+    const params = new URLSearchParams(window.location.search);
+    show(params.get('api'), params.get('view'));
   </script>
 </body>
 

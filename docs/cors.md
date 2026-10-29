@@ -162,7 +162,6 @@ These values are fixed and cannot be configured. In particular:
 - **Credentials are always allowed**, so browsers send and accept cookies on cross-origin requests when the page uses `credentials: "include"` (or `withCredentials`).
 - **No `Access-Control-Max-Age`** is sent, so browsers cache preflight results only for their built-in default (a few seconds), and send a preflight before most non-simple requests.
 - **No `Access-Control-Expose-Headers`** is sent, so page scripts can only read the CORS-safelisted response headers (such as `Content-Type`), not custom headers returned by your backend.
-- **No `Vary: Origin`** is added. If a shared cache sits between browsers and Kerberos, make sure it does not serve a response cached for one origin to another.
 
 The headers are added before the rest of the pipeline runs, so error responses produced later by Kerberos (for example `401` from authentication or `400` from request validation) also carry them, and the page can read those errors.
 
@@ -280,9 +279,8 @@ See [Sessions](./sessions.md) for how the CSRF token and cookies work.
 
 ## Things to know
 
-- **`allowAll` sends credentials to any site.** Because `Access-Control-Allow-Credentials: true` is always set, `allowAll` lets any website make cookie-carrying requests and read the responses, as far as the browser's `SameSite` rules allow. Use `allowAll` only for public, unauthenticated backends. Prefer `allowedOrigins` for anything behind authentication, and for the admin and basic-auth APIs.
+- **Use `allowAll` sparingly.** Use `allowAll` only for public, unauthenticated backends. Prefer `allowedOrigins` for anything behind authentication, and for the admin and basic-auth APIs.
 - **The check relies on the `Origin` header.** Non-browser clients can leave it out or set any value they like, so origin settings protect browser users, not the backend. They do not replace authentication.
-- **`Origin: null`** (sent by sandboxed iframes and some redirects and `file://` pages) is treated like any other value: echoed back with `allowAll`, allowed only if `"null"` is listed in `allowedOrigins`, and rejected with `denyAll`.
 - **The settings are fixed for the whole location.** You cannot set different origins for different paths of one backend, or change the allowed headers or methods.
 - **Admin and basic-auth APIs share a port but not a setting.** If a browser application uses both APIs, list its origin in both `admin.api.origins` and `auth.methods.basic.api.origins`.
 - **Denied and preflight requests are still counted** in the gateway's request metrics, under the backend label `unknown`. See [Observability](./observability.md).

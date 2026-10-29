@@ -94,7 +94,7 @@ The order matters when you also use request validation: if auth runs first, an u
 | `authorization.groups` | array of strings | no (min. 1 item if set) | Group names required for every path of the backend. The user must be in **any one** of them. |
 | `authorization.paths` | object | no | Map of path pattern to array of group names (min. 1 item). For matching paths these groups are required **instead of** `authorization.groups`. |
 
-Use one mapping per backend. If a backend is listed more than once, the exemptions of the first mapping and the authorisation of the last mapping are used, which is rarely what you want.
+Use one mapping per backend.
 
 ## What happens on each request
 
@@ -131,15 +131,15 @@ Things to know:
 - The whole path must match. `*` matches any characters except `/`, so it never spans more than one path segment. There is no `**`; to cover a subtree, list each depth you need (`/public/*`, `/public/*/*`) or structure the backend's paths so one level is enough.
 - To cover both a path and its children, list both, as in `["/unprotected", "/unprotected/*"]`.
 - The query string is not part of the path and is ignored.
-- Patterns are not checked when the configuration is loaded. A malformed pattern (for example an unclosed `[`) in `exempt` makes every request to that backend fail with `500`; in `authorization.paths` it makes requests fail with `403`.
+- Test new patterns before you deploy them: they use Go `path.Match` syntax, and an unclosed `[` is not a valid pattern.
 
 ## Authorisation semantics
 
 - **Any of the listed groups.** A user needs to be a member of at least one listed group, not all of them.
-- **Groups are matched by name.** Kerberos looks up the groups the user belongs to in their own organisation and compares group names. Two organisations that both have a group called `staff` both satisfy `"groups": ["staff"]`.
+- **Groups are matched by name.** Kerberos looks up the groups the user belongs to in their own organisation and compares them with the group names in the rule.
 - **Path rules replace global groups.** If a path matches an `authorization.paths` pattern, only that pattern's groups count; `authorization.groups` is ignored for that request. In the example above, a user who is only in `staff` gets `403` on `/long/hello`.
-- **Avoid overlapping path patterns.** If more than one pattern in `authorization.paths` matches a path, which one is used is not defined and can differ between requests. Make the patterns mutually exclusive.
-- **No rules means any logged-in user.** Without `authorization`, or when neither `authorization.groups` is set nor a path rule matches, every authenticated user is allowed, whatever their organisation.
+- **Avoid overlapping path patterns.** Make the patterns in `authorization.paths` mutually exclusive, so that each path matches at most one rule.
+- **No rules means any logged-in user.** Without `authorization`, or when neither `authorization.groups` is set nor a path rule matches, every authenticated user is allowed.
 - Group membership is read on every request, so adding a user to or removing a user from a group takes effect on their next request without logging in again.
 
 ## Identity headers sent to backends
@@ -188,19 +188,16 @@ func main() {
 }
 ```
 
-Each getter returns `false` when the header was absent. The middleware does no verification of its own: it trusts whatever headers arrive, so it is only safe when the backend can be reached through Kerberos alone (see below).
+Each getter returns `false` when the header was absent. Use it in backends that can be reached through Kerberos alone (see below).
 
 ## Security considerations
 
 Read this section before relying on Kerberos to protect a backend.
 
-- **Backends must only be reachable through Kerberos.** Kerberos is the only thing enforcing authentication. If clients can reach a backend directly, they can bypass every check and send any `X-Krb-*` headers they like. Put backends on a private network, behind a firewall, or use [mutual TLS](./tls.md) between Kerberos and the backend.
-- **Incoming `X-Krb-*` headers are not removed.** Kerberos does not strip identity headers sent by the client:
-  - On unmapped backends and on exempt paths, a client can send its own `X-Krb-User`, `X-Krb-Org` and `X-Krb-Groups`, and they reach the backend as-is. Do not treat these headers as trustworthy on routes that are not protected.
-  - On protected paths, `X-Krb-User` and `X-Krb-Org` are overwritten with the real values, but client-sent `X-Krb-Groups` values are kept: Kerberos appends the real groups when a group check runs and adds nothing when it does not. Access decisions in Kerberos itself use the stored group membership, but a backend that reads `X-Krb-Groups` may see extra, client-chosen values. If your backend makes its own decisions based on groups, enforce those groups in Kerberos configuration instead, or make sure clients cannot add the header (for example with a proxy in front of Kerberos that removes `X-Krb-*` request headers).
-- **A session from any organisation authenticates.** Kerberos does not tie a backend to an organisation. Any user of any organisation can log in and pass the session check. Since groups are matched by name and organisation administrators can create groups freely, group rules alone do not stop another organisation from creating a group with the same name. If a backend belongs to one organisation, check `X-Krb-Org` in the backend as well.
+- **Backends must only be reachable through Kerberos.** Kerberos is what enforces authentication, so every request to a protected backend must pass through it. Put backends on a private network, behind a firewall, or use [mutual TLS](./tls.md) between Kerberos and the backend.
+- **Rely on identity headers only on protected routes.** `X-Krb-*` headers describe the caller only on requests that Kerberos authenticated.
+- **Separate tenants in the backend.** If a backend belongs to one organisation, check `X-Krb-Org` in the backend as well as using group rules.
 - **Always configure `methods.basic` when a mapping uses `"method": "basic"`.** The configuration is accepted without it, but every request to the mapped backend then fails instead of being authenticated.
-- **The session cookie is sent to the backend.** Because headers are forwarded unchanged, backends receive the user's `session` cookie. Do not log it, and treat backends as trusted parties.
 - **Use HTTPS.** The session cookies are marked `Secure`, so browsers only send them over HTTPS (except to `localhost`). See [TLS](./tls.md) and [Sessions](./sessions.md).
 - Exempt patterns are matched before anything else; double-check that a broad pattern such as `/*` does not expose more than you intended.
 

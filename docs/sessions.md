@@ -73,7 +73,6 @@ Further rules:
 
 - A basic-auth refresh token only works on the refresh endpoint of the organisation it was issued for.
 - A superuser refresh token only works on `/api/admin/superuser/refresh`. Using it on the admin-user refresh path fails because of the cookie path. Using an admin user's token on the superuser path returns `403`.
-- Nothing caps how long a session can be kept alive. A client that keeps refreshing on time stays logged in for as long as it keeps doing so.
 
 Good practice for clients: refresh a little before the 15-minute mark, for example every 10 to 12 minutes, or refresh when a call returns `401` (this works for admin sessions only, because basic-auth sessions cannot be refreshed once expired).
 
@@ -84,19 +83,6 @@ Good practice for clients: refresh a little before the 15-minute mark, for examp
 | Organisation user (`.../organisations/{orgID}/logout`) | Deletes only the current session. Other sessions of the same user, for example on other devices, stay valid. |
 | Admin user (`/api/admin/logout`) | Deletes only the current session. |
 | Superuser (`/api/admin/superuser/logout`) | Deletes **all** superuser sessions, including those on other devices and in other scripts. Calling it with an admin-user session returns `403`. |
-
-### Password changes do not end sessions
-
-Changing a password through any of these endpoints does not revoke existing sessions:
-
-- the basic-auth `PUT .../users/{userID}/password`,
-- the admin `PUT /api/admin/users/{userID}/password`,
-- `PUT /api/admin/superuser/password`.
-
-Sessions that are already open keep working until they expire or are logged out. They can also still be refreshed. If you change a password because it leaked, also end the sessions:
-
-- For the superuser, call `POST /api/admin/superuser/logout` after the change.
-- For other users, there is no endpoint that ends all of a user's sessions. Deleting the user removes their sessions.
 
 ## CSRF protection
 
@@ -288,7 +274,6 @@ The same `httpClient` can call the gateway on port 30000, because cookie jars ig
 - Sessions last 15 minutes, and activity does not extend them. Clients must refresh.
 - Basic-auth sessions cannot be refreshed after they expire. Admin sessions can be refreshed for up to 45 minutes after they expire.
 - Superuser logout ends every superuser session. Other logouts end only the current session.
-- Password changes do not end existing sessions.
 - Cookies are always `Secure`, so use HTTPS for anything other than `localhost`.
 - Admin and basic-auth logins overwrite each other's `session` cookie on the same host.
 - Kerberos does not purge expired sessions or refresh tokens from the database. They stop working but remain stored.

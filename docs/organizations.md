@@ -293,7 +293,6 @@ The same `session` cookie now authenticates Alice on the gateway port, for examp
   containing non-ASCII characters (accented letters, emoji and so on) are accepted when set but the
   user can then not log in with them. A new password longer than 40 bytes is not rejected by
   validation on the password-change endpoint, but the request fails.
-- Changing a password does not end the user's existing sessions.
 - Passwords are stored as salted bcrypt hashes.
 
 ## Errors
@@ -374,8 +373,8 @@ Go's cookie jar sends `Secure` cookies over plain HTTP only to `localhost`; for 
 ## Things to know
 
 - **Platform administrators are not organisation users.** They have no user record in the
-  organisation, so `GET .../users/me` and `POST .../logout` do not work with an Admin API session
-  (the connection is dropped without a normal response). Use `GET .../users/{userID}` instead, and
+  organisation, so `GET .../users/me` and `POST .../logout` do not work with an Admin API session.
+  Use `GET .../users/{userID}` instead, and
   log out through the Admin API.
 - **Deletes are idempotent.** Deleting an organisation, user or group that does not exist returns
   `204`, not `404`.
@@ -384,14 +383,12 @@ Go's cookie jar sends `Secure` cookies over plain HTTP only to `localhost`; for 
 - **Group assignment pitfalls.** In `PUT .../users/{userID}/groups`:
   - a group ID that does not exist returns `500`;
   - listing the same group ID twice returns `500` if the user is not already in that group;
-  - a group ID from another organisation is accepted but has no effect: the membership is never
-    shown and never matches access rules.
+  - use only group IDs from the same organisation.
 - **Renames are not validated for length.** Creating a user requires a name of at least 5
   characters, but renaming does not enforce that minimum.
 - **Name length.** Names are limited to 100 characters in PostgreSQL. Because the administrator is
   named `admin-<orgname>`, keep organisation names to 94 characters or fewer.
-- **Any organisation's session authenticates on the gateway.** A logged-in user of any organisation
-  passes authentication on a mapped backend. Use group rules to restrict access, and use the
+- **Separate tenants on the gateway.** Use group rules to restrict access, and use the
   organisation ID that Kerberos forwards to the backend to separate tenants. See
   [Authentication](./authentication.md).
 - **Deleting your own administrator.** The organisation administrator can delete itself or its
