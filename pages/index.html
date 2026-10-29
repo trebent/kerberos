@@ -1,55 +1,355 @@
 <!DOCTYPE html>
-<html>
+<html lang="en-GB">
 
 <head>
-  <title>Kerberos API documentation</title>
-  <!-- needed for adaptive design -->
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <!--
-      Redoc CE doesn't change outer page styles
-      -->
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-    }
-  </style>
-  <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kerberos API gateway</title>
+  <meta name="description" content="Kerberos is a self-hosted API gateway with login, multi-tenant access control, OpenAPI enforcement and OpenTelemetry built in." />
+  <meta property="og:title" content="Kerberos API gateway" />
+  <meta property="og:description" content="Route, guard and observe every request to your backends. One Go binary, one JSON config." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐶</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
+  <header class="topbar">
+    <div class="wrap">
+      <a class="brand" href="./"><span class="dogs" aria-hidden="true">🐶🐶🐶</span><span class="name">Kerberos</span></a>
+      <nav class="nav" aria-label="Main">
+        <a class="hide-sm" href="#features">Features</a>
+        <a href="https://github.com/trebent/kerberos/blob/main/docs/README.md">Docs</a>
+        <a href="api.html">API reference</a>
+        <a class="gh" href="https://github.com/trebent/kerberos">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span class="hide-sm">GitHub</span>
+        </a>
+      </nav>
+    </div>
+  </header>
 
-  <select id="apiSelector">
-    <option value="https://raw.githubusercontent.com/trebent/kerberos/main/openapi/auth_basic.yaml">Basic Authentication
-    </option>
-    <option value="https://raw.githubusercontent.com/trebent/kerberos/main/openapi/admin.yaml">Administration
-    </option>
-    <option value="https://raw.githubusercontent.com/trebent/kerberos/main/openapi/gateway.yaml">Gateway
-    </option>
-  </select>
+  <main>
+    <div class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <span class="eyebrow">Open source · BSD 3-Clause · Written in Go</span>
+          <h1>The API gateway that <em>guards the gate</em>.</h1>
+          <p class="lede">Kerberos puts your services behind one entry point and checks every request before it reaches them. Logins, multi-tenant access control, OpenAPI contract checks and OpenTelemetry come built in, with no plugins or sidecars to assemble.</p>
+          <div class="cta">
+            <a class="btn btn-primary" href="https://github.com/trebent/kerberos/blob/main/docs/getting-started.md">Get started →</a>
+            <a class="btn btn-ghost" href="api.html">Browse the APIs</a>
+          </div>
+        </div>
 
-  <div id="redoc-container"></div>
+        <div class="term" aria-label="Quick start commands">
+          <div class="term-head">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <span class="title">quick start</span>
+            <button class="copy" type="button" data-copy="quickstart">Copy</button>
+          </div>
+<pre id="quickstart"><span class="c"># scaffold a Compose stack with an echo test backend</span>
+<span class="p">$ </span>krbctl compose -y --echo
+<span class="p">$ </span>krbctl config -y --echo-backend
+<span class="p">$ </span>docker compose up -d
+
+<span class="c"># send a request through the gateway</span>
+<span class="p">$ </span>curl -i localhost:30000/gw/backend/echo/hello
+<span class="ok">HTTP/1.1 200 OK</span>
+<span class="k">X-Echo-Server</span>: true
+
+{ <span class="k">"method"</span>: <span class="s">"GET"</span>, <span class="k">"url"</span>: <span class="s">"/hello"</span>, ... }</pre>
+        </div>
+      </div>
+    </div>
+
+    <section id="heads">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="tag">Three heads, one gateway</span>
+          <h2>Route. Guard. Observe.</h2>
+          <p>Named after the three-headed dog at the gate, Kerberos does the three jobs every API edge needs, in one process with one config file.</p>
+        </div>
+        <div class="heads">
+          <article class="head-card">
+            <span class="num">01</span>
+            <h3>Route</h3>
+            <p>Register backends by name and reach them at <code>/gw/backend/&lt;name&gt;/…</code>.</p>
+            <ul>
+              <li>Per-backend timeouts</li>
+              <li>HTTPS and mutual TLS to backends</li>
+              <li>Per-backend CORS policies</li>
+            </ul>
+          </article>
+          <article class="head-card">
+            <span class="num">02</span>
+            <h3>Guard</h3>
+            <p>Decide who gets through, and what a valid request looks like.</p>
+            <ul>
+              <li>Cookie sessions with CSRF protection</li>
+              <li>Organisations, users and groups</li>
+              <li>OpenAPI 3 request validation</li>
+            </ul>
+          </article>
+          <article class="head-card">
+            <span class="num">03</span>
+            <h3>Observe</h3>
+            <p>See traffic, errors and the path each request took.</p>
+            <ul>
+              <li>OpenTelemetry traces and metrics</li>
+              <li>Ready-made Grafana dashboards</li>
+              <li>Per-request debug sessions</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="flow">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="tag">How it works</span>
+          <h2>Every request takes the same path.</h2>
+          <p>A request is rejected at the first stage that says no, so your backend only ever sees traffic that passed every check you configured.</p>
+        </div>
+        <div class="flow" role="img" aria-label="Client, then Kerberos stages observe, route and guard, then forward to your backend">
+          <div class="node"><b>Client</b><span>:30000</span></div>
+          <div class="arrow"></div>
+          <div class="node krb"><b>Observe</b><span>span · metrics</span></div>
+          <div class="arrow"></div>
+          <div class="node krb"><b>Route</b><span>backend · CORS</span></div>
+          <div class="arrow"></div>
+          <div class="node krb"><b>Guard</b><span>auth · OpenAPI</span></div>
+          <div class="arrow"></div>
+          <div class="node"><b>Your backend</b><span>/&lt;path&gt;</span></div>
+        </div>
+        <p class="flow-note">Logins, administration and debug sessions run on a separate admin port, <code>:30001</code>, so you can keep it on a private network. The order of the guard stages is yours to set.</p>
+      </div>
+    </section>
+
+    <section id="features">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="tag">Features</span>
+          <h2>Batteries included, nothing to bolt on.</h2>
+          <p>Each capability is a few lines of JSON and is documented end to end, with working examples.</p>
+        </div>
+        <div class="features">
+          <div class="feature">
+            <div class="icon"><svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+            <h3>Login and access control</h3>
+            <p>Basic-auth logins with cookie sessions, refresh and CSRF protection. Restrict whole backends or single paths to groups.</p>
+            <a href="https://github.com/trebent/kerberos/blob/main/docs/authentication.md">Authentication →</a>
+          </div>
+          <div class="feature">
+            <div class="icon"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 14.5c3 0 6 1.8 6 5.5"/></svg></div>
+            <h3>Multi-tenant by design</h3>
+            <p>Every user and group belongs to an organisation with its own administrator. Backends learn the tenant from <code>X-Krb-Org</code>.</p>
+            <a href="https://github.com/trebent/kerberos/blob/main/docs/organizations.md">Organisations →</a>
+          </div>
+          <div class="feature">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="m9 12 2 2 4-4"/></svg></div>
+            <h3>Contracts enforced at the edge</h3>
+            <p>Map a backend to its OpenAPI 3 spec. Unknown paths, bad parameters and invalid bodies never reach your code.</p>
+            <a href="https://github.com/trebent/kerberos/blob/main/docs/request-validation.md">Request validation →</a>
+          </div>
+          <div class="feature">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M3 20h18"/><path d="M6 16V11M11 16V6M16 16v-7M21 16V9" /></svg></div>
+            <h3>OpenTelemetry out of the box</h3>
+            <p>Traces and metrics per backend, exported over OTLP or to Prometheus with the standard <code>OTEL_*</code> variables.</p>
+            <a href="https://github.com/trebent/kerberos/blob/main/docs/observability.md">Observability →</a>
+          </div>
+          <div class="feature">
+            <div class="icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M8 11h6M11 8v6"/></svg></div>
+            <h3>Debug sessions</h3>
+            <p>Record how requests to one backend move through the gateway: each stage, its timing, and the exact reason a request was rejected.</p>
+            <a href="https://github.com/trebent/kerberos/blob/main/docs/admin-debugging.md">Debug sessions →</a>
+          </div>
+          <div class="feature">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6l-8-3Z"/></svg></div>
+            <h3>Secure defaults</h3>
+            <p>TLS on every hop, mTLS to backends, <code>Secure</code> and <code>HttpOnly</code> cookies, bcrypt-hashed passwords and distroless, non-root images.</p>
+            <a href="https://github.com/trebent/kerberos/blob/main/docs/tls.md">TLS →</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="developers">
+      <div class="wrap">
+        <div class="split">
+          <div class="split-text">
+            <span class="tag">Configure</span>
+            <h2>One JSON file. No surprises.</h2>
+            <p>The whole gateway is described in a single config file, validated against a JSON schema at startup, so a typo stops the process instead of silently changing behaviour.</p>
+            <ul class="checks">
+              <li>Pull secrets from the environment with <code>${env:NAME}</code></li>
+              <li>Keep names in sync with <code>${ref:path.to.field}</code></li>
+              <li>Start with SQLite, move to PostgreSQL to scale out</li>
+            </ul>
+          </div>
+          <div class="term">
+            <div class="term-head"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="title">krb.json</span></div>
+<pre>{
+  <span class="k">"gateway"</span>: { <span class="k">"router"</span>: { <span class="k">"backends"</span>: [
+    { <span class="k">"name"</span>: <span class="s">"orders"</span>, <span class="k">"host"</span>: <span class="s">"orders.internal"</span>, <span class="k">"port"</span>: <span class="n">8080</span> }
+  ] } },
+  <span class="k">"auth"</span>: {
+    <span class="k">"methods"</span>: { <span class="k">"basic"</span>: {} },
+    <span class="k">"scheme"</span>: { <span class="k">"mappings"</span>: [{
+      <span class="k">"backend"</span>: <span class="s">"orders"</span>, <span class="k">"method"</span>: <span class="s">"basic"</span>,
+      <span class="k">"authorization"</span>: { <span class="k">"groups"</span>: [<span class="s">"staff"</span>] }
+    }] },
+    <span class="k">"order"</span>: <span class="n">1</span>
+  },
+  <span class="k">"oas"</span>: {
+    <span class="k">"mappings"</span>: [{
+      <span class="k">"backend"</span>: <span class="s">"orders"</span>,
+      <span class="k">"specification"</span>: <span class="s">"/etc/kerberos/oas/orders.yaml"</span>,
+      <span class="k">"options"</span>: { <span class="k">"validateBody"</span>: <span class="kw">true</span> }
+    }],
+    <span class="k">"order"</span>: <span class="n">100</span>
+  }
+}</pre>
+          </div>
+        </div>
+
+        <div class="split rev">
+          <div class="split-text">
+            <span class="tag">Integrate</span>
+            <h2>Your backend knows who is calling.</h2>
+            <p>For every authenticated request, Kerberos tells the backend who the caller is in plain request headers. Go services read them with a single middleware.</p>
+            <ul class="checks">
+              <li><code>X-Krb-User</code> and <code>X-Krb-Org</code> on every authenticated request</li>
+              <li><code>X-Krb-Groups</code> when a group rule applies</li>
+              <li>Generated Go clients for the Admin and basic-auth APIs</li>
+            </ul>
+          </div>
+          <div class="term">
+            <div class="term-head"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="title">main.go</span></div>
+<pre><span class="kw">import</span> krbauth <span class="s">"github.com/trebent/kerberos/pkg/auth"</span>
+
+<span class="kw">func</span> main() {
+  mux := http.NewServeMux()
+  mux.HandleFunc(<span class="s">"GET /orders"</span>, <span class="kw">func</span>(w http.ResponseWriter, r *http.Request) {
+    user, _ := krbauth.UserFromContext(r.Context())
+    org, _ := krbauth.OrgFromContext(r.Context())
+    fmt.Fprintf(w, <span class="s">"orders for user %s in org %s"</span>, user, org)
+  })
+
+  <span class="c">// copies the X-Krb-* identity headers into the request context</span>
+  http.ListenAndServe(<span class="s">":8080"</span>, krbauth.ContextMiddleware()(mux))
+}</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="ships">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="tag">What ships</span>
+          <h2>Run it anywhere containers run.</h2>
+          <p>Every release publishes images for the gateway and its tools, plus <code>krbctl</code> binaries for Linux, macOS and Windows.</p>
+        </div>
+        <div class="ships">
+          <div class="ship">
+            <h3>Gateway image</h3>
+            <p>Distroless, non-root, one static binary.</p>
+            <code>ghcr.io/trebent/kerberos</code>
+          </div>
+          <div class="ship">
+            <h3>krbctl</h3>
+            <p>Scaffolds Compose, config and an optional Prometheus, Grafana and Jaeger stack.</p>
+            <code>krbctl compose --obs-stack</code>
+          </div>
+          <div class="ship">
+            <h3>Admin connector</h3>
+            <p>Puts internal tools such as the Jaeger UI behind the admin login.</p>
+            <code>ghcr.io/trebent/kerberos/admin-connector</code>
+          </div>
+          <div class="ship">
+            <h3>Echo backend</h3>
+            <p>A test service that answers with exactly what the gateway forwarded.</p>
+            <code>ghcr.io/trebent/kerberos/echo</code>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="apis">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="tag">API reference</span>
+          <h2>Three APIs, fully specified.</h2>
+          <p>Every HTTP endpoint Kerberos serves is described by an OpenAPI 3 contract, and the Go clients are generated from the same files.</p>
+        </div>
+        <div class="apis">
+          <a class="api-card" href="api.html?api=gateway">
+            <span class="port">:30000 · /gw</span>
+            <h3>Gateway API</h3>
+            <p>Proxied backend traffic and the health endpoint.</p>
+            <span class="meta">openapi/gateway.yaml →</span>
+          </a>
+          <a class="api-card" href="api.html?api=admin">
+            <span class="port">:30001 · /api/admin</span>
+            <h3>Admin API</h3>
+            <p>Superuser, admin users and groups, permissions, flow inspection and debug sessions.</p>
+            <span class="meta">openapi/admin.yaml →</span>
+          </a>
+          <a class="api-card" href="api.html?api=auth">
+            <span class="port">:30001 · /api/auth/basic</span>
+            <h3>Basic-auth API</h3>
+            <p>Organisations, users, groups, and the login, refresh and logout flow.</p>
+            <span class="meta">openapi/auth_basic.yaml →</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="final">
+      <div class="wrap">
+        <h2>Put a guard dog in front of your APIs.</h2>
+        <p>The getting-started tutorial goes from an empty directory to a logged-in user calling a protected backend.</p>
+        <div class="cta">
+          <a class="btn btn-primary" href="https://github.com/trebent/kerberos/blob/main/docs/getting-started.md">Start the tutorial →</a>
+          <a class="btn btn-ghost" href="https://github.com/trebent/kerberos/releases">Download a release</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>🐶🐶🐶 Kerberos · BSD 3-Clause License</span>
+      <nav aria-label="Footer">
+        <a href="https://github.com/trebent/kerberos/blob/main/docs/README.md">Documentation</a>
+        <a href="api.html">API reference</a>
+        <a href="https://github.com/trebent/kerberos/releases">Releases</a>
+        <a href="https://github.com/trebent/kerberos">GitHub</a>
+      </nav>
+    </div>
+  </footer>
 
   <script>
-    const selector = document.getElementById('apiSelector');
-
-    function loadSpec(spec) {
-      document.getElementById('redoc-container').innerHTML = '';
-      Redoc.init(
-        spec,
-        {
-          hideReplay: true
-        },
-        document.getElementById('redoc-container')
-      );
-    }
-
-    selector.addEventListener('change', e => loadSpec(e.target.value));
-
-    // load first API
-    loadSpec(selector.value);
+    document.querySelectorAll('[data-copy]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const text = document.getElementById(button.dataset.copy).innerText
+          .split('\n')
+          .filter((line) => line.startsWith('$ '))
+          .map((line) => line.slice(2))
+          .join('\n');
+        try {
+          await navigator.clipboard.writeText(text);
+          button.textContent = 'Copied';
+        } catch {
+          button.textContent = 'Copy failed';
+        }
+        setTimeout(() => { button.textContent = 'Copy'; }, 1500);
+      });
+    });
   </script>
 </body>
 
