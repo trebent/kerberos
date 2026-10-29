@@ -382,7 +382,7 @@ func main() {
 }
 ```
 
-The standard Go cookie jar does not send `Secure` cookies over plain `http://`, so use HTTPS on the admin port with this client. Over plain HTTP, read the cookies from the login response yourself and attach them to later requests with `WithRequestEditorFn`. Server-side clients do not send an `Origin` header, so no CSRF header is needed.
+The standard Go cookie jar sends `Secure` cookies over plain `http://` only to `localhost`, so use HTTPS on the admin port when the client talks to any other host. Server-side clients do not send an `Origin` header, so no CSRF header is needed.
 
 ## Things to know
 

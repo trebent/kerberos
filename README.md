@@ -6,31 +6,89 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/trebent/kerberos)](https://goreportcard.com/report/github.com/trebent/kerberos)
 ![tag](https://img.shields.io/github/v/tag/trebent/kerberos?label=latest%20version)
 
-🐶🐶🐶
+🐶🐶🐶 **A self-hosted API gateway with login, multi-tenant access control, OpenAPI enforcement and observability built in.**
 
-Kerberos is an API gateway for routing backend traffic with built-in observability and request controls. It is designed around a fixed request flow (Observability → Router → Custom components → Forwarder), where custom components can enforce security and contract validation before forwarding traffic to backend services.
+Kerberos is named after the three-headed dog that guards the gate. It puts your backend services behind one entry point and checks every request before it reaches them. It does three jobs: **routing** traffic, **guarding** backends, and **observing** what happens to each request. You do not have to assemble plugins, sidecars or a separate identity service to get there.
 
-## Currently supported features
+> 📚 **Documentation:** start at **[`docs/`](./docs/README.md)**. The [Getting started](./docs/getting-started.md) tutorial goes from nothing to a logged-in user calling a protected backend in about five minutes.
 
-- Backend routing through `/gw/backend/<backend-name>/<backend-path>`
-  - Per-backend forwarding with host and port configuration
-  - Per-backend TLS configuration
-  - Per-backend CORS configuration
-  - Per-backend timeout management
-- OpenTelemetry-based tracing and request/response metrics
-- Request-flow debugging through admin debug sessions and captured flow transitions
-- OpenAPI request validation per backend
-- Authentication and authorization middleware in the gateway flow
-- Basic authentication with cookie-based session management
-  - Multi-tenant organisation model for backend-access users, groups, and group-based authorization
-  - Organisation-level administrator accounts for tenant user and group management
-- Admin API user model for platform administration and super-user access
-- Persistence backends: SQLite and PostgreSQL
+## Why Kerberos
+
+- **Login and access control included.** Organisations, users and groups are managed through an API. Users log in with cookie sessions protected against CSRF, and per-backend rules decide who gets through. Your backend receives the caller's identity in `X-Krb-*` headers, and Go services can read them with one middleware call.
+- **Your OpenAPI contract, enforced at the edge.** Map a backend to its OpenAPI 3 spec, and requests with unknown paths, missing parameters or invalid bodies are rejected before they reach your code.
+- **Observability you don't have to wire up.** OpenTelemetry traces and metrics come out of the box, configured with the standard `OTEL_*` variables. `krbctl` can generate Prometheus, Grafana dashboards and Jaeger for you.
+- **See why a request failed.** Start a debug session for one backend and see each request step by step: which stage accepted or rejected it, how long each stage took, and why. You don't have to turn on tracing for the whole gateway.
+- **Secure defaults.** TLS on every hop, mutual TLS to backends, per-backend CORS, `Secure`/`HttpOnly` cookies and bcrypt-hashed passwords. The images are distroless and run as non-root.
+- **Small footprint.** One static Go binary and one JSON config file. Start with an embedded SQLite file and move to PostgreSQL when you run more than one replica.
+- **Built for operators.** An Admin API with fine-grained permissions, a scaffolding CLI (`krbctl`), and an [admin connector](./docs/admin-connector.md) that puts internal tools such as the Jaeger UI behind the same admin login.
+
+## How it works
+
+```text
+client ──▶ :30000 /gw/backend/<name>/<path>
+             │
+             ├─ observe   traces, metrics, logs, debug-session capture
+             ├─ route     find backend <name>, check CORS origin
+             ├─ guard     login + group rules, OpenAPI validation (each optional, per backend)
+             └─ forward   <path> ──▶ your backend
+
+operators, login pages ──▶ :30001  Admin API · organisation login API · debug sessions
+```
+
+Clients call `/gw/backend/<name>/<path>` on the gateway port. Kerberos finds the backend, runs it through the checks you configured, and forwards `<path>` to it. Logins, administration and debugging live on a separate admin port, so you can keep that port private.
+
+## Quick start
+
+With Docker and [`krbctl`](./docs/krbctl.md) (download it from the [releases page](https://github.com/trebent/kerberos/releases), or run `go install github.com/trebent/kerberos/cmd/krbctl@latest`):
+
+```bash
+mkdir kerberos-demo && cd kerberos-demo
+krbctl compose -y --echo          # compose.yaml: Kerberos + an echo test backend + SQLite
+krbctl config  -y --echo-backend  # krb.json: route /gw/backend/echo/... to the echo service
+docker compose up -d
+
+curl -i http://localhost:30000/gw/backend/echo/hello
+```
+
+The echo backend answers with exactly what Kerberos forwarded. Next, follow [Getting started](./docs/getting-started.md) to protect it with a login, or add `--obs-stack` to both commands to get Grafana dashboards and Jaeger traces.
+
+> The first start creates a superuser `admin` / `secret`. Change it before you expose Kerberos. See the [production checklist](./docs/deployment.md#production-checklist).
+
+## Features
+
+| Area | What you get | Docs |
+| --- | --- | --- |
+| Routing | Named backends at `/gw/backend/<name>/...`, per-backend timeouts, HTTPS and mTLS to backends, health endpoint | [Routing](./docs/routing.md), [TLS](./docs/tls.md) |
+| Access control | Basic-auth logins, multi-tenant organisations, users and groups, per-path group rules, exempt paths, identity headers for backends | [Authentication](./docs/authentication.md), [Organisations](./docs/organizations.md), [Sessions](./docs/sessions.md) |
+| Contract validation | Request validation against each backend's OpenAPI 3.0 spec, with or without body checks | [Request validation](./docs/request-validation.md) |
+| Browser support | Per-backend and per-API CORS, CSRF double-submit protection, configurable cookie `Domain` and `SameSite` | [CORS](./docs/cors.md), [Sessions](./docs/sessions.md) |
+| Observability | OpenTelemetry traces and metrics, Prometheus or OTLP export, structured logs, ready-made Grafana dashboards | [Observability](./docs/observability.md) |
+| Troubleshooting | Debug sessions that record each request's path through the gateway | [Debug sessions](./docs/admin-debugging.md) |
+| Administration | Admin API with a superuser, admin users, groups and seven fine-grained permissions; flow inspection; generated Go clients | [Admin API](./docs/admin-api.md) |
+| Storage | SQLite for a single instance, PostgreSQL for several replicas | [Persistence](./docs/persistence.md) |
+| Tooling | `krbctl` to scaffold Compose deployments; admin connector to protect internal tools | [krbctl](./docs/krbctl.md), [Admin connector](./docs/admin-connector.md) |
 
 ## Documentation
 
-Detailed documentation lives in [`/docs`](./docs).
+All documentation lives in **[`docs/`](./docs/README.md)**. Pick a starting point:
 
-- Start with [`/docs/README.md`](./docs/README.md) for the documentation index.
-- **User docs** explain how to deploy, configure, and operate Kerberos.
-- **Developer docs** (under [`/docs/dev`](./docs/dev)) cover contributor-facing internals and implementation details.
+| You want to… | Read |
+| --- | --- |
+| Try Kerberos on your laptop | [Getting started](./docs/getting-started.md) |
+| Run it in production | [Deployment](./docs/deployment.md) and its [production checklist](./docs/deployment.md#production-checklist) |
+| Write or change the config file | [Configuration](./docs/configuration.md) |
+| Put a login in front of a backend | [Authentication](./docs/authentication.md) |
+| Read the HTTP API reference | [Rendered API reference](https://trebent.github.io/kerberos/), or the OpenAPI files in [`openapi/`](./openapi) |
+| Contribute to Kerberos | [Developer documentation](./docs/dev/README.md) |
+
+## Project status
+
+Kerberos is under active development, and releases follow the tags on the [releases page](https://github.com/trebent/kerberos/releases). The docs say plainly what is not supported yet. Read the *Limitations* and *Things to know* sections before you rely on a feature. For example, the gateway does not yet forward query strings or add `X-Forwarded-*` headers (see [Routing: limitations](./docs/routing.md#limitations)).
+
+## Contributing
+
+Issues and pull requests are welcome. Start with the [developer documentation](./docs/dev/README.md), which covers the repository layout, the build and test commands, and the design rules that all Go code in this repository follows.
+
+## License
+
+Kerberos is released under the [BSD 3-Clause License](./LICENSE).

@@ -20,7 +20,7 @@ type FlowComponent interface {
 
 ---
 
-## The Fixed flow
+## The Fixed Flow
 
 At startup the `composer` package wires four components into an immutable flow:
 
@@ -55,7 +55,7 @@ Matches the backend name already stored in `krb.backend` against the configured 
 - Updates the response wrapper's internal request context so higher-level middleware can read it.
 - Strips the `/gw/backend/<backend-name>` prefix from `req.URL.Path` before forwarding.
 
-If no backend matches, the router writes a `404` response and the flow stops.
+If no backend matches, the router writes a `404` response and the flow stops. It also handles CORS for backends with an `origins` block: a disallowed origin gets `403`, and an allowed preflight is answered with `204` without reaching later components (see [CORS](../cors.md)).
 
 ### Custom
 
@@ -86,7 +86,7 @@ When there are zero sub-components, the Custom component forwards directly to th
 ```go
 type Ordered interface {
     FlowComponent
-    Order() int // lower value = runs first; minimum 1
+    Order() int // lower value = runs first; the schema minimum is 1, but an omitted order is 0
 }
 ```
 
@@ -101,9 +101,9 @@ Sub-components that implement `Ordered` are sorted by their `Order()` value. Com
 
 Both are optional and only included when their respective config sections are present.
 
-**Authorizer** — Checks that the request is authenticated (session header) and authorised (group membership) against the mapping defined in the `auth` config. Calls `next` on success or exempt paths; writes `401`/`403` on failure.
+**Authorizer** — Checks that the request is authenticated (`session` cookie) and authorized (group membership) against the mapping defined in the `auth` config. Calls `next` on success or exempt paths; writes `401`/`403` on failure.
 
-**OAS Validator** — Validates the incoming request (path, method, and optionally body) against the OpenAPI specification mapped to the current backend. Calls `next` if validation passes; writes `400` on failure. Backends without a spec mapping are passed through unchanged.
+**OAS Validator** — Validates the incoming request (path, method, parameters, and optionally body) against the OpenAPI specification mapped to the current backend. Calls `next` if validation passes; writes `404` for an unknown path or method and `400` for an invalid request. Backends without a spec mapping are passed through unchanged.
 
 ---
 

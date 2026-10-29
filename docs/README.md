@@ -25,6 +25,14 @@ operators, login pages --> /api/admin/...       Admin API
 
 New to Kerberos? Follow [Getting started](./getting-started.md) to run it locally and send your first request through it. When you are ready to run it for real, read [Deployment](./deployment.md).
 
+| You are… | Read these first |
+| --- | --- |
+| **Evaluating Kerberos** | The [project README](../README.md) for the feature overview, then [Getting started](./getting-started.md). The *Limitations* and *Things to know* sections at the end of each page list what is not supported yet. |
+| **Deploying and operating it** | [Deployment](./deployment.md) (with its production checklist), [Configuration](./configuration.md), [Persistence](./persistence.md), [TLS](./tls.md), [Observability](./observability.md) |
+| **Putting your service behind it** | [Routing](./routing.md), [Authentication](./authentication.md) (identity headers and the Go middleware), [Request validation](./request-validation.md), [CORS](./cors.md) |
+| **Building a login page or client** | [Sessions](./sessions.md), [Organisations](./organizations.md), [CORS](./cors.md), and the [API reference](#api-reference) |
+| **Contributing code** | [Developer documentation](./dev/README.md) |
+
 ## Getting started and operations
 
 - [Getting started](./getting-started.md): a first-run tutorial. The recommended path uses krbctl to generate a Docker Compose setup with a protected echo test backend; the alternative runs Kerberos from source. Both end with a logged-in user calling a protected backend with curl.
@@ -64,7 +72,7 @@ The HTTP APIs are described by OpenAPI contracts in [`../openapi/`](../openapi/)
 - [`admin.yaml`](../openapi/admin.yaml): the Admin API.
 - [`auth_basic.yaml`](../openapi/auth_basic.yaml): the basic-auth API.
 
-A rendered reference is published with GitHub Pages from [`pages/index.html`](../pages/index.html).
+A [rendered reference](https://trebent.github.io/kerberos/) is published with GitHub Pages from [`pages/index.html`](../pages/index.html).
 
 ## Developer documentation
 
