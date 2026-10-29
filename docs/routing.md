@@ -57,7 +57,7 @@ Names are compared exactly. Give each backend a unique name. Kerberos does not r
 
 ## URL format
 
-All proxied traffic goes to the gateway port (`PORT`, default `30000`) under this prefix:
+All proxied traffic goes to the gateway port (`PORT`, see [Deployment](./deployment.md#environment-variables)) under this prefix:
 
 ```
 /gw/backend/<backend-name>/<backend-path>
@@ -93,7 +93,7 @@ The [request validation](./request-validation.md) and [authentication](./authent
 
 Paths that contain `//`, `.` or `..` segments are not forwarded as sent. Instead the gateway answers with a `307` redirect to the cleaned path, for example `/gw/backend/echo//x` redirects to `/gw/backend/echo/x`.
 
-The admin and login APIs run on a separate port (`ADMIN_PORT`, default `30001`). See [Admin API](./admin-api.md).
+The admin and login APIs run on a separate port (`ADMIN_PORT`). See [Admin API](./admin-api.md).
 
 ## Request lifecycle
 
@@ -101,10 +101,25 @@ Every request under `/gw/backend/` passes through these stages in order. Any sta
 
 1. **Observability.** Kerberos starts a trace span (it continues an incoming W3C `traceparent` if one is present), and starts counting metrics and request logging. It also reads the backend name from the path, and a malformed path is rejected here with `400`. See [Observability](./observability.md).
 2. **Router.** Kerberos looks up the backend by name, and an unknown name gets `404`. If the request has an `Origin` header and the backend has an `origins` block, Kerberos checks the origin. A disallowed origin gets `403`. An allowed origin gets CORS headers, and a preflight `OPTIONS` request is answered with `204` without reaching the backend. See [CORS](./cors.md). The router then strips the path prefix.
-3. **Access control and request validation**, when configured. [Authentication](./authentication.md) (the `auth` section) and [request validation](./request-validation.md) (the `oas` section) run in the order set by each section's `order` value, lowest first. They apply only to backends that are mapped to them. Use different values, for example `auth` `1` and `oas` `100`. Running authentication first means that unauthenticated callers get `401` and never learn anything from validation errors.
+3. **Access control and request validation**, when configured. [Authentication](./authentication.md) (the `auth` section) and [request validation](./request-validation.md) (the `oas` section) run in the order set by each section's `order` value. See [Pipeline order](#pipeline-order). They apply only to backends that are mapped to them.
 4. **Forwarding.** Kerberos sends the request to the backend and relays the response.
 
 If you are debugging a request, an [admin debug session](./admin-debugging.md) records how it moves through each of these stages.
+
+### Pipeline order
+
+`auth.order` and `oas.order` place authentication and request validation in stage 3. Both use the same key, defined by [`ordered_schema.json`](../internal/config/schemas/ordered_schema.json):
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `order` | integer, at least 1 | `0` when omitted | Position among the optional pipeline steps. Lower values run first. The schema file says the default is `1`, but an omitted `order` is `0`. |
+
+```text
+router -> (auth and oas, sorted by order) -> forward to backend
+```
+
+- **Set `order` explicitly on both sections, with different values.** If two steps have the same value, their relative order is not defined.
+- **Run authentication first**, for example `"order": 1` on `auth` and `"order": 100` on `oas`. Unauthenticated callers then get `401` before anything else. If validation runs first, an anonymous caller can tell valid paths from invalid ones by the `404` or `400` responses and learn the shape of your API, and a malformed request gets `400` before its session is checked.
 
 ## What is forwarded
 
@@ -128,40 +143,13 @@ When CORS is configured for the backend and the request had an allowed `Origin`,
 
 ## Timeouts
 
-Each backend has a `timeout` in milliseconds (default `5000`). It limits the **whole** upstream exchange: connecting, sending the request, waiting for the response and reading the response body. When it runs out, the client gets `500` with `{"errors":["failed to forward request"]}`.
+Each backend has a `timeout` in milliseconds (see [Backend keys](#backend-keys) for the default). It limits the **whole** upstream exchange: connecting, sending the request, waiting for the response and reading the response body. When it runs out, the client gets `500` with `{"errors":["failed to forward request"]}`.
 
-The gateway server's own timeouts also apply to every request:
-
-| Environment variable | Default | Effect |
-| --- | --- | --- |
-| `READ_TIMEOUT_SECONDS` | `5` | Maximum time to read the client's request, including the body. |
-| `WRITE_TIMEOUT_SECONDS` | `5` | Maximum time from the end of reading the request headers to the end of writing the response. |
-
-`WRITE_TIMEOUT_SECONDS` puts a ceiling on the backend `timeout`. If a backend takes longer than the write timeout, Kerberos still waits for it, up to the backend `timeout`. The client's connection is then closed with no response at all, not a JSON error. For slow backends, raise both settings, and keep `WRITE_TIMEOUT_SECONDS` above the largest backend `timeout`:
-
-```json
-{ "name": "reports", "host": "reports.internal", "port": 8080, "timeout": 30000 }
-```
-
-```bash
-WRITE_TIMEOUT_SECONDS=35 ./kerberos --config config.json
-```
-
-These server timeouts also apply to the admin port. See [Deployment](./deployment.md) for all environment variables.
+The gateway server's own read and write timeouts (`READ_TIMEOUT_SECONDS` and `WRITE_TIMEOUT_SECONDS`) also apply to every request, and the write timeout caps the backend `timeout`: if a backend takes longer than the write timeout, the client's connection is closed with no response at all, not a JSON error. For slow backends, raise both. See [Deployment: timeouts](./deployment.md#timeouts).
 
 ## Backend TLS
 
-To reach a backend over HTTPS, add a `tls` block. `rootCAFile` is required whenever `tls` is present. Set it to an empty string to trust the system CA pool. For mutual TLS, add `clientCertFile` and `clientKeyFile` together.
-
-```json
-"tls": {
-  "rootCAFile": "/etc/krb/certs/internal-ca.pem",
-  "clientCertFile": "/etc/krb/certs/krb-client.pem",
-  "clientKeyFile": "/etc/krb/certs/krb-client-key.pem"
-}
-```
-
-Certificate files are loaded at startup, so a missing or invalid file stops Kerberos from starting. See [TLS](./tls.md) for all options, including `insecureSkipVerify`, and for serving the gateway itself over HTTPS.
+To reach a backend over HTTPS, optionally with mutual TLS, add a `tls` block to the backend. Its keys are documented in [TLS: backend TLS and mutual TLS](./tls.md#backend-tls-and-mutual-tls).
 
 ## Health endpoint
 

@@ -49,9 +49,9 @@ List every origin explicitly, including any non-default port, for example `http:
 
 | Location | Applies to | Port |
 | --- | --- | --- |
-| `gateway.router.backends[].origins` | Requests to that backend, `/gw/backend/<name>/...` | Gateway (30000) |
-| `admin.api.origins` | The admin API, `/api/admin/...` | Admin (30001) |
-| `auth.methods.basic.api.origins` | The basic-auth API, `/api/auth/basic/...` | Admin (30001) |
+| `gateway.router.backends[].origins` | Requests to that backend, `/gw/backend/<name>/...` | Gateway |
+| `admin.api.origins` | The admin API, `/api/admin/...` | Admin |
+| `auth.methods.basic.api.origins` | The basic-auth API, `/api/auth/basic/...` | Admin |
 
 Each location is independent. Allowing an origin on the admin API does not allow it on the basic-auth API or on any backend, and each backend has its own setting.
 
@@ -192,7 +192,7 @@ When `origins` is configured for a backend, Kerberos sets the CORS headers itsel
 
 ## Examples
 
-The examples assume Kerberos runs locally with the gateway on port 30000 and the admin API on port 30001, and the `shop` backend from the configuration example above.
+The examples assume Kerberos runs locally on the [default ports](./README.md#conventions), with the `shop` backend from the configuration example above.
 
 ### Preflight to an allowed origin
 
@@ -273,7 +273,7 @@ Whether the browser actually sends the session cookie across sites also depends 
 CORS controls which origins can read responses and make non-simple requests. It is separate from the CSRF protection on the admin and basic-auth APIs:
 
 - On the admin and basic-auth APIs, a state-changing request (anything other than `GET`, `HEAD`, `OPTIONS`, `TRACE`) that carries an `Origin` header must also send the `X-Krb-Csrf-Token` header with the value of the `csrf` cookie, or it is rejected with `403`. That is why `X-Krb-Csrf-Token` is in `Access-Control-Allow-Headers`. Login endpoints are exempt. The origin check runs first, so a request from a disallowed origin gets `403` before the CSRF check.
-- The gateway does no CSRF checking. For backends protected by [authentication](./authentication.md), the defences against cross-site requests are the `SameSite` attribute of the session cookie (default `Strict`) and the backend's `origins` setting.
+- The gateway does no CSRF checking. For backends protected by [authentication](./authentication.md), the defences against cross-site requests are the `SameSite` attribute of the session cookie (see [Sessions: cookie configuration](./sessions.md#cookie-configuration)) and the backend's `origins` setting.
 
 See [Sessions](./sessions.md) for how the CSRF token and cookies work.
 

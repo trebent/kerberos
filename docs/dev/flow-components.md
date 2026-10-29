@@ -86,7 +86,7 @@ When there are zero sub-components, the Custom component forwards directly to th
 ```go
 type Ordered interface {
     FlowComponent
-    Order() int // lower value = runs first; the schema minimum is 1, but an omitted order is 0
+    Order() int // lower value = runs first
 }
 ```
 
@@ -94,10 +94,12 @@ Sub-components that implement `Ordered` are sorted by their `Order()` value. Com
 
 ### Currently Provided Custom-Block Components
 
-| Component | Package | Config section | Default order |
+| Component | Package | Config section | Order key |
 |---|---|---|---|
-| **Authorizer** | `internal/auth` | `auth` | configurable via `auth.order` |
-| **OAS Validator** | `internal/oas` | `oas` | configurable via `oas.order` |
+| **Authorizer** | `internal/auth` | `auth` | `auth.order` |
+| **OAS Validator** | `internal/oas` | `oas` | `oas.order` |
+
+How `order` is configured, and its default, is documented in [Routing: pipeline order](../routing.md#pipeline-order).
 
 Both are optional and only included when their respective config sections are present.
 

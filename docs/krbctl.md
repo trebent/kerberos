@@ -187,7 +187,7 @@ Any other value is ignored without an error. When the connector is enabled, `con
   - SQLite: `{"driver": "sqlite", "address": "/krbdata/krb.db"}`
   - PostgreSQL: `{"driver": "postgres", "address": "postgres:5432", "postgres": {"database": "kerberos", "username": "kerberos", "password": "kerberos", "sslMode": "disable"}}`
 
-`krb.json` has no `admin` section, so the superuser is created with the default credentials `admin` / `secret`. See [What to change afterwards](#what-to-change-afterwards).
+`krb.json` has no `admin` section, so the superuser is created with the [default credentials](./admin-api.md#the-superuser). See [What to change afterwards](#what-to-change-afterwards).
 
 Example from `krbctl config -y --echo-backend`:
 
@@ -313,7 +313,7 @@ In this example, the `orders` backend is protected with basic auth but has no se
 
 The generated files are a starting point for local and test setups. Before using them for anything else:
 
-- **Change the superuser secret.** The superuser starts with `admin` / `secret`. Change the password through the Admin API as soon as Kerberos is running. Setting `admin.superUser` in `krb.json` only affects the first start. See [Admin API](./admin-api.md) and [Configuration](./configuration.md).
+- **Change the superuser secret.** The superuser starts with the public default credentials. Change the password through the Admin API as soon as Kerberos is running. Setting `admin.superUser` in `krb.json` only affects the first start. See [Admin API](./admin-api.md) and [Configuration](./configuration.md).
 - **Change the database passwords.** PostgreSQL uses `kerberos` / `kerberos` in `compose.yaml`, `krb.json`, `connector.json` and `grafana/grafana.ini`, with `sslMode: disable`. See [Persistence](./persistence.md).
 - **Point to real backends.** Edit `gateway.router.backends` in `krb.json` and add auth mappings as needed. See [Routing](./routing.md) and [Authentication](./authentication.md).
 - **Enable TLS.** Nothing is set up for HTTPS, and login cookies need HTTPS outside `localhost`. See [TLS](./tls.md) and [Sessions](./sessions.md).

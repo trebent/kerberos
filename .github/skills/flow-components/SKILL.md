@@ -151,18 +151,9 @@ func (c *myComponent) Order() int {
 }
 ```
 
-### 4. Add a config type and schema
+### 4. Add a config type, schema and docs
 
-In `internal/config/types.go`:
-
-```go
-MyComponentConfig struct {
-    Order int `json:"order"`
-    // ... other fields
-}
-```
-
-Add `*MyComponentConfig` to `RootConfig` with an appropriate JSON tag and add a schema file at `internal/config/schemas/mycomponent_schema.json`. Embed it in `internal/config/config.go` alongside the other schemas. Reference `ordered_schema.json` for the `order` field:
+Follow the [`configuration`](../configuration/SKILL.md) skill to add the config section. A custom-block component's config struct carries ``Order int `json:"order"` ``, and its schema references `ordered_schema.json` for the `order` field:
 
 ```json
 {

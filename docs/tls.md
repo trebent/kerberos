@@ -20,8 +20,8 @@ There are three separate TLS settings. Each one is optional, and each is enabled
 
 | Connection | Config block | Effect when present |
 | --- | --- | --- |
-| Client to gateway (port `PORT`, default 30000) | `gateway.tls` | The gateway port serves HTTPS only. |
-| Client to admin API (port `ADMIN_PORT`, default 30001) | `admin.api.tls` | The admin port serves HTTPS only. This includes the basic-auth API. |
+| Client to gateway (port `PORT`) | `gateway.tls` | The gateway port serves HTTPS only. |
+| Client to admin API (port `ADMIN_PORT`) | `admin.api.tls` | The admin port serves HTTPS only. This includes the basic-auth API. |
 | Kerberos to a backend | `gateway.router.backends[].tls` | Kerberos uses `https://` for that backend and verifies its certificate. It can also present a client certificate (mTLS). |
 
 All certificates and keys are PEM files that Kerberos reads from disk. Relative paths are resolved against the working directory of the Kerberos process. In containers, mount the files and use absolute paths.
@@ -177,7 +177,7 @@ Things to keep in mind:
 - The hop from the proxy to Kerberos is unencrypted. Keep it on a private network. If you need that hop encrypted, configure `gateway.tls`/`admin.api.tls` as well and have the proxy re-encrypt.
 - Kerberos does not read `X-Forwarded-Proto` or similar headers. This does not matter for cookies, which are always marked `Secure`.
 - Kerberos does not add `X-Forwarded-*` headers to backend requests. Headers the proxy adds are passed through to backends unchanged. See [Routing](./routing.md).
-- Route both ports through the proxy if browsers use both: 30000 for the gateway and 30001 for the admin and login APIs.
+- Route both ports through the proxy if browsers use both: the gateway port and the admin port, which serves the admin and login APIs.
 - Use the TLS settings of the proxy to control TLS versions, cipher suites or client-certificate checks. Kerberos does not offer these settings (see [Limitations](#limitations-and-things-to-know)).
 
 ## Example: certificates mounted as files
@@ -286,16 +286,7 @@ Include every host name that clients and Kerberos will use in the certificate: t
 
 ## Admin connector
 
-The [admin connector](./admin-connector.md) is a separate binary with its own TLS settings:
-
-| Key | Type | Description |
-| --- | --- | --- |
-| `tls.serverCertFile` | string | PEM server certificate for the connector's own listener. |
-| `tls.serverKeyFile` | string | PEM private key for that certificate. |
-| `targetTls.rootCAFile` | string | CA bundle used to verify the target's certificate (`""` = system pool). |
-| `targetTls.insecureSkipVerify` | boolean | Turns off target certificate verification. |
-
-The connector serves HTTPS only when both `tls.serverCertFile` and `tls.serverKeyFile` are non-empty. Otherwise it serves plain HTTP. The connector's configuration schema currently rejects any `targetTls` block. In practice, the connector reaches its target over plain HTTP. See [Admin connector](./admin-connector.md) for details.
+The [admin connector](./admin-connector.md) is a separate binary with its own `tls` and `targetTls` settings. They are documented in [Admin connector: TLS](./admin-connector.md#tls).
 
 ## Limitations and things to know
 

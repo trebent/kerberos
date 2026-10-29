@@ -214,8 +214,8 @@ curl -i -c acme-admin.jar -X POST http://localhost:30001/api/auth/basic/organisa
   -d '{"username": "admin-acme", "password": "3f0c6a8e-6f1e-4d0b-9a57-2c1d8f4e7b21"}'
 ```
 
-The response is `204 No Content` with `session`, `refresh` and `csrf` cookies. The session lasts
-15 minutes; see [Sessions](./sessions.md) for refreshing it.
+The response is `204 No Content` with `session`, `refresh` and `csrf` cookies. See
+[Sessions](./sessions.md) for how long the session lasts and how to refresh it.
 
 The administrator should change the generated password (old password required):
 

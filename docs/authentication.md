@@ -75,13 +75,11 @@ Leave the whole `auth` section out to disable authentication. If you include it,
 |---|---|---|---|
 | `methods` | object | - | Authentication methods to enable. Required together with `scheme`. |
 | `methods.basic` | object | - | Enables the basic method and its API on the admin port. `{}` is enough to enable it with defaults. |
-| `methods.basic.api.cookies` | object | `sameSite: Strict`, no domain | `domain` and `sameSite` (`Strict`, `Lax`, `None`) for the session, refresh and csrf cookies. See [Sessions](./sessions.md). |
-| `methods.basic.api.origins` | object | none (no CORS headers) | Which browser origins may call the basic-auth API: one of `allowedOrigins`, `allowAll` or `denyAll`. See [CORS](./cors.md). |
+| `methods.basic.api.cookies` | object | see [Sessions: cookie configuration](./sessions.md#cookie-configuration) | Attributes of the session, refresh and CSRF cookies set by basic-auth logins. |
+| `methods.basic.api.origins` | object | see [CORS](./cors.md#the-origins-object) | Which browser origins may call the basic-auth API. |
 | `scheme` | object | - | Which backends are protected and how. Required together with `methods`. |
 | `scheme.mappings` | array | - | At least one mapping. See below. |
-| `order` | integer | `0` when omitted | Position of the auth check among the optional pipeline steps (auth and [request validation](./request-validation.md)). Lower runs first. The schema says the minimum is `1`. |
-
-The order matters when you also use request validation: if auth runs first, an unauthenticated request gets `401`; if validation runs first, a malformed request gets `400` before its session is checked. Set `order` explicitly on both sections so the order is not left to chance.
+| `order` | integer | see [Routing: pipeline order](./routing.md#pipeline-order) | Position of the auth check relative to [request validation](./request-validation.md). Set it explicitly. |
 
 ### `scheme.mappings[]`
 
@@ -203,7 +201,7 @@ Read this section before relying on Kerberos to protect a backend.
 
 ## Walk-through with curl
 
-This assumes the example configuration above, Kerberos on `localhost` with the gateway on port 30000 and the admin API on port 30001, and an organisation with ID `1` containing a user `alice` who is a member of group `staff`. See [Organisations](./organizations.md) for creating the organisation, user and group. The session cookie is `Secure`; curl sends it over plain HTTP only to `localhost`, so use HTTPS for any other host.
+This assumes the example configuration above, Kerberos on `localhost` on the [default ports](./README.md#conventions), and an organisation with ID `1` containing a user `alice` who is a member of group `staff`. See [Organisations](./organizations.md) for creating the organisation, user and group. The session cookie is `Secure`; curl sends it over plain HTTP only to `localhost`, so use HTTPS for any other host.
 
 1. Call the protected backend without a session:
 

@@ -1,6 +1,6 @@
 # Configuration
 
-Kerberos reads its settings from one JSON file that you name at startup. This page covers how that file is loaded, how to pull values from environment variables and from other parts of the file, the defaults Kerberos uses when you leave something out, and what a validation error looks like. It ends with a complete example. Each section of the file has its own page, linked from the [section overview](#sections-at-a-glance), which covers that feature in detail.
+Kerberos reads its settings from one JSON file that you name at startup. This page is the root of the configuration reference: it covers the file format, the top-level keys, how the file is loaded, how to pull values from environment variables and from other parts of the file, and what a validation error looks like. It ends with a complete example. Each top-level section is documented on its own page, listed under [Root keys](#root-keys), which is the single source for that section's keys and defaults.
 
 ## Passing the config file
 
@@ -19,13 +19,13 @@ docker run --rm \
 
 If you leave out `--config`, Kerberos prints `Error: --config flag is required` and the usage text, then exits with status 1. If the file cannot be read, startup fails with the operating system error, for example `open /etc/kerberos/config.json: no such file or directory`.
 
-The config file controls what Kerberos does. Process-level settings come from environment variables instead: listening ports (`PORT`, default 30000; `ADMIN_PORT`, default 30001), server timeouts, logging, `OAS_DIRECTORY` and the OpenTelemetry exporter settings. See [Deployment: environment variables](./deployment.md#environment-variables) for the full list.
+The config file controls what Kerberos does. Process-level settings come from environment variables instead: listening ports, server timeouts, logging, `OAS_DIRECTORY` and the OpenTelemetry exporter settings. See [Deployment: environment variables](./deployment.md#environment-variables) for the full list and their defaults.
 
 ## File format
 
 - The file must be plain JSON. Comments, trailing commas, YAML and TOML are not supported.
 - Only the `gateway` section is required. Every other top-level section is optional.
-- Unknown keys are rejected in almost every object, so a misspelled key stops startup and does not get silently ignored. The `cookies` objects are the exception (see [Things to know](#things-to-know)).
+- Unknown keys are rejected in almost every object, so a misspelled key stops startup and does not get silently ignored. The `cookies` objects are the exception (see [Sessions: cookie configuration](./sessions.md#cookie-configuration)).
 - Relative file paths in the config (TLS certificates and keys, OpenAPI specifications, the SQLite database file) are resolved against the working directory of the Kerberos process, not against the directory that holds the config file. Use absolute paths in containers.
 
 The smallest working config has one backend:
@@ -42,7 +42,33 @@ The smallest working config has one backend:
 }
 ```
 
-With this file, Kerberos forwards `http://localhost:30000/gw/backend/echo/...` to `http://localhost:15000/...`, keeps its data in a SQLite file named `krb.db` in the working directory, and enables the admin API on port 30001 with the default superuser `admin` / `secret`. Change that password before you expose Kerberos (see [Admin API](./admin-api.md)).
+With this file, Kerberos forwards `/gw/backend/echo/...` on the gateway port to `http://localhost:15000/...`. Every section you leave out takes the defaults documented on its own page. Two of them matter before you expose Kerberos: the Admin API always runs and creates a superuser with well-known default credentials (see [Admin API: the superuser](./admin-api.md#the-superuser)), and data is kept in a local SQLite file (see [Persistence](./persistence.md)).
+
+## Root keys
+
+This page owns the top level of the file. Each section is documented on one page only, the one in the **Documented in** column. That page is the single source for the section's keys, types, allowed values and defaults. Other pages link to it and do not repeat those values.
+
+| Key | Required | What it configures | Documented in |
+| --- | --- | --- | --- |
+| `gateway` | yes | The backends behind the gateway (`router`) and HTTPS on the gateway port (`tls`). | [Routing](./routing.md) (`gateway.router`), [TLS](./tls.md) (`gateway.tls`) |
+| `admin` | no | The first superuser (`superUser`) and the Admin API's cookies, origins and HTTPS (`api`). The Admin API runs whether or not this section is present. | [Admin API](./admin-api.md) |
+| `auth` | no | Which backends need a login, which groups they require, and the basic-auth API. Leave it out to turn authentication off. | [Authentication](./authentication.md) |
+| `oas` | no | Validating requests against each backend's OpenAPI specification. Leave it out to turn validation off. | [Request validation](./request-validation.md) |
+| `observability` | no | Turning OpenTelemetry metrics and tracing on or off. | [Observability](./observability.md) |
+| `persistence` | no | The database. | [Persistence](./persistence.md) |
+
+### Shared objects
+
+Some objects have the same shape wherever they appear. Each is documented once:
+
+| Object | Appears in | Documented in |
+| --- | --- | --- |
+| `origins` | `gateway.router.backends[].origins`, `admin.api.origins`, `auth.methods.basic.api.origins` | [CORS: the `origins` object](./cors.md#the-origins-object) |
+| `cookies` | `admin.api.cookies`, `auth.methods.basic.api.cookies` | [Sessions: cookie configuration](./sessions.md#cookie-configuration) |
+| `tls` | `gateway.tls`, `admin.api.tls`, `gateway.router.backends[].tls` | [TLS](./tls.md) |
+| `order` | `auth.order`, `oas.order` | [Routing: pipeline order](./routing.md#pipeline-order) |
+
+Environment variables are not part of the file. They are documented in [Deployment: environment variables](./deployment.md#environment-variables).
 
 ## How the file is loaded
 
@@ -50,7 +76,7 @@ Loading happens once, at startup, in this order:
 
 1. **Resolve references.** Every `${env:...}` and `${ref:...}` reference is replaced with its value. See [References](#references).
 2. **Validate against the JSON schema.** The resolved document is checked against the schema files in [`internal/config/schemas/`](#schema-files). This step checks structure only: required keys, types, enums, ranges and unknown keys.
-3. **Apply defaults.** Kerberos fills in values for settings you left out. See [Defaults](#defaults).
+3. **Apply defaults.** Kerberos fills in values for settings you left out. Each section's page lists its defaults. Some schema files also contain `default` fields; those are descriptive only and are not applied to your file.
 
 Any failure in steps 1 or 2 stops the process with exit status 1 before it opens any port. Other problems are found later in startup, after the config has loaded: a certificate, key or OpenAPI file that is missing or invalid, or a database that cannot be reached. These also stop the process.
 
@@ -124,7 +150,7 @@ A reference inside quotes always produces a JSON string. To produce a number or 
 ```json
 {
   "name": "orders",
-  "host": "${env:ORDERS_HOST:orders.internal}",
+  "host": "${env:ORDERS_HOST}",
   "port": ${env:ORDERS_PORT:8080},
   "timeout": ${env:ORDERS_TIMEOUT_MS:4000}
 }
@@ -179,74 +205,6 @@ Common messages:
 | `gateway.router.backends.0.origins.allowedOrigins - Array must have at most 0 items` | `allowAll` or `denyAll` combined with a non-empty `allowedOrigins`. |
 
 Errors from the reference step and from JSON parsing are not prefixed with `schema validation failed`. They read like `environment variable not found: NAME`, `malformed env var reference: ...`, `referenced path was not found: ...` or a Go JSON message such as `invalid character '}' looking for beginning of object key string` (for example after a trailing comma).
-
-## Sections at a glance
-
-| Section | Required | What it configures | Details |
-| --- | --- | --- | --- |
-| `gateway` | yes | Backends behind the gateway (`router.backends`: name, host, port, timeout, per-backend CORS origins and TLS to the backend) and optional HTTPS for the gateway port (`tls`). | [Routing](./routing.md), [TLS](./tls.md), [CORS](./cors.md) |
-| `admin` | no | First superuser credentials (`superUser`) and the admin API's cookies, CORS origins and HTTPS (`api`). The admin API is always enabled. | [Admin API](./admin-api.md), [Sessions](./sessions.md), [TLS](./tls.md) |
-| `auth` | no | Access control for backends: the basic-auth method and its API (`methods.basic`), which backends need a login and which groups (`scheme.mappings`), and the pipeline position (`order`). Leave it out to turn authentication off. | [Authentication](./authentication.md), [Sessions](./sessions.md), [Organisations](./organizations.md) |
-| `oas` | no | OpenAPI request validation per backend (`mappings`: backend, specification file, `validateBody`) and the pipeline position (`order`). Leave it out to turn validation off. | [Request validation](./request-validation.md) |
-| `observability` | no | Turns OpenTelemetry metrics and tracing (`enabled`) and Go runtime metrics (`runtimeMetrics`) on or off. Exporters are set with `OTEL_*` environment variables. | [Observability](./observability.md) |
-| `persistence` | no | The database: `driver` (`sqlite` or `postgres`), `address`, and PostgreSQL settings (`postgres`). | [Persistence](./persistence.md) |
-
-## Shared building blocks
-
-Some objects have the same shape wherever they appear.
-
-### `cookies`
-
-Used in `admin.api.cookies` and `auth.methods.basic.api.cookies`. Controls the attributes of the session, refresh and CSRF cookies set by that API.
-
-| Key | Type | Default | Description |
-| --- | --- | --- | --- |
-| `domain` | string | not set (host-only cookies) | Becomes `Domain=<value>` on the cookies. |
-| `sameSite` | `"Strict"`, `"Lax"` or `"None"` | `"Strict"` | Becomes `SameSite=<value>` on the cookies. |
-
-See [Sessions: cookie configuration](./sessions.md#cookie-configuration).
-
-### `origins`
-
-Used in `gateway.router.backends[].origins`, `admin.api.origins` and `auth.methods.basic.api.origins`. Controls which browser origins may call that backend or API.
-
-| Key | Type | Description |
-| --- | --- | --- |
-| `allowedOrigins` | array of strings | Exact origins (`scheme://host[:port]`) that are allowed. |
-| `allowAll` | boolean | Allow any origin. |
-| `denyAll` | boolean | Reject every request that carries an `Origin` header. |
-
-Use only one of the three options. If you leave out `origins`, or set none of the three options, Kerberos does no CORS handling for that backend or API. See [CORS](./cors.md).
-
-### `order`
-
-Used in `auth.order` and `oas.order`. A whole number of 1 or more that positions authentication and request validation in the request pipeline. Lower numbers run first. Set it explicitly on both sections and give them different values. The usual choice is `auth` `1` and `oas` `100`, so unauthenticated requests are rejected before their bodies are validated. If you leave `order` out, it becomes `0` (not the schema's `1`), and with equal values the order between the two is not guaranteed.
-
-## Defaults
-
-These are the values Kerberos actually uses when you leave a setting out. Some schema files also contain `default` fields. Those are documentation only and are not applied to your file. Where they differ from the real behaviour, the table says so.
-
-| Setting | Default when left out | Notes |
-| --- | --- | --- |
-| `gateway.tls` | not set: the gateway port serves plain HTTP | |
-| `gateway.router.backends[].timeout` | `5000` (ms) | The `WRITE_TIMEOUT_SECONDS` environment variable (default 5 s) also limits each gateway response. Raise both for slow backends. See [Deployment: timeouts](./deployment.md#timeouts). |
-| `gateway.router.backends[].origins` | not set: no CORS handling | |
-| `gateway.router.backends[].tls` | not set: plain HTTP to the backend | With a `tls` block, `rootCAFile` is required. An empty string uses the system CA pool. `insecureSkipVerify` defaults to `false`. |
-| `admin.superUser` | `clientId` `admin`, `clientSecret` `secret` | Used only on the first start against an empty database. Changing it later has no effect. See [Admin API](./admin-api.md). |
-| `admin.api.cookies` | `sameSite` `Strict`, no `domain` | |
-| `admin.api.origins` | no CORS handling | |
-| `admin.api.tls` | not set: the admin port serves plain HTTP | |
-| `auth` | not set: no authentication on any backend, and the basic-auth API is not served | |
-| `auth.methods.basic.api.cookies` | `sameSite` `Strict`, no `domain` | |
-| `auth.methods.basic.api.origins` | no CORS handling | |
-| `auth.order` | `0` | The schema says `1`. Always set it. |
-| `oas` | not set: no request validation | |
-| `oas.order` | `0` | The schema says `1`. Always set it. |
-| `oas.mappings[].options` | `validateBody: true` | Only when `options` is left out entirely. `"options": {}` turns body validation **off**, although the schema says `true`. Always write `validateBody` explicitly. |
-| `observability.enabled` | `true` | |
-| `observability.runtimeMetrics` | `true` | Settings you leave out of a partial block keep their defaults. `{"enabled": false}` leaves `runtimeMetrics` at `true`, which has no effect while observability is off. |
-| `persistence` | `driver` `sqlite`, `address` `krb.db` | `krb.db` is relative to the working directory. If you include a `persistence` block, both `driver` and `address` are required. |
-| `persistence.postgres.sslMode` | not sent: the PostgreSQL driver's default (`require`) applies | See [Persistence](./persistence.md). |
 
 ## Complete example
 
@@ -367,15 +325,15 @@ This example uses every section: two backends (one over mTLS), HTTPS on both por
 
 Section by section:
 
-- **`gateway.tls`**: the gateway port (30000) serves HTTPS only. See [TLS](./tls.md).
-- **`orders` backend**: reached at `/gw/backend/orders/...`. Use lowercase letters, digits, `-` and `_` in backend names, because other names cannot be reached (see [Routing](./routing.md)). The timeout is an **unquoted** reference, so it resolves to a number. It defaults to 4000 ms, which stays under the default 5 s server write timeout. Browser calls are allowed only from `https://app.example.com`.
-- **`billing` backend**: Kerberos connects over HTTPS, checks the backend's certificate against `internal-ca.pem` and presents its own client certificate (mTLS). With no `origins` block, Kerberos does no CORS handling for this backend.
-- **`admin.superUser`**: bootstraps the first superuser. The secret has no default, so startup fails if `KRB_SUPERUSER_SECRET` is not set. These values are used only when the database has no superuser yet.
-- **`admin.api`**: the admin port (30001) serves HTTPS only. That includes the basic-auth API, which shares the port. Only `https://admin.example.com` may call it from a browser.
-- **`auth`**: both backends need a basic-auth login. On `orders`, paths matching `/public/*` need no login, every other path needs membership of `staff`, and `/refunds/*` needs `finance`. See [Authentication](./authentication.md) for how paths and groups are matched. The `backend` values are field references, so they always match the router names. `order: 1` runs authentication before validation.
-- **`oas`**: requests to `orders` are validated against its OpenAPI file, including bodies. `validateBody` is written out because `"options": {}` would turn body validation off. See [Request validation](./request-validation.md).
-- **`observability`**: the defaults, written out for clarity. Exporters are configured with `OTEL_*` variables (see [Observability](./observability.md)).
-- **`persistence`**: `KRB_DB_ADDRESS` must be `host:port`, for example `postgres.internal:5432`. It has no default because a default value cannot contain `:` or `.`. See [Persistence](./persistence.md).
+- **`gateway.tls`** and **`admin.api.tls`**: both ports serve HTTPS only. The admin port also serves the basic-auth API. See [TLS](./tls.md).
+- **`orders` backend**: reached at `/gw/backend/orders/...` (see [Routing](./routing.md) for naming rules). The timeout is an **unquoted** reference, so it resolves to a number. Keep it below the server write timeout (see [Deployment: timeouts](./deployment.md#timeouts)). Browser calls are allowed only from `https://app.example.com` (see [CORS](./cors.md)).
+- **`billing` backend**: Kerberos connects over HTTPS, checks the backend's certificate against `internal-ca.pem` and presents its own client certificate (mTLS). See [TLS](./tls.md).
+- **`admin.superUser`**: the secret has no fallback in its reference, so startup fails if `KRB_SUPERUSER_SECRET` is not set. See [Admin API: the superuser](./admin-api.md#the-superuser) for when these values are used.
+- **`auth`**: both backends need a basic-auth login. On `orders`, paths matching `/public/*` need no login, every other path needs membership of `staff`, and `/refunds/*` needs `finance`. The `backend` values are field references, so they always match the router names. See [Authentication](./authentication.md).
+- **`order`**: authentication (`1`) runs before validation (`100`). See [Routing: pipeline order](./routing.md#pipeline-order).
+- **`oas`**: requests to `orders` are validated against its OpenAPI file, including bodies. See [Request validation](./request-validation.md).
+- **`observability`**: exporters are configured with `OTEL_*` variables (see [Observability](./observability.md)).
+- **`persistence`**: `KRB_DB_ADDRESS` must be `host:port`, for example `postgres.internal:5432`. It has no fallback because a reference default cannot contain `:` or `.` (see [Things to know about references](#things-to-know-about-references)). See [Persistence](./persistence.md).
 
 To run it, set the variables the file needs:
 
@@ -390,31 +348,26 @@ kerberos --config /etc/kerberos/config.json
 ## Things to know
 
 - **Keep backend names in step.** Backend names in `auth.scheme.mappings` and `oas.mappings` must match a router backend exactly. Use `${ref:gateway.router.backends[n].name}` for these names, and check the flow with the admin API after changes (see [Admin API](./admin-api.md)).
-- **Include complete sections.** Always include `gateway.router.backends`, and include both `methods` and `scheme` when you add `auth`.
-- **`cookies` objects accept unknown keys.** A misspelled key such as `"samesite"` (lower-case `s`) inside `cookies` is ignored without an error, and the default `Strict` stays in effect.
-- **`order` and `options` defaults differ from the schema.** See [Defaults](#defaults). Write `order` and `validateBody` out explicitly.
-- **The superuser block is read only once.** After the first start, change the superuser password through the admin API. Editing the config has no effect.
+- **Some effective defaults differ from the schema files.** The `default` fields in the schemas are not applied. Rely on the section pages, and write values such as `order` and `validateBody` out explicitly.
 - **The config is read only at startup.** Restart Kerberos to apply changes.
 
 ## Schema files
 
 The JSON Schema (draft-07) files under `internal/config/schemas/` are the authoritative reference for every key, type, enum, range and required field. Kerberos embeds them in the binary at build time.
 
-| File | Covers |
-| --- | --- |
-| [`config_schema.json`](../internal/config/schemas/config_schema.json) | Top level: the six sections, `gateway` required |
-| [`gateway_schema.json`](../internal/config/schemas/gateway_schema.json) | `gateway`, including `gateway.tls` |
-| [`router_schema.json`](../internal/config/schemas/router_schema.json) | `gateway.router.backends[]`, including backend `tls` |
-| [`admin_schema.json`](../internal/config/schemas/admin_schema.json) | `admin` |
-| [`auth_schema.json`](../internal/config/schemas/auth_schema.json) | `auth` |
-| [`oas_schema.json`](../internal/config/schemas/oas_schema.json) | `oas` |
-| [`observability_schema.json`](../internal/config/schemas/observability_schema.json) | `observability` |
-| [`persistence_schema.json`](../internal/config/schemas/persistence_schema.json) | `persistence` |
-| [`cookies_schema.json`](../internal/config/schemas/cookies_schema.json) | Shared `cookies` object |
-| [`origins_schema.json`](../internal/config/schemas/origins_schema.json) | Shared `origins` object |
-| [`ordered_schema.json`](../internal/config/schemas/ordered_schema.json) | Shared `order` value |
-
-The `default` values in these files are descriptive only. The [Defaults](#defaults) table lists the values that take effect.
+| File | Covers | Documented in |
+| --- | --- | --- |
+| [`config_schema.json`](../internal/config/schemas/config_schema.json) | Top level | This page |
+| [`gateway_schema.json`](../internal/config/schemas/gateway_schema.json) | `gateway`, including `gateway.tls` | [Routing](./routing.md), [TLS](./tls.md) |
+| [`router_schema.json`](../internal/config/schemas/router_schema.json) | `gateway.router.backends[]`, including backend `tls` | [Routing](./routing.md), [TLS](./tls.md) |
+| [`admin_schema.json`](../internal/config/schemas/admin_schema.json) | `admin` | [Admin API](./admin-api.md) |
+| [`auth_schema.json`](../internal/config/schemas/auth_schema.json) | `auth` | [Authentication](./authentication.md) |
+| [`oas_schema.json`](../internal/config/schemas/oas_schema.json) | `oas` | [Request validation](./request-validation.md) |
+| [`observability_schema.json`](../internal/config/schemas/observability_schema.json) | `observability` | [Observability](./observability.md) |
+| [`persistence_schema.json`](../internal/config/schemas/persistence_schema.json) | `persistence` | [Persistence](./persistence.md) |
+| [`cookies_schema.json`](../internal/config/schemas/cookies_schema.json) | Shared `cookies` object | [Sessions](./sessions.md#cookie-configuration) |
+| [`origins_schema.json`](../internal/config/schemas/origins_schema.json) | Shared `origins` object | [CORS](./cors.md#the-origins-object) |
+| [`ordered_schema.json`](../internal/config/schemas/ordered_schema.json) | Shared `order` value | [Routing](./routing.md#pipeline-order) |
 
 The admin-connector uses a separate config file with its own schema, [`connector_schema.json`](../internal/config/schemas/connector_schema.json). The same reference syntax works there. See [admin-connector](./admin-connector.md).
 

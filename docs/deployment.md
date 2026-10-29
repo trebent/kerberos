@@ -12,8 +12,8 @@ Images are published to the GitHub Container Registry:
 
 | Image | Contents | Listens on |
 | --- | --- | --- |
-| `ghcr.io/trebent/kerberos` | The Kerberos gateway, plus the OpenAPI files it needs at `/krb-oas` | `30000` (gateway), `30001` (admin) |
-| `ghcr.io/trebent/kerberos/admin-connector` | Reverse proxy that puts internal tools behind an admin login. See [Admin connector](./admin-connector.md). | `30100` |
+| `ghcr.io/trebent/kerberos` | The Kerberos gateway, plus the OpenAPI files it needs at `/krb-oas` | `PORT` (gateway) and `ADMIN_PORT` (admin), see [Environment variables](#environment-variables) |
+| `ghcr.io/trebent/kerberos/admin-connector` | Reverse proxy that puts internal tools behind an admin login. See [Admin connector](./admin-connector.md). | Its own `PORT`, see [Admin connector](./admin-connector.md#environment-variables) |
 | `ghcr.io/trebent/kerberos/echo` | Small HTTP echo server, useful as a test backend | `15000` |
 
 Every image is published with these tags:
@@ -57,8 +57,8 @@ Things to know:
 
 - **Mount the configuration read-only.** Kerberos only reads the file at startup. Changes require a restart.
 - **`OAS_DIRECTORY` is already set** to `/krb-oas` in the image, which holds the OpenAPI files the admin and authentication APIs need. Do not override it unless you supply your own copy of the repository's `openapi/` directory.
-- **Publish the admin port yourself.** The image only declares port `30000`. The admin API on `30001` and, if you use the Prometheus exporter, the metrics port (conventionally `9464`) must be published explicitly.
-- **Give SQLite a writable location.** The default SQLite database is `krb.db` relative to the working directory, which is `/` in the container and not writable by the `nonroot` user. Mount a volume and set `persistence.address` to an absolute path on it, for example `/krbdata/krb.db`. The volume must be writable by the container user (UID 65532); a new Docker volume is owned by root, so prepare it first as shown in the [Compose example](#example-docker-compose). See [Persistence](./persistence.md).
+- **Publish the admin port yourself.** The image only declares the default gateway port. The admin port and, if you use the Prometheus exporter, the metrics port (see [Observability](./observability.md#exporters-and-environment-variables)) must be published explicitly.
+- **Give SQLite a writable location.** The default SQLite database path (see [Persistence](./persistence.md#key-reference)) is relative to the working directory, which is `/` in the container and not writable by the `nonroot` user. Mount a volume and set `persistence.address` to an absolute path on it, for example `/krbdata/krb.db`. The volume must be writable by the container user (UID 65532); a new Docker volume is owned by root, so prepare it first as shown in the [Compose example](#example-docker-compose). See [Persistence](./persistence.md).
 
 ## Command-line flags
 
@@ -90,7 +90,7 @@ Keep `LOG_VERBOSITY` at `0` in production. Higher levels are meant for troublesh
 
 Kerberos also honours the standard OpenTelemetry environment variables (`OTEL_TRACES_EXPORTER`, `OTEL_METRICS_EXPORTER`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_PROMETHEUS_HOST`, `OTEL_EXPORTER_PROMETHEUS_PORT`, `OTEL_TRACES_SAMPLER`, `OTEL_TRACES_SAMPLER_ARG` and others). They are described in [Observability](./observability.md). Two points matter for deployment:
 
-- The Prometheus exporter listens on `localhost:9464` by default, which cannot be reached from outside a container. Set `OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0` (or the container's host name) and publish the port.
+- The Prometheus exporter binds to `localhost` by default (see [Observability](./observability.md#exporters-and-environment-variables)), which cannot be reached from outside a container. Set `OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0` (or the container's host name) and publish the port.
 - If observability is enabled (the default) and you set no exporter variables, Kerberos tries to export over OTLP to a local collector. Either point it at a collector, set the exporters to `none`, or set `observability.enabled` to `false` in the configuration.
 
 Configuration values can also come from the environment through `${env:NAME}` references in the configuration file. See [Configuration](./configuration.md).
@@ -101,8 +101,8 @@ Kerberos runs two HTTP servers in one process. Both start only after the configu
 
 | Server | Port | Paths served | TLS setting |
 | --- | --- | --- | --- |
-| Gateway | `PORT` (`30000`) | `/gw/backend/<name>/...` (proxied requests, see [Routing](./routing.md)) and `/gw/health`. Everything outside `/gw/` returns a plain-text `404 page not found`. | `gateway.tls` |
-| Admin | `ADMIN_PORT` (`30001`) | `/api/admin/...` (see [Admin API](./admin-api.md)) and, when basic authentication is configured, `/api/auth/basic/...` (see [Organisations](./organizations.md)). | `admin.api.tls` |
+| Gateway | `PORT` | `/gw/backend/<name>/...` (proxied requests, see [Routing](./routing.md)) and `/gw/health`. Everything outside `/gw/` returns a plain-text `404 page not found`. | `gateway.tls` |
+| Admin | `ADMIN_PORT` | `/api/admin/...` (see [Admin API](./admin-api.md)) and, when basic authentication is configured, `/api/auth/basic/...` (see [Organisations](./organizations.md)). | `admin.api.tls` |
 
 The admin server always runs, even if the configuration has no `admin` section. It is what operators and your login pages talk to, so decide deliberately who can reach it. A common setup exposes the gateway port publicly and keeps the admin port on an internal network, unless browsers need the basic-auth login API, which is also served on the admin port.
 
@@ -126,7 +126,7 @@ The admin server has no health endpoint. If you need to know that it is up, send
 
 ## Graceful shutdown
 
-On `SIGINT` or `SIGTERM`, Kerberos stops accepting new connections on both servers and waits for in-flight requests to finish. The wait is limited to `READ_TIMEOUT_SECONDS + WRITE_TIMEOUT_SECONDS` (10 seconds by default), shared by both servers. When shutdown completes it logs `Kerberos stopped` and exits with status 0.
+On `SIGINT` or `SIGTERM`, Kerberos stops accepting new connections on both servers and waits for in-flight requests to finish. The wait is limited to `READ_TIMEOUT_SECONDS + WRITE_TIMEOUT_SECONDS`, shared by both servers. When shutdown completes it logs `Kerberos stopped` and exits with status 0.
 
 Kerberos stops listening as soon as it receives the signal; `/gw/health` does not first switch to failing. In Kubernetes, if you want load balancers to drain the pod before it stops accepting connections, add a short `preStop` sleep. Keep the pod's termination grace period longer than the preStop sleep plus the shutdown wait.
 
@@ -134,11 +134,11 @@ Kerberos stops listening as soon as it receives the signal; `/gw/health` does no
 
 Three settings limit how long a request can take:
 
-| Setting | Where | Default | Limits |
-| --- | --- | --- | --- |
-| `READ_TIMEOUT_SECONDS` | Environment | 5 s | Time for the client to send the full request, including the body. |
-| `WRITE_TIMEOUT_SECONDS` | Environment | 5 s | Time from the end of reading the request headers until the response has been written. This includes the whole round trip to the backend. |
-| `timeout` per backend | `gateway.router.backends[]` | 5000 ms | Time for the complete exchange with that backend, including reading its response body. See [Routing](./routing.md). |
+| Setting | Where | Limits |
+| --- | --- | --- |
+| `READ_TIMEOUT_SECONDS` | Environment, see [Environment variables](#environment-variables) | Time for the client to send the full request, including the body. |
+| `WRITE_TIMEOUT_SECONDS` | Environment, see [Environment variables](#environment-variables) | Time from the end of reading the request headers until the response has been written. This includes the whole round trip to the backend. |
+| `timeout` per backend | `gateway.router.backends[]`, see [Routing: backend keys](./routing.md#backend-keys) | Time for the complete exchange with that backend, including reading its response body. |
 
 The server write timeout covers the backend call, so it is the effective upper limit. If a backend takes longer than `WRITE_TIMEOUT_SECONDS`, Kerberos still waits for it (up to the backend `timeout`), but the client's connection is then closed without any response, even if the backend answered successfully. If the backend `timeout` is reached first, the client gets `500` with `{"errors":["failed to forward request"]}`.
 
@@ -232,7 +232,7 @@ If you use PostgreSQL, Kerberos exits at startup when it cannot reach the databa
 
 ## Production checklist
 
-- [ ] **Change the superuser secret.** The default superuser is `admin` / `secret`. The configured credentials are only used to create the superuser on the first start against an empty database; changing the configuration later has no effect. Set a strong `admin.superUser.clientSecret` before the first start, and change the password through the admin API (`PUT /api/admin/superuser/password`) afterwards. See [Admin API](./admin-api.md).
+- [ ] **Change the superuser secret.** The default superuser credentials are public (see [Admin API: the superuser](./admin-api.md#the-superuser)). The configured credentials are only used to create the superuser on the first start against an empty database; changing the configuration later has no effect. Set a strong `admin.superUser.clientSecret` before the first start, and change the password through the admin API (`PUT /api/admin/superuser/password`) afterwards. See [Admin API](./admin-api.md).
 - [ ] **Enable TLS** on the gateway and admin servers, or terminate TLS in front of them. Kerberos's session cookies are always marked `Secure`, so browser logins only work over HTTPS. See [TLS](./tls.md).
 - [ ] **Make backends reachable only through Kerberos.** Keep backends on a private network so that every request passes through Kerberos's checks, and rely on the `X-Krb-*` identity headers only on routes that Kerberos authenticates. See [Authentication](./authentication.md).
 - [ ] **Restrict access to the admin port** to the networks that need it.

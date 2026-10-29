@@ -52,7 +52,7 @@ curl -i http://localhost:30000/gw/backend/echo/hello
 
 The echo backend answers with exactly what Kerberos forwarded. Next, follow [Getting started](./docs/getting-started.md) to protect it with a login, or add `--obs-stack` to both commands to get Grafana dashboards and Jaeger traces.
 
-> The first start creates a superuser `admin` / `secret`. Change it before you expose Kerberos. See the [production checklist](./docs/deployment.md#production-checklist).
+> The first start creates a superuser with public [default credentials](./docs/admin-api.md#the-superuser). Change them before you expose Kerberos. See the [production checklist](./docs/deployment.md#production-checklist).
 
 ## Features
 

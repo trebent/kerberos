@@ -61,9 +61,9 @@ You can use a [config reference](./configuration.md) such as `"${ref:gateway.rou
 | `oas.mappings[].specification` | string | (required) | Path to the OpenAPI file (YAML or JSON). Relative paths are resolved against the working directory of the Kerberos process. |
 | `oas.mappings[].options` | object | `{ "validateBody": true }` when omitted | Validation options for this backend. See the [`options: {}` gotcha](#things-to-know). |
 | `oas.mappings[].options.validateBody` | boolean | `true` when `options` is omitted | When `true`, request bodies are validated against the operation's `requestBody`. When `false`, any body, or no body, is accepted. Paths, methods and parameters are still validated. |
-| `oas.order` | integer (at least 1) | none, treated as `0` | Position of the validator relative to other ordered steps such as `auth`. Lower runs first. Always set this explicitly. |
+| `oas.order` | integer | see [Routing: pipeline order](./routing.md#pipeline-order) | Position of the validator relative to [authentication](./authentication.md). Set it explicitly. |
 
-Unknown keys are rejected at startup. The authoritative schema is `internal/config/schemas/oas_schema.json`.
+Leave the whole `oas` section out to turn request validation off. Unknown keys are rejected at startup. The authoritative schema is [`internal/config/schemas/oas_schema.json`](../internal/config/schemas/oas_schema.json).
 
 ## Writing the specification
 
@@ -176,16 +176,7 @@ Failed validations are also recorded in [debug sessions](./admin-debugging.md) a
 
 ## Ordering with authentication
 
-Validation and authentication are both ordered steps. Kerberos runs them in ascending `order`, after routing and before forwarding:
-
-```text
-router -> (auth and oas, sorted by order) -> backend
-```
-
-Recommendations:
-
-- **Run authentication first.** For example, set `"auth": { ..., "order": 1 }` and `"oas": { ..., "order": 100 }`, as the repository's example configurations do. Unauthenticated callers then get `401` before anything else. If validation runs first, an anonymous caller can tell valid paths from invalid ones by the `404` or `400` responses and learn the shape of your API.
-- **Always set `order` explicitly and use distinct values.** If you omit `order`, it is treated as `0`. If two steps have the same value, their relative order is not defined.
+Validation and authentication are both ordered steps that run after routing and before forwarding, in ascending `order`. Run authentication first, so that anonymous callers cannot learn the shape of your API from validation errors. See [Routing: pipeline order](./routing.md#pipeline-order) for how `order` works and its default.
 
 ## Viewing the active specification
 

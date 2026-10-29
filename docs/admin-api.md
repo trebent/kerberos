@@ -1,6 +1,6 @@
 # Admin API
 
-The Admin API is how you administer a running Kerberos instance: log in as the superuser, create admin users and groups, grant them permissions, inspect the active request flow and the OpenAPI specifications used for validation, and run debug sessions. It is served on the admin port (`ADMIN_PORT`, default `30001`) under `/api/admin`, separate from the gateway port that serves your backends.
+The Admin API is how you administer a running Kerberos instance: log in as the superuser, create admin users and groups, grant them permissions, inspect the active request flow and the OpenAPI specifications used for validation, and run debug sessions. It is served on the admin port (`ADMIN_PORT`, see [Deployment](./deployment.md#environment-variables)) under `/api/admin`, separate from the gateway port that serves your backends.
 
 The contract for every endpoint is [`../openapi/admin.yaml`](../openapi/admin.yaml). This page explains the concepts and the behaviour around it.
 
@@ -47,13 +47,10 @@ The `admin` section of the configuration file is optional. With no `admin` secti
 | --- | --- | --- | --- |
 | `admin.superUser.clientId` | string | `admin` | Superuser login name. Used only on the first start (see [The superuser](#the-superuser)). |
 | `admin.superUser.clientSecret` | string | `secret` | Initial superuser password. Used only on the first start. |
-| `admin.api.cookies.domain` | string | none (host-only cookies) | `Domain` attribute for the session, refresh and CSRF cookies. See [Sessions](./sessions.md). |
-| `admin.api.cookies.sameSite` | `Strict` \| `Lax` \| `None` | `Strict` | `SameSite` attribute for the same cookies. See [Sessions](./sessions.md). |
-| `admin.api.origins.allowedOrigins` | array of strings | none | Browser origins allowed to call the Admin API. See [CORS](./cors.md). |
-| `admin.api.origins.allowAll` | boolean | `false` | Allow any origin. Cannot be combined with `allowedOrigins` or `denyAll`. See [CORS](./cors.md). |
-| `admin.api.origins.denyAll` | boolean | `false` | Reject every request that has an `Origin` header. See [CORS](./cors.md). |
-| `admin.api.tls.serverCertFile` | string | none | PEM server certificate for the admin port. Required if `tls` is set. See [TLS](./tls.md). |
-| `admin.api.tls.serverKeyFile` | string | none | PEM private key for the admin port. Required if `tls` is set. See [TLS](./tls.md). |
+| `admin.api` | object | - | Settings for the admin port's HTTP API. |
+| `admin.api.cookies` | object | see [Sessions: cookie configuration](./sessions.md#cookie-configuration) | Attributes of the session, refresh and CSRF cookies set by Admin API logins. |
+| `admin.api.origins` | object | see [CORS](./cors.md#the-origins-object) | Browser origins allowed to call the Admin API. |
+| `admin.api.tls` | object | see [TLS: admin API TLS](./tls.md#admin-api-tls) | HTTPS on the admin port, which also covers the basic-auth API. |
 
 The authoritative schema is [`internal/config/schemas/admin_schema.json`](../internal/config/schemas/admin_schema.json). The [Configuration](./configuration.md) page explains `${env:...}` references and how validation errors are reported.
 
@@ -61,7 +58,7 @@ The authoritative schema is [`internal/config/schemas/admin_schema.json`](../int
 
 ### Bootstrap
 
-When Kerberos starts and its database has no superuser, it creates one from `admin.superUser.clientId` and `admin.superUser.clientSecret`. If you leave those keys out, the superuser is `admin` / `secret`.
+When Kerberos starts and its database has no superuser, it creates one from `admin.superUser.clientId` and `admin.superUser.clientSecret`. If you leave those keys out, the defaults from the [Configuration](#configuration) table are used.
 
 After that, **Kerberos ignores these settings.** Changing `clientId` or `clientSecret` in the configuration and restarting does not change the superuser's name or password. The values in the database are used from then on. To get new bootstrap values applied, you would have to start with an empty database.
 
@@ -140,8 +137,8 @@ Errors have this body:
 
 ### Sessions
 
-- An admin session lasts **15 minutes**.
-- A refresh replaces the session and refresh token and issues new cookies. It is accepted from login until 45 minutes after the session expires, which is one hour after login. After that window, log in again.
+- Session lifetimes and the refresh window are documented in [Sessions](./sessions.md#refreshing-a-session).
+- A refresh replaces the session and refresh token and issues new cookies. After the refresh window, log in again.
 - Admin users refresh at `POST /api/admin/refresh`. The superuser refreshes at `POST /api/admin/superuser/refresh`. The `refresh` cookie is scoped to that path.
 - `POST /api/admin/logout` ends only the current session.
 

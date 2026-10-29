@@ -21,7 +21,7 @@ links to the topic docs that are relevant to your change:
 
 | Doc | Covers |
 |---|---|
-| [`docs/configuration.md`](../../../docs/configuration.md) | Config loading pipeline, reference syntax, all config sections |
+| [`docs/configuration.md`](../../../docs/configuration.md) | Config loading pipeline, reference syntax, root keys and the page that documents each section |
 | [`docs/dev/flow-components.md`](../../../docs/dev/flow-components.md) | FlowComponent interface and the request pipeline |
 | [`docs/authentication.md`](../../../docs/authentication.md) | Auth system and the authorizer middleware |
 | [`docs/routing.md`](../../../docs/routing.md) | HTTP handler call order |
@@ -30,6 +30,10 @@ links to the topic docs that are relevant to your change:
 | [`docs/organizations.md`](../../../docs/organizations.md) | Multi-tenant organisation model |
 
 Understanding the system layout prevents mis-placed code and wrong abstractions.
+
+The same DRY rule applies to the docs: every config key, default and environment variable is
+documented on exactly one page, and other pages link to it. See
+[`docs/dev/README.md`](../../../docs/dev/README.md#keeping-the-docs-current).
 
 ---
 
@@ -42,17 +46,17 @@ concept appears more than once, give it a name and a home.
 
 ```go
 // BAD — duplicated nil check
-if cfg.AuthConfig == nil {
+if cfg.AuthCfg == nil {
     return errors.New("auth not configured")
 }
 // ... elsewhere ...
-if cfg.AuthConfig == nil {
+if cfg.AuthCfg == nil {
     return errors.New("auth not configured")
 }
 
 // GOOD — single helper
-func (rc *RootConfig) AuthEnabled() bool {
-    return rc.AuthConfig != nil
+func (kc *Kerberos) AuthEnabled() bool {
+    return kc.AuthCfg != nil
 }
 ```
 

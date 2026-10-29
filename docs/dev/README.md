@@ -55,3 +55,24 @@ The `security` and `connector` suites follow the same pattern (`make compose/<su
 ## Keeping the docs current
 
 If your change alters behaviour that a user can see, such as a config key, a status code, a header or a default, update the matching page under `docs/` in the same pull request. The user docs describe actual behaviour, so keep them in step with the code.
+
+Each setting is documented in exactly one place, so a change only needs one doc edit:
+
+| What changed | The page to update |
+| --- | --- |
+| A top-level config key | [`configuration.md`](../configuration.md#root-keys), and add the new section's page |
+| A key inside a config section or shared object | The page listed for it in [Configuration: root keys](../configuration.md#root-keys) |
+| A Kerberos environment variable | [`deployment.md`](../deployment.md#environment-variables) |
+| An admin-connector config key or environment variable | [`admin-connector.md`](../admin-connector.md) |
+
+Other pages must link to that page rather than repeat a key's type, allowed values or default. Examples may use concrete values, but a sentence such as "the default is X" belongs only on the owning page.
+
+Unit tests enforce this, so `make test/unit` fails when the docs drift:
+
+| Test | Checks |
+| --- | --- |
+| `TestDocsRootKeys` (`internal/config`) | Every top-level key in `config_schema.json` has a row in the root keys table, linked to its page. |
+| `TestDocsSchemaKeys` (`internal/config`) | Every key in the schemas is mentioned on the page that owns it. The page owners are listed in `docOwners` and `sharedOwners` in `internal/config/docs_test.go`; update them when you add a section. |
+| `TestDocsDefaults` (`internal/config`) | The defaults stated in the owning pages' tables match `config.NewKerberos()` and `PostProcess()`. Add a row when you add a default. |
+| `TestDocsExamples` (`internal/config`) | Every JSON config example under `docs/` loads with the real config loader. |
+| `TestEnvDocs` (`.` and `cmd/admin-connector`) | Every registered environment variable has a row in its page's table, with the default from the code. |

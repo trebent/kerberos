@@ -1,11 +1,11 @@
 # Kerberos documentation
 
-Kerberos is an API gateway that puts your backend services behind a single entry point. Clients call `/gw/backend/<name>/...` on the gateway port (`30000`), and Kerberos forwards the request to the backend registered under that name. Per backend, you can add login-based access control, validate requests against an OpenAPI specification, and control which browser origins may call it, with TLS available on every hop. Kerberos also emits metrics, traces and logs, and serves a platform Admin API and the basic-auth login API on a separate admin port (`30001`), where you can also open debug sessions to see how requests move through the gateway.
+Kerberos is an API gateway that puts your backend services behind a single entry point. Clients call `/gw/backend/<name>/...` on the gateway port, and Kerberos forwards the request to the backend registered under that name. Per backend, you can add login-based access control, validate requests against an OpenAPI specification, and control which browser origins may call it, with TLS available on every hop. Kerberos also emits metrics, traces and logs, and serves a platform Admin API and the basic-auth login API on a separate admin port, where you can also open debug sessions to see how requests move through the gateway.
 
 ## How a request travels
 
 ```text
-                          Gateway port (30000)
+                          Gateway port (PORT)
 client --> /gw/backend/<name>/<path>
              |
              +- router: find backend <name> (404 if unknown)
@@ -16,10 +16,15 @@ client --> /gw/backend/<name>/<path>
              |
              `- forward <path> --> backend service
 
-                          Admin port (30001)
+                          Admin port (ADMIN_PORT)
 operators, login pages --> /api/admin/...       Admin API
                        --> /api/auth/basic/...  basic-auth API (organisation logins)
 ```
+
+## Conventions
+
+- **One page per setting.** Every config section, shared config object and environment variable is documented on exactly one page, which is the only place its type, allowed values and default are written down. Other pages link there. [Configuration: root keys](./configuration.md#root-keys) lists the page for each config section, and [Deployment: environment variables](./deployment.md#environment-variables) lists the environment variables.
+- **Examples use the default ports.** Commands such as `curl http://localhost:30000/...` assume Kerberos runs locally with the default `PORT` (gateway) and `ADMIN_PORT` (admin) from [Deployment: environment variables](./deployment.md#environment-variables). If you change them, change the examples to match.
 
 ## Start here
 
@@ -37,7 +42,7 @@ New to Kerberos? Follow [Getting started](./getting-started.md) to run it locall
 
 - [Getting started](./getting-started.md): a first-run tutorial. The recommended path uses krbctl to generate a Docker Compose setup with a protected echo test backend; the alternative runs Kerberos from source. Both end with a logged-in user calling a protected backend with curl.
 - [Deployment](./deployment.md): everything needed to run Kerberos outside a laptop: images and tags, the `--config` flag, environment variables, the two servers, health checks, shutdown and timeouts. Ends with scaling limits and a production checklist.
-- [Configuration](./configuration.md): the JSON config file, how it is loaded and validated, and the `${env:...}` and `${ref:...}` references. Includes an overview of every section, the effective defaults and a complete annotated example.
+- [Configuration](./configuration.md): the JSON config file, how it is loaded and validated, and the `${env:...}` and `${ref:...}` references. Lists every top-level key with the page that documents it, and ends with a complete annotated example.
 - [Persistence](./persistence.md): the database that holds admin users, sessions, organisations and debug captures. Explains choosing between SQLite and PostgreSQL, configuring it, automatic table creation, and backups.
 
 ## Routing traffic

@@ -5,7 +5,7 @@ This tutorial gets a Kerberos gateway running on your machine, sends a request t
 - **Path A (recommended):** generate a Docker Compose setup with `krbctl` and run the published images.
 - **Path B:** run Kerberos and the test backend from source with Go and `make`.
 
-Both paths use the default ports: **30000** for the gateway (backend traffic) and **30001** for the admin server (Admin API and organisation API).
+Both paths use the [default ports](./README.md#conventions): **30000** for the gateway (backend traffic) and **30001** for the admin server (Admin API and organisation API).
 
 ## Prerequisites
 
@@ -201,7 +201,7 @@ curl -b admin.txt http://localhost:30001/api/admin/me
 # {"isSuperuser":true}
 ```
 
-**Change the superuser secret now.** The `admin.superUser` credentials in the configuration (default `admin` / `secret`) are only used to create the superuser on the very first start; changing the configuration later has no effect. Change the secret through the API:
+**Change the superuser secret now.** The `admin.superUser` credentials in the configuration (or their [defaults](./admin-api.md#configuration), used in this tutorial) are only used to create the superuser on the very first start; changing the configuration later has no effect. Change the secret through the API:
 
 ```bash
 curl -i -b admin.txt -X PUT http://localhost:30001/api/admin/superuser/password \
@@ -284,7 +284,7 @@ X-Echo-Server: true
 - Kerberos added `X-Krb-Org` and `X-Krb-User`, the numeric IDs of the caller's organisation and user. Backends use these to identify the caller. See [Authentication](./authentication.md).
 - The client's headers, including `Cookie`, are forwarded unchanged.
 
-The session lasts 15 minutes. Log out with:
+The session is short-lived (see [Sessions](./sessions.md#server-side-session-lifetime)). Log out with:
 
 ```bash
 curl -i -b alice.txt -X POST http://localhost:30001/api/auth/basic/organisations/1/logout
@@ -350,7 +350,7 @@ curl -i -b alice.txt -X POST http://localhost:30000/gw/backend/echo/hi \
 - **The admin port is a separate server.** Logins and the Admin and organisation APIs are on port 30001; backend traffic is on port 30000. Cookies are not port-specific, so a session obtained on port 30001 is sent to port 30000 too. Only organisation user sessions open protected backends; a superuser or admin-user session is rejected there with `401`.
 - **One `session` cookie name for both logins.** The superuser login and the organisation login both use a cookie named `session`. In a browser on the same host, logging in to one replaces the other. With curl, keep separate cookie jars as shown above.
 - **Query strings are not forwarded.** `GET /gw/backend/echo/hi?x=1` reaches echo as `/hi`. See [Routing](./routing.md).
-- **Default credentials.** The superuser starts as `admin` / `secret` on every new database. Change it immediately on anything other than a throwaway local setup.
+- **Default credentials.** The superuser starts with the public [default credentials](./admin-api.md#the-superuser) on every new database. Change them immediately on anything other than a throwaway local setup.
 
 ## Next steps
 

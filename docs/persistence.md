@@ -4,7 +4,7 @@ Kerberos keeps its administrative state, such as users, groups, permissions, log
 
 ## When you need a database
 
-Every Kerberos instance uses a database, even one that only forwards traffic. The admin API is always loaded, and at startup it creates its tables and makes sure the superuser account exists. If you leave out the `persistence` section, Kerberos uses a SQLite file named `krb.db` in its working directory.
+Every Kerberos instance uses a database, even one that only forwards traffic. The admin API is always loaded, and at startup it creates its tables and makes sure the superuser account exists. If you leave out the `persistence` section, Kerberos uses a SQLite file in its working directory (see [Key reference](#key-reference) for the defaults).
 
 Choosing a database is therefore not optional. What you choose is which database to use and where its data lives.
 
@@ -127,7 +127,7 @@ Each driver has its own set of schema statements. Kerberos cannot convert data f
 
 ### SQLite
 
-- **Use a persistent volume.** In a container, mount a volume and point `address` at an absolute path inside it, such as `/krbdata/krb.db`. The default `krb.db` is resolved against the container's working directory, which is not persistent, so all users, groups and sessions are lost when the container is recreated.
+- **Use a persistent volume.** In a container, mount a volume and point `address` at an absolute path inside it, such as `/krbdata/krb.db`. The default `address` is resolved against the container's working directory, which is not persistent, so all users, groups and sessions are lost when the container is recreated.
 - **Make it writable.** The official image runs as a non-root user. The volume directory, and the file if it already exists, must be writable by that user. The Docker Compose setup that [krbctl](./krbctl.md) generates uses a small init container that creates `/krbdata/krb.db` and sets permissive file modes for this purpose.
 - **Run a single instance.** Do not run several Kerberos replicas against one SQLite file, and do not put the file on a network file system.
 
@@ -164,7 +164,7 @@ To restore, put the data back before you start Kerberos. Because the superuser i
 
 ## Things to know
 
-- **The superuser is created only once.** On first startup, Kerberos creates the superuser from `admin.superUser` (`admin` / `secret` if not configured). After that, changing the client ID or secret in the config has no effect. Change the password through the admin API instead, as described in [Admin API](./admin-api.md). Change the default secret before you expose the admin port.
+- **The superuser is created only once.** On first startup, Kerberos creates the superuser from `admin.superUser` (see [Admin API: the superuser](./admin-api.md#the-superuser) for the defaults). After that, changing the client ID or secret in the config has no effect. Change the password through the admin API instead, as described in [Admin API](./admin-api.md). Change the default secret before you expose the admin port.
 - **Expired sessions are not purged.** Session rows are removed on logout and when a session is replaced during refresh. Sessions that simply expire stay in the table. This uses little space, but the tables grow over time.
 - **Debug data stays until you delete it.** Captured calls are kept until you delete the debug session that owns them. When you restart Kerberos, the debug sessions stay in the database, but capture does not resume, because the set of backends being debugged is held in memory.
 - **No connection tuning.** There are no settings for pool size, connection timeouts or statement timeouts.

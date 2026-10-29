@@ -1,6 +1,6 @@
 ---
 name: configuration
-description: 'Work with Kerberos configuration: add or modify config sections, write JSON schemas, use environment variable and path references, and wire new config into the parser and startup code.'
+description: 'Work with Kerberos configuration: add or modify config sections, write JSON schemas, use environment variable and path references, wire new config into the parser and startup code, and document it in the one page that owns it.'
 argument-hint: 'Optional: the config section to work on (gateway, observability, admin, auth, oas, persistence) or the task (add-section, modify-schema, add-reference)'
 ---
 
@@ -10,36 +10,21 @@ argument-hint: 'Optional: the config section to work on (gateway, observability,
 
 - Adding a new config section for a new feature
 - Modifying an existing config schema or adding fields
+- Changing a default value
 - Using `${env:...}` or `${ref:...}` references in config
-- Understanding how config is parsed and validated at startup
 - Debugging config validation errors
 
-See [`docs/configuration.md`](../../../docs/configuration.md) for a full reference including annotated examples.
+## Where things are documented
 
----
+Do not copy config facts into this skill or into other docs. Each one has a single home:
 
-## Config Loading Pipeline
-
-At startup, `config.RootConfig` processes the JSON file in four steps:
-
-1. **Escape references** — raw `${...}` tokens that aren't already quoted strings are wrapped in quotes so they survive JSON parsing.
-2. **Resolve references** — `${env:...}` tokens are replaced with environment variable values; `${ref:...}` tokens are replaced by the value at the given JSON path in the same file.
-3. **Validate schema** — the resolved JSON is validated against the embedded JSON Schema (Draft 7). All `additionalProperties: false`, so unknown fields are errors.
-4. **Unmarshal** — the resolved JSON is unmarshalled into the Go struct.
-
----
-
-## Reference Syntax
-
-| Syntax | Meaning |
+| Topic | Source of truth |
 |---|---|
-| `"${env:VAR}"` | Value of environment variable `VAR`. Error at startup if not set. |
-| `"${env:VAR:default}"` | Value of `VAR`, or `"default"` if not set. |
-| `"${ref:some.path[0].field}"` | Value at the given JSON path within the same config file. |
-
-References can be nested: a path reference can point to a field that is itself an env reference. Circular references (`${ref:a}` → `${ref:b}` → `${ref:a}`) are detected and cause a startup error.
-
-**Important:** The entire field value must be the reference token — you cannot embed a reference inside a longer string like `"prefix-${env:VAR}-suffix"`.
+| Loading pipeline, `${env:...}` / `${ref:...}` syntax, validation errors | [`docs/configuration.md`](../../../docs/configuration.md) |
+| Top-level keys and the page that owns each section | [`docs/configuration.md#root-keys`](../../../docs/configuration.md#root-keys) |
+| Keys, types and defaults of a section | The page listed for it in the root keys table |
+| Environment variables | [`docs/deployment.md#environment-variables`](../../../docs/deployment.md#environment-variables) |
+| How the docs are kept in step with the code | [`docs/dev/README.md#keeping-the-docs-current`](../../../docs/dev/README.md#keeping-the-docs-current) |
 
 ---
 
@@ -49,16 +34,17 @@ Follow these steps whenever a new feature needs configuration.
 
 ### 1. Define the Go type
 
-Add the struct to `internal/config/types.go`:
+Add the struct to `internal/config/kerberos.go` (or `internal/config/shared.go` if the
+admin-connector config uses it too):
 
 ```go
-MyFeatureConfig struct {
+MyFeature struct {
     Order     int    `json:"order"`
     SomeField string `json:"someField"`
 }
 ```
 
-If the component is a custom-block flow component, include `Order int` and reference the `ordered_schema.json` in the schema (see step 2).
+If the component is a custom-block flow component, include `Order int` and reference `ordered_schema.json` in the schema (see step 2).
 
 ### 2. Add a JSON Schema file
 
@@ -84,26 +70,19 @@ Create `internal/config/schemas/myfeature_schema.json`:
 }
 ```
 
-Rules:
-- Always set `"additionalProperties": false`.
-- Use `"description"` on every field.
-- Use `"$ref": "http://trebent.com/kerberos/schemas/ordered_schema.json"` for any `order` field used by custom-block components.
-- Use `"minLength": 1` on required string fields.
-- Use `"minimum"`/`"maximum"` on integer fields where bounds are meaningful.
+### 3. Embed and register the schema
 
-### 3. Embed the schema
-
-In `internal/config/config.go`, add an embed directive alongside the others:
+In `internal/config/kerberos.go`, add an embed directive alongside the others:
 
 ```go
 //go:embed schemas/myfeature_schema.json
-schemaBytesMyFeature []byte
+var myFeatureSchema []byte
 ```
 
-Then register it in `validateSchema()` by adding it to the `sl.AddSchemas(...)` call:
+Then add it to `getKerberosSupportingSchemas()`:
 
 ```go
-gojsonschema.NewBytesLoader(schemaBytesMyFeature),
+gojsonschema.NewBytesLoader(myFeatureSchema),
 ```
 
 ### 4. Reference the sub-schema from the root schema
@@ -118,52 +97,48 @@ In `internal/config/schemas/config_schema.json`, add a property under `propertie
 
 If the section is optional (most feature sections are), do **not** add it to `required`.
 
-### 5. Add the field to `RootConfig`
+### 5. Add the field to `Kerberos`
 
-In `internal/config/config.go`:
+In `internal/config/kerberos.go`:
 
 ```go
-type RootConfig struct {
+type Kerberos struct {
     // ... existing fields ...
-    *MyFeatureConfig `json:"myfeature,omitempty"`
+    MyFeatureCfg *MyFeature `json:"myfeature,omitempty"`
 }
 ```
 
 Add a `MyFeatureEnabled() bool` helper if the feature is optional:
 
 ```go
-func (rc *RootConfig) MyFeatureEnabled() bool {
-    return rc.MyFeatureConfig != nil
+func (kc *Kerberos) MyFeatureEnabled() bool {
+    return kc.MyFeatureCfg != nil
 }
 ```
 
 ### 6. Add defaults if needed
 
-If the config section has default values (like observability does), initialise them in `config.New()`:
-
-```go
-func New() *RootConfig {
-    return &RootConfig{
-        // ...
-        MyFeatureConfig: newMyFeatureConfig(),
-    }
-}
-
-func newMyFeatureConfig() *MyFeatureConfig {
-    return &MyFeatureConfig{SomeField: "default-value"}
-}
-```
-
-Also add a `postProcess()` method (even if empty) and call it from `(rc *RootConfig).postProcess()`.
+Defaults are applied in code, not from the schema's `default` fields. Initialise section defaults in
+`NewKerberos()`, and defaults that depend on the parsed file (such as per-item values) in a
+`postProcess()` method called from `(*Kerberos).PostProcess()`.
 
 ### 7. Wire into `main.go`
 
 ```go
 if cfg.MyFeatureEnabled() {
-    comp := myfeature.NewComponent(&myfeature.Opts{Cfg: cfg.MyFeatureConfig})
+    comp := myfeature.NewComponent(&myfeature.Opts{Cfg: cfg.MyFeatureCfg})
     customFlowComponents = append(customFlowComponents, comp)
 }
 ```
+
+### 8. Document it in exactly one place
+
+1. Add a row for the new top-level key to the root keys table in `docs/configuration.md`, linking to the page that documents the feature.
+2. Document every key, its type and its default on that page only. Other pages link there instead of repeating values.
+3. Add the page to `docOwners` in `internal/config/docs_test.go`, and add a `TestDocsDefaults` row for each default.
+4. Run `go test ./internal/config/`. The docs tests fail if a key is undocumented, a documented default differs from the code, or a JSON example in `docs/` does not load.
+
+The same applies when you add or rename a key in an existing section, or change a default: update the owning page and let the tests confirm it.
 
 ---
 
@@ -171,28 +146,13 @@ if cfg.MyFeatureEnabled() {
 
 | Convention | Reason |
 |---|---|
-| `"additionalProperties": false` on all objects | Prevents silent config drift; typos cause startup errors |
+| `"additionalProperties": false` on all objects, as a sibling of `properties` | Prevents silent config drift; typos cause startup errors |
 | `"$id": "http://trebent.com/kerberos/schemas/<name>_schema.json"` | Required for cross-schema `$ref` resolution |
 | `"$ref": "http://trebent.com/kerberos/schemas/ordered_schema.json"` for `order` | Reuse consistent definition for custom-block ordering |
+| `"description"` on every field | Documents the key in the schema itself |
 | All string IDs/names use `"minLength": 1` | Prevents empty-string values being accepted |
+| `"minimum"`/`"maximum"` on integers where bounds are meaningful | Catches out-of-range values at startup |
 | Draft 7 (`$schema: http://json-schema.org/draft-07/schema#`) | The schema loader is configured for Draft 7 |
-
-### `ordered_schema.json`
-
-Use this ref for any `order` field in a custom-block component's config schema. It defines `type: integer, minimum: 1` and documents that lower values run first. It ensures consistent behaviour and documentation.
-
----
-
-## Existing Config Sections Reference
-
-| Section | Required | Config struct | Go enabled check |
-|---|---|---|---|
-| `gateway` | **yes** | `GatewayConfig` | always enabled |
-| `observability` | no | `ObservabilityConfig` | always present (defaults to enabled) |
-| `admin` | no | `AdminConfig` | always present (defaults applied) |
-| `auth` | no | `AuthConfig` | `cfg.AuthEnabled()` |
-| `oas` | no | `OASConfig` | `cfg.OASEnabled()` |
-| `persistence` | no | `PersistenceConfig` | always present (defaults to SQLite) |
 
 ---
 
@@ -200,9 +160,9 @@ Use this ref for any `order` field in a custom-block component's config schema. 
 
 | File | Purpose |
 |---|---|
-| `internal/config/config.go` | `RootConfig`, schema loading, reference resolution, parse pipeline |
-| `internal/config/types.go` | All config structs and defaults |
-| `internal/config/schemas/config_schema.json` | Root schema wiring all sub-schemas |
-| `internal/config/schemas/ordered_schema.json` | Reusable `order` field schema |
-| `internal/config/schemas/` | All sub-schemas (one per config section) |
-| `internal/config/config_test.go` | Reference resolution and validation tests |
+| `internal/config/kerberos.go` | `Kerberos` root struct, section structs, schema embeds, `NewKerberos()` defaults, `PostProcess()` |
+| `internal/config/shared.go` | Structs and schemas shared with the admin-connector (`Cookies`, `Origins`, `ServerTLS`, `Persistence`) |
+| `internal/config/connector.go` | The admin-connector config |
+| `internal/config/schemas/` | All schemas (one per config section, plus shared ones) |
+| `internal/config/kerberos_test.go` | Parsing, reference and validation tests |
+| `internal/config/docs_test.go` | Tests that keep `docs/` in step with the schemas and defaults |

@@ -70,7 +70,7 @@ Kerberos uses the OpenTelemetry Go SDK's automatic exporter selection, so the us
 Things to know:
 
 - **Both exporters default to OTLP.** If you set nothing, Kerberos tries to push traces and metrics to `localhost:4318`. Without a receiver there, the exports fail and the SDK reports errors in the log. Either point the exporters at a receiver or set them to `none`.
-- **Prometheus endpoint in containers.** The default host `localhost` binds the metrics endpoint to the container's loopback interface, so Prometheus in another container (or on the host through a published port) cannot reach it. Set `OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0`, or the container's own service name as the example below does. The metrics port is separate from the gateway (30000) and admin (30001) ports; the Kerberos image does not declare it, so publish it yourself if Prometheus runs outside the container network.
+- **Prometheus endpoint in containers.** The default host `localhost` binds the metrics endpoint to the container's loopback interface, so Prometheus in another container (or on the host through a published port) cannot reach it. Set `OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0`, or the container's own service name as the example below does. The metrics port is separate from the gateway and admin ports; the Kerberos image does not declare it, so publish it yourself if Prometheus runs outside the container network.
 - **Startup fails if the metrics port is taken.** If the Prometheus endpoint cannot bind its address, or an `OTEL_*` exporter variable has an unsupported value, Kerberos logs `Failed to instrument OpenTelemetry` and exits.
 - **Sampling in production.** The default samples every trace that does not arrive with an upstream "not sampled" decision. That is convenient for development but can create significant load on your tracing backend. In production, use a ratio sampler that still respects the caller's decision:
 
@@ -167,7 +167,7 @@ Notes:
 
 ### Admin API metrics
 
-The admin server (port 30001, including the basic-auth API under `/api/auth/basic/`) records the same five metrics with an `admin_` prefix:
+The admin server (`ADMIN_PORT`, including the basic-auth API under `/api/auth/basic/`) records the same five metrics with an `admin_` prefix:
 
 | Prometheus name | Type | Labels |
 | --- | --- | --- |
@@ -232,7 +232,7 @@ Every trace exported by Kerberos carries these resource attributes:
 | Attribute | Value |
 | --- | --- |
 | `service.name` | `krb` (fixed) |
-| `service.version` | value of the `VERSION` environment variable (`unset` by default; the published images set it to the release version) |
+| `service.version` | value of the `VERSION` environment variable (see [Deployment](./deployment.md#environment-variables); the published images set it to the release version) |
 
 ### Gateway spans
 
@@ -266,12 +266,12 @@ Requests to the admin server get the same kind of `SERVER` span, with instrument
 
 ## Logging
 
-Kerberos logs to stdout. Two environment variables control the output:
+Kerberos logs to stdout. Two environment variables control the output (their defaults are listed in [Deployment: environment variables](./deployment.md#environment-variables)):
 
-| Variable | Default | Description |
-| --- | --- | --- |
-| `LOG_TO_CONSOLE` | `false` | `false`: one JSON object per line (fields include `level`, `time`, `caller`, `name`, `msg`), suited for log collectors. `true`: coloured, human-readable lines for local development. |
-| `LOG_VERBOSITY` | `0` | Amount of detail; must be `0` or higher. Higher values include everything from lower ones. |
+| Variable | Description |
+| --- | --- |
+| `LOG_TO_CONSOLE` | `false`: one JSON object per line (fields include `level`, `time`, `caller`, `name`, `msg`), suited for log collectors. `true`: coloured, human-readable lines for local development. |
+| `LOG_VERBOSITY` | Amount of detail; must be `0` or higher. Higher values include everything from lower ones. |
 
 Verbosity levels in use:
 

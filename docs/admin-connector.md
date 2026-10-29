@@ -8,7 +8,7 @@ The admin connector (`admin-connector`) is a small reverse proxy that you put in
 - Reuse the admin logins you already manage in Kerberos instead of setting up separate credentials for each tool.
 - Put an operator-only page behind the same login as the Admin API.
 
-The connector is not part of the gateway. It runs as its own process (or container), listens on its own port (30100 by default) and forwards to exactly one target. To protect several tools, run one connector per tool.
+The connector is not part of the gateway. It runs as its own process (or container), listens on its own port (`PORT`, see [Environment variables](#environment-variables)) and forwards to exactly one target. To protect several tools, run one connector per tool.
 
 ## How it works
 
@@ -57,7 +57,7 @@ All other responses come from the target.
 
 ## Getting the session cookie
 
-The connector does not have a login page. Users log in on the Admin API (port 30001), and the browser then sends the resulting `session` cookie to the connector:
+The connector does not have a login page. Users log in on the Admin API (on the Kerberos admin port), and the browser then sends the resulting `session` cookie to the connector:
 
 1. Open the admin login in the browser on the **same host name** that the connector uses, for example `https://ops.example.com:30001` for a connector at `https://ops.example.com:30100`.
 2. Log in as an admin user (`POST /api/admin/login`) or as the superuser (`POST /api/admin/superuser/login`).
@@ -202,8 +202,12 @@ See [Persistence](./persistence.md) for all keys and [Sharing the database with 
 | --- | --- | --- |
 | `tls.serverCertFile` | string | PEM certificate for the connector's port. Required when `tls` is set. |
 | `tls.serverKeyFile` | string | PEM private key for that certificate. Required when `tls` is set. |
+| `targetTls.rootCAFile` | string | CA bundle used to verify the target's certificate (`""` means the system pool). Not usable yet, see below. |
+| `targetTls.insecureSkipVerify` | boolean | Turns off verification of the target's certificate. Not usable yet, see below. |
 
-When both are set to non-empty paths, the connector serves only HTTPS on `PORT`. See [TLS](./tls.md).
+When both `tls` paths are set to non-empty values, the connector serves only HTTPS on `PORT`. Otherwise it serves plain HTTP. See [TLS](./tls.md) for how Kerberos loads certificates.
+
+The configuration schema currently rejects any `targetTls` block, so the connector always reaches its target over plain HTTP (see [Limitations](#limitations)).
 
 ## Example: Jaeger behind the connector with Docker Compose
 
@@ -279,8 +283,8 @@ Each request is also logged with its method, path and status code.
 
 - **`targetTls` cannot be used yet.** The configuration schema rejects every `targetTls` block, whatever it contains, so the connector refuses to start with one. The connector therefore always reaches its target over plain HTTP. Keep the connection between the connector and the target on a private network.
 - **One target per connector.** Run one connector per tool, each on its own port or host name.
-- **Short timeouts by default.** The 5-second write timeout also limits how long the target may take to answer. Raise `WRITE_TIMEOUT_SECONDS` for slow queries, and do not expect long-lived streaming responses to work.
-- **No session refresh.** Sessions expire after 15 minutes and must be refreshed on the Admin API.
+- **Short timeouts by default.** The write timeout (`WRITE_TIMEOUT_SECONDS`, see [Environment variables](#environment-variables)) also limits how long the target may take to answer. Raise it for slow queries, and do not expect long-lived streaming responses to work.
+- **No session refresh.** Sessions expire (see [Sessions](./sessions.md#server-side-session-lifetime)) and must be refreshed on the Admin API.
 - **No `X-Forwarded-*` headers.** The target does not learn the client address or the original host and scheme. Tools that build absolute URLs from those headers may need their external URL configured explicitly.
 
 ## Related docs

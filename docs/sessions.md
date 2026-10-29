@@ -173,6 +173,9 @@ You configure cookie attributes separately for each API:
           }
         }
       }
+    },
+    "scheme": {
+      "mappings": [{ "backend": "shop", "method": "basic" }]
     }
   }
 }
@@ -185,7 +188,8 @@ You configure cookie attributes separately for each API:
 
 Things to know about these settings:
 
-- Kerberos checks `sameSite` against the schema at startup. Any value other than `Strict`, `Lax` or `None` (case-sensitive) stops Kerberos from starting with a schema validation error. Values are never replaced silently. The schema is `internal/config/schemas/cookies_schema.json`.
+- Kerberos checks `sameSite` against the schema at startup. Any value other than `Strict`, `Lax` or `None` (case-sensitive) stops Kerberos from starting with a schema validation error. Values are never replaced silently. The schema is [`internal/config/schemas/cookies_schema.json`](../internal/config/schemas/cookies_schema.json).
+- Unlike the rest of the configuration, a `cookies` object accepts unknown keys. A misspelled key such as `"samesite"` (lower-case `s`) is ignored without an error, and the key it was meant to set keeps its default.
 - If you configure `auth.methods.basic.api.cookies` but leave out `sameSite`, for example to set only `domain`, Kerberos sends the basic-auth cookies **with no `SameSite` attribute**, and the browser's default applies (usually `Lax`). Leaving out the whole `cookies` block gives `Strict`. Always set `sameSite` explicitly when you set `domain`. For `admin.api.cookies`, a missing `sameSite` stays `Strict`.
 - Browsers accept `SameSite=None` only on `Secure` cookies. Kerberos cookies are always `Secure`, so `None` works over HTTPS.
 
@@ -267,7 +271,7 @@ _, err = c.LoginWithResponse(ctx, 1, authclient.LoginJSONRequestBody{
 // send and update the cookies through the jar.
 ```
 
-The same `httpClient` can call the gateway on port 30000, because cookie jars ignore ports. Use a separate jar for each identity, and never share one jar between an admin login and an organisation-user login, for the reason explained under [shared cookie name](#admin-and-basic-auth-sessions-share-the-session-cookie). If your client sets an `Origin` header, also add `X-Krb-Csrf-Token` with a request editor (`WithRequestEditorFn`) that copies the `csrf` value from the jar.
+The same `httpClient` can call the gateway port, because cookie jars ignore ports. Use a separate jar for each identity, and never share one jar between an admin login and an organisation-user login, for the reason explained under [shared cookie name](#admin-and-basic-auth-sessions-share-the-session-cookie). If your client sets an `Origin` header, also add `X-Krb-Csrf-Token` with a request editor (`WithRequestEditorFn`) that copies the `csrf` value from the jar.
 
 ## Things to know
 
