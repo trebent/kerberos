@@ -1,0 +1,24 @@
+name: Pages pull request validation
+
+run-name: "Pages pull request validation: ${{ github.event.pull_request.title }}"
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "pages/**"
+      - "openapi/**"
+      - ".github/workflows/callable-pages.yaml"
+      - ".github/workflows/pull-request-pages.yaml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    uses: ./.github/workflows/callable-pages.yaml

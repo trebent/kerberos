@@ -1,0 +1,72 @@
+<section class="hero" aria-labelledby="hero-title">
+  <div class="page hero-grid">
+    <div class="hero-text">
+      <p class="eyebrow">Open-source API gateway · written in Go</p>
+      <h1 id="hero-title">Kerberos</h1>
+      <p class="lede">
+        One entry point for your backend services. Kerberos routes every request, checks who is
+        calling and what they send, and records what happened, all from one JSON config file.
+      </p>
+      <div class="actions">
+        <a matButton="filled" routerLink="/api">
+          <mat-icon aria-hidden="true">api</mat-icon>
+          API reference
+        </a>
+        <a matButton="outlined" [href]="gettingStarted">
+          <mat-icon aria-hidden="true">rocket_launch</mat-icon>
+          Getting started
+        </a>
+      </div>
+    </div>
+    <app-quick-start />
+  </div>
+</section>
+
+<section class="page" aria-labelledby="flow-title">
+  <h2 id="flow-title" class="section-title">How Kerberos handles a backend call</h2>
+  <p class="section-lede">
+    Clients call <code>/gw/backend/&lt;name&gt;/&lt;path&gt;</code> on the gateway port. Every call
+    passes through the same stages before it reaches the backend registered as
+    <code>&lt;name&gt;</code>.
+  </p>
+  <app-request-flow />
+</section>
+
+<section class="page" aria-labelledby="apis-title">
+  <h2 id="apis-title" class="section-title">API reference</h2>
+  <p class="section-lede">
+    Every HTTP endpoint Kerberos serves is described by an OpenAPI 3 contract in
+    <code>openapi/</code>. Browse them rendered, or read the source.
+  </p>
+  <ul class="cards">
+    @for (api of apis; track api.id) {
+      <li>
+        <a class="card" [routerLink]="['/api', api.id]">
+          <code class="endpoint">{{ api.endpoint }}</code>
+          <h3>{{ api.name }}</h3>
+          <p>{{ api.summary }}</p>
+          <span class="file">openapi/{{ api.file }}</span>
+        </a>
+      </li>
+    }
+  </ul>
+</section>
+
+<section class="page" aria-labelledby="docs-title">
+  <h2 id="docs-title" class="section-title">Documentation</h2>
+  <p class="section-lede">
+    The guides live with the code in <code>docs/</code>. Start with one of these, or open the
+    <a [href]="docsIndex">documentation index</a>.
+  </p>
+  <ul class="cards">
+    @for (doc of docs; track doc.href) {
+      <li>
+        <a class="card" [href]="doc.href">
+          <mat-icon aria-hidden="true">{{ doc.icon }}</mat-icon>
+          <h3>{{ doc.label }}</h3>
+          <p>{{ doc.summary }}</p>
+        </a>
+      </li>
+    }
+  </ul>
+</section>

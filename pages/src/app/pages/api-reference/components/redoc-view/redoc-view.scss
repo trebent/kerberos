@@ -1,0 +1,17 @@
+:host {
+  display: block;
+}
+
+.status {
+  max-width: 72rem;
+  margin: 2rem auto;
+  padding-inline: 1rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+// Redoc only has a light theme: pin the panel to light colours whatever the site theme is.
+.redoc {
+  background: #fff;
+  color: #333;
+  color-scheme: light;
+}

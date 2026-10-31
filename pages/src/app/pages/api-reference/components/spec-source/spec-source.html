@@ -1,0 +1,23 @@
+<section class="code-panel" [attr.aria-label]="'Source of openapi/' + api().file">
+  <div class="code-panel-head">
+    <span>
+      openapi/{{ api().file }}
+      @if (spec.hasValue()) {
+        · {{ lines().length }} lines
+      }
+    </span>
+    @if (spec.hasValue()) {
+      <app-copy-button [text]="spec.value()" subject="the specification" />
+    }
+  </div>
+
+  @if (spec.error()) {
+    <p class="status" role="alert">The specification could not be loaded.</p>
+  } @else if (spec.isLoading()) {
+    <p class="status" role="status">Loading openapi/{{ api().file }}…</p>
+  } @else {
+    <!-- prettier-ignore -->
+    <pre tabindex="0"><code>@for (line of lines(); track $index) {<span class="line">@for (token of line; track $index) {<span [class]="'tok-' + token.kind">{{ token.text }}</span>}</span>
+}</code></pre>
+  }
+</section>

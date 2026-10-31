@@ -281,4 +281,4 @@ The same `httpClient` can call the gateway port, because cookie jars ignore port
 - [CORS](./cors.md): allowing browser pages on other origins to call the APIs.
 - [TLS](./tls.md): serving the admin port over HTTPS.
 - [Configuration](./configuration.md): the full configuration file.
-- OpenAPI contracts: [`../openapi/auth_basic.yaml`](../openapi/auth_basic.yaml) and [`../openapi/admin.yaml`](../openapi/admin.yaml).
+- OpenAPI contracts: [`../openapi/auth_basic.yaml`](../openapi/auth_basic.yaml) and [`../openapi/admin.yaml`](../openapi/admin.yaml), also rendered as the [Basic-auth API](https://trebent.github.io/kerberos/api/auth) and [Admin API](https://trebent.github.io/kerberos/api/admin) references.

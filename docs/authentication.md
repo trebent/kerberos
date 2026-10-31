@@ -13,7 +13,7 @@ Kerberos logs users in with the **basic** method, using a username and password:
 
 Backends that have no entry in `auth.scheme.mappings` are open to everyone.
 
-The basic-auth API is only served when `auth.methods.basic` is configured. Its OpenAPI contract is [`openapi/auth_basic.yaml`](../openapi/auth_basic.yaml), and `auth_basic.yaml` must be present in the OAS directory at startup.
+The basic-auth API is only served when `auth.methods.basic` is configured. Its OpenAPI contract is [`openapi/auth_basic.yaml`](../openapi/auth_basic.yaml) (see the [rendered API reference](https://trebent.github.io/kerberos/api/auth)), and `auth_basic.yaml` must be present in the OAS directory at startup.
 
 ## Configuration
 

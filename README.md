@@ -70,7 +70,7 @@ The [echo backend](./docs/echo.md) answers with exactly what Kerberos forwarded.
 
 ## Documentation
 
-All documentation lives in **[`docs/`](./docs/README.md)**, which lists every page and what it is for. The HTTP API contracts are in [`openapi/`](./openapi).
+All documentation lives in **[`docs/`](./docs/README.md)**, which lists every page and what it is for. The HTTP API contracts are in [`openapi/`](./openapi), and the [API reference](https://trebent.github.io/kerberos/) renders them.
 
 ## Contributing
 

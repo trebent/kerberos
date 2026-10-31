@@ -1,0 +1,37 @@
+<footer class="footer">
+  <div class="footer-inner">
+    <section class="about" aria-labelledby="footer-about">
+      <h2 id="footer-about">About Kerberos</h2>
+      <p>
+        A self-hosted API gateway that routes, guards and observes every request to your backends.
+      </p>
+    </section>
+
+    <nav aria-labelledby="footer-docs">
+      <h2 id="footer-docs">Documentation</h2>
+      <ul>
+        @for (link of docs; track link.href) {
+          <li>
+            <a [href]="link.href">{{ link.label }}</a>
+          </li>
+        }
+      </ul>
+    </nav>
+
+    <nav aria-labelledby="footer-project">
+      <h2 id="footer-project">Project</h2>
+      <ul>
+        @for (link of project; track link.href) {
+          <li>
+            <a [href]="link.href">{{ link.label }}</a>
+          </li>
+        }
+      </ul>
+    </nav>
+  </div>
+
+  <p class="copyright">
+    &copy; {{ year }} <a href="https://github.com/trebent/">trebent</a> ·
+    <a [href]="license">BSD 3-Clause License</a>
+  </p>
+</footer>

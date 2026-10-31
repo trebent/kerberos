@@ -1,0 +1,45 @@
+<div class="flow">
+  <div class="endpoint">
+    <span class="endpoint-label">Client</span>
+    <code>GET :30000/gw/backend/orders/items</code>
+  </div>
+  <mat-icon class="arrow" aria-hidden="true">arrow_downward</mat-icon>
+
+  <ol class="stages">
+    @for (stage of stages; track stage.name) {
+      <li class="stage" [class.optional]="stage.optional">
+        <div class="stage-head">
+          <mat-icon aria-hidden="true">{{ stage.icon }}</mat-icon>
+          <h3>
+            <a [href]="stage.doc">{{ stage.name }}</a>
+          </h3>
+          @if (stage.optional) {
+            <span class="badge">if configured</span>
+          }
+        </div>
+        <p>{{ stage.does }}</p>
+        @if (stage.rejects.length) {
+          <p class="rejects">
+            Stops with
+            @for (status of stage.rejects; track status) {
+              <span class="status">{{ status }}</span>
+            }
+          </p>
+        }
+      </li>
+    }
+  </ol>
+
+  <mat-icon class="arrow" aria-hidden="true">arrow_downward</mat-icon>
+  <div class="endpoint">
+    <span class="endpoint-label">Your backend</span>
+    <code>GET /items</code>
+  </div>
+</div>
+
+<p class="note">
+  A request stops at the first stage that rejects it, so the backend only sees traffic that passed
+  every check. Authentication and validation apply only to backends mapped to them, and run in the
+  <a [href]="orderDoc">order you configure</a>. Read the full
+  <a [href]="lifecycleDoc">request lifecycle</a> in the docs.
+</p>

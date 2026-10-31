@@ -37,6 +37,18 @@ updates:
           - "minor"
           - "patch"
 
+  - package-ecosystem: "npm"
+    directories:
+      - "/pages"
+    schedule:
+      interval: weekly
+      day: tuesday
+    groups:
+      pages-updates:
+        update-types:
+          - "minor"
+          - "patch"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

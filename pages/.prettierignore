@@ -1,0 +1,10 @@
+# Build output and caches
+dist/
+.angular/
+coverage/
+node_modules/
+
+package-lock.json
+
+# Symlink to ../openapi: formatted by its own rules, not Prettier
+public/openapi

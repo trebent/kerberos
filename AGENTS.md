@@ -42,6 +42,12 @@ codebase. Use them when working in the relevant area:
 | `oas` | Adding or modifying OpenAPI specifications |
 | `validation` | Validating a change end-to-end before merging |
 
+## GitHub Pages site
+
+`pages/` holds the Angular app published to GitHub Pages (mainly the rendered API reference).
+It has its own rules in [`pages/AGENTS.md`](pages/AGENTS.md) and its own `make` targets; read
+those before changing anything under `pages/`. Changes to `openapi/` reach the site automatically.
+
 ## Agents
 
 Custom multi-step agents are defined in `.github/agents/`:

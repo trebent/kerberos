@@ -1,0 +1,29 @@
+:host {
+  display: block;
+  max-width: 72rem;
+  margin: 1.5rem auto;
+  padding-inline: 1rem;
+}
+
+.status {
+  margin: 0;
+  padding: 1rem 1.25rem;
+}
+
+pre {
+  counter-reset: line;
+}
+
+.line {
+  counter-increment: line;
+
+  &::before {
+    display: inline-block;
+    width: 3.5ch;
+    margin-inline-end: 1.5ch;
+    color: var(--code-muted);
+    content: counter(line);
+    text-align: end;
+    user-select: none;
+  }
+}

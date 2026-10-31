@@ -1,0 +1,8 @@
+<section class="code-panel" aria-labelledby="quick-start-title">
+  <div class="code-panel-head">
+    <h2 id="quick-start-title" class="title">Quick start</h2>
+    <app-copy-button [text]="commands" subject="the quick start commands" />
+  </div>
+  <pre><code>@for (line of lines; track $index) {<span [class]="tokenClass(line.kind)">@if (line.kind === 'command') {<span class="prompt" aria-hidden="true">$ </span>}{{ line.text }}</span>
+}</code></pre>
+</section>

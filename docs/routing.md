@@ -217,3 +217,4 @@ The prefix has been stripped and the custom header has arrived.
 - [Observability](./observability.md): metrics, traces and logs per backend
 - [TLS](./tls.md): gateway HTTPS and backend TLS/mTLS
 - [Deployment](./deployment.md): ports, environment variables and health checks
+- [Gateway API reference](https://trebent.github.io/kerberos/api/gateway): the rendered [`openapi/gateway.yaml`](../openapi/gateway.yaml) contract

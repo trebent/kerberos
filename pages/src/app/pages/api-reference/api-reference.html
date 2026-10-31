@@ -1,0 +1,65 @@
+<div #bar class="api-bar">
+  <nav
+    mat-tab-nav-bar
+    mat-stretch-tabs="false"
+    mat-align-tabs="start"
+    [tabPanel]="panel"
+    aria-label="APIs"
+    class="tabs"
+  >
+    @for (api of apis; track api.id) {
+      <a
+        mat-tab-link
+        [routerLink]="['/api', api.id]"
+        queryParamsHandling="preserve"
+        [active]="api.id === current().id"
+      >
+        {{ api.shortName }}
+      </a>
+    }
+  </nav>
+
+  <div class="spec-bar">
+    <div class="spec-title">
+      <h1>{{ current().name }}</h1>
+      <code>{{ current().endpoint }}</code>
+    </div>
+
+    <p class="guides">
+      Guides:
+      @for (guide of current().guides; track guide.href; let last = $last) {
+        <a [href]="guide.href">{{ guide.label }}</a
+        >{{ last ? '' : ',' }}
+      }
+    </p>
+
+    <span class="spacer"></span>
+
+    <mat-button-toggle-group
+      aria-label="View"
+      hideSingleSelectionIndicator
+      [value]="currentView()"
+      (change)="setView($event.value)"
+    >
+      <mat-button-toggle value="reference">Reference</mat-button-toggle>
+      <mat-button-toggle value="source">Source</mat-button-toggle>
+    </mat-button-toggle-group>
+
+    <a matButton [href]="specUrl()" [attr.download]="current().file">
+      <mat-icon aria-hidden="true">download</mat-icon>
+      Download
+    </a>
+    <a matButton [href]="githubUrl()" class="github">
+      <mat-icon aria-hidden="true">open_in_new</mat-icon>
+      GitHub
+    </a>
+  </div>
+</div>
+
+<mat-tab-nav-panel #panel class="panel">
+  @if (currentView() === 'source') {
+    <app-spec-source [api]="current()" />
+  } @else {
+    <app-redoc-view [api]="current()" [scrollOffset]="scrollOffset" />
+  }
+</mat-tab-nav-panel>

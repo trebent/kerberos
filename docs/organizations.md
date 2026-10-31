@@ -7,7 +7,7 @@ client `pkg/auth/client`.
 
 The basic-auth API exists only when `auth.methods.basic` is configured. It is served on the
 **admin port** (30001 in these examples), not on the gateway port, under the prefix
-`/api/auth/basic`. The authoritative contract is [`openapi/auth_basic.yaml`](../openapi/auth_basic.yaml).
+`/api/auth/basic`. The authoritative contract is [`openapi/auth_basic.yaml`](../openapi/auth_basic.yaml), also available as a [rendered API reference](https://trebent.github.io/kerberos/api/auth).
 
 ## The model
 
@@ -388,4 +388,4 @@ Go's cookie jar sends `Secure` cookies over plain HTTP only to `localhost`; for 
 - [Admin API](./admin-api.md): platform administrators, the superuser and the
   `basic-auth-org-admin` / `basic-auth-org-viewer` permissions.
 - [CORS](./cors.md): `auth.methods.basic.api.origins`.
-- [`openapi/auth_basic.yaml`](../openapi/auth_basic.yaml): the API contract.
+- [`openapi/auth_basic.yaml`](../openapi/auth_basic.yaml): the API contract, also [rendered](https://trebent.github.io/kerberos/api/auth).

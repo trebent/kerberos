@@ -70,7 +70,7 @@ A session object looks like this:
 }
 ```
 
-`stoppedAt` is set once the session has been stopped. Errors use the usual `{"errors": ["..."]}` format. The full contract is in [`openapi/admin.yaml`](../openapi/admin.yaml).
+`stoppedAt` is set once the session has been stopped. Errors use the usual `{"errors": ["..."]}` format. The full contract is in [`openapi/admin.yaml`](../openapi/admin.yaml), also available as a [rendered API reference](https://trebent.github.io/kerberos/api/admin).
 
 ### Lifecycle
 
@@ -227,4 +227,4 @@ Debug data stays in the database until the session is deleted, and anyone with t
 - [Routing](./routing.md): the request pipeline and `/gw/backend/...` paths
 - [Authentication](./authentication.md) and [Request validation](./request-validation.md): the steps that most often reject requests
 - [Observability](./observability.md): tracing, metrics and logs
-- [`openapi/admin.yaml`](../openapi/admin.yaml): full API contract
+- [`openapi/admin.yaml`](../openapi/admin.yaml): full API contract, also [rendered](https://trebent.github.io/kerberos/api/admin)

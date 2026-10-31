@@ -1,0 +1,5 @@
+// Sits on a .code-panel, which is dark in both themes.
+button {
+  --mat-button-text-label-text-color: var(--code-fg, var(--mat-sys-primary));
+  --mat-button-text-state-layer-color: var(--code-fg, var(--mat-sys-primary));
+}

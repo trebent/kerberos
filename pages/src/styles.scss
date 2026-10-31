@@ -1,0 +1,141 @@
+// The whole Material 3 theme is defined here, once. Components only ever consume the
+// generated `--mat-sys-*` system variables, never hard-coded colours.
+// See https://material.angular.dev/guide/theming
+@use '@angular/material' as mat;
+
+html {
+  // ThemeService overrides this with `light` or `dark` when the user picks one.
+  color-scheme: light dark;
+
+  // The header is sticky; the API reference keeps its own bar pinned just below it.
+  --app-header-height: 64px;
+  --app-mono-font: 'Roboto Mono', ui-monospace, monospace;
+
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$orange-palette,
+        tertiary: mat.$blue-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
+
+  @media (max-width: 599px) {
+    --app-header-height: 56px;
+  }
+}
+
+body {
+  margin: 0;
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+}
+
+a {
+  color: var(--mat-sys-primary);
+}
+
+code,
+pre {
+  font-family: var(--app-mono-font);
+}
+
+:not(pre) > code {
+  padding: 0.1em 0.35em;
+  border-radius: var(--mat-sys-corner-extra-small);
+  background: var(--mat-sys-surface-container-high);
+  font-size: 0.9em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+// Page containers shared by every routed page.
+.page {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 72rem;
+  margin-inline: auto;
+  padding: 2rem 1rem;
+}
+
+.section-title {
+  margin: 0 0 0.5rem;
+  font: var(--mat-sys-headline-small);
+}
+
+.section-lede {
+  max-width: 48rem;
+  margin: 0 0 1.5rem;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-large);
+}
+
+// A dark code panel, used for terminal output and the spec source. It stays dark in both
+// themes, so its colours are fixed rather than taken from the theme.
+.code-panel {
+  --code-bg: #14161d;
+  --code-fg: #e6e6e6;
+  --code-muted: #9aa0ac;
+  --code-key: #ffb68a;
+  --code-string: #a6e3a1;
+  --code-number: #89b4fa;
+  --code-ok: #a6e3a1;
+
+  overflow: hidden;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--code-bg);
+  color: var(--code-fg);
+  color-scheme: dark;
+
+  pre {
+    margin: 0;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+
+  .tok-comment {
+    color: var(--code-muted);
+  }
+
+  .tok-key {
+    color: var(--code-key);
+  }
+
+  .tok-string {
+    color: var(--code-string);
+  }
+
+  .tok-number {
+    color: var(--code-number);
+  }
+}
+
+.code-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.25rem 0.5rem 0.25rem 1.25rem;
+  border-block-end: 1px solid #2a2e3a;
+  color: var(--code-muted);
+  font: var(--mat-sys-label-medium);
+  font-family: var(--app-mono-font);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

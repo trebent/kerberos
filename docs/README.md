@@ -34,8 +34,12 @@ New to Kerberos? Start with [Getting started](./getting-started.md).
 
 ## API reference
 
-The HTTP APIs are described by OpenAPI contracts in [`../openapi/`](../openapi/):
+The HTTP APIs are described by OpenAPI contracts in [`../openapi/`](../openapi/). The [API reference site](https://trebent.github.io/kerberos/) renders each one, with a view of its YAML source:
 
-- [`gateway.yaml`](../openapi/gateway.yaml): the gateway port.
-- [`admin.yaml`](../openapi/admin.yaml): the Admin API.
-- [`auth_basic.yaml`](../openapi/auth_basic.yaml): the basic-auth API.
+| API | Rendered reference | Contract | Guide |
+| --- | --- | --- | --- |
+| Gateway port | [Gateway API](https://trebent.github.io/kerberos/api/gateway) | [`gateway.yaml`](../openapi/gateway.yaml) | [Routing](./routing.md) |
+| Admin API | [Admin API](https://trebent.github.io/kerberos/api/admin) | [`admin.yaml`](../openapi/admin.yaml) | [Admin API](./admin-api.md) |
+| Basic-auth API | [Basic-auth API](https://trebent.github.io/kerberos/api/auth) | [`auth_basic.yaml`](../openapi/auth_basic.yaml) | [Organisations](./organizations.md), [Sessions](./sessions.md) |
+
+The site's source is in [`../pages/`](../pages/README.md).

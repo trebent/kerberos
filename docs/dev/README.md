@@ -26,6 +26,7 @@ Read the design rules in [`.github/skills/design/SKILL.md`](../../.github/skills
 | `openapi/` | OpenAPI contracts for the gateway, Admin API and basic-auth API; code is generated from them |
 | `test/` | Integration, security, connector and krbctl suites, plus their configs, certificates and Compose files. See [`test/README.md`](../../test/README.md). |
 | `docs/` | This documentation |
+| `pages/` | The GitHub Pages site: an Angular app that renders the API reference from `openapi/`. See [`pages/README.md`](../../pages/README.md). |
 
 ## Build and test
 
@@ -37,6 +38,7 @@ Read the design rules in [`.github/skills/design/SKILL.md`](../../.github/skills
 | `make run` | Runs Kerberos locally with `test/config/local.json` (start `make echo/run` first) |
 | `make validate` | Lint, unit tests and vulnerability check: run this before opening a pull request |
 | `make test/unit` | Unit tests only |
+| `make pages/install`, then `make pages/serve` or `make pages/check` | Runs the GitHub Pages site locally, or runs its CI checks |
 | `make compose/up`, then `make test/integration` | Starts the integration environment and runs the integration suite |
 
 The `security` and `connector` suites follow the same pattern (`make compose/<suite>/up`, then `make test/<suite>`). `make test/krbctl` builds `krbctl` and tests it without a Compose environment. `make build` produces a Linux binary (`GOOS=linux`). The CI workflows in `.github/workflows/` run these targets.

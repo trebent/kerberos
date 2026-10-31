@@ -1,0 +1,69 @@
+name: Deploy to GitHub Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "pages/**"
+      - "openapi/**"
+      - ".github/workflows/callable-pages.yaml"
+      - ".github/workflows/publish-pages.yaml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Never deploy something that would fail the pull request checks.
+  check:
+    uses: ./.github/workflows/callable-pages.yaml
+
+  build:
+    needs: check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pages
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: pages/package-lock.json
+
+      - run: make install
+
+      - name: Build for production
+        run: make build/prod
+
+      # GitHub Pages has no SPA fallback: serve the app for unknown paths so deep links work.
+      - name: Add SPA fallback
+        run: cp dist/kerberos-pages/browser/index.html dist/kerberos-pages/browser/404.html
+
+      - name: Setup Pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: pages/dist/kerberos-pages/browser
+
+  deploy:
+    needs: build
+    environment:
+      name: api-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

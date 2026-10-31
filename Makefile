@@ -506,3 +506,13 @@ validate: static-analysis/lint test/unit static-analysis/vulncheck
 
 version:
 	$(call cecho,Kerberos version: $(VERSION),$(BOLD_BLUE))
+
+# GitHub Pages site (pages/). See pages/README.md.
+pages/install:
+	@$(MAKE) -C pages install
+
+pages/serve:
+	@$(MAKE) -C pages serve
+
+pages/check:
+	@$(MAKE) -C pages check

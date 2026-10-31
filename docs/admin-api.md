@@ -2,7 +2,7 @@
 
 The Admin API is how you administer a running Kerberos instance: log in as the superuser, create admin users and groups, grant them permissions, inspect the active request flow and the OpenAPI specifications used for validation, and run debug sessions. It is served on the admin port (`ADMIN_PORT`, see [Deployment](./deployment.md#environment-variables)) under `/api/admin`, separate from the gateway port that serves your backends.
 
-The contract for every endpoint is [`../openapi/admin.yaml`](../openapi/admin.yaml). This page explains the concepts and the behaviour around it.
+The contract for every endpoint is [`../openapi/admin.yaml`](../openapi/admin.yaml), also available as a [rendered API reference](https://trebent.github.io/kerberos/api/admin). This page explains the concepts and the behaviour around it.
 
 ## Overview
 
@@ -394,4 +394,4 @@ The standard Go cookie jar sends `Secure` cookies over plain `http://` only to `
 - [Organisations](./organizations.md): the basic-auth API that admin sessions can also manage.
 - [Admin connector](./admin-connector.md): protect internal tools behind the admin login.
 - [Deployment](./deployment.md): ports, `OAS_DIRECTORY`, security checklist.
-- [`../openapi/admin.yaml`](../openapi/admin.yaml): the API contract.
+- [`../openapi/admin.yaml`](../openapi/admin.yaml): the API contract, also [rendered](https://trebent.github.io/kerberos/api/admin).

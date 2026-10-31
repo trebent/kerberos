@@ -1,0 +1,119 @@
+:host {
+  display: block;
+}
+
+.flow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.arrow {
+  color: var(--mat-sys-outline);
+}
+
+.endpoint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px dashed var(--mat-sys-outline);
+  border-radius: var(--mat-sys-corner-medium);
+  text-align: center;
+
+  code {
+    overflow-wrap: anywhere;
+  }
+}
+
+.endpoint-label {
+  font: var(--mat-sys-title-small);
+}
+
+.stages {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
+  align-self: stretch;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 1rem;
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-primary-container);
+  list-style: none;
+  counter-reset: stage;
+}
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-surface);
+  counter-increment: stage;
+
+  &.optional {
+    outline: 1px dashed var(--mat-sys-outline);
+    outline-offset: -1px;
+  }
+
+  p {
+    margin: 0;
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-body-small);
+  }
+}
+
+.stage-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+
+  mat-icon {
+    color: var(--mat-sys-primary);
+  }
+
+  h3 {
+    margin: 0;
+    font: var(--mat-sys-title-small);
+
+    &::before {
+      content: counter(stage) '. ';
+    }
+  }
+}
+
+.badge {
+  padding: 0 0.4rem;
+  border-radius: var(--mat-sys-corner-full);
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  font: var(--mat-sys-label-small);
+}
+
+.rejects {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin-block-start: auto !important;
+}
+
+.status {
+  padding: 0 0.4rem;
+  border-radius: var(--mat-sys-corner-extra-small);
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+  font: var(--mat-sys-label-medium);
+  font-family: var(--app-mono-font);
+}
+
+.note {
+  max-width: 48rem;
+  margin: 1rem 0 0;
+  color: var(--mat-sys-on-surface-variant);
+}
