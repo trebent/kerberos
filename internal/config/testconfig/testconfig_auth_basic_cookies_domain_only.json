@@ -1,0 +1,19 @@
+{
+  "methods": {
+    "basic": {
+      "api": {
+        "cookies": {
+          "domain": "test.com"
+        }
+      }
+    }
+  },
+  "scheme": {
+    "mappings": [
+      {
+        "backend": "name",
+        "method": "basic"
+      }
+    ]
+  }
+}

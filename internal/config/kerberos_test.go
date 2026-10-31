@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	utilhttp "github.com/trebent/kerberos/internal/util/http"
 	"github.com/trebent/schemer"
 	"github.com/xeipuuv/gojsonschema"
 )
@@ -133,6 +134,27 @@ func TestConfigAuth(t *testing.T) {
 
 		if target.Order != 1 {
 			t.Fatal("Expected default order of 1")
+		}
+	})
+
+	t.Run("Basic auth cookies with domain only set defaults same site to strict", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_auth_basic_cookies_domain_only.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		sch := getSchemer(t, authSchema, cookiesSchema, originsSchema, orderedSchema)
+		sch.Load(data)
+
+		target := &Auth{}
+		err = sch.Parse(target)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		target.postProcess()
+
+		if target.Methods.Basic.API.Cookies.SameSite != utilhttp.SameSiteStrict {
+			t.Fatal("Expected same site strict")
 		}
 	})
 }

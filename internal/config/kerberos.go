@@ -273,6 +273,10 @@ func (ac *Auth) postProcess() {
 		}
 	}
 
+	if ac.Methods.Basic != nil && ac.Methods.Basic.API.Cookies.SameSite == "" {
+		ac.Methods.Basic.API.Cookies.SameSite = utilhttp.SameSiteStrict
+	}
+
 	if ac.Methods.Basic != nil && ac.Methods.Basic.API.Origins == nil {
 		ac.Methods.Basic.API.Origins = &Origins{}
 	}
