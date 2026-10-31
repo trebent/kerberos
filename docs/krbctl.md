@@ -82,6 +82,8 @@ Writes `<output>/compose.yaml`.
 3. Include PostgreSQL as the persistence backend? (SQLite is used if you answer no)
 4. Include the admin-connector service?
 
+If you include the admin-connector without the observability stack, a second screen asks which tool it should protect, as `host:port` inside the Compose network.
+
 ### Flags
 
 | Flag | Default | Description |
@@ -92,8 +94,9 @@ Writes `<output>/compose.yaml`.
 | `--obs-stack` | `false` | Include Prometheus, Grafana and Jaeger. Only used with `-y`. |
 | `--postgres` | `false` | Use PostgreSQL instead of SQLite. Only used with `-y`. |
 | `--connector` | `false` | Include the admin-connector. Only used with `-y`. |
+| `--connector-target` | `jaeger:16686` with `--obs-stack`, otherwise none | `host:port` (or `host`) the admin-connector forwards to, without a scheme or path. Required with `--connector` when `--obs-stack` is not set. Only used with `-y`. |
 
-Without `-y`, the `--echo`, `--obs-stack`, `--postgres` and `--connector` flags are ignored and you are asked the questions.
+Without `-y`, the `--echo`, `--obs-stack`, `--postgres`, `--connector` and `--connector-target` flags are ignored and you are asked the questions.
 
 ### Generated services
 
@@ -115,7 +118,7 @@ All services use `restart: on-failure`. `kerberos` runs with `LOG_TO_CONSOLE=1`,
 
 - **Observability stack.** If you choose it, `kerberos`, `echo` and `connector` send traces with OTLP over gRPC to `http://jaeger:4317` and expose Prometheus metrics on port `9464` in the Compose network. If you do not choose it, those services get `OTEL_METRICS_EXPORTER=none` and `OTEL_TRACES_EXPORTER=none`. See [Observability](./observability.md).
 - **Jaeger and the connector.** If you choose both, Jaeger's UI is not published on the host. You reach it only through the admin-connector at `http://localhost:30100`, which needs a Kerberos admin login (see [Admin connector](./admin-connector.md)). If you choose the observability stack without the connector, the Jaeger UI is published directly on `http://localhost:16686` with no login.
-- **Connector target.** With the observability stack, the connector forwards to the Jaeger UI at `jaeger:16686`. To protect a different tool, add `TARGET=<host>:<port>` to the `connector` service's `environment`. See [Admin connector](./admin-connector.md).
+- **Connector target.** The connector's `TARGET` comes from `--connector-target` or the interactive question. With the observability stack it defaults to the Jaeger UI at `jaeger:16686`; without it, you must give one. See [Admin connector](./admin-connector.md).
 - **Shared database.** `kerberos`, `connector` and `grafana` use the same database: the `/krbdata/krb.db` SQLite file on the `krbdata` volume, or the `kerberos` PostgreSQL database. Grafana keeps its tables next to the Kerberos tables.
 
 ## `krbctl config`
@@ -127,7 +130,7 @@ Writes `<output>/krb.json`, and optionally the observability stack and admin-con
 The questions come in this order:
 
 1. **Use the echo service as a backend?** If yes, a backend named `echo` at `echo:15000` is added.
-2. **Backends.** For each backend you enter a name, a host (default `localhost`) and a port (default `8080`), then answer "Add another backend?". Leave the name empty and press Enter to finish. At least one backend is required, counting `echo`.
+2. **Backends.** For each backend you enter a name, a host (default `localhost`) and a port (default `8080`), then answer "Add another backend?". Leave the name empty and press Enter to finish. At least one backend is required, counting `echo`. A name that is already used, or a port that is not a number between 1 and 65535, is rejected and asked again.
 3. **A final form** with these sections. Press Shift+Tab to go back to an earlier section.
    - **Persistence:** SQLite (default) or PostgreSQL.
    - **Authentication:** for each backend, whether to enable basic auth.
@@ -163,10 +166,10 @@ All flags except `-o` and `-y` are only used with `-y`. Without `-y` you are ask
 | --- | --- | --- | --- |
 | `name` | Yes | | Backend name. Requests reach it at `/gw/backend/<name>/...` on the gateway. See [Routing](./routing.md). |
 | `host` | No | `localhost` | Host name as seen from the Kerberos container. |
-| `port` | No | `8080` | Port the backend listens on. |
+| `port` | No | `8080` | Port the backend listens on, 1–65535. Any other value stops `krbctl` with an error. |
 | `auth` | No | `false` | `true` puts the backend behind basic authentication. |
 
-Give each backend a unique name.
+Backend names must be unique, including against `echo` when you use `--echo-backend`. A duplicate stops `krbctl` with an error.
 
 #### `--scrape-target` values
 

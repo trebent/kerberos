@@ -23,9 +23,10 @@ const (
 	echoBackendPort = 15000
 	jaegerName      = "jaeger"
 
-	// defaultBackendHost is the fallback host used when a backend is registered
-	// without an explicit host.
+	// defaultBackendHost and defaultBackendPort are used when a backend is
+	// registered without an explicit host or port.
 	defaultBackendHost = "localhost"
+	defaultBackendPort = 8080
 
 	// scrapeMetricsPort is the default Prometheus exporter port every service
 	// exposes its metrics on.
@@ -33,6 +34,11 @@ const (
 	// sqliteSharedPath is the SQLite file location on the shared krbdata volume,
 	// letting Kerberos and the admin-connector share one database file.
 	sqliteSharedPath = "/krbdata/krb.db"
+)
+
+var (
+	errDuplicateBackend = errors.New("duplicate backend name")
+	errInvalidPort      = errors.New("port must be a number between 1 and 65535")
 )
 
 // configOptions holds all answers collected from the interactive config session.
@@ -174,7 +180,7 @@ func runConfig(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("failed to write connector.json: %w", err)
 		}
 
-		fmt.Fprintln(os.Stdout, "connector.json written to connector.json")
+		fmt.Fprintf(os.Stdout, "connector.json written to %s\n", opts.outputPath)
 	}
 
 	return nil
@@ -219,6 +225,10 @@ func collectConfigFromFlags(cmd *cobra.Command, opts *configOptions) error {
 		backend, err := parseBackendFlag(spec)
 		if err != nil {
 			return fmt.Errorf("parse backend %q: %w", spec, err)
+		}
+
+		if hasBackend(opts.backends, backend.name) {
+			return fmt.Errorf("%w: %q", errDuplicateBackend, backend.name)
 		}
 
 		opts.backends = append(opts.backends, backend)
@@ -272,7 +282,7 @@ func collectConfigFromFlags(cmd *cobra.Command, opts *configOptions) error {
 // "name=..,host=..,port=..,auth=..". Only name is mandatory; host defaults to
 // localhost, port to the default backend port, and auth to false.
 func parseBackendFlag(spec string) (backendEntry, error) {
-	backend := backendEntry{host: defaultBackendHost}
+	backend := backendEntry{host: defaultBackendHost, port: defaultBackendPort}
 
 	for _, part := range strings.Split(spec, ",") {
 		part = strings.TrimSpace(part)
@@ -294,7 +304,12 @@ func parseBackendFlag(spec string) (backendEntry, error) {
 		case "host":
 			backend.host = val
 		case "port":
-			backend.port = parsePort(val)
+			port, err := parsePort(val)
+			if err != nil {
+				return backendEntry{}, err
+			}
+
+			backend.port = port
 		case "auth":
 			auth, err := strconv.ParseBool(val)
 			if err != nil {
@@ -313,10 +328,6 @@ func parseBackendFlag(spec string) (backendEntry, error) {
 
 	if backend.host == "" {
 		backend.host = defaultBackendHost
-	}
-
-	if backend.port == 0 {
-		backend.port = parsePort("")
 	}
 
 	return backend, nil
@@ -405,6 +416,10 @@ func promptBackendName(opts *configOptions) (string, error) {
 						return errors.New("at least one backend is required")
 					}
 
+					if hasBackend(opts.backends, strings.TrimSpace(s)) {
+						return fmt.Errorf("%w: %q", errDuplicateBackend, strings.TrimSpace(s))
+					}
+
 					return nil
 				}).
 				Value(&name),
@@ -435,7 +450,11 @@ func promptBackendDetails(opts *configOptions, name string) error {
 
 			huh.NewInput().
 				Title(fmt.Sprintf("Backend %q — port", name)).
-				Placeholder("8080").
+				Placeholder(strconv.Itoa(defaultBackendPort)).
+				Validate(func(s string) error {
+					_, err := parsePort(s)
+					return err
+				}).
 				Value(&portStr),
 		),
 	)
@@ -448,10 +467,15 @@ func promptBackendDetails(opts *configOptions, name string) error {
 		host = defaultBackendHost
 	}
 
+	port, err := parsePort(portStr)
+	if err != nil {
+		return err
+	}
+
 	opts.backends = append(opts.backends, backendEntry{
 		name: name,
 		host: host,
-		port: parsePort(portStr),
+		port: port,
 	})
 
 	return nil
@@ -605,15 +629,30 @@ func buildConnectorConfigGroup(opts *configOptions) *huh.Group {
 		WithHideFunc(func() bool { return !opts.includeConnector })
 }
 
-func parsePort(raw string) int {
-	const defaultPort = 8080
-
-	port, err := strconv.Atoi(strings.TrimSpace(raw))
-	if err != nil || port < 1 || port > 65535 {
-		return defaultPort
+// hasBackend reports whether a backend with the given name is already registered.
+func hasBackend(backends []backendEntry, name string) bool {
+	for _, b := range backends {
+		if b.name == name {
+			return true
+		}
 	}
 
-	return port
+	return false
+}
+
+// parsePort parses a backend port. An empty value means the default port.
+func parsePort(raw string) (int, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return defaultBackendPort, nil
+	}
+
+	port, err := strconv.Atoi(raw)
+	if err != nil || port < 1 || port > 65535 {
+		return 0, fmt.Errorf("%w: %q", errInvalidPort, raw)
+	}
+
+	return port, nil
 }
 
 //nolint:cyclop // config builder requires branching per optional section
