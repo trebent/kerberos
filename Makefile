@@ -361,7 +361,7 @@ krbctl/release:
 	$(call cecho,krbctl release artifacts written to build/release.,$(BOLD_GREEN))
 
 install/deps:
-	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0
+	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.1
 
 install/lint:
 	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(GOBIN) v2.13.2
