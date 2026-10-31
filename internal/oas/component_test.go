@@ -135,7 +135,7 @@ func TestComponentGetOAS(t *testing.T) {
 				{
 					Backend:       "test-backend",
 					Specification: "testspecs/test.yaml",
-					Options:       &config.OASBackendMappingOpts{},
+					Options:       &config.OASBackendMappingOpts{ValidateBody: new(false)},
 				},
 			},
 			Order: 1,
