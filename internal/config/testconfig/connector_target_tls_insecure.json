@@ -1,0 +1,15 @@
+{
+  "targetTls": {
+    "insecureSkipVerify": true
+  },
+  "persistence": {
+    "driver": "postgres",
+    "address": "localhost:5432",
+    "postgres": {
+      "database": "kerberos",
+      "username": "user",
+      "password": "password",
+      "sslMode": "require"
+    }
+  }
+}

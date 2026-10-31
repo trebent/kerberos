@@ -2,6 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "http://trebent.com/kerberos/schemas/connector_schema.json",
   "type": "object",
+  "additionalProperties": false,
   "properties": {
     "persistence": {
       "$ref": "http://trebent.com/kerberos/schemas/persistence_schema.json"
@@ -12,6 +13,7 @@
     "tls": {
       "type": "object",
       "description": "Server TLS settings for the connector proxy.",
+      "additionalProperties": false,
       "properties": {
         "serverCertFile": {
           "type": "string",
@@ -25,12 +27,12 @@
       "required": [
         "serverCertFile",
         "serverKeyFile"
-      ],
-      "additionalProperties": false
+      ]
     },
     "targetTls": {
       "type": "object",
       "description": "TLS settings for the proxied service behind the connector.",
+      "additionalProperties": false,
       "properties": {
         "rootCAFile": {
           "type": "string",
@@ -42,14 +44,35 @@
           "description": "Disables server certificate verification."
         }
       },
-      "required": [
-        "serverCertFile",
-        "serverKeyFile"
-      ],
-      "additionalProperties": false
+      "if": {
+        "properties": {
+          "insecureSkipVerify": {
+            "const": false
+          }
+        },
+        "required": [
+          "insecureSkipVerify"
+        ]
+      },
+      "then": {
+        "required": [
+          "rootCAFile"
+        ]
+      },
+      "anyOf": [
+        {
+          "required": [
+            "insecureSkipVerify"
+          ]
+        },
+        {
+          "required": [
+            "rootCAFile"
+          ]
+        }
+      ]
     }
   },
-  "additionalProperties": false,
   "required": [
     "persistence"
   ]
