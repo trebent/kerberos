@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +10,17 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
+)
+
+// defaultConnectorTarget is what the admin-connector protects when the observability stack is
+// included: the Jaeger UI.
+const defaultConnectorTarget = "jaeger:16686"
+
+var (
+	errConnectorTargetRequired = errors.New(
+		"--connector-target is required with --connector when --obs-stack is not set")
+	errConnectorTargetFormat = errors.New(
+		"connector target must be host:port or host, without a scheme or path")
 )
 
 // composeOptions holds the answers collected from the interactive compose session.
@@ -20,6 +32,9 @@ type composeOptions struct {
 	includeObsStack  bool
 	includePostgres  bool
 	includeConnector bool
+
+	// connectorTarget is the host:port the admin-connector forwards to (its TARGET).
+	connectorTarget string
 }
 
 func newComposeCmd() *cobra.Command {
@@ -42,6 +57,9 @@ postgres, admin-connector, echo) can be included or skipped at each step.`,
 		"Use PostgreSQL as the persistence backend. (non-interactive mode only)")
 	cmd.Flags().Bool("connector", false,
 		"Include the admin-connector service. (non-interactive mode only)")
+	cmd.Flags().String("connector-target", "",
+		"host:port the admin-connector forwards to. Defaults to "+defaultConnectorTarget+
+			" with --obs-stack, required otherwise. (non-interactive mode only)")
 
 	return cmd
 }
@@ -64,6 +82,10 @@ func runCompose(cmd *cobra.Command, _ []string) error {
 			return err
 		}
 	} else if err := collectComposeInteractive(opts); err != nil {
+		return err
+	}
+
+	if err := resolveConnectorTarget(opts); err != nil {
 		return err
 	}
 
@@ -109,6 +131,14 @@ func collectComposeInteractive(opts *composeOptions) error {
 				WithButtonAlignment(lipgloss.Left).
 				Value(&opts.includeConnector),
 		),
+		huh.NewGroup(
+			huh.NewInput().
+				Title("Which tool should the admin-connector protect?").
+				Description("host:port of the tool, as reachable inside the Compose network.").
+				Placeholder("my-tool:8080").
+				Validate(validateConnectorTarget).
+				Value(&opts.connectorTarget),
+		).WithHideFunc(func() bool { return !opts.includeConnector || opts.includeObsStack }),
 	)
 
 	if err := form.Run(); err != nil {
@@ -137,6 +167,36 @@ func collectComposeFromFlags(cmd *cobra.Command, opts *composeOptions) error {
 
 	if opts.includeConnector, err = cmd.Flags().GetBool("connector"); err != nil {
 		return err
+	}
+
+	if opts.connectorTarget, err = cmd.Flags().GetString("connector-target"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// resolveConnectorTarget makes sure an included admin-connector has a target, defaulting to the
+// Jaeger UI when the observability stack is included.
+func resolveConnectorTarget(opts *composeOptions) error {
+	if !opts.includeConnector {
+		return nil
+	}
+
+	if opts.connectorTarget == "" {
+		if !opts.includeObsStack {
+			return errConnectorTargetRequired
+		}
+
+		opts.connectorTarget = defaultConnectorTarget
+	}
+
+	return validateConnectorTarget(opts.connectorTarget)
+}
+
+func validateConnectorTarget(target string) error {
+	if strings.TrimSpace(target) == "" || strings.Contains(target, "/") {
+		return errConnectorTargetFormat
 	}
 
 	return nil
@@ -266,9 +326,7 @@ func writeConnectorService(b *strings.Builder, opts *composeOptions) {
       - PORT=30100
 `)
 
-	if opts.includeObsStack {
-		fmt.Fprintf(b, "      - TARGET=jaeger:16686\n")
-	}
+	fmt.Fprintf(b, "      - TARGET=%s\n", opts.connectorTarget)
 
 	writeOtelEnv(b, opts.includeObsStack, "connector")
 
