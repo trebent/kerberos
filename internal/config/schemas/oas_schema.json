@@ -3,6 +3,7 @@
   "$id": "http://trebent.com/kerberos/schemas/oas_schema.json",
   "type": "object",
   "description": "OAS related configuration.",
+  "additionalProperties": false,
   "properties": {
     "mappings": {
       "type": "array",
@@ -10,6 +11,7 @@
       "minItems": 1,
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
           "backend": {
             "type": "string",
@@ -23,21 +25,20 @@
             "type": "object",
             "description": "Additional options for the OAS backend.",
             "default": {},
+            "additionalProperties": false,
             "properties": {
               "validateBody": {
                 "type": "boolean",
                 "description": "When true, the request bodies of incoming requests will be validated against the OAS.",
                 "default": true
               }
-            },
-            "additionalProperties": false
+            }
           }
         },
         "required": [
           "backend",
           "specification"
-        ],
-        "additionalProperties": false
+        ]
       }
     },
     "order": {
@@ -46,6 +47,5 @@
   },
   "required": [
     "mappings"
-  ],
-  "additionalProperties": false
+  ]
 }

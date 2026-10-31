@@ -4,12 +4,25 @@ import (
 	"os"
 	"testing"
 
+	utilhttp "github.com/trebent/kerberos/internal/util/http"
 	"github.com/trebent/schemer"
+	"github.com/xeipuuv/gojsonschema"
 )
 
-func getSchemer(t *testing.T) *schemer.Schemer {
+func getKerberosSchemer(t *testing.T) *schemer.Schemer {
 	t.Helper()
 	s := schemer.New(getKerberosSchema(), getKerberosSupportingSchemas()...)
+	return s
+}
+
+func getSchemer(t *testing.T, schema []byte, supportingSchemas ...[]byte) *schemer.Schemer {
+	t.Helper()
+	loaders := make([]gojsonschema.JSONLoader, len(supportingSchemas))
+	for i, supportingSchema := range supportingSchemas {
+		loaders[i] = gojsonschema.NewBytesLoader(supportingSchema)
+	}
+
+	s := schemer.New(gojsonschema.NewBytesLoader(schema), loaders...)
 	return s
 }
 
@@ -25,7 +38,7 @@ func TestConfigBad(t *testing.T) {
 		t.Fatalf("failed to read test config: %v", err)
 	}
 
-	sch := getSchemer(t)
+	sch := getKerberosSchemer(t)
 	sch.Load(data)
 
 	target := NewKerberos()
@@ -40,7 +53,7 @@ func TestConfigReferences(t *testing.T) {
 		t.Fatalf("failed to read test config: %v", err)
 	}
 
-	sch := getSchemer(t)
+	sch := getKerberosSchemer(t)
 	sch.Load(data)
 
 	target := NewKerberos()
@@ -57,7 +70,7 @@ func TestConfigAuth(t *testing.T) {
 			t.Fatalf("failed to read test config: %v", err)
 		}
 
-		sch := getSchemer(t)
+		sch := getKerberosSchemer(t)
 		sch.Load(data)
 
 		target := NewKerberos()
@@ -86,6 +99,64 @@ func TestConfigAuth(t *testing.T) {
 			t.Fatalf("expected basic auth API origins config to be non-nil, got nil")
 		}
 	})
+
+	t.Run("Basic auth with additional property inside authorization", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_auth_basic_additional_property.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		sch := getSchemer(t, authSchema, cookiesSchema, originsSchema, orderedSchema)
+		sch.Load(data)
+
+		target := &Auth{}
+		err = sch.Parse(target)
+		if err == nil {
+			t.Fatal("Expected error due to additional property")
+		}
+	})
+
+	t.Run("Basic auth with additional property inside authorization", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_auth_basic_no_order.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		sch := getSchemer(t, authSchema, cookiesSchema, originsSchema, orderedSchema)
+		sch.Load(data)
+
+		target := &Auth{}
+		err = sch.Parse(target)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		target.postProcess()
+
+		if target.Order != 1 {
+			t.Fatal("Expected default order of 1")
+		}
+	})
+
+	t.Run("Basic auth cookies with domain only set defaults same site to strict", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_auth_basic_cookies_domain_only.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		sch := getSchemer(t, authSchema, cookiesSchema, originsSchema, orderedSchema)
+		sch.Load(data)
+
+		target := &Auth{}
+		err = sch.Parse(target)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		target.postProcess()
+
+		if target.Methods.Basic.API.Cookies.SameSite != utilhttp.SameSiteStrict {
+			t.Fatal("Expected same site strict")
+		}
+	})
 }
 
 func TestConfigAdmin(t *testing.T) {
@@ -95,7 +166,7 @@ func TestConfigAdmin(t *testing.T) {
 			t.Fatalf("failed to read test config: %v", err)
 		}
 
-		sch := getSchemer(t)
+		sch := getKerberosSchemer(t)
 		sch.Load(data)
 
 		target := NewKerberos()
@@ -119,7 +190,7 @@ func TestConfigAdmin(t *testing.T) {
 			t.Fatalf("failed to read test config: %v", err)
 		}
 
-		sch := getSchemer(t)
+		sch := getKerberosSchemer(t)
 		sch.Load(data)
 
 		target := NewKerberos()
@@ -147,7 +218,7 @@ func TestConfigAdmin(t *testing.T) {
 			t.Fatalf("failed to read test config: %v", err)
 		}
 
-		sch := getSchemer(t)
+		sch := getKerberosSchemer(t)
 		sch.Load(data)
 
 		target := NewKerberos()
@@ -162,7 +233,7 @@ func TestConfigAdmin(t *testing.T) {
 			t.Fatalf("failed to read test config: %v", err)
 		}
 
-		sch := getSchemer(t)
+		sch := getKerberosSchemer(t)
 		sch.Load(data)
 
 		target := NewKerberos()
@@ -191,7 +262,7 @@ func TestConfigNoRouter(t *testing.T) {
 		t.Fatalf("failed to read test config: %v", err)
 	}
 
-	sch := getSchemer(t)
+	sch := getKerberosSchemer(t)
 	sch.Load(data)
 
 	target := NewKerberos()
@@ -206,7 +277,7 @@ func TestConfigEmpty(t *testing.T) {
 		t.Fatalf("failed to read test config: %v", err)
 	}
 
-	sch := getSchemer(t)
+	sch := getKerberosSchemer(t)
 	sch.Load(data)
 
 	target := NewKerberos()
@@ -216,40 +287,82 @@ func TestConfigEmpty(t *testing.T) {
 }
 
 func TestConfigOAS(t *testing.T) {
-	data, err := os.ReadFile("./testconfig/testconfig_oas.json")
-	if err != nil {
-		t.Fatalf("failed to read test config: %v", err)
-	}
+	t.Run("Base", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_oas.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
 
-	sch := getSchemer(t)
-	sch.Load(data)
+		sch := getKerberosSchemer(t)
+		sch.Load(data)
 
-	target := NewKerberos()
-	if err := sch.Parse(target); err != nil {
-		t.Fatalf("failed to load config: %v", err)
-	}
-	target.PostProcess()
+		target := NewKerberos()
+		if err := sch.Parse(target); err != nil {
+			t.Fatalf("failed to load config: %v", err)
+		}
+		target.PostProcess()
 
-	if len(target.OASCfg.Mappings) != 1 {
-		t.Fatalf("expected 1 OAS mapping, got %d", len(target.OASCfg.Mappings))
-	}
+		if len(target.OASCfg.Mappings) != 1 {
+			t.Fatalf("expected 1 OAS mapping, got %d", len(target.OASCfg.Mappings))
+		}
 
-	mapping := target.OASCfg.Mappings[0]
-	if mapping.Backend != "backend1" {
-		t.Errorf("expected OAS mapping backend to be 'backend1', got '%s'", mapping.Backend)
-	}
+		mapping := target.OASCfg.Mappings[0]
+		if mapping.Backend != "backend1" {
+			t.Errorf("expected OAS mapping backend to be 'backend1', got '%s'", mapping.Backend)
+		}
 
-	if mapping.Specification != "./testconfig/oas_spec.yaml" {
-		t.Errorf("expected OAS mapping specification to be './testconfig/oas_spec.yaml', got '%s'", mapping.Specification)
-	}
+		if mapping.Specification != "./testconfig/oas_spec.yaml" {
+			t.Errorf("expected OAS mapping specification to be './testconfig/oas_spec.yaml', got '%s'", mapping.Specification)
+		}
 
-	if mapping.Options == nil {
-		t.Fatalf("expected OAS mapping options to be non-nil, got nil")
-	}
+		if mapping.Options == nil {
+			t.Fatalf("expected OAS mapping options to be non-nil, got nil")
+		}
 
-	if !mapping.Options.ValidateBody {
-		t.Errorf("expected OAS mapping options to have ValidateBody=true, got false")
-	}
+		if !*mapping.Options.ValidateBody {
+			t.Errorf("expected OAS mapping options to have ValidateBody=true, got false")
+		}
+	})
+
+	t.Run("default order", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_oas_no_order.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		sch := getSchemer(t, oasSchema, orderedSchema)
+		sch.Load(data)
+
+		target := &OAS{}
+		if err := sch.Parse(target); err != nil {
+			t.Fatalf("failed to load config: %v", err)
+		}
+		target.postProcess()
+
+		if target.Order != 1 {
+			t.Fatal("Expected default order of 1")
+		}
+	})
+
+	t.Run("empty options provided", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_oas_empty_options.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		sch := getSchemer(t, oasSchema, orderedSchema)
+		sch.Load(data)
+
+		target := &OAS{}
+		if err := sch.Parse(target); err != nil {
+			t.Fatalf("failed to load config: %v", err)
+		}
+		target.postProcess()
+
+		if !*target.Mappings[0].Options.ValidateBody {
+			t.Fatal("Expected validate body to be true")
+		}
+	})
 }
 
 func TestConfigPersistence(t *testing.T) {
@@ -259,7 +372,7 @@ func TestConfigPersistence(t *testing.T) {
 			t.Fatalf("failed to read test config: %v", err)
 		}
 
-		sch := getSchemer(t)
+		sch := getKerberosSchemer(t)
 		sch.Load(data)
 
 		target := NewKerberos()
@@ -299,7 +412,7 @@ func TestConfigPersistence(t *testing.T) {
 			t.Fatalf("failed to read test config: %v", err)
 		}
 
-		sch := getSchemer(t)
+		sch := getKerberosSchemer(t)
 		sch.Load(data)
 
 		target := NewKerberos()
@@ -323,7 +436,7 @@ func TestConfigPersistence(t *testing.T) {
 			t.Fatalf("failed to read test config: %v", err)
 		}
 
-		sch := getSchemer(t)
+		sch := getKerberosSchemer(t)
 		sch.Load(data)
 
 		target := NewKerberos()
@@ -340,7 +453,7 @@ func TestConfigGateway(t *testing.T) {
 			t.Fatalf("failed to read test config: %v", err)
 		}
 
-		sch := getSchemer(t)
+		sch := getKerberosSchemer(t)
 		sch.Load(data)
 
 		target := NewKerberos()
@@ -376,7 +489,7 @@ func TestConfigGateway(t *testing.T) {
 			t.Fatalf("failed to read test config: %v", err)
 		}
 
-		sch := getSchemer(t)
+		sch := getKerberosSchemer(t)
 		sch.Load(data)
 
 		target := NewKerberos()
@@ -404,7 +517,7 @@ func TestConfigGateway(t *testing.T) {
 			t.Fatalf("failed to read test config: %v", err)
 		}
 
-		sch := getSchemer(t)
+		sch := getKerberosSchemer(t)
 		sch.Load(data)
 
 		target := NewKerberos()
@@ -444,7 +557,7 @@ func TestConfigGateway(t *testing.T) {
 			t.Fatalf("failed to read test config: %v", err)
 		}
 
-		sch := getSchemer(t)
+		sch := getKerberosSchemer(t)
 		sch.Load(data)
 
 		target := NewKerberos()
@@ -459,12 +572,29 @@ func TestConfigGateway(t *testing.T) {
 			t.Fatalf("failed to read test config: %v", err)
 		}
 
-		sch := getSchemer(t)
+		sch := getKerberosSchemer(t)
 		sch.Load(data)
 
 		target := NewKerberos()
-		if err := sch.Parse(target); err == nil {
-			t.Fatalf("expected error when loading config with invalid router backend name, got nil")
+		err = sch.Parse(target)
+		if err == nil {
+			t.Fatal("Expected error when loading config with invalid router backend name, got nil")
+		}
+	})
+
+	t.Run("Duped backend name", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_gw_router_duped_backend_name.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		sch := getKerberosSchemer(t)
+		sch.Load(data)
+
+		target := NewKerberos()
+		err = sch.Parse(target)
+		if err == nil {
+			t.Fatal("Expected error")
 		}
 	})
 
@@ -474,12 +604,12 @@ func TestConfigGateway(t *testing.T) {
 			t.Fatalf("failed to read test config: %v", err)
 		}
 
-		sch := getSchemer(t)
+		sch := getKerberosSchemer(t)
 		sch.Load(data)
 
 		target := NewKerberos()
 		if err := sch.Parse(target); err == nil {
-			t.Fatalf("expected error when loading config with invalid router backend port, got nil")
+			t.Fatal("Expected error when loading config with invalid router backend port, got nil")
 		}
 	})
 
@@ -489,7 +619,7 @@ func TestConfigGateway(t *testing.T) {
 			t.Fatalf("failed to read test config: %v", err)
 		}
 
-		sch := getSchemer(t)
+		sch := getKerberosSchemer(t)
 		sch.Load(data)
 
 		target := NewKerberos()
@@ -521,12 +651,48 @@ func TestConfigGateway(t *testing.T) {
 			t.Fatalf("failed to read test config: %v", err)
 		}
 
-		sch := getSchemer(t)
+		sch := getKerberosSchemer(t)
 		sch.Load(data)
 
 		target := NewKerberos()
 		if err := sch.Parse(target); err == nil {
 			t.Fatalf("expected error when loading config with misconfigured router backend Origins, got nil")
+		}
+	})
+}
+
+func TestConfigCookies(t *testing.T) {
+	t.Run("ok", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_cookies.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		sch := getSchemer(t, cookiesSchema)
+		sch.Load(data)
+
+		cookies := &Cookies{}
+
+		err = sch.Parse(cookies)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+	})
+
+	t.Run("unexpected property", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_cookies_additional_property.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		sch := getSchemer(t, cookiesSchema)
+		sch.Load(data)
+
+		cookies := &Cookies{}
+
+		err = sch.Parse(cookies)
+		if err == nil {
+			t.Fatal("Expected an error due to additional unexpected property")
 		}
 	})
 }

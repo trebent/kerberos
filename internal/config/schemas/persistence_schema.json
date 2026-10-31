@@ -3,6 +3,7 @@
   "$id": "http://trebent.com/kerberos/schemas/persistence_schema.json",
   "type": "object",
   "description": "Persistence configuration.",
+  "additionalProperties": false,
   "properties": {
     "driver": {
       "type": "string",
@@ -20,6 +21,7 @@
     "postgres": {
       "type": "object",
       "description": "Postgres specific settings, applicable when driver is set to 'postgres'.",
+      "additionalProperties": false,
       "properties": {
         "database": {
           "type": "string",
@@ -41,8 +43,7 @@
       },
       "required": [
         "database"
-      ],
-      "additionalProperties": false
+      ]
     }
   },
   "required": [
@@ -63,6 +64,5 @@
     "required": [
       "postgres"
     ]
-  },
-  "additionalProperties": false
+  }
 }

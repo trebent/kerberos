@@ -1,0 +1,17 @@
+{
+  "methods": {
+    "basic": {}
+  },
+  "scheme": {
+    "mappings": [
+      {
+        "backend": "backend",
+        "method": "basic",
+        "authorization": {
+          "unknown": "property"
+        }
+      }
+    ]
+  },
+  "order": 2
+}

@@ -2,6 +2,7 @@ package config
 
 import (
 	_ "embed"
+	"errors"
 
 	utilhttp "github.com/trebent/kerberos/internal/util/http"
 	"github.com/trebent/schemer"
@@ -30,7 +31,7 @@ type (
 		Options       *OASBackendMappingOpts `json:"options"`
 	}
 	OASBackendMappingOpts struct {
-		ValidateBody bool `json:"validateBody"`
+		ValidateBody *bool `json:"validateBody,omitempty"`
 	}
 
 	// Gateway holds configuration for the API gateway.
@@ -233,6 +234,20 @@ func newPersistenceConfig() *Persistence {
 	}
 }
 
+func (kc *Kerberos) Validate() error {
+	seen := make(map[string]struct{}, len(kc.GatewayCfg.Router.Backends))
+
+	for _, b := range kc.GatewayCfg.Router.Backends {
+		if _, ok := seen[b.Name]; ok {
+			return errors.New("duplicate backend " + b.Name)
+		}
+
+		seen[b.Name] = struct{}{}
+	}
+
+	return nil
+}
+
 // PostProcess tweaks some default values after parsing.
 func (kc *Kerberos) PostProcess() {
 	kc.GatewayCfg.postProcess()
@@ -273,8 +288,16 @@ func (ac *Auth) postProcess() {
 		}
 	}
 
+	if ac.Methods.Basic != nil && ac.Methods.Basic.API.Cookies.SameSite == "" {
+		ac.Methods.Basic.API.Cookies.SameSite = utilhttp.SameSiteStrict
+	}
+
 	if ac.Methods.Basic != nil && ac.Methods.Basic.API.Origins == nil {
 		ac.Methods.Basic.API.Origins = &Origins{}
+	}
+
+	if ac.Order < 1 {
+		ac.Order = 1
 	}
 }
 
@@ -291,7 +314,13 @@ func (ac *Admin) postProcess()         {}
 func (oc *OAS) postProcess() {
 	for _, m := range oc.Mappings {
 		if m.Options == nil {
-			m.Options = &OASBackendMappingOpts{ValidateBody: true}
+			m.Options = &OASBackendMappingOpts{ValidateBody: new(true)}
+		} else if m.Options.ValidateBody == nil {
+			m.Options.ValidateBody = new(true)
 		}
+	}
+
+	if oc.Order < 1 {
+		oc.Order = 1
 	}
 }

@@ -49,4 +49,40 @@ func TestConnector(t *testing.T) {
 			t.Fatal("Should have errored out, bad origins block")
 		}
 	})
+
+	t.Run("Target TLS configured", func(t *testing.T) {
+		sch := getConnectorSchemer(t)
+		data, err := os.ReadFile("./testconfig/connector_target_tls.json")
+		checkErr(err, t)
+
+		sch.Load(data)
+		target := NewConnector()
+		if err := sch.Parse(target); err != nil {
+			t.Fatal(err.Error())
+		}
+	})
+
+	t.Run("Target TLS configured - insecure", func(t *testing.T) {
+		sch := getConnectorSchemer(t)
+		data, err := os.ReadFile("./testconfig/connector_target_tls_insecure.json")
+		checkErr(err, t)
+
+		sch.Load(data)
+		target := NewConnector()
+		if err := sch.Parse(target); err != nil {
+			t.Fatal(err.Error())
+		}
+	})
+
+	t.Run("Target TLS configured - insecure false", func(t *testing.T) {
+		sch := getConnectorSchemer(t)
+		data, err := os.ReadFile("./testconfig/connector_target_tls_insecure_false.json")
+		checkErr(err, t)
+
+		sch.Load(data)
+		target := NewConnector()
+		if err := sch.Parse(target); err == nil {
+			t.Fatal("Expected error")
+		}
+	})
 }

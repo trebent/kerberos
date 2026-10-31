@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -160,17 +161,18 @@ func (f *forwarder) handleInbound(req *http.Request) (*http.Response, error) {
 	if target.TLS != nil {
 		scheme = "https"
 	}
-
 	//nolint:gosec // ignoring SSRF warning since the target is determined by our own routing logic and not user input.
+	upstream := &url.URL{
+		Scheme:   scheme,
+		Host:     net.JoinHostPort(target.Host, strconv.Itoa(target.Port)),
+		Path:     req.URL.Path,
+		RawQuery: req.URL.RawQuery,
+	}
+
 	forwardRequest, err := http.NewRequestWithContext(
 		req.Context(),
 		req.Method,
-		fmt.Sprintf(
-			"%s://%s%s",
-			scheme,
-			net.JoinHostPort(target.Host, strconv.Itoa(target.Port)),
-			req.URL.Path,
-		),
+		upstream.String(),
 		req.Body,
 	)
 	if err != nil {

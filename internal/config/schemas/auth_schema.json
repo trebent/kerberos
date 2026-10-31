@@ -3,10 +3,12 @@
   "$id": "http://trebent.com/kerberos/schemas/auth_schema.json",
   "type": "object",
   "description": "Authentication and authorization configuration.",
+  "additionalProperties": false,
   "properties": {
     "methods": {
       "type": "object",
       "description": "Configure available authentication mechanisms.",
+      "additionalProperties": false,
       "properties": {
         "basic": {
           "type": "object",
@@ -14,6 +16,7 @@
           "default": {
             "api": {}
           },
+          "additionalProperties": false,
           "properties": {
             "api": {
               "description": "Settings for the Basic authentication API.",
@@ -24,22 +27,21 @@
                 "origins": {
                   "$ref": "http://trebent.com/kerberos/schemas/origins_schema.json"
                 }
-              },
-              "additionalProperties": false
+              }
             }
-          },
-          "additionalProperties": false
+          }
         }
-      },
-      "additionalProperties": false
+      }
     },
     "scheme": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "mappings": {
           "type": "array",
           "items": {
             "type": "object",
+            "additionalProperties": false,
             "properties": {
               "backend": {
                 "type": "string",
@@ -62,6 +64,7 @@
               "authorization": {
                 "type": "object",
                 "description": "Authorization rules for the backend.",
+                "additionalProperties": false,
                 "properties": {
                   "groups": {
                     "type": "array",
@@ -83,24 +86,21 @@
                       },
                       "minItems": 1
                     }
-                  },
-                  "additionalProperties": false
+                  }
                 }
               }
             },
             "required": [
               "backend",
               "method"
-            ],
-            "additionalProperties": false
+            ]
           },
           "minItems": 1
         }
       },
       "required": [
         "mappings"
-      ],
-      "additionalProperties": false
+      ]
     },
     "order": {
       "$ref": "http://trebent.com/kerberos/schemas/ordered_schema.json"
@@ -131,6 +131,5 @@
         ]
       }
     }
-  ],
-  "additionalProperties": false
+  ]
 }

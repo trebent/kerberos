@@ -3,9 +3,9 @@
     "router": {
       "backends": [
         {
-          "name": "backend",
+          "name": "BaCkEnd",
           "host": "localhost",
-          "port": 0
+          "port": 123
         }
       ]
     }

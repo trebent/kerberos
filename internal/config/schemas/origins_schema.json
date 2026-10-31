@@ -4,6 +4,7 @@
   "type": "object",
   "default": {},
   "description": "Origin management settings.",
+  "additionalProperties": false,
   "properties": {
     "allowedOrigins": {
       "type": "array",
@@ -91,6 +92,5 @@
         }
       }
     }
-  ],
-  "additionalProperties": false
+  ]
 }

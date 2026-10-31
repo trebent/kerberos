@@ -145,6 +145,12 @@ func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	//nolint:errcheck // if this isn't populated the flow chain has been broken.
 	backend := req.Context().Value(composer.BackendContextKey).(string)
 
+	if foundAuthHeaders(req) {
+		zerologr.Error(errors.New("auth headers detected"), "User supplied a X-Krb-* header")
+		apierror.ErrorHandler(w, req, apierror.ErrForbidden)
+		transitionFailure(debugCall, debugStart, apierror.ErrForbidden.Error())
+	}
+
 	m, err := a.findMethod(backend, req)
 	switch {
 	case errors.Is(err, errNoMethod):
@@ -257,4 +263,17 @@ func transitionFailure(debugCall debug.DebuggedCall, debugStart time.Time, errMs
 		debug.CallResultFailure,
 		errMsg,
 	)
+}
+
+func foundAuthHeaders(req *http.Request) bool {
+	for k := range req.Header {
+		switch k {
+		case basic.HeaderOrg, basic.HeaderUser, basic.HeaderGroups:
+			return true
+		default:
+			// noop, continue
+		}
+	}
+
+	return false
 }
