@@ -37,10 +37,6 @@ type (
 var _ Validator = (*validator)(nil)
 
 func NewComponent(opts *Opts) Validator {
-	// Prevent schema error details from being included in validation errors.
-	//nolint:reassign // yolo
-	openapi3.SchemaErrorDetailsDisabled = true
-
 	v := &validator{
 		cfg:        opts.Cfg,
 		factories:  make(map[string]func(http.Handler) http.Handler),

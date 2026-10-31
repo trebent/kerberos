@@ -30,6 +30,8 @@ func ValidationMiddleware(spec *openapi3.T) func(http.Handler) http.Handler {
 				AuthenticationFunc: func(context.Context, *openapi3filter.AuthenticationInput) error {
 					return nil
 				},
+				// Prevent schema error details from being included in validation errors.
+				SchemaValidationOptions: []openapi3.SchemaValidationOption{openapi3.DisableSchemaErrorDetails()},
 			},
 			// This is the failure case — transition is logged here and the OAS error
 			// handler is called. debugStart is read from the request context so that
