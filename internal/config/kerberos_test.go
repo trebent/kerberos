@@ -578,7 +578,23 @@ func TestConfigGateway(t *testing.T) {
 		target := NewKerberos()
 		err = sch.Parse(target)
 		if err == nil {
-			t.Fatalf("expected error when loading config with invalid router backend name, got nil")
+			t.Fatal("Expected error when loading config with invalid router backend name, got nil")
+		}
+	})
+
+	t.Run("Duped backend name", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_gw_router_duped_backend_name.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		sch := getKerberosSchemer(t)
+		sch.Load(data)
+
+		target := NewKerberos()
+		err = sch.Parse(target)
+		if err == nil {
+			t.Fatal("Expected error")
 		}
 	})
 
@@ -593,7 +609,7 @@ func TestConfigGateway(t *testing.T) {
 
 		target := NewKerberos()
 		if err := sch.Parse(target); err == nil {
-			t.Fatalf("expected error when loading config with invalid router backend port, got nil")
+			t.Fatal("Expected error when loading config with invalid router backend port, got nil")
 		}
 	})
 

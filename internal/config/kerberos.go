@@ -2,6 +2,7 @@ package config
 
 import (
 	_ "embed"
+	"errors"
 
 	utilhttp "github.com/trebent/kerberos/internal/util/http"
 	"github.com/trebent/schemer"
@@ -231,6 +232,20 @@ func newPersistenceConfig() *Persistence {
 		Driver:  "sqlite",
 		Address: "krb.db",
 	}
+}
+
+func (kc *Kerberos) Validate() error {
+	seen := make(map[string]struct{}, len(kc.GatewayCfg.Router.Backends))
+
+	for _, b := range kc.GatewayCfg.Router.Backends {
+		if _, ok := seen[b.Name]; ok {
+			return errors.New("duplicate backend " + b.Name)
+		}
+
+		seen[b.Name] = struct{}{}
+	}
+
+	return nil
 }
 
 // PostProcess tweaks some default values after parsing.

@@ -178,6 +178,11 @@ func setupConfig() (*config.Kerberos, error) {
 	if err := sch.Parse(cfg); err != nil {
 		return nil, err
 	}
+
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+
 	cfg.PostProcess()
 
 	zerologr.Info("Configuration parsed successfully")
