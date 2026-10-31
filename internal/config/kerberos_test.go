@@ -576,7 +576,8 @@ func TestConfigGateway(t *testing.T) {
 		sch.Load(data)
 
 		target := NewKerberos()
-		if err := sch.Parse(target); err == nil {
+		err = sch.Parse(target)
+		if err == nil {
 			t.Fatalf("expected error when loading config with invalid router backend name, got nil")
 		}
 	})

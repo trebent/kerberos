@@ -3,18 +3,21 @@
   "$id": "http://trebent.com/kerberos/schemas/router_schema.json",
   "type": "object",
   "description": "Configuration for the Gateway router, which defines how incoming requests are routed to backend services.",
+  "additionalProperties": false,
   "properties": {
     "backends": {
       "type": "array",
       "description": "Backends contain all the targets that Kerberos proxies.",
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
           "name": {
             "type": "string",
             "description": "Name of the backend.",
             "minLength": 1,
-            "maxLength": 100
+            "maxLength": 100,
+            "pattern": "^[-_a-z0-9]+$"
           },
           "host": {
             "type": "string",
@@ -39,6 +42,7 @@
           },
           "tls": {
             "type": "object",
+            "additionalProperties": false,
             "properties": {
               "rootCAFile": {
                 "type": "string",
@@ -80,22 +84,19 @@
                 "clientCertFile",
                 "clientKeyFile"
               ]
-            },
-            "additionalProperties": false
+            }
           }
         },
         "required": [
           "name",
           "host",
           "port"
-        ],
-        "additionalProperties": false
+        ]
       },
       "minItems": 1
     }
   },
   "required": [
     "backends"
-  ],
-  "additionalProperties": false
+  ]
 }
