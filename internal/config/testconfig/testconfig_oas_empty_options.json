@@ -1,0 +1,10 @@
+{
+  "mappings": [
+    {
+      "backend": "backend1",
+      "specification": "./testconfig/oas_spec.yaml",
+      "options": {}
+    }
+  ],
+  "order": 2
+}

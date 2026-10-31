@@ -119,7 +119,7 @@ func (v *validator) register(m *config.OASBackendMapping) error {
 		return err
 	}
 
-	if !m.Options.ValidateBody {
+	if !*m.Options.ValidateBody {
 		zerologr.Info("Disabling body validation", "backend", m.Backend)
 		for _, path := range spec.Paths.Map() {
 			for _, op := range path.Operations() {

@@ -30,7 +30,7 @@ type (
 		Options       *OASBackendMappingOpts `json:"options"`
 	}
 	OASBackendMappingOpts struct {
-		ValidateBody bool `json:"validateBody"`
+		ValidateBody *bool `json:"validateBody,omitempty"`
 	}
 
 	// Gateway holds configuration for the API gateway.
@@ -295,7 +295,9 @@ func (ac *Admin) postProcess()         {}
 func (oc *OAS) postProcess() {
 	for _, m := range oc.Mappings {
 		if m.Options == nil {
-			m.Options = &OASBackendMappingOpts{ValidateBody: true}
+			m.Options = &OASBackendMappingOpts{ValidateBody: new(true)}
+		} else if m.Options.ValidateBody == nil {
+			m.Options.ValidateBody = new(true)
 		}
 	}
 

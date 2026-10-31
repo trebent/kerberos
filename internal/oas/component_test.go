@@ -26,7 +26,7 @@ func TestComponentWithBodyValidation(t *testing.T) {
 					Backend:       "test-backend",
 					Specification: "testspecs/test.yaml",
 					Options: &config.OASBackendMappingOpts{
-						ValidateBody: true,
+						ValidateBody: new(true),
 					},
 				},
 			},
@@ -92,7 +92,7 @@ func TestComponentWithoutBodyValidation(t *testing.T) {
 					Backend:       "test-backend",
 					Specification: "testspecs/test.yaml",
 					Options: &config.OASBackendMappingOpts{
-						ValidateBody: false,
+						ValidateBody: new(false),
 					},
 				},
 			},

@@ -297,7 +297,7 @@ func TestConfigOAS(t *testing.T) {
 			t.Fatalf("expected OAS mapping options to be non-nil, got nil")
 		}
 
-		if !mapping.Options.ValidateBody {
+		if !*mapping.Options.ValidateBody {
 			t.Errorf("expected OAS mapping options to have ValidateBody=true, got false")
 		}
 	})
@@ -319,6 +319,26 @@ func TestConfigOAS(t *testing.T) {
 
 		if target.Order != 1 {
 			t.Fatal("Expected default order of 1")
+		}
+	})
+
+	t.Run("empty options provided", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_oas_empty_options.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		sch := getSchemer(t, oasSchema, orderedSchema)
+		sch.Load(data)
+
+		target := &OAS{}
+		if err := sch.Parse(target); err != nil {
+			t.Fatalf("failed to load config: %v", err)
+		}
+		target.postProcess()
+
+		if !*target.Mappings[0].Options.ValidateBody {
+			t.Fatal("Expected validate body to be true")
 		}
 	})
 }
