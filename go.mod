@@ -12,9 +12,9 @@ require (
 	github.com/oapi-codegen/nethttp-middleware v1.3.1
 	github.com/oapi-codegen/runtime v1.8.0
 	github.com/spf13/cobra v1.10.2
-	github.com/trebent/envparser v1.0.8
-	github.com/trebent/schemer v0.1.0
-	github.com/trebent/zerologr v1.1.1
+	github.com/trebent/envparser v1.0.9
+	github.com/trebent/schemer v0.1.1
+	github.com/trebent/zerologr v1.1.2
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.opentelemetry.io/contrib/exporters/autoexport v0.72.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.72.0
@@ -23,7 +23,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.47.0
 	go.opentelemetry.io/otel/sdk/metric v1.47.0
 	go.opentelemetry.io/otel/trace v1.47.0
-	go.yaml.in/yaml/v3 v3.0.5
+	go.yaml.in/yaml/v3 v3.0.6
 	golang.org/x/crypto v0.58.0
 	golang.org/x/time v0.16.0
 	modernc.org/sqlite v1.61.1
