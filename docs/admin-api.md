@@ -6,14 +6,14 @@ The contract for every endpoint is [`../openapi/admin.yaml`](../openapi/admin.ya
 
 ## Overview
 
-- **Always enabled.** The Admin API has no on/off switch. Every Kerberos instance serves it on the admin port. Kerberos reads `admin.yaml` from the OpenAPI directory (`OAS_DIRECTORY`) at startup and fails to start if that file is missing (see [Deployment](./deployment.md)).
+- **Always on.** Every Kerberos instance serves the Admin API on the admin port. Kerberos reads `admin.yaml` from the OpenAPI directory (`OAS_DIRECTORY`) at startup (see [Deployment](./deployment.md)).
 - **Same port as the basic-auth API.** If basic authentication is configured, its API (`/api/auth/basic/...`) is served on the same admin port. The admin port's TLS settings cover both APIs.
 - **Cookie-based sessions.** You log in with a JSON request and receive `session`, `refresh` and `csrf` cookies. Every later request sends those cookies. See [Sessions](./sessions.md).
 - **Two kinds of identity:**
   - The **superuser**: a single built-in account that has every permission.
   - **Admin users**: accounts you create. They get permissions only through the **admin groups** they belong to.
 
-Admin users, admin groups and the superuser are separate from the users and groups of basic-auth organisations described in [Organisations](./organizations.md). An admin user cannot log in to a backend through the gateway, and an organisation user cannot log in to the Admin API.
+Admin users, admin groups and the superuser are separate from the users and groups of basic-auth organisations described in [Organisations](./organizations.md). Admin accounts log in to the Admin API, and organisation users log in to reach backends through the gateway.
 
 ## Configuration
 
@@ -56,15 +56,15 @@ The authoritative schema is [`internal/config/schemas/admin_schema.json`](../int
 
 ## The superuser
 
-### Bootstrap
+### First start
 
 When Kerberos starts and its database has no superuser, it creates one from `admin.superUser.clientId` and `admin.superUser.clientSecret`. If you leave those keys out, the defaults from the [Configuration](#configuration) table are used.
 
-After that, **Kerberos ignores these settings.** Changing `clientId` or `clientSecret` in the configuration and restarting does not change the superuser's name or password. The values in the database are used from then on. To get new bootstrap values applied, you would have to start with an empty database.
+From then on, the superuser's name and password live in the database. To change the password, use the API as shown below.
 
-### Change the password immediately
+### Change the password straight away
 
-The default credentials are public. As soon as Kerberos has started for the first time, log in as the superuser and change the password:
+As soon as Kerberos has started for the first time, log in as the superuser and change the password:
 
 ```bash
 curl -i -c su.jar -b su.jar -X POST http://localhost:30001/api/admin/superuser/login \
@@ -76,14 +76,14 @@ curl -i -c su.jar -b su.jar -X PUT http://localhost:30001/api/admin/superuser/pa
   -d '{"oldPassword": "secret", "newPassword": "a-long-random-passphrase"}'
 ```
 
-A successful change returns `204`. A wrong `oldPassword` returns `400`. The superuser's name (`clientId`) cannot be changed through the API.
+A successful change returns `204`. A wrong `oldPassword` returns `400`. The superuser's name (`clientId`) stays as it was set on the first start.
 
 ### What the superuser can do
 
 - The superuser holds **every permission**, including permissions added to Kerberos in the future. Permission checks always pass for the superuser.
-- It logs in, refreshes and logs out through its own endpoints: `/api/admin/superuser/login`, `/api/admin/superuser/refresh` and `/api/admin/superuser/logout`. It cannot use `/api/admin/login`.
+- It logs in, refreshes and logs out through its own endpoints: `/api/admin/superuser/login`, `/api/admin/superuser/refresh` and `/api/admin/superuser/logout`.
 - `POST /api/admin/superuser/logout` ends **all** superuser sessions, not only the one making the request. Anyone else logged in as the superuser is logged out too.
-- The superuser does not appear in `GET /api/admin/users`, and you cannot fetch, rename, delete or regroup it through the `/api/admin/users/...` endpoints.
+- The superuser is managed through its own endpoints, so it does not appear in `GET /api/admin/users`.
 - `GET /api/admin/me` returns `{"isSuperuser": true}` with no `user` object for a superuser session.
 - On the basic-auth API, a superuser session has full access to every organisation. See [Organisations](./organizations.md).
 
@@ -91,9 +91,9 @@ Use the superuser to set up admin groups and admin users, then use those account
 
 ## Admin users and admin groups
 
-An **admin user** has a username and a password. Usernames are unique, and they share one namespace with the superuser: you cannot create an admin user with the superuser's name (`409`). Use long, random passwords.
+An **admin user** has a username and a password. Usernames are unique, and the superuser's name is taken too (`409`). Use long, random passwords.
 
-An **admin group** has a unique name and a set of permissions. Groups are the only way to give an admin user permissions. A user with no groups can log in, read `/api/admin/me` and `/api/admin/permissions`, and manage their own account, but nothing else.
+An **admin group** has a unique name and a set of permissions. Groups are the only way to give an admin user permissions. A user with no groups can log in, read `/api/admin/me` and `/api/admin/permissions`, and manage their own account.
 
 ### Permissions
 
@@ -111,8 +111,8 @@ The set of permissions is fixed. Their IDs are stable and are the same on every 
 
 ### How effective permissions are computed
 
-- A user's permissions are the **union** of the permissions of all groups they belong to. There are no deny rules.
-- Permissions are looked up **on every request**, not when the user logs in. Adding a user to a group, removing them from one, changing a group's permissions or deleting a group takes effect on the user's next request. The user does not need to log in again.
+- A user has every permission granted by any of their groups.
+- Permissions are looked up **on every request**. Adding a user to a group, removing them from one, changing a group's permissions or deleting a group takes effect on the user's next request. The user does not need to log in again.
 - Every admin user can read and rename their own account and change their own password, whatever their permissions.
 - Deleting an admin user ends all of that user's sessions straight away.
 - Deleting a group removes its memberships. Its members lose the permissions it granted.
@@ -125,7 +125,7 @@ Kerberos checks each request to `/api/admin/...` in this order. The first check 
 
 1. **Origin (CORS).** A disallowed `Origin` returns `403`. See [CORS](./cors.md).
 2. **Request validation.** The request is checked against [`admin.yaml`](../openapi/admin.yaml): required body fields, field types, empty strings where `minLength: 1` applies, integer path parameters, and so on. A failure returns `400`. For example, `GET /api/admin/users/abc` returns `400` because `userID` must be an integer.
-3. **CSRF.** A non-`GET` request that has an `Origin` header must send a matching `X-Krb-Csrf-Token` header, or it gets `403`. The two login endpoints are exempt. Requests without an `Origin` header, such as those from curl or server-side clients, are not checked. See [Sessions](./sessions.md).
+3. **CSRF.** A non-`GET` request that has an `Origin` header must send a matching `X-Krb-Csrf-Token` header, or it gets `403`. The two login endpoints are exempt. See [Sessions: CSRF protection](./sessions.md#csrf-protection).
 4. **Session.** Every endpoint except `POST /superuser/login`, `/login`, `/superuser/refresh` and `/refresh` needs a valid, unexpired `session` cookie, or it gets `401`.
 5. **Permission.** A logged-in caller without the required permission gets `403`.
 
@@ -137,12 +137,7 @@ Errors have this body:
 
 ### Sessions
 
-- Session lifetimes and the refresh window are documented in [Sessions](./sessions.md#refreshing-a-session).
-- A refresh replaces the session and refresh token and issues new cookies. After the refresh window, log in again.
-- Admin users refresh at `POST /api/admin/refresh`. The superuser refreshes at `POST /api/admin/superuser/refresh`. The `refresh` cookie is scoped to that path.
-- `POST /api/admin/logout` ends only the current session.
-
-Cookie attributes, the CSRF double-submit flow, and the cookie-name clash with the basic-auth API (both use a cookie named `session`) are covered in [Sessions](./sessions.md).
+Logins, refresh, logout, cookies and CSRF are covered in [Sessions](./sessions.md).
 
 ## Endpoint reference
 
@@ -154,7 +149,7 @@ All paths are relative to `/api/admin` on the admin port. "Any session" means an
 | --- | --- | --- | --- |
 | `POST /superuser/login` | public | `{"clientId", "clientSecret"}` | `204` + cookies; `401` wrong credentials |
 | `POST /superuser/logout` | superuser | none | `204` ends all superuser sessions; `403` if caller is not the superuser |
-| `POST /superuser/refresh` | superuser refresh cookie | none | `204` + new cookies; `401` missing, unknown or too old refresh token; `403` token belongs to an admin user |
+| `POST /superuser/refresh` | superuser refresh cookie | none | `204` + new cookies; `401` missing, unknown or expired refresh token; `403` token belongs to an admin user |
 | `PUT /superuser/password` | superuser | `{"oldPassword", "newPassword"}` | `204`; `400` wrong old password; `403` not the superuser |
 
 ### Admin-user session
@@ -163,7 +158,7 @@ All paths are relative to `/api/admin` on the admin port. "Any session" means an
 | --- | --- | --- | --- |
 | `POST /login` | public | `{"username", "password"}` | `204` + cookies; `401` unknown user or wrong password |
 | `POST /logout` | any session | none | `204` ends the current session |
-| `POST /refresh` | admin-user refresh cookie | none | `204` + new cookies; `401` missing, unknown or too old refresh token |
+| `POST /refresh` | admin-user refresh cookie | none | `204` + new cookies; `401` missing, unknown or expired refresh token |
 
 ### Me and permissions
 
@@ -186,7 +181,7 @@ All paths are relative to `/api/admin` on the admin port. "Any session" means an
 
 `PUT /users/{userID}/groups` sets the **complete** list of groups. Groups that are not in `groupIDs` are removed, and `{"groupIDs": []}` removes the user from every group.
 
-`PUT /users/{userID}/password` always requires the user's current password, even when an `admin-user-mgmt-admin` changes someone else's password. Administrators cannot reset a forgotten password. Delete and re-create the user instead.
+`PUT /users/{userID}/password` takes the user's current password, also when an `admin-user-mgmt-admin` changes someone else's password. If a user forgets their password, delete the user and create it again.
 
 ### Admin groups
 
@@ -198,7 +193,7 @@ All paths are relative to `/api/admin` on the admin port. "Any session" means an
 | `PUT /groups/{groupID}` | `admin-user-mgmt-admin` | `{"name", "permissionIDs": [int]}` | `204`; `404`; `409` name taken |
 | `DELETE /groups/{groupID}` | `admin-user-mgmt-admin` | none | `204`; `404` |
 
-`permissionIDs` is required on both create and update. On update it **replaces** the group's permissions, so always send the full set you want. Use only IDs from the [permissions table](#permissions), with no duplicates. An unknown or repeated ID makes the request fail with `500` (see [Things to know](#things-to-know)).
+`permissionIDs` is required on both create and update. On update it **replaces** the group's permissions, so always send the full set you want. Use IDs from the [permissions table](#permissions), each once.
 
 ### Flow and OAS
 
@@ -285,7 +280,7 @@ curl -s -c alice.jar -b alice.jar http://localhost:30001/api/admin/me
 {"isSuperuser": false, "user": {"id": 2, "username": "alice", "groups": [{"id": 1, "name": "operators"}]}}
 ```
 
-Alice can now call `GET /api/admin/flow`. A call to `GET /api/admin/users` returns `403` because she lacks `admin-user-mgmt-viewer`. She should change her password straight away with `PUT /api/admin/users/2/password`.
+Alice can now call `GET /api/admin/flow`. A call to `GET /api/admin/users` returns `403` because her groups do not grant `admin-user-mgmt-viewer`. Alice should change the password straight away with `PUT /api/admin/users/2/password`.
 
 ## Inspecting the flow
 
@@ -311,7 +306,7 @@ Alice can now call `GET /api/admin/flow`. A call to `GET /api/admin/users` retur
 ]
 ```
 
-The response reflects the configuration Kerberos loaded at startup. Secrets such as TLS key paths and database credentials are not included.
+The response shows the configuration Kerberos loaded at startup. Secrets such as TLS key paths and database credentials are left out.
 
 ## Inspecting a backend's OpenAPI specification
 
@@ -321,8 +316,8 @@ The response reflects the configuration Kerberos loaded at startup. Secrets such
 curl -s -b alice.jar http://localhost:30001/api/admin/oas/echo
 ```
 
-- The file is read from disk on each request and returned as-is, with `Content-Type: application/yaml`, even if the file is JSON. If the file has changed since startup, you see the new content, but validation still uses the version loaded at startup.
-- The full file is returned even if `validateBody` is turned off for the backend.
+- The file is returned as it is on disk, with `Content-Type: application/yaml`.
+- The full file is returned, whatever the backend's `validateBody` setting.
 - A backend with no OAS mapping, or a deployment with no `oas` section, returns `404`.
 
 ## Admin access to the basic-auth API
@@ -332,11 +327,11 @@ Admin sessions also work on the basic-auth API (`/api/auth/basic/...`, also on t
 - The superuser and users with `basic-auth-org-admin` have full access to every organisation. Only admin sessions can create, list or rename organisations.
 - Users with `basic-auth-org-viewer` can make `GET` requests on every organisation. Other methods return `403`.
 
-Both APIs use a cookie named `session`. If one browser logs in to both APIs on the same host, the second login replaces the first cookie. [Sessions](./sessions.md) describes how to avoid this, and [Organisations](./organizations.md) describes the basic-auth API itself.
+See [Keep admin and organisation logins apart](./sessions.md#keep-admin-and-organisation-logins-apart) for using both kinds of login, and [Organisations](./organizations.md) for the basic-auth API itself.
 
 ## Go client
 
-Go programs can use the generated client in `github.com/trebent/kerberos/pkg/admin/client`, built from [`admin.yaml`](../openapi/admin.yaml). It provides `NewClient` and `NewClientWithResponses`, which returns typed response bodies, along with the options `WithHTTPClient`, `WithRequestEditorFn` and `WithBaseURL`. Session cookies are not handled for you: pass an `http.Client` with a cookie jar.
+Go programs can use the generated client in `github.com/trebent/kerberos/pkg/admin/client`, built from [`admin.yaml`](../openapi/admin.yaml). It provides `NewClient` and `NewClientWithResponses`, which returns typed response bodies, along with the options `WithHTTPClient`, `WithRequestEditorFn` and `WithBaseURL`. Pass an `http.Client` with a cookie jar so it keeps the session cookies.
 
 ```go
 package main
@@ -383,13 +378,12 @@ The standard Go cookie jar sends `Secure` cookies over plain `http://` only to `
 
 ## Things to know
 
-- **Bootstrap credentials apply once.** Editing `admin.superUser` after the first start has no effect. Change the password with `PUT /api/admin/superuser/password`.
+- **The superuser settings are used on the first start.** Afterwards, change the password with `PUT /api/admin/superuser/password`.
 - **Superuser logout ends every superuser session.**
 - **Deleting an admin user ends that user's sessions.**
-- **Admins cannot reset another user's password** without knowing the old one.
-- **Renaming a user that does not exist** (`PUT /users/{userID}` with an unknown ID) returns `204` and changes nothing.
-- **Group writes are not all-or-nothing.** An unknown or duplicate ID in `permissionIDs` returns `500`. On `POST /groups` the group has already been created at that point, with no permissions. On `PUT /groups/{groupID}` the new name has already been saved. Check the result with `GET /groups` and correct it. `PUT /users/{userID}/groups` with an unknown group ID also returns `500`, but in that case nothing changes.
-- **Sessions are stored in the database**, so a restart keeps them, and replicas that share a database (PostgreSQL) share them. Debug-session capture state is held in memory. See [Admin debugging](./admin-debugging.md).
+- **Password changes take the old password.** To replace a forgotten password, delete the user and create it again.
+- **Check group changes.** After creating or updating a group, confirm the result with `GET /groups`.
+- **Sessions are stored in the database**, so a restart keeps them, and replicas that share a database (PostgreSQL) share them. See [Debug sessions](./admin-debugging.md) for how debug recording works across instances.
 
 ## Related docs
 

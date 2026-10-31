@@ -4,7 +4,7 @@ These pages are for people who change Kerberos itself. You do not need them to d
 
 ## Before you write code
 
-Read the design rules in [`.github/skills/design/SKILL.md`](../../.github/skills/design/SKILL.md). They apply to all Go code in this repository and cover DRY/KISS, Opts structs, generics, interfaces, error handling, constructors and context propagation. Then read the user docs for the area you are changing. [How a request travels](../README.md#how-a-request-travels) is the best overview of the system.
+Read the design rules in [`.github/skills/design/SKILL.md`](../../.github/skills/design/SKILL.md). They apply to all Go code in this repository and cover DRY/KISS, Opts structs, generics, interfaces, error handling, constructors and context propagation. Then read the user docs for the area you are changing. [Routing: request lifecycle](../routing.md#request-lifecycle) is the best overview of the system.
 
 ## Internals
 
@@ -54,9 +54,7 @@ The `security` and `connector` suites follow the same pattern (`make compose/<su
 
 ## Keeping the docs current
 
-If your change alters behaviour that a user can see, such as a config key, a status code, a header or a default, update the matching page under `docs/` in the same pull request. The user docs describe actual behaviour, so keep them in step with the code.
-
-Each setting is documented in exactly one place, so a change only needs one doc edit:
+If your change alters behaviour that a user can see, such as a config key, a status code, a header or a default, update the matching page under `docs/` in the same pull request. Each setting is documented in one place, so a change usually needs one doc edit:
 
 | What changed | The page to update |
 | --- | --- |
@@ -64,15 +62,6 @@ Each setting is documented in exactly one place, so a change only needs one doc 
 | A key inside a config section or shared object | The page listed for it in [Configuration: root keys](../configuration.md#root-keys) |
 | A Kerberos environment variable | [`deployment.md`](../deployment.md#environment-variables) |
 | An admin-connector config key or environment variable | [`admin-connector.md`](../admin-connector.md) |
+| An echo environment variable | [`echo.md`](../echo.md#configuration) |
 
-Other pages must link to that page rather than repeat a key's type, allowed values or default. Examples may use concrete values, but a sentence such as "the default is X" belongs only on the owning page.
-
-Unit tests enforce this, so `make test/unit` fails when the docs drift:
-
-| Test | Checks |
-| --- | --- |
-| `TestDocsRootKeys` (`internal/config`) | Every top-level key in `config_schema.json` has a row in the root keys table, linked to its page. |
-| `TestDocsSchemaKeys` (`internal/config`) | Every key in the schemas is mentioned on the page that owns it. The page owners are listed in `docOwners` and `sharedOwners` in `internal/config/docs_test.go`; update them when you add a section. |
-| `TestDocsDefaults` (`internal/config`) | The defaults stated in the owning pages' tables match `config.NewKerberos()` and `PostProcess()`. Add a row when you add a default. |
-| `TestDocsExamples` (`internal/config`) | Every JSON config example under `docs/` loads with the real config loader. |
-| `TestEnvDocs` (`.` and `cmd/admin-connector`) | Every registered environment variable has a row in its page's table, with the default from the code. |
+Other pages link to that page rather than repeat a key's type, allowed values or default. Add any new page to the index in [`docs/README.md`](../README.md#pages).

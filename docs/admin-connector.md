@@ -20,27 +20,26 @@ Browser ──(session cookie)──> admin-connector :30100 ──> internal to
 
 For every request, the connector:
 
-1. Handles origins first, if `origins` is configured (see [Origins](#origins)). A CORS preflight (`OPTIONS` with an allowed `Origin`) is answered with `204` here and never needs a session.
+1. Handles origins first, if `origins` is configured (see [Origins](#origins)). A browser's preflight request (`OPTIONS` with an allowed `Origin`) is answered with `204` here and needs no session.
 2. Reads the `session` cookie. If there is none, it answers `401`.
 3. Looks the session up directly in the Kerberos database. It accepts the request only if the value matches an **Admin API session** (an admin user or the superuser) that has not expired. Otherwise it answers `401`.
 4. Forwards the request to `TARGET` and returns the target's response as is.
 
 Things to know about the check:
 
-- **Admin logins only.** Any valid admin user or superuser session is accepted.
-- **Organisation user sessions are not accepted.** A `session` cookie from a basic-auth (organisation) login gets `401`, even though the cookie has the same name.
-- **The connector does not talk to Kerberos.** It only reads the shared database, so it must point at the same database as Kerberos (see [Persistence](#persistence)).
-- **The connector never refreshes sessions.** Admin sessions last 15 minutes. When the session expires, the tool behind the connector starts answering `401` until the user refreshes the session or logs in again on the Admin API. See [Sessions](./sessions.md).
+- **Admin logins only.** Any valid admin user or superuser session is accepted. Sessions from organisation (basic-auth) logins get `401`.
+- **Shared database.** The connector reads sessions from the Kerberos database, so it must use the same database as Kerberos (see [Persistence](#persistence)).
+- **Sessions are refreshed on the Admin API.** When an admin session expires, the user refreshes it or logs in again on the Admin API. See [Sessions](./sessions.md).
 
 ### What is forwarded
 
 The request reaches the target with the same method, path, query string, body and headers, including the `Cookie` header. Differences from the original request:
 
 - The `Host` header is set to the target's host.
-- Any incoming `X-Forwarded-For`, `X-Forwarded-Host`, `X-Forwarded-Proto` and `Forwarded` headers are removed, and the connector does not add new ones.
+- Incoming `X-Forwarded-For`, `X-Forwarded-Host`, `X-Forwarded-Proto` and `Forwarded` headers are removed.
 - When observability is enabled, trace context headers (`traceparent`) are added so the target can join the trace.
 
-Requests go to the target over plain HTTP (see [Limitations](#limitations)).
+The connector reaches the target over HTTP, so keep the connector and the target on the same private network.
 
 ### Responses from the connector
 
@@ -57,7 +56,7 @@ All other responses come from the target.
 
 ## Getting the session cookie
 
-The connector does not have a login page. Users log in on the Admin API (on the Kerberos admin port), and the browser then sends the resulting `session` cookie to the connector:
+Users log in on the Admin API (on the Kerberos admin port), and the browser then sends the resulting `session` cookie to the connector:
 
 1. Open the admin login in the browser on the **same host name** that the connector uses, for example `https://ops.example.com:30001` for a connector at `https://ops.example.com:30100`.
 2. Log in as an admin user (`POST /api/admin/login`) or as the superuser (`POST /api/admin/superuser/login`).
@@ -66,8 +65,8 @@ The connector does not have a login page. Users log in on the Admin API (on the 
 This works because browsers do not separate cookies by port: a cookie set by `ops.example.com:30001` is also sent to `ops.example.com:30100`. Keep these points in mind:
 
 - **Different host names.** If the connector has its own host name (for example `jaeger.example.com` while the Admin API is at `admin.example.com`), set `admin.api.cookies.domain` in the Kerberos configuration to a shared parent domain such as `example.com`. See [Cookie configuration](./sessions.md#cookie-configuration).
-- **HTTPS.** Kerberos cookies are always `Secure`, so browsers only send them over HTTPS, except to `localhost`. Serve the connector over HTTPS (with the `tls` block or a TLS-terminating proxy) unless you reach it as `localhost`. See [The Secure flag needs HTTPS](./sessions.md#the-secure-flag-needs-https).
-- **Organisation logins overwrite the admin cookie.** Logging in as an organisation user on the same host replaces the admin `session` cookie, and the connector then answers `401`. See [Admin and basic-auth sessions share the `session` cookie](./sessions.md#admin-and-basic-auth-sessions-share-the-session-cookie).
+- **HTTPS.** Kerberos cookies are always `Secure`, so browsers only send them over HTTPS, except to `localhost`. Serve the connector over HTTPS (with the `tls` block or a proxy that handles HTTPS) unless you reach it as `localhost`. See [The Secure flag needs HTTPS](./sessions.md#the-secure-flag-needs-https).
+- **Use one login per browser.** Admin and organisation logins use the same `session` cookie name, so log in as an admin user in the browser you use for the connector. See [Keep admin and organisation logins apart](./sessions.md#keep-admin-and-organisation-logins-apart).
 
 From the command line, use a cookie jar:
 
@@ -99,7 +98,7 @@ The image is `ghcr.io/trebent/kerberos/admin-connector`. Tags:
 | `latest` | The most recent release. |
 | `unstable` | The latest build from the `main` branch. |
 
-The image is based on distroless (no shell), runs as a non-root user, exposes port 30100 and uses `/connector` as its entrypoint, so you only pass the flags:
+The image is built on a minimal base image, runs as a non-root user, exposes port 30100 and uses `/connector` as its entrypoint, so you only pass the flags:
 
 ```bash
 docker run --rm -p 30100:30100 \
@@ -163,7 +162,6 @@ The configuration file is JSON. Its schema is [`internal/config/schemas/connecto
 | `persistence` | object | yes | The Kerberos database. Must be the same database Kerberos uses. |
 | `origins` | object | no | Which browser origins may call the connector. Not set means no origin handling. |
 | `tls` | object | no | HTTPS for the connector's own port. Not set means plain HTTP. |
-| `targetTls` | object | no | Intended for HTTPS to the target, but not usable yet (see [Limitations](#limitations)). |
 
 ### Persistence
 
@@ -180,13 +178,13 @@ The `persistence` block has the same format as in the Kerberos configuration, an
 
 - With SQLite, the connector and Kerberos must open the same file, which in practice means the same host and a shared volume.
 - With PostgreSQL, point both at the same server and database. `address` must be `host:port`.
-- The connector does not create tables. Start Kerberos against the database at least once before starting the connector.
+- Kerberos creates the tables. Start Kerberos against the database once before you start the connector.
 
 See [Persistence](./persistence.md) for all keys and [Sharing the database with admin-connector](./persistence.md#sharing-the-database-with-admin-connector).
 
 ### Origins
 
-`origins` uses the same format and modes as everywhere else in Kerberos (`allowedOrigins`, `allowAll` or `denyAll`); see [Origins and CORS](./cors.md). It only matters for requests that carry an `Origin` header. A browser opening the tool as a normal page usually sends `Origin` on its `POST` and similar requests, so if the tool's pages make such requests, `denyAll` blocks them with `403`. In that case, list the connector's own origin, for example:
+`origins` uses the same format and modes as everywhere else in Kerberos (`allowedOrigins`, `allowAll` or `denyAll`); see [Origins and CORS](./cors.md). It applies to requests that carry an `Origin` header. Browsers send `Origin` on `POST` and similar requests from the tool's own pages, so for tools that make such requests, list the connector's own origin, for example:
 
 ```json
 {
@@ -202,12 +200,8 @@ See [Persistence](./persistence.md) for all keys and [Sharing the database with 
 | --- | --- | --- |
 | `tls.serverCertFile` | string | PEM certificate for the connector's port. Required when `tls` is set. |
 | `tls.serverKeyFile` | string | PEM private key for that certificate. Required when `tls` is set. |
-| `targetTls.rootCAFile` | string | CA bundle used to verify the target's certificate (`""` means the system pool). Not usable yet, see below. |
-| `targetTls.insecureSkipVerify` | boolean | Turns off verification of the target's certificate. Not usable yet, see below. |
 
 When both `tls` paths are set to non-empty values, the connector serves only HTTPS on `PORT`. Otherwise it serves plain HTTP. See [TLS](./tls.md) for how Kerberos loads certificates.
-
-The configuration schema currently rejects any `targetTls` block, so the connector always reaches its target over plain HTTP (see [Limitations](#limitations)).
 
 ## Example: Jaeger behind the connector with Docker Compose
 
@@ -273,19 +267,15 @@ When `OBSERVABILITY_ENABLED` is `true`, the connector exports these counters:
 | `admin_connector_calls_denied_total` | Requests rejected with `401`. |
 | `admin_connector_callout_failures_total` | Forwarded requests that failed and were answered with `502`. |
 
-Requests rejected by `origins` and preflights answered by the connector are not counted.
-
 For each request that reaches the session check, the connector starts a server span named `<METHOD> <URL>`, for example `GET /search?service=kerberos`, with the HTTP method and URL as attributes. The span continues an incoming trace when the request carries trace headers, and the trace context is passed on to the target. Denied requests end with an error status.
 
 Each request is also logged with its method, path and status code.
 
-## Limitations
+## Things to know
 
-- **`targetTls` cannot be used yet.** The configuration schema rejects every `targetTls` block, whatever it contains, so the connector refuses to start with one. The connector therefore always reaches its target over plain HTTP. Keep the connection between the connector and the target on a private network.
 - **One target per connector.** Run one connector per tool, each on its own port or host name.
-- **Short timeouts by default.** The write timeout (`WRITE_TIMEOUT_SECONDS`, see [Environment variables](#environment-variables)) also limits how long the target may take to answer. Raise it for slow queries, and do not expect long-lived streaming responses to work.
-- **No session refresh.** Sessions expire (see [Sessions](./sessions.md#server-side-session-lifetime)) and must be refreshed on the Admin API.
-- **No `X-Forwarded-*` headers.** The target does not learn the client address or the original host and scheme. Tools that build absolute URLs from those headers may need their external URL configured explicitly.
+- **Timeouts.** `WRITE_TIMEOUT_SECONDS` (see [Environment variables](#environment-variables)) also covers the time the target takes to answer. Raise it for tools with slow queries.
+- **External URLs.** If a tool builds links from its own address, set the tool's external URL to the connector's address.
 
 ## Related docs
 

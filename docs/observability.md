@@ -32,20 +32,20 @@ The `observability` section of the configuration file is optional.
 | `enabled` | boolean | `true` | Turns metrics and tracing on or off for the whole process (gateway and admin API). |
 | `runtimeMetrics` | boolean | `true` | Also export Go runtime metrics (memory, goroutines, GC goal). Has no effect when `enabled` is `false`. |
 
-Leaving the section out, or writing `"observability": {}`, gives you both defaults (`true`). No other keys are accepted. The schema is [`internal/config/schemas/observability_schema.json`](../internal/config/schemas/observability_schema.json).
+Leaving the section out, or writing `"observability": {}`, gives you both defaults (`true`). The schema is [`internal/config/schemas/observability_schema.json`](../internal/config/schemas/observability_schema.json).
 
 ### What `enabled: false` changes
 
 When observability is disabled:
 
-- No metrics or spans are recorded and no exporter is started. All `OTEL_*` environment variables are ignored, and the Prometheus metrics endpoint is not opened.
-- Kerberos does not create its own span and does not write a new `traceparent` header into backend requests. Trace headers sent by the client are still forwarded to the backend unchanged, because Kerberos forwards request headers as-is.
+- No metrics or traces are recorded and no exporter is started. `OTEL_*` environment variables have no effect, and the Prometheus metrics endpoint stays closed.
+- Trace headers sent by the client are forwarded to the backend unchanged, like any other request header.
 - The observability component (`obs`) no longer appears in the flow returned by the admin flow inspection endpoint (see [Admin API](./admin-api.md)).
 
 It does not turn off:
 
 - Request logging. Each gateway request is still logged, and the log format changes slightly (see [Logging](#logging)).
-- [Debug sessions](./admin-debugging.md). These keep working; captured requests simply contain no `obs` transitions.
+- [Debug sessions](./admin-debugging.md). These keep working; recorded requests have no `obs` steps.
 - Routing, authentication, request validation and forwarding, which behave exactly the same.
 
 To keep the instrumentation active but stop sending data anywhere, leave `enabled` on and set `OTEL_TRACES_EXPORTER=none` and/or `OTEL_METRICS_EXPORTER=none` instead.
@@ -65,14 +65,14 @@ Kerberos uses the OpenTelemetry Go SDK's automatic exporter selection, so the us
 | `OTEL_EXPORTER_PROMETHEUS_PORT` | `9464` | Port of the Prometheus endpoint. Metrics are served at `/metrics`. |
 | `OTEL_TRACES_SAMPLER` | `parentbased_always_on` | `always_on`, `always_off`, `traceidratio`, `parentbased_always_on`, `parentbased_always_off`, `parentbased_traceidratio`. |
 | `OTEL_TRACES_SAMPLER_ARG` | - | Sampling ratio between `0` and `1` for the `*traceidratio` samplers, for example `0.1`. |
-| `OTEL_RESOURCE_ATTRIBUTES` | - | Extra resource attributes, for example `deployment.environment=prod`. `service.name` and `service.version` cannot be overridden this way (see [Tracing](#tracing)). |
+| `OTEL_RESOURCE_ATTRIBUTES` | - | Extra resource attributes, for example `deployment.environment=prod`. `service.name` and `service.version` are set by Kerberos (see [Tracing](#tracing)). |
 
 Things to know:
 
-- **Both exporters default to OTLP.** If you set nothing, Kerberos tries to push traces and metrics to `localhost:4318`. Without a receiver there, the exports fail and the SDK reports errors in the log. Either point the exporters at a receiver or set them to `none`.
-- **Prometheus endpoint in containers.** The default host `localhost` binds the metrics endpoint to the container's loopback interface, so Prometheus in another container (or on the host through a published port) cannot reach it. Set `OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0`, or the container's own service name as the example below does. The metrics port is separate from the gateway and admin ports; the Kerberos image does not declare it, so publish it yourself if Prometheus runs outside the container network.
-- **Startup fails if the metrics port is taken.** If the Prometheus endpoint cannot bind its address, or an `OTEL_*` exporter variable has an unsupported value, Kerberos logs `Failed to instrument OpenTelemetry` and exits.
-- **Sampling in production.** The default samples every trace that does not arrive with an upstream "not sampled" decision. That is convenient for development but can create significant load on your tracing backend. In production, use a ratio sampler that still respects the caller's decision:
+- **Both exporters default to OTLP.** If you set nothing, Kerberos sends traces and metrics to `localhost:4318`. Point the exporters at your receiver, or set them to `none`.
+- **Prometheus endpoint in containers.** In a container, set `OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0`, or the container's own service name as the example below does, so that Prometheus can reach the endpoint. The metrics port is separate from the gateway and admin ports; publish it if Prometheus runs outside the container network.
+- **Use a free port and valid values.** Kerberos checks the Prometheus address and the `OTEL_*` exporter values at startup, and logs `Failed to instrument OpenTelemetry` if one is wrong.
+- **Sampling in production.** By default every trace is kept, unless the caller has already decided not to sample it. That suits development. In production, keep a share of traces with a ratio sampler that still follows the caller's decision:
 
   ```sh
   OTEL_TRACES_SAMPLER=parentbased_traceidratio
@@ -134,7 +134,7 @@ scrape_configs:
 
 Because `OTEL_METRICS_EXPORTER=prometheus` is set, metrics are not pushed over OTLP; only traces go to `jaeger:4317`.
 
-The same approach works for the [echo test backend](./getting-started.md) and [admin-connector](./admin-connector.md), which read the same `OTEL_*` variables. If several of these processes run on one host, give each its own `OTEL_EXPORTER_PROMETHEUS_PORT`.
+The same approach works for the [echo test backend](./echo.md) and [admin-connector](./admin-connector.md), which read the same `OTEL_*` variables. If several of these processes run on one host, give each its own `OTEL_EXPORTER_PROMETHEUS_PORT`.
 
 ## Metrics
 
@@ -154,15 +154,15 @@ Histograms appear in Prometheus as `_bucket`, `_sum` and `_count` series (for ex
 
 Notes:
 
-- **`krb_backend="unknown"`.** The backend label is only filled in once Kerberos has matched the request to a configured backend. These responses are recorded with `krb_backend="unknown"`:
+- **`krb_backend="unknown"`.** The backend label is filled in once Kerberos has matched the request to a configured backend. These responses are recorded with `krb_backend="unknown"`:
   - `400` when the path is not of the form `/gw/backend/<name>/...` (for example a missing trailing slash);
   - `404` when no backend with that name exists;
   - `403` when the request's `Origin` is not allowed for the backend (see [CORS](./cors.md));
   - `204` answers to CORS preflight (`OPTIONS`) requests, even though the backend is known.
 
   Requests rejected later, by authentication or request validation, carry the real backend name.
-- **Duration is truncated to whole milliseconds.** A request that takes 0.9 ms is recorded as `0`, one that takes 15.7 ms as `15`. Together with the coarse buckets this makes the histogram good for spotting slow requests, not for sub-millisecond precision. For malformed paths (the `400` case above) the duration is recorded as `0`.
-- **Request size counts bytes actually read.** If a request is rejected before its body is forwarded (for example by authentication), the recorded size is `0` or only the part that was read.
+- **Duration is in whole milliseconds.** A request that takes 15.7 ms is recorded as `15`. The histogram is built for spotting slow requests.
+- **Request size counts the bytes read.** A request that is rejected before its body is forwarded (for example by authentication) records the bytes read up to that point.
 - `request_count_total` and `response_total` are recorded together, so the sum of `response_total` over status codes equals `request_count_total`.
 
 ### Admin API metrics
@@ -177,7 +177,7 @@ The admin server (`ADMIN_PORT`, including the basic-auth API under `/api/auth/ba
 | `admin_request_size_bytes` | histogram | `http_method` |
 | `admin_response_size_bytes` | histogram | `http_method` |
 
-There is no `krb_backend` label and no per-path label on admin metrics.
+Admin metrics are labelled by HTTP method and status code.
 
 ### Runtime metrics
 
@@ -221,7 +221,7 @@ histogram_quantile(
 )
 ```
 
-With buckets at 1, 10, 100, 1000 and 10000 ms the result is interpolated within a bucket, so read it as an order of magnitude rather than an exact value.
+With buckets at 1, 10, 100, 1000 and 10000 ms, read the result as a rough size rather than an exact value.
 
 Exclude unmatched traffic from any of these with `krb_backend!="unknown"`.
 
@@ -247,22 +247,20 @@ For each request under `/gw/`, Kerberos creates one span of kind `SERVER`:
 | `krb.backend` | backend name, or `unknown` in the same cases as the metric label |
 | Status | `Error` with the HTTP status text (for example `Unauthorized`) when the response status is 400 or higher, otherwise `Ok` |
 
-Kerberos does not create separate child spans for routing, authentication, validation or the outgoing backend call; the one server span covers all of it. Use [debug sessions](./admin-debugging.md) for a per-component breakdown.
+The one server span covers routing, authentication, validation and the backend call. Use [debug sessions](./admin-debugging.md) for a step-by-step breakdown.
 
-Because the span name and `http.url` contain the full path and query string, avoid putting secrets in query parameters, and expect many distinct span names if your paths contain IDs.
+The span name and `http.url` contain the full path and query string, so keep secrets out of query parameters. If your paths contain IDs, expect many different span names.
 
 ### Context propagation
 
 Kerberos uses the W3C [Trace Context](https://www.w3.org/TR/trace-context/) (`traceparent`, `tracestate`) and [Baggage](https://www.w3.org/TR/baggage/) (`baggage`) headers:
 
 - **Incoming:** if the client sends a `traceparent` header, the Kerberos span becomes its child, and with a `parentbased_*` sampler the client's sampling decision is kept.
-- **Outgoing:** when forwarding to a backend, Kerberos writes `traceparent` (and `baggage`, if present) pointing at its own span, replacing whatever the client sent. A backend that is instrumented with OpenTelemetry therefore shows up under the Kerberos span in the same trace.
-
-Kerberos does not add trace headers to the response sent back to the client.
+- **Outgoing:** when forwarding to a backend, Kerberos writes `traceparent` (and `baggage`, if present) pointing at its own span. A backend that uses OpenTelemetry therefore shows up under the Kerberos span in the same trace.
 
 ### Admin spans
 
-Requests to the admin server get the same kind of `SERVER` span, with instrumentation scope `krb-admin`, name `<METHOD> <request URI>`, the `http.method` and `http.url` attributes and the same error status rule. There is no `krb.backend` attribute. Incoming `traceparent` headers are honoured here too.
+Requests to the admin server get the same kind of `SERVER` span, with instrumentation scope `krb-admin`, name `<METHOD> <request URI>`, the `http.method` and `http.url` attributes and the same error status rule. Incoming `traceparent` headers are followed here too.
 
 ## Logging
 
@@ -279,11 +277,11 @@ Verbosity levels in use:
 | --- | --- |
 | `0` | Startup and shutdown messages, errors, and per-request messages (see below). |
 | `10` | Successful basic-auth logins (with username) and basic-auth API authorisation failures. |
-| `20` | Decisions inside middleware and components: sessions and cookies found or missing, CSRF and CORS checks, which auth method is used, OAS middleware, debug-session matching, forwarding. Useful for troubleshooting a misbehaving route. |
+| `20` | Decisions inside each step: sessions and cookies found or missing, CSRF and CORS checks, which auth method is used, OpenAPI checks, debug-session matching, forwarding. Useful for troubleshooting a route. |
 | `50` | Authentication and authorisation steps for each gateway request, and completion of each backend call. |
 | `100` | Very verbose: every response header copied from the backend, each response write, and configuration parsing details. |
 
-> Levels above `0` are meant for troubleshooting. Do not use high levels such as `100` in production.
+> Levels above `0` are for troubleshooting. Keep production at `0`.
 
 ### Per-request log lines
 
@@ -293,9 +291,9 @@ Every gateway request produces a summary line at level `info` once the response 
 GET /gw/backend/echo/hello 200
 ```
 
-The message is `<METHOD> <original path> <status>`; the query string is not included. Each line carries an `http.path` field with the original path. At verbosity `0` you will also see short messages from the components the request passed through, such as `Routing request`, `Authorizing request` (when [authentication](./authentication.md) is configured) and `Running OAS validation` (when [request validation](./request-validation.md) is configured).
+The message is `<METHOD> <original path> <status>`. Each line carries an `http.path` field with the original path. At verbosity `0` you will also see short messages from the components the request passed through, such as `Routing request`, `Authorizing request` (when [authentication](./authentication.md) is configured) and `Running OAS validation` (when [request validation](./request-validation.md) is configured).
 
-When `observability.enabled` is `false`, the gateway logs `<METHOD> <path>` when the request arrives and `<METHOD> <path> <status>` when it completes, with the fields `path`, `method` and `http.status_code`. A request with a malformed path gets only the first line plus an error line.
+When `observability.enabled` is `false`, the gateway logs `<METHOD> <path>` when the request arrives and `<METHOD> <path> <status>` when it completes, with the fields `path`, `method` and `http.status_code`.
 
 The admin server logs the same `<METHOD> <path> <status>` line for each admin API request, whether or not observability is enabled.
 
@@ -315,11 +313,11 @@ When you scaffold a deployment with [krbctl](./krbctl.md) and choose the observa
 
 The provisioned Grafana dashboards are:
 
-- **Kerberos HTTP** (`kerberos_http.json`): request rate and request count per backend and method, responses per status code, and request duration, request size and response size buckets per HTTP method. It shows gateway metrics only, not the `admin_` metrics.
+- **Kerberos HTTP** (`kerberos_http.json`): gateway request rate and request count per backend and method, responses per status code, and request duration, request size and response size buckets per HTTP method.
 - **Kerberos runtime** (`kerberos_runtime.json`): goroutines, processor limit, memory used and limit, heap allocations, GC goal, and Prometheus exporter errors (`promhttp_metric_handler_errors_total`).
 - **Prometheus status** (`prometheus.json`): scrape duration, samples and series per target, and `target_info`.
 
-Grafana is published on port 3000. Jaeger is not added as a Grafana data source; open the Jaeger UI directly (port 16686, or through [admin-connector](./admin-connector.md) when you included it). The generated `krb.json` always contains `"observability": {"enabled": true, "runtimeMetrics": true}`; without `--obs-stack` the Compose file sets `OTEL_METRICS_EXPORTER=none` and `OTEL_TRACES_EXPORTER=none` instead.
+Grafana is published on port 3000. Open the Jaeger UI directly (port 16686, or through [admin-connector](./admin-connector.md) when you included it). The generated `krb.json` always contains `"observability": {"enabled": true, "runtimeMetrics": true}`; without `--obs-stack` the Compose file sets `OTEL_METRICS_EXPORTER=none` and `OTEL_TRACES_EXPORTER=none` instead.
 
 The dashboard JSON files can also be imported into an existing Grafana. They expect a Prometheus data source with uid `prometheus`.
 

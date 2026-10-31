@@ -135,10 +135,9 @@ if cfg.MyFeatureEnabled() {
 
 1. Add a row for the new top-level key to the root keys table in `docs/configuration.md`, linking to the page that documents the feature.
 2. Document every key, its type and its default on that page only. Other pages link there instead of repeating values.
-3. Add the page to `docOwners` in `internal/config/docs_test.go`, and add a `TestDocsDefaults` row for each default.
-4. Run `go test ./internal/config/`. The docs tests fail if a key is undocumented, a documented default differs from the code, or a JSON example in `docs/` does not load.
+3. If the section needs a new page, add it to the index in `docs/README.md`.
 
-The same applies when you add or rename a key in an existing section, or change a default: update the owning page and let the tests confirm it.
+The same applies when you add or rename a key in an existing section, or change a default: update the owning page.
 
 ---
 
@@ -165,4 +164,3 @@ The same applies when you add or rename a key in an existing section, or change 
 | `internal/config/connector.go` | The admin-connector config |
 | `internal/config/schemas/` | All schemas (one per config section, plus shared ones) |
 | `internal/config/kerberos_test.go` | Parsing, reference and validation tests |
-| `internal/config/docs_test.go` | Tests that keep `docs/` in step with the schemas and defaults |

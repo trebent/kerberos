@@ -23,9 +23,9 @@ The config file controls what Kerberos does. Process-level settings come from en
 
 ## File format
 
-- The file must be plain JSON. Comments, trailing commas, YAML and TOML are not supported.
+- The file is plain JSON, without comments or trailing commas.
 - Only the `gateway` section is required. Every other top-level section is optional.
-- Unknown keys are rejected in almost every object, so a misspelled key stops startup and does not get silently ignored. The `cookies` objects are the exception (see [Sessions: cookie configuration](./sessions.md#cookie-configuration)).
+- Unknown keys are rejected, so a misspelt key stops startup with a clear message.
 - Relative file paths in the config (TLS certificates and keys, OpenAPI specifications, the SQLite database file) are resolved against the working directory of the Kerberos process, not against the directory that holds the config file. Use absolute paths in containers.
 
 The smallest working config has one backend:
@@ -42,7 +42,7 @@ The smallest working config has one backend:
 }
 ```
 
-With this file, Kerberos forwards `/gw/backend/echo/...` on the gateway port to `http://localhost:15000/...`. Every section you leave out takes the defaults documented on its own page. Two of them matter before you expose Kerberos: the Admin API always runs and creates a superuser with well-known default credentials (see [Admin API: the superuser](./admin-api.md#the-superuser)), and data is kept in a local SQLite file (see [Persistence](./persistence.md)).
+With this file, Kerberos forwards `/gw/backend/echo/...` on the gateway port to `http://localhost:15000/...`. Every section you leave out takes the defaults documented on its own page. Two of them matter before you expose Kerberos: the Admin API always runs and creates a superuser with default credentials that you should change (see [Admin API: the superuser](./admin-api.md#the-superuser)), and data is kept in a local SQLite file (see [Persistence](./persistence.md)).
 
 ## Root keys
 
@@ -76,9 +76,9 @@ Loading happens once, at startup, in this order:
 
 1. **Resolve references.** Every `${env:...}` and `${ref:...}` reference is replaced with its value. See [References](#references).
 2. **Validate against the JSON schema.** The resolved document is checked against the schema files in [`internal/config/schemas/`](#schema-files). This step checks structure only: required keys, types, enums, ranges and unknown keys.
-3. **Apply defaults.** Kerberos fills in values for settings you left out. Each section's page lists its defaults. Some schema files also contain `default` fields; those are descriptive only and are not applied to your file.
+3. **Apply defaults.** Kerberos fills in values for settings you left out. Each section's page lists its defaults.
 
-Any failure in steps 1 or 2 stops the process with exit status 1 before it opens any port. Other problems are found later in startup, after the config has loaded: a certificate, key or OpenAPI file that is missing or invalid, or a database that cannot be reached. These also stop the process.
+Any failure in steps 1 or 2 stops the process with exit status 1 before it opens any port. Kerberos then loads certificates, keys and OpenAPI files and connects to the database. A problem there also stops the process with a message that names the cause.
 
 Because references are resolved before validation, the schema checks the final values. A port that comes from an environment variable must still be a number in range.
 
@@ -156,7 +156,7 @@ A reference inside quotes always produces a JSON string. To produce a number or 
 }
 ```
 
-Unquoted references are inserted as raw text. The file is not valid JSON until Kerberos resolves them, so editors and tools such as `jq` will report errors in it.
+Unquoted references are inserted as plain text before the file is parsed, so editors may mark them as errors. Kerberos reads them correctly.
 
 | You write | Variable value | Result | Outcome |
 | --- | --- | --- | --- |
@@ -167,30 +167,26 @@ Unquoted references are inserted as raw text. The file is not valid JSON until K
 
 Use quotes for strings and leave them off for numbers and booleans. The same rule applies to `${ref:...}`. If you reference a numeric field, leave the reference unquoted.
 
-### Things to know about references
+### Rules for references
 
-- **A reference must be the whole value.** You cannot build a value from a reference plus other text.
-  - `"host": "orders-${env:ENV}"` fails at startup with a JSON error such as `invalid character '$' after object key:value pair`.
-  - `"host": "${env:ENV}-orders"` does **not** fail. The text after the reference is silently dropped, so the result is just the value of `ENV`. Put the full value in the variable instead.
-- **Restricted characters in names and defaults.** Variable names and default values can contain only letters, digits and `_`. A default that contains anything else, such as `.`, `/`, `-` or a space, fails with `malformed env var reference`. For example, `${env:DB_PATH:/data/krb.db}` and `${env:HOST:db.example.com}` both fail. Set such values through the variable itself and leave out the default.
-- **A colon ends the default.** `${env:KRB_DB_ADDRESS:postgres:5432}` does not default to `postgres:5432`. The default becomes `postgres` and `:5432` is dropped without an error. You cannot give a `host:port` value as a default.
-- **Field references have no default.** `${ref:path:default}` is treated as a path containing `:default` and fails with `referenced path was not found`.
-- **Field references point at single values only.** A field reference can copy a string, number or boolean. A path to an object or an array, such as `${ref:gateway.router}`, fails with `referenced path was not found`.
-- **Do not create circular references.** Keep reference chains short and acyclic.
-- **Keep log verbosity low in production.** At `LOG_VERBOSITY` 100 or more, Kerberos logs every step of reference resolution. Use it only for local troubleshooting.
-- **There is no way to write a literal `${env:...}` or `${ref:...}` string.** Any string value that starts with one of these prefixes is treated as a reference.
+- **A reference is the whole value.** Put the full value in the variable, for example `"host": "${env:ORDERS_HOST}"` rather than `"host": "orders-${env:ENV}"`.
+- **Defaults are simple words.** A default can contain letters, digits and `_`, for example `${env:KRB_SUPERUSER_ID:admin}`. For values such as paths, host names or `host:port`, set the variable itself.
+- **Field references copy single values.** A field reference copies a string, number or boolean, and has no default.
+- **Keep reference chains short**, and do not let a reference point back to itself.
+- **Strings that start with `${env:` or `${ref:` are references.**
+
+At `LOG_VERBOSITY` 100 or more, Kerberos logs every step of reference resolution. Use it for local troubleshooting only.
 
 ## Validation errors
 
-When the resolved file breaks the schema, startup fails with one error that lists every problem as `<field path> - <description>`. Kerberos logs the error and then exits. With the default structured logging, the log line looks like this:
+When the resolved file breaks the schema, startup fails with one error that starts with `schema validation failed` and lists every problem as `<field path> - <description>`, for example:
 
-```json
-{"level":"error","err":"schema validation failed: %!w(<nil>), gateway.router.backends.0.port - Invalid type. Expected: integer, given: string","name":"krb","msg":"Failed to set up configuration"}
+```text
+gateway.router.backends.0.port - Invalid type. Expected: integer, given: string
 ```
 
-Notes on reading these messages:
+Reading these messages:
 
-- Every message starts with `schema validation failed: %!w(<nil>), `. The `%!w(<nil>)` fragment is a formatting artefact and does not mean anything. The real problems follow it.
 - Field paths use `.` for array indexes (`backends.0.port`), unlike `${ref:...}` paths, which use `[0]`. `(root)` means the top level of the file.
 - Problems with an `origins` object (for example `allowAll` together with `allowedOrigins`) can show up as several lines, including `Must validate "then" as "if" was valid`. Look for the line that names a specific key.
 
@@ -333,7 +329,7 @@ Section by section:
 - **`order`**: authentication (`1`) runs before validation (`100`). See [Routing: pipeline order](./routing.md#pipeline-order).
 - **`oas`**: requests to `orders` are validated against its OpenAPI file, including bodies. See [Request validation](./request-validation.md).
 - **`observability`**: exporters are configured with `OTEL_*` variables (see [Observability](./observability.md)).
-- **`persistence`**: `KRB_DB_ADDRESS` must be `host:port`, for example `postgres.internal:5432`. It has no fallback because a reference default cannot contain `:` or `.` (see [Things to know about references](#things-to-know-about-references)). See [Persistence](./persistence.md).
+- **`persistence`**: `KRB_DB_ADDRESS` must be `host:port`, for example `postgres.internal:5432`. See [Persistence](./persistence.md).
 
 To run it, set the variables the file needs:
 
@@ -348,12 +344,12 @@ kerberos --config /etc/kerberos/config.json
 ## Things to know
 
 - **Keep backend names in step.** Backend names in `auth.scheme.mappings` and `oas.mappings` must match a router backend exactly. Use `${ref:gateway.router.backends[n].name}` for these names, and check the flow with the admin API after changes (see [Admin API](./admin-api.md)).
-- **Some effective defaults differ from the schema files.** The `default` fields in the schemas are not applied. Rely on the section pages, and write values such as `order` and `validateBody` out explicitly.
-- **The config is read only at startup.** Restart Kerberos to apply changes.
+- **Defaults are listed on each section's page.** Write values such as `order` and `validateBody` out in full so the file is easy to read.
+- **The config is read at startup.** Restart Kerberos to apply changes.
 
 ## Schema files
 
-The JSON Schema (draft-07) files under `internal/config/schemas/` are the authoritative reference for every key, type, enum, range and required field. Kerberos embeds them in the binary at build time.
+The JSON Schema (draft-07) files under `internal/config/schemas/` are the full reference for every key, type, enum, range and required field. Kerberos embeds them in the binary at build time.
 
 | File | Covers | Documented in |
 | --- | --- | --- |

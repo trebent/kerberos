@@ -67,12 +67,11 @@ When an organisation is created, Kerberos also creates its administrator in the 
   `adminPassword` field of the create response. It is stored only as a hash and cannot be retrieved
   later. Store it securely straight away.
 
-This is the only user with administrator rights in the organisation. The API has no way to create
-another administrator or to promote a user. If the administrator account is deleted, only platform
-administrators can manage the organisation afterwards.
+This is the user with administrator rights in the organisation. Keep the account: platform
+administrators can manage the organisation at any time, but the organisation administrator is the
+one account inside the organisation that can manage it.
 
-Renaming the organisation does not rename the administrator: it keeps its original
-`admin-<oldname>` username.
+The administrator keeps its `admin-<name>` username if the organisation is renamed later.
 
 ### Regular users
 
@@ -99,7 +98,7 @@ organisation's ID gets `403`, whatever the role.
 | View a user's groups | yes | yes | any user | self |
 | Set a user's groups | yes | no | yes | no |
 | Create / list / get / rename / delete groups | yes | get and list only | yes | no |
-| `GET /users/me` | no (see [Things to know](#things-to-know)) | no | yes | yes |
+| `GET /users/me` | no (use `GET /users/{userID}`) | no | yes | yes |
 | Log out | no (use the Admin API logout) | no | yes | yes |
 
 ## Endpoint reference
@@ -116,35 +115,35 @@ every `GET`.
 | `POST` | `/organisations` | Platform admin only | `{"name"}` | `201` `{id, name, adminUserId, adminUsername, adminPassword}` | `409` if the name exists. |
 | `GET` | `/organisations` | Platform admin / viewer only | | `200` `[{id, name}]` | |
 | `GET` | `/organisations/{orgID}` | Org admin | | `200` `{id, name}` | `404` if missing. |
-| `PUT` | `/organisations/{orgID}` | Platform admin only | `{"id", "name"}` | `200` `{id, name}` | Renames. The path ID is used; `id` in the body is required but ignored. `404`, `409`. |
+| `PUT` | `/organisations/{orgID}` | Platform admin only | `{"id", "name"}` | `200` `{id, name}` | Renames. Use the same ID in the path and the body. `404`, `409`. |
 | `DELETE` | `/organisations/{orgID}` | Org admin | | `204` | Cascades to all users, groups and sessions. |
 | `POST` | `/organisations/{orgID}/login` | Anyone | `{"username", "password"}` | `204` + cookies | `401` on unknown user or wrong password. |
 | `POST` | `/organisations/{orgID}/logout` | Any user of the organisation | | `204` | Ends the current session and expires its cookies. |
-| `POST` | `/organisations/{orgID}/refresh` | Holder of a refresh cookie | | `204` + new cookies | `401` if the refresh cookie is missing, unknown or too late. See [Sessions](./sessions.md). |
+| `POST` | `/organisations/{orgID}/refresh` | Holder of a refresh cookie | | `204` + new cookies | `401` if the refresh cookie is missing, unknown or expired. See [Sessions](./sessions.md). |
 | `POST` | `/organisations/{orgID}/users` | Org admin | `{"name", "password"}` | `201` `{id, name}` | Name at least 5 characters; password 10 to 40 characters. `409` if the name exists. |
 | `GET` | `/organisations/{orgID}/users` | Org admin | | `200` `[{id, name, groups}]` | Each user includes its groups. |
 | `GET` | `/organisations/{orgID}/users/me` | Any user of the organisation | | `200` `{id, name, groups}` | The logged-in user. |
 | `GET` | `/organisations/{orgID}/users/{userID}` | Org admin or the user | | `200` `{id, name, groups}` | `404` if missing. |
-| `PUT` | `/organisations/{orgID}/users/{userID}` | Org admin or the user | `{"id", "name"}` | `200` `{id, name}` | Renames. `id` in the body is required but ignored. `404`, `409`. |
+| `PUT` | `/organisations/{orgID}/users/{userID}` | Org admin or the user | `{"id", "name"}` | `200` `{id, name}` | Renames. Use the same ID in the path and the body. `404`, `409`. |
 | `DELETE` | `/organisations/{orgID}/users/{userID}` | Org admin or the user | | `204` | |
 | `PUT` | `/organisations/{orgID}/users/{userID}/password` | Org admin or the user | `{"oldPassword", "password"}` | `204` | Old password is always required. `401` if it is wrong. |
 | `GET` | `/organisations/{orgID}/users/{userID}/groups` | Org admin or the user | | `200` `[{id, name}]` | |
-| `PUT` | `/organisations/{orgID}/users/{userID}/groups` | Org admin | `[{"id", "name"}, ...]` | `200` | Desired state: replaces all memberships. |
+| `PUT` | `/organisations/{orgID}/users/{userID}/groups` | Org admin | `[{"id", "name"}, ...]` | `200` | Sets the full list of memberships. |
 | `POST` | `/organisations/{orgID}/groups` | Org admin | `{"name"}` | `201` `{id, name}` | `409` if the name exists. |
 | `GET` | `/organisations/{orgID}/groups` | Org admin | | `200` `[{id, name}]` | |
 | `GET` | `/organisations/{orgID}/groups/{groupID}` | Org admin | | `200` `{id, name}` | `404` if missing. |
-| `PUT` | `/organisations/{orgID}/groups/{groupID}` | Org admin | `{"id", "name"}` | `200` `{id, name}` | Renames. `id` in the body is required but ignored. `404`, `409`. |
+| `PUT` | `/organisations/{orgID}/groups/{groupID}` | Org admin | `{"id", "name"}` | `200` `{id, name}` | Renames. Use the same ID in the path and the body. `404`, `409`. |
 | `DELETE` | `/organisations/{orgID}/groups/{groupID}` | Org admin | | `204` | Removes the group from all its members. |
 
 Every endpoint except login needs a valid session cookie; without one the response is `401`.
-Requests are validated against the OpenAPI contract before they reach the handler, so a missing
-field or a too-short name returns `400`.
+Requests are checked against the OpenAPI contract first, so a missing field or a too-short name
+returns `400`.
 
 ## Walkthrough
 
 This example sets up an organisation `acme` with a group `editors` and a user `alice`. It uses
-separate `curl` cookie jars per person, which also avoids the
-[cookie-name clash](./sessions.md) between Admin API and basic-auth sessions.
+a separate `curl` cookie jar for each person (see
+[Keep admin and organisation logins apart](./sessions.md#keep-admin-and-organisation-logins-apart)).
 
 The session cookies are marked `Secure`. `curl` and browsers send them over plain HTTP only to
 `localhost`; anywhere else, serve the admin port over HTTPS (see [TLS](./tls.md)).
@@ -254,7 +253,8 @@ curl -s -b acme-admin.jar -X POST http://localhost:30001/api/auth/basic/organisa
 
 `PUT .../users/{userID}/groups` takes the **complete** list of groups the user should be in. Groups
 not in the list are removed, groups in the list are added, and an empty list `[]` removes all
-memberships. Each entry needs `id` and `name`, but only `id` is used.
+memberships. Each entry has the group's `id` and `name`. List each group once, using groups from the
+same organisation.
 
 ```bash
 curl -s -b acme-admin.jar -X PUT \
@@ -286,27 +286,24 @@ The same `session` cookie now authenticates Alice on the gateway port, for examp
 ## Passwords
 
 - New users need a password of **10 to 40 characters**.
-- A password change needs the current password in `oldPassword`, even for the organisation
-  administrator and platform administrators. There is no reset: if a user forgets their password,
-  delete the user and create it again (group memberships must then be reassigned).
-- Use **ASCII-only** passwords, and keep changed passwords to **40 characters or fewer**. Passwords
-  containing non-ASCII characters (accented letters, emoji and so on) are accepted when set but the
-  user can then not log in with them. A new password longer than 40 bytes is not rejected by
-  validation on the password-change endpoint, but the request fails.
+- Use letters, digits and common symbols from the standard keyboard (ASCII), and keep changed
+  passwords to 40 characters or fewer as well.
+- A password change needs the current password in `oldPassword`, for every role. If a user forgets
+  their password, an administrator deletes the user and creates it again, then assigns its groups.
 - Passwords are stored as salted bcrypt hashes.
 
 ## Errors
 
-Errors have a JSON body of the form `{"errors": ["<message>"]}`, except `404`, which has no body.
+Errors have a JSON body of the form `{"errors": ["<message>"]}`.
 
 | Status | When |
 | --- | --- |
 | `400` | The request does not match the OpenAPI contract: missing or invalid fields, a name or password that is too short, a non-numeric ID. |
 | `401` | No session cookie, an unknown or expired session, wrong username or password at login, wrong `oldPassword`, or an unusable refresh cookie. |
 | `403` | The session belongs to another organisation, the caller lacks the role (for example a regular user listing users, an organisation user creating an organisation, a viewer sending a non-`GET`), or a browser request failed the CSRF check (see [Sessions](./sessions.md)). |
-| `404` | The organisation, user or group does not exist (get and rename only). Also returned, with an error body, when an organisation user calls `PUT /organisations/{orgID}`, which only platform administrators can use. |
+| `404` | The organisation, user or group does not exist. |
 | `409` | The organisation, user or group name is already taken in its scope. |
-| `500` | Unexpected server error, including the binding cases listed below. |
+| `500` | Unexpected server error. The Kerberos log records the cause. |
 
 ## Go client
 
@@ -314,8 +311,7 @@ Errors have a JSON body of the form `{"errors": ["<message>"]}`, except `404`, w
 [`openapi/auth_basic.yaml`](../openapi/auth_basic.yaml). It has one method per operation, plus
 `...WithResponse` variants that decode the JSON body into `JSON200`, `JSON201`, `JSON401` and so on.
 
-The client does not manage cookies itself. Give it an `http.Client` with a cookie jar so the login
-cookies are sent on later calls. Requests from the client carry no `Origin` header, so no CSRF token
+Give it an `http.Client` with a cookie jar so the login cookies are sent on later calls. Requests from the client carry no `Origin` header, so no CSRF token
 is needed.
 
 ```go
@@ -372,27 +368,18 @@ Go's cookie jar sends `Secure` cookies over plain HTTP only to `localhost`; for 
 
 ## Things to know
 
-- **Platform administrators are not organisation users.** They have no user record in the
-  organisation, so `GET .../users/me` and `POST .../logout` do not work with an Admin API session.
-  Use `GET .../users/{userID}` instead, and
-  log out through the Admin API.
-- **Deletes are idempotent.** Deleting an organisation, user or group that does not exist returns
-  `204`, not `404`.
-- **Lookups of missing parents return empty results.** Listing users or groups of a non-existent
-  organisation, or the groups of a non-existent user, returns `200` with `[]`.
-- **Group assignment pitfalls.** In `PUT .../users/{userID}/groups`:
-  - a group ID that does not exist returns `500`;
-  - listing the same group ID twice returns `500` if the user is not already in that group;
-  - use only group IDs from the same organisation.
-- **Renames are not validated for length.** Creating a user requires a name of at least 5
-  characters, but renaming does not enforce that minimum.
-- **Name length.** Names are limited to 100 characters in PostgreSQL. Because the administrator is
-  named `admin-<orgname>`, keep organisation names to 94 characters or fewer.
+- **Platform administrators use their own user ID routes.** They log in through the Admin API, so
+  they use `GET .../users/{userID}` rather than `GET .../users/me`, and log out through the Admin API.
+- **Deletes always succeed.** Deleting an organisation, user or group returns `204`, also when it is
+  already gone.
+- **Keep names short.** Names can be up to 100 characters. The administrator is named
+  `admin-<orgname>`, so keep organisation names to 94 characters or fewer, and give users names of at
+  least 5 characters.
 - **Separate tenants on the gateway.** Use group rules to restrict access, and use the
   organisation ID that Kerberos forwards to the backend to separate tenants. See
   [Authentication](./authentication.md).
-- **Deleting your own administrator.** The organisation administrator can delete itself or its
-  organisation. After deleting itself, only platform administrators can manage the organisation.
+- **Keep the organisation administrator.** It is the account inside the organisation that manages
+  users and groups.
 
 ## Related docs
 

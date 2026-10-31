@@ -16,67 +16,17 @@ Both paths use the [default ports](./README.md#conventions): **30000** for the g
 
 ## The echo test backend
 
-Both paths put a small test service called **echo** behind the gateway. Echo answers every request with a JSON description of what it received, so you can see exactly what Kerberos forwarded: the path after the gateway prefix was stripped, the headers Kerberos added (identity headers, trace context), and the request body.
-
-```json
-{
-  "method": "POST",
-  "url": "/hi",
-  "headers": {
-    "Content-Type": ["application/json"],
-    "Traceparent": ["00-36efcf49b4f889c5fd1bedf7077584bf-8321f1aa71e3cbb9-01"],
-    "X-Krb-Org": ["1"],
-    "X-Krb-User": ["2"]
-  },
-  "body": {"name": "kerberos"}
-}
-```
-
-Every response also carries the header `X-Echo-Server: true`.
-
-| Item | Value |
-| --- | --- |
-| Image | `ghcr.io/trebent/kerberos/echo` (tags `latest` and release tags) |
-| Listen port | `PORT`, default `15000` |
-| `LOG_TO_CONSOLE` | Human-readable logs (default `true`) |
-| `LOG_VERBOSITY` | Log verbosity, default `0`; `20` also logs request and response bodies |
-| `OBSERVABILITY_ENABLED` | OpenTelemetry tracing and metrics, default `true`; exporters are configured with the standard `OTEL_*` variables |
-| `TLS_CERT_FILE`, `TLS_KEY_FILE` | Serve HTTPS (TLS 1.2 or newer) when both are set |
-| `TLS_CLIENT_CA_FILE` | Require and verify client certificates (mutual TLS); needs the two TLS variables above |
-| `VERSION` | Version string reported in logs and telemetry |
-
-Things to know about echo:
-
-- Request bodies must be JSON. A non-JSON body (for example `curl -d 'plain text'`) makes echo answer `500`.
-- Echo is a testing and debugging tool. Do not use it as a real backend.
+Both paths put a small test service called **echo** behind the gateway. Echo answers every request with a JSON description of what it received, so you can see exactly what Kerberos forwarded. See [Echo test backend](./echo.md) for its response format and settings.
 
 ## Path A: krbctl and Docker Compose
 
 ### 1. Install krbctl
 
-`krbctl` is a small CLI that generates a `compose.yaml` and a Kerberos configuration file. Each [GitHub release](https://github.com/trebent/kerberos/releases) has these assets:
-
-- `krbctl_<tag>_linux_amd64.tar.gz`, `krbctl_<tag>_linux_arm64.tar.gz`
-- `krbctl_<tag>_darwin_amd64.tar.gz`, `krbctl_<tag>_darwin_arm64.tar.gz`
-- `krbctl_<tag>_windows_amd64.zip`, `krbctl_<tag>_windows_arm64.zip`
-- `checksums.txt` (SHA-256 checksums of all archives)
-
-Each archive holds a directory named after the archive, with the `krbctl` binary (`krbctl.exe` on Windows) inside. For example, on Linux amd64:
+`krbctl` is a small command-line tool that generates a `compose.yaml` and a Kerberos configuration file. Install it as described in [krbctl: installation](./krbctl.md#installation), then check that it works:
 
 ```bash
-TAG=<release tag>          # for example the latest tag on the releases page
-ASSET=krbctl_${TAG}_linux_amd64
-
-curl -fsSLO "https://github.com/trebent/kerberos/releases/download/${TAG}/${ASSET}.tar.gz"
-curl -fsSLO "https://github.com/trebent/kerberos/releases/download/${TAG}/checksums.txt"
-sha256sum --check --ignore-missing checksums.txt
-
-tar -xzf "${ASSET}.tar.gz"
-sudo install "${ASSET}/krbctl" /usr/local/bin/krbctl
 krbctl --version
 ```
-
-If you have Go installed you can also run `go install github.com/trebent/kerberos/cmd/krbctl@latest`. That build works the same, but `krbctl --version` reports `unset`.
 
 ### 2. Generate the files
 
@@ -96,8 +46,8 @@ krbctl config -y --backend name=echo,host=echo,port=15000,auth=true
 
 About the flags used here:
 
-- `krbctl config --echo-backend` is a shorter way to register echo, but it always registers it **without** authentication. This tutorial uses `--backend ...,auth=true` instead, so that it can show the login flow. If you only want to see traffic flow, use `--echo-backend` and skip [step 5](#5-log-in-as-the-superuser) onwards.
-- The two commands do not talk to each other. If you add `--postgres`, `--obs-stack` or `--connector` to `krbctl compose`, give the matching `--driver postgres`, `--obs-stack` or `--connector` to `krbctl config` too. See [krbctl](./krbctl.md) for every flag and the files they generate.
+- `--backend ...,auth=true` registers echo behind a login, so that this tutorial can show the login flow. To see traffic flow without a login, use `krbctl config -y --echo-backend` instead and stop after [step 4](#4-send-a-request-through-the-gateway).
+- Give both commands the same options. See [krbctl: give the same answers to both commands](./krbctl.md#give-the-same-answers-to-both-commands) and the rest of that page for every flag and the files they generate.
 
 The generated `krb.json` looks like this:
 
@@ -140,15 +90,7 @@ The generated `krb.json` looks like this:
 }
 ```
 
-The generated `compose.yaml` runs:
-
-| Service | What it does |
-| --- | --- |
-| `sqlite-init` | One-off container that prepares the SQLite database file on the `krbdata` volume |
-| `kerberos` | `ghcr.io/trebent/kerberos:latest` with `./krb.json` mounted, ports 30000 and 30001 published |
-| `echo` | `ghcr.io/trebent/kerberos/echo:latest` on port 15000, **not** published: it is only reachable through Kerberos |
-
-Without the observability stack, telemetry export is switched off with `OTEL_METRICS_EXPORTER=none` and `OTEL_TRACES_EXPORTER=none`.
+The generated `compose.yaml` runs Kerberos on ports 30000 and 30001, and echo, which is only reachable through Kerberos. See [krbctl: generated services](./krbctl.md#generated-services) for details.
 
 ### 3. Start the stack
 
@@ -180,13 +122,13 @@ Content-Type: application/json
 {"errors":["Unauthorized"]}
 ```
 
-(If you generated the config with `--echo-backend`, the request is forwarded and echo answers `200` with the JSON shown in [The echo test backend](#the-echo-test-backend).)
+(If you generated the config with `--echo-backend`, the request is forwarded and echo answers `200` with a description of the request, as shown in [step 7](#7-call-the-protected-backend-as-the-user).)
 
-Note that the path needs a slash after the backend name: `/gw/backend/echo` alone returns `400`, while `/gw/backend/echo/` reaches the backend root `/`.
+The path needs a slash after the backend name: `/gw/backend/echo/` reaches the backend root `/`. See [Routing: URL format](./routing.md#url-format).
 
 ### 5. Log in as the superuser
 
-Kerberos creates a **superuser** the first time it starts, with client ID `admin` and client secret `secret`. Log in on the admin port and keep the session cookies in a cookie jar file (`-c` writes the jar, `-b` sends it):
+Kerberos creates a **superuser** the first time it starts, with the [default credentials](./admin-api.md#the-superuser) client ID `admin` and client secret `secret`. Log in on the admin port and keep the session cookies in a cookie jar file (`-c` writes the jar, `-b` sends it):
 
 ```bash
 curl -i -c admin.txt -X POST http://localhost:30001/api/admin/superuser/login \
@@ -201,7 +143,7 @@ curl -b admin.txt http://localhost:30001/api/admin/me
 # {"isSuperuser":true}
 ```
 
-**Change the superuser secret now.** The `admin.superUser` credentials in the configuration (or their [defaults](./admin-api.md#configuration), used in this tutorial) are only used to create the superuser on the very first start; changing the configuration later has no effect. Change the secret through the API:
+**Change the superuser secret now**, through the API:
 
 ```bash
 curl -i -b admin.txt -X PUT http://localhost:30001/api/admin/superuser/password \
@@ -278,13 +220,13 @@ X-Echo-Server: true
 }
 ```
 
-(Output shortened; echo pretty-prints each header array over several lines.) Things to notice:
+(Output shortened.) Things to notice:
 
 - `url` is `/hello`: the gateway prefix was stripped.
 - Kerberos added `X-Krb-Org` and `X-Krb-User`, the numeric IDs of the caller's organisation and user. Backends use these to identify the caller. See [Authentication](./authentication.md).
 - The client's headers, including `Cookie`, are forwarded unchanged.
 
-The session is short-lived (see [Sessions](./sessions.md#server-side-session-lifetime)). Log out with:
+The session lasts 15 minutes (see [Sessions](./sessions.md#server-side-session-lifetime)). Log out with:
 
 ```bash
 curl -i -b alice.txt -X POST http://localhost:30001/api/auth/basic/organisations/1/logout
@@ -314,7 +256,7 @@ Start echo in one terminal:
 make echo/run
 ```
 
-This runs echo on port 15000. Echo exports telemetry by default; if you have no OpenTelemetry collector running and see export errors in its log, start it with `OBSERVABILITY_ENABLED=false make echo/run` instead.
+This runs echo on port 15000. If you have no OpenTelemetry collector running, start it with `OBSERVABILITY_ENABLED=false make echo/run` instead (see [Echo test backend](./echo.md#configuration)).
 
 Start Kerberos in a second terminal:
 
@@ -324,13 +266,13 @@ make run
 
 `make run` starts the gateway on port 30000 and the admin server on port 30001, with human-readable logs at verbosity 20, the OpenAPI files from `openapi/`, and the configuration file `test/config/local.json`. That configuration:
 
-- registers `echo` at `localhost:15000`, and a second backend `missing` at `localhost:17000` where nothing listens (requests to it return `500 {"errors":["failed to forward request"]}`);
+- registers `echo` at `localhost:15000`, and a second backend `missing` at `localhost:17000` where nothing listens, to show the error Kerberos returns when a backend cannot be reached;
 - protects `echo` with basic auth, exactly like Path A;
 - validates requests to `echo` against the OpenAPI document `test/oas/echo.yaml`, which only defines the paths `/`, `/hi` and `/long/hello`;
 - stores data in SQLite at `build/krb.db`;
 - disables observability.
 
-Because of the OpenAPI validation, use `/hi` instead of `/hello` in this setup. Other paths are rejected with `404 {"errors":["no matching operation was found"]}` once you are logged in.
+Because of the OpenAPI validation, use `/hi` instead of `/hello` in this setup. Other paths get `404` once you are logged in (see [Request validation](./request-validation.md)).
 
 From here, follow [steps 5 to 7 of Path A](#5-log-in-as-the-superuser) with the path changed:
 
@@ -346,11 +288,10 @@ curl -i -b alice.txt -X POST http://localhost:30000/gw/backend/echo/hi \
 
 ## Things to know
 
-- **Secure cookies over plain HTTP.** All session cookies carry the `Secure` attribute. curl (7.79 and newer) and current browsers treat `http://localhost` as a secure context and still send them, which is why this tutorial works without TLS. Use the hostname `localhost` consistently: cookies stored for `localhost` are not sent to `127.0.0.1`. On any other host name you need HTTPS; see [TLS](./tls.md).
-- **The admin port is a separate server.** Logins and the Admin and organisation APIs are on port 30001; backend traffic is on port 30000. Cookies are not port-specific, so a session obtained on port 30001 is sent to port 30000 too. Only organisation user sessions open protected backends; a superuser or admin-user session is rejected there with `401`.
-- **One `session` cookie name for both logins.** The superuser login and the organisation login both use a cookie named `session`. In a browser on the same host, logging in to one replaces the other. With curl, keep separate cookie jars as shown above.
-- **Query strings are not forwarded.** `GET /gw/backend/echo/hi?x=1` reaches echo as `/hi`. See [Routing](./routing.md).
-- **Default credentials.** The superuser starts with the public [default credentials](./admin-api.md#the-superuser) on every new database. Change them immediately on anything other than a throwaway local setup.
+- **Use `localhost`.** Session cookies carry the `Secure` attribute. curl and current browsers send them over plain HTTP to `localhost`, which is why this tutorial works without TLS. Use the host name `localhost` throughout, because cookies stored for `localhost` are kept separate from `127.0.0.1`. For other host names, set up HTTPS; see [TLS](./tls.md).
+- **Two ports.** Logins and the Admin and organisation APIs are on port 30001; backend traffic is on port 30000. Browsers and curl send cookies to every port on a host, so a session from port 30001 is also sent to port 30000. Protected backends accept organisation user sessions.
+- **One cookie jar per login.** The superuser login and the organisation login both use a cookie named `session`, so keep separate cookie jars as shown above. See [Sessions](./sessions.md#keep-admin-and-organisation-logins-apart).
+- **Change the default credentials** on anything other than a throwaway local setup. See the [production checklist](./deployment.md#production-checklist).
 
 ## Next steps
 

@@ -18,7 +18,7 @@ Kerberos is named after the three-headed dog that guards the gate. It puts your 
 - **Your OpenAPI contract, enforced at the edge.** Map a backend to its OpenAPI 3 spec, and requests with unknown paths, missing parameters or invalid bodies are rejected before they reach your code.
 - **Observability you don't have to wire up.** OpenTelemetry traces and metrics come out of the box, configured with the standard `OTEL_*` variables. `krbctl` can generate Prometheus, Grafana dashboards and Jaeger for you.
 - **See why a request failed.** Start a debug session for one backend and see each request step by step: which stage accepted or rejected it, how long each stage took, and why. You don't have to turn on tracing for the whole gateway.
-- **Secure defaults.** TLS on every hop, mutual TLS to backends, per-backend CORS, `Secure`/`HttpOnly` cookies and bcrypt-hashed passwords. The images are distroless and run as non-root.
+- **Secure defaults.** TLS on every hop, mutual TLS to backends, per-backend CORS, `Secure`/`HttpOnly` cookies and bcrypt-hashed passwords. The images are minimal and run as a non-root user.
 - **Small footprint.** One static Go binary and one JSON config file. Start with an embedded SQLite file and move to PostgreSQL when you run more than one replica.
 - **Built for operators.** An Admin API with fine-grained permissions, a scaffolding CLI (`krbctl`), and an [admin connector](./docs/admin-connector.md) that puts internal tools such as the Jaeger UI behind the same admin login.
 
@@ -50,9 +50,9 @@ docker compose up -d
 curl -i http://localhost:30000/gw/backend/echo/hello
 ```
 
-The echo backend answers with exactly what Kerberos forwarded. Next, follow [Getting started](./docs/getting-started.md) to protect it with a login, or add `--obs-stack` to both commands to get Grafana dashboards and Jaeger traces.
+The [echo backend](./docs/echo.md) answers with exactly what Kerberos forwarded. Next, follow [Getting started](./docs/getting-started.md) to protect it with a login, or add `--obs-stack` to both commands to get Grafana dashboards and Jaeger traces.
 
-> The first start creates a superuser with public [default credentials](./docs/admin-api.md#the-superuser). Change them before you expose Kerberos. See the [production checklist](./docs/deployment.md#production-checklist).
+> The first start creates a superuser with [default credentials](./docs/admin-api.md#the-superuser). Change them before you expose Kerberos. See the [production checklist](./docs/deployment.md#production-checklist).
 
 ## Features
 
@@ -70,21 +70,12 @@ The echo backend answers with exactly what Kerberos forwarded. Next, follow [Get
 
 ## Documentation
 
-All documentation lives in **[`docs/`](./docs/README.md)**. Pick a starting point:
-
-| You want to… | Read |
-| --- | --- |
-| Try Kerberos on your laptop | [Getting started](./docs/getting-started.md) |
-| Run it in production | [Deployment](./docs/deployment.md) and its [production checklist](./docs/deployment.md#production-checklist) |
-| Write or change the config file | [Configuration](./docs/configuration.md) |
-| Put a login in front of a backend | [Authentication](./docs/authentication.md) |
-| Read the HTTP API reference | The OpenAPI contracts in [`openapi/`](./openapi) |
-| Contribute to Kerberos | [Developer documentation](./docs/dev/README.md) |
+All documentation lives in **[`docs/`](./docs/README.md)**, which lists every page and what it is for. The HTTP API contracts are in [`openapi/`](./openapi).
 
 ## Contributing
 
 Issues and pull requests are welcome. Start with the [developer documentation](./docs/dev/README.md), which covers the repository layout, the build and test commands, and the design rules that all Go code in this repository follows.
 
-## License
+## Licence
 
 Kerberos is released under the [BSD 3-Clause License](./LICENSE).

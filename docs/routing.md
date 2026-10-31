@@ -1,6 +1,6 @@
 # Routing
 
-Kerberos is a path-based reverse proxy. You list your services as named backends, and clients reach a backend by putting its name in the request path. Kerberos then runs the request through its checks and forwards it to that backend. This page covers how to define backends, how URLs map to them, what reaches the backend, timeouts and the errors Kerberos returns.
+Kerberos sends each request to one of your services based on its path. You list your services as named backends, and clients reach a backend by putting its name in the request path. Kerberos then runs the request through its checks and forwards it to that backend. This page covers how to define backends, how URLs map to them, what reaches the backend, timeouts and the errors Kerberos returns.
 
 ## Defining backends
 
@@ -40,7 +40,7 @@ With this configuration, `GET http://localhost:30000/gw/backend/orders-api/order
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
-| `name` | string, 1–100 characters | required | The name that clients put in the URL. Only lowercase letters, digits, `-` and `_` can be routed to. See [Backend names](#backend-names). |
+| `name` | string, 1–100 characters | required | The name that clients put in the URL. Use lowercase letters, digits, `-` and `_`. See [Backend names](#backend-names). |
 | `host` | string, 1–256 characters | required | Hostname or IP address of the backend. |
 | `port` | integer, 1–65535 | required | Port of the backend. |
 | `timeout` | integer, milliseconds, at least 1 | `5000` | The longest a forwarded request may take. See [Timeouts](#timeouts). |
@@ -51,9 +51,9 @@ Kerberos rejects unknown keys at startup. The authoritative schema is [`internal
 
 ### Backend names
 
-Kerberos reads the backend name from the URL with a strict pattern: **only lowercase letters `a-z`, digits `0-9`, `-` and `_`**. The configuration schema accepts other names, such as `Orders` or `orders.v2`, but requests to them can never be routed and always get `400`. Use lowercase names such as `orders-api` or `orders_v2`.
+Backend names use **lowercase letters `a-z`, digits `0-9`, `-` and `_`**, for example `orders-api` or `orders_v2`.
 
-Names are compared exactly. Give each backend a unique name. Kerberos does not reject duplicates, and if two backends share a name, the settings that are used get mixed between the two entries.
+Names are compared exactly. Give each backend a unique name.
 
 ## URL format
 
@@ -76,10 +76,9 @@ Kerberos removes `/gw/backend/<backend-name>` from the path before forwarding. T
 | `/gw/backend/echo/` | `/` |
 | `/gw/backend/echo/hi` | `/hi` |
 | `/gw/backend/echo/api/v1/users/7` | `/api/v1/users/7` |
-| `/gw/backend/echo/a/b?x=1` | `/a/b` (the query string is dropped, see [Limitations](#limitations)) |
 | `/gw/backend/echo` | not forwarded: `400` |
 
-Kerberos never adds a prefix of its own. If your backend serves its API under `/api`, clients must include it: `/gw/backend/echo/api/...`.
+Kerberos does not add a prefix of its own. If your backend serves its API under `/api`, clients must include it: `/gw/backend/echo/api/...`.
 
 The [request validation](./request-validation.md) and [authentication](./authentication.md) settings, such as OpenAPI paths, exempt paths and authorisation path patterns, all match against the stripped, backend-relative path.
 
@@ -91,7 +90,7 @@ The [request validation](./request-validation.md) and [authentication](./authent
 | Any other path under `/gw/`, such as `/gw/foo` | `400` with a JSON error |
 | Anything outside `/gw/` | `404` with a plain-text body `404 page not found` |
 
-Paths that contain `//`, `.` or `..` segments are not forwarded as sent. Instead the gateway answers with a `307` redirect to the cleaned path, for example `/gw/backend/echo//x` redirects to `/gw/backend/echo/x`.
+Paths that contain `//`, `.` or `..` segments are cleaned up first: the gateway answers with a `307` redirect to the clean path, for example `/gw/backend/echo//x` redirects to `/gw/backend/echo/x`.
 
 The admin and login APIs run on a separate port (`ADMIN_PORT`). See [Admin API](./admin-api.md).
 
@@ -99,8 +98,8 @@ The admin and login APIs run on a separate port (`ADMIN_PORT`). See [Admin API](
 
 Every request under `/gw/backend/` passes through these stages in order. Any stage can answer the request itself and stop it there.
 
-1. **Observability.** Kerberos starts a trace span (it continues an incoming W3C `traceparent` if one is present), and starts counting metrics and request logging. It also reads the backend name from the path, and a malformed path is rejected here with `400`. See [Observability](./observability.md).
-2. **Router.** Kerberos looks up the backend by name, and an unknown name gets `404`. If the request has an `Origin` header and the backend has an `origins` block, Kerberos checks the origin. A disallowed origin gets `403`. An allowed origin gets CORS headers, and a preflight `OPTIONS` request is answered with `204` without reaching the backend. See [CORS](./cors.md). The router then strips the path prefix.
+1. **Observability.** Kerberos starts a trace (or continues the caller's trace if the request has a W3C `traceparent` header), and starts counting metrics and logging the request. It also reads the backend name from the path, and a badly formed path gets `400` here. See [Observability](./observability.md).
+2. **Router.** Kerberos looks up the backend by name, and an unknown name gets `404`. If the request has an `Origin` header and the backend has an `origins` block, Kerberos checks the origin. A disallowed origin gets `403`. An allowed origin gets CORS headers, and a browser's preflight `OPTIONS` request is answered with `204` without reaching the backend. See [CORS](./cors.md). The router then strips the path prefix.
 3. **Access control and request validation**, when configured. [Authentication](./authentication.md) (the `auth` section) and [request validation](./request-validation.md) (the `oas` section) run in the order set by each section's `order` value. See [Pipeline order](#pipeline-order). They apply only to backends that are mapped to them.
 4. **Forwarding.** Kerberos sends the request to the backend and relays the response.
 
@@ -112,40 +111,38 @@ If you are debugging a request, an [admin debug session](./admin-debugging.md) r
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
-| `order` | integer, at least 1 | `0` when omitted | Position among the optional pipeline steps. Lower values run first. The schema file says the default is `1`, but an omitted `order` is `0`. |
+| `order` | integer, at least 1 | `0` when omitted | Position among the optional steps. Lower values run first. |
 
 ```text
 router -> (auth and oas, sorted by order) -> forward to backend
 ```
 
-- **Set `order` explicitly on both sections, with different values.** If two steps have the same value, their relative order is not defined.
-- **Run authentication first**, for example `"order": 1` on `auth` and `"order": 100` on `oas`. Unauthenticated callers then get `401` before anything else. If validation runs first, an anonymous caller can tell valid paths from invalid ones by the `404` or `400` responses and learn the shape of your API, and a malformed request gets `400` before its session is checked.
+- **Set `order` on both sections, with different values**, so the order is always clear.
+- **Run authentication first**, for example `"order": 1` on `auth` and `"order": 100` on `oas`. Callers who are not logged in then get `401` before anything else, and learn nothing about which paths your API has.
 
 ## What is forwarded
 
 Kerberos builds the upstream URL as `http://<host>:<port><backend-path>`, or `https://` when the backend has a `tls` block, and forwards:
 
 - **Method.** The method is forwarded unchanged.
-- **Path.** Kerberos forwards the stripped backend path. Percent-encoded characters are decoded and then re-encoded, so an encoded slash (`%2F`) reaches the backend as a real `/`.
+- **Path.** Kerberos forwards the stripped backend path. Percent-encoded characters are decoded and encoded again, so an encoded slash (`%2F`) reaches the backend as `/`.
 - **Headers.** Client headers are forwarded as-is, including `Authorization`, `Cookie`, `Origin` and any `X-Forwarded-*` headers the client sent itself.
 - **`Host`.** `Host` is set to the backend's `host:port`, not the host the client used.
-- **Body.** The body is streamed to the backend. When a body is present, it is sent with `Transfer-Encoding: chunked` instead of the client's `Content-Length`.
+- **Body.** The body is streamed to the backend with `Transfer-Encoding: chunked`.
 - **Trace context.** When observability is enabled, Kerberos sets the W3C `traceparent` and `baggage` headers so the backend continues Kerberos' trace. When observability is disabled, trace headers sent by the client pass through unchanged.
 - **Identity headers.** When the backend is protected by [authentication](./authentication.md), Kerberos adds `X-Krb-Org`, `X-Krb-User` and, when group authorisation applies, `X-Krb-Groups` for an authenticated caller.
 
-Kerberos does **not** forward the query string, and it does **not** add `X-Forwarded-For`, `X-Forwarded-Host`, `X-Forwarded-Proto`, `Forwarded` or `Via` headers. See [Limitations](#limitations).
-
 ## Response relay
 
-Kerberos returns the backend's status code, headers and body to the client unchanged and streams the body. Kerberos does not rewrite redirects (`Location` headers), cookies or response bodies.
+Kerberos returns the backend's status code, headers and body to the client unchanged and streams the body.
 
-When CORS is configured for the backend and the request had an allowed `Origin`, Kerberos adds its CORS headers to the response before the backend's headers. If the backend also sets CORS headers, the client receives both sets. Turn off CORS handling in the backend when Kerberos handles it. See [CORS](./cors.md).
+When CORS is configured for the backend and the request had an allowed `Origin`, Kerberos adds its CORS headers to the response before the backend's headers. When Kerberos handles CORS for a backend, turn CORS handling off in the backend itself. See [CORS](./cors.md).
 
 ## Timeouts
 
 Each backend has a `timeout` in milliseconds (see [Backend keys](#backend-keys) for the default). It limits the **whole** upstream exchange: connecting, sending the request, waiting for the response and reading the response body. When it runs out, the client gets `500` with `{"errors":["failed to forward request"]}`.
 
-The gateway server's own read and write timeouts (`READ_TIMEOUT_SECONDS` and `WRITE_TIMEOUT_SECONDS`) also apply to every request, and the write timeout caps the backend `timeout`: if a backend takes longer than the write timeout, the client's connection is closed with no response at all, not a JSON error. For slow backends, raise both. See [Deployment: timeouts](./deployment.md#timeouts).
+The gateway server's own read and write timeouts (`READ_TIMEOUT_SECONDS` and `WRITE_TIMEOUT_SECONDS`) also apply to every request. Keep the write timeout above the backend `timeout`. For slow backends, raise both. See [Deployment: timeouts](./deployment.md#timeouts).
 
 ## Backend TLS
 
@@ -153,7 +150,7 @@ To reach a backend over HTTPS, optionally with mutual TLS, add a `tls` block to 
 
 ## Health endpoint
 
-`/gw/health` on the gateway port returns `204 No Content` with no body, for any HTTP method. It does not check backends or the database. It only shows that the gateway server is accepting requests. Use it for container health checks and load-balancer probes:
+`/gw/health` on the gateway port returns `204 No Content` with no body, for any HTTP method. It shows that the gateway server is accepting requests. Use it for container health checks and load-balancer probes:
 
 ```bash
 curl -i http://localhost:30000/gw/health
@@ -172,18 +169,18 @@ Responses from your backend, including its error responses, are relayed unchange
 
 | Status | Message | Cause |
 | --- | --- | --- |
-| `400` | `failed to extract backend name from request path` | The path does not match `/gw/backend/<name>/...`: the trailing slash is missing, the name contains uppercase letters or other unsupported characters, or the path is not a backend path at all (for example `/gw/foo`). |
+| `400` | `failed to extract backend name from request path` | The path does not match `/gw/backend/<name>/...`: the slash after the name is missing, the name has characters outside `a-z`, `0-9`, `-` and `_`, or the path is not a backend path (for example `/gw/foo`). |
 | `404` | `no backend found` | No backend with that name is configured. |
 | `403` | `origin denied` | The request's `Origin` is not allowed by the backend's `origins` settings. See [CORS](./cors.md). |
 | `401` / `403` | `Unauthorized` / `Forbidden` | Rejected by [authentication](./authentication.md): no valid session, or the caller is not in a required group. |
 | `400` / `404` | validation message | Rejected by [request validation](./request-validation.md): the request does not match the backend's OpenAPI spec (`400`), or the path or method is not in the spec (`404`). |
 | `500` | `failed to forward request` | Kerberos could not complete the exchange with the backend: connection refused, DNS failure, TLS error, or the backend `timeout` ran out. |
 
-Kerberos does not use `502 Bad Gateway` or `504 Gateway Timeout`. Every upstream failure is reported as `500`. The Kerberos logs record the actual cause.
+The Kerberos logs record the exact cause of a `500`.
 
 ## Example
 
-Start the bundled echo backend, which replies with the method, path, headers and body it received, then run Kerberos from source:
+Start the [echo test backend](./echo.md), which replies with the method, path, headers and body it received, then run Kerberos from source:
 
 ```bash
 make echo/run   # echo backend on port 15000
@@ -193,7 +190,7 @@ make run        # Kerberos with test/config/local.json
 `test/config/local.json` protects the `echo` backend with authentication and request validation. To try plain forwarding first, use a minimal config with only `gateway.router.backends` (see [Getting started](./getting-started.md)). Then:
 
 ```bash
-curl -s "http://localhost:30000/gw/backend/echo/a/b?x=1" -H "X-Custom: hi"
+curl -s http://localhost:30000/gw/backend/echo/a/b -H "X-Custom: hi"
 ```
 
 ```json
@@ -209,17 +206,7 @@ curl -s "http://localhost:30000/gw/backend/echo/a/b?x=1" -H "X-Custom: hi"
 }
 ```
 
-The prefix has been stripped, the custom header has arrived, and `?x=1` was dropped.
-
-## Limitations
-
-- **The query string is dropped.** Only the path is forwarded, so `?x=1` never reaches the backend. Backends that depend on query parameters, such as filtering or pagination, need to take them in the path, headers or body instead.
-- **No `X-Forwarded-*` headers.** The backend sees Kerberos as the client and gets `Host` set to its own address.
-- **Every upstream failure is `500`.** Timeouts, refused connections and TLS errors all look the same to the client.
-- **Backend names must be lowercase.** Names with uppercase letters, dots or other characters pass config validation but cannot be routed to.
-- **Request bodies are sent chunked.** Backends that require a `Content-Length` header on requests will reject forwarded bodies.
-- **Server write timeout caps backend timeouts.** See [Timeouts](#timeouts).
-- **One path prefix per backend.** There is no host-based routing, no path rewriting beyond stripping the prefix, and no load balancing across multiple hosts for a backend. Put a load balancer or service address in `host` if you need that.
+The prefix has been stripped and the custom header has arrived.
 
 ## Related docs
 

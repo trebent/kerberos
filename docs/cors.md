@@ -40,7 +40,7 @@ An origin is `scheme://host[:port]`, exactly as the browser sends it:
 | `https://app.example.com/` | No (trailing slash) |
 | `https://app.example.com:443` | No (browsers leave out default ports) |
 | `http://app.example.com` | No (different scheme) |
-| `https://*.example.com` | No (wildcards are not supported) |
+| `https://*.example.com` | No (list each origin in full) |
 | `https://App.Example.com` | No (comparison is case-sensitive) |
 
 List every origin explicitly, including any non-default port, for example `http://localhost:4200` for a local frontend dev server.
@@ -132,8 +132,8 @@ See [Configuration](./configuration.md) for the rest of the file format.
 
 Kerberos does no CORS handling: the `Origin` header is not checked and no `Access-Control-*` headers are added.
 
-- **Gateway:** the request, including any `OPTIONS` preflight and its `Origin` header, goes through the normal pipeline ([authentication](./authentication.md), [request validation](./request-validation.md)) and on to the backend unchanged. If the backend implements CORS itself, its headers reach the browser. Browsers do not send cookies on preflight requests, so if the backend is protected by authentication the preflight will usually be rejected with `401` and the browser will block the real request.
-- **Admin and basic-auth APIs:** an `OPTIONS` request is answered with `204` but without CORS headers, so browsers treat the preflight as failed. Cross-origin calls from a browser therefore do not work until you configure `origins`.
+- **Gateway:** the request, including any `OPTIONS` preflight and its `Origin` header, goes through the normal checks ([authentication](./authentication.md), [request validation](./request-validation.md)) and on to the backend unchanged. If the backend handles CORS itself, its headers reach the browser. For a backend that needs a login, set `origins` in Kerberos so that preflight requests are answered before the login check.
+- **Admin and basic-auth APIs:** an `OPTIONS` request is answered with `204` without CORS headers. Set `origins` to let browser pages on other origins call these APIs.
 
 ### Rejected origins
 
@@ -155,21 +155,17 @@ When the origin is allowed, Kerberos sets these headers on the response:
 | `Access-Control-Allow-Headers` | `Content-Type, X-Krb-Csrf-Token` |
 | `Access-Control-Allow-Credentials` | `true` |
 
-These values are fixed and cannot be configured. In particular:
+In practice:
 
-- **Only `Content-Type` and `X-Krb-Csrf-Token` may be sent as non-simple request headers.** A browser will block a cross-origin request that sets `Authorization`, `X-Request-Id`, or any other custom header. Kerberos authentication uses cookies, not the `Authorization` header (see [Sessions](./sessions.md)).
-- **`HEAD` is not listed** in the allowed methods. Browsers do not need a preflight for simple `HEAD` requests, so this matters only if the request also carries a non-simple header.
-- **Credentials are always allowed**, so browsers send and accept cookies on cross-origin requests when the page uses `credentials: "include"` (or `withCredentials`).
-- **No `Access-Control-Max-Age`** is sent, so browsers cache preflight results only for their built-in default (a few seconds), and send a preflight before most non-simple requests.
-- **No `Access-Control-Expose-Headers`** is sent, so page scripts can only read the CORS-safelisted response headers (such as `Content-Type`), not custom headers returned by your backend.
+- **Request headers.** Browser pages can send `Content-Type` and `X-Krb-Csrf-Token` on cross-origin requests. Kerberos logins use cookies, so pages do not need an `Authorization` header (see [Sessions](./sessions.md)).
+- **Cookies.** Browsers send and accept cookies on cross-origin requests when the page uses `credentials: "include"` (or `withCredentials`).
+- **Response headers.** Page scripts can read the standard response headers, such as `Content-Type`.
 
-The headers are added before the rest of the pipeline runs, so error responses produced later by Kerberos (for example `401` from authentication or `400` from request validation) also carry them, and the page can read those errors.
-
-Kerberos does not compare the preflight's `Access-Control-Request-Method` or `Access-Control-Request-Headers` with what it allows. It always returns the fixed list above and leaves the decision to the browser.
+The headers are added before the later checks run, so error responses from Kerberos (for example `401` from authentication or `400` from request validation) also carry them, and the page can read those errors.
 
 ### Preflight requests
 
-Any `OPTIONS` request with an allowed `Origin` is answered by Kerberos with `204 No Content` and the headers above. It never reaches authentication, request validation, or the backend. This also means a backend behind an origin-enabled route never receives `OPTIONS` requests from browsers.
+Any `OPTIONS` request with an allowed `Origin` is answered by Kerberos with `204 No Content` and the headers above. It does not reach authentication, request validation or the backend, so the backend does not need to handle browser `OPTIONS` requests.
 
 An `OPTIONS` request without an `Origin` header is not a preflight. On the gateway it is handled like any other request and forwarded to the backend.
 
@@ -188,7 +184,7 @@ See [Routing](./routing.md) for the full gateway pipeline.
 
 ### Backends that also send CORS headers
 
-When `origins` is configured for a backend, Kerberos sets the CORS headers itself and then adds the backend's response headers on top. If the backend also sends `Access-Control-Allow-Origin` or other CORS headers, the browser receives the header twice and will reject the response. Disable CORS handling in the backend when Kerberos handles it, or leave the backend's `origins` unset and let the backend handle CORS on its own.
+Let either Kerberos or the backend handle CORS, not both. When `origins` is set for a backend, turn CORS handling off in the backend. To let the backend handle CORS on its own, leave the backend's `origins` unset.
 
 ## Examples
 
@@ -246,7 +242,7 @@ curl -i -X OPTIONS http://localhost:30001/api/auth/basic/organisations/1/login \
   -H 'Access-Control-Request-Headers: content-type'
 ```
 
-This returns `204` with the same four headers. With `auth.methods.basic.api.origins` unset it returns `204` without any `Access-Control-*` headers, and a browser would block the login call.
+This returns `204` with the same four headers.
 
 ### Calling Kerberos from a browser application
 
@@ -280,10 +276,10 @@ See [Sessions](./sessions.md) for how the CSRF token and cookies work.
 ## Things to know
 
 - **Use `allowAll` sparingly.** Use `allowAll` only for public, unauthenticated backends. Prefer `allowedOrigins` for anything behind authentication, and for the admin and basic-auth APIs.
-- **The check relies on the `Origin` header.** Non-browser clients can leave it out or set any value they like, so origin settings protect browser users, not the backend. They do not replace authentication.
-- **The settings are fixed for the whole location.** You cannot set different origins for different paths of one backend, or change the allowed headers or methods.
+- **Origin settings protect browser users.** They work alongside [authentication](./authentication.md), which protects the backend from every kind of client.
+- **One setting per location.** Each backend, and each API, has one `origins` setting that covers all of its paths.
 - **Admin and basic-auth APIs share a port but not a setting.** If a browser application uses both APIs, list its origin in both `admin.api.origins` and `auth.methods.basic.api.origins`.
-- **Denied and preflight requests are still counted** in the gateway's request metrics, under the backend label `unknown`. See [Observability](./observability.md).
+- **Denied and preflight requests are counted** in the gateway's request metrics, under the backend label `unknown`. See [Observability](./observability.md).
 
 ## Related docs
 

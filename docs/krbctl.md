@@ -44,7 +44,7 @@ If you have Go installed:
 go install github.com/trebent/kerberos/cmd/krbctl@latest
 ```
 
-This works, but the version is only set when a release is built. A binary from `go install` reports `krbctl version unset`.
+A binary built this way reports its version as `unset`.
 
 ### From source with `make` (Linux only)
 
@@ -55,7 +55,7 @@ From a checkout of the repository:
 | `make krbctl/build` | Builds `build/krbctl`. |
 | `make krbctl/install` | Installs `krbctl` into your Go bin directory. |
 
-Both targets always build a Linux binary (`GOOS=linux`), so do not use them on macOS or Windows. Use a release archive or `go install` there. The version is taken from the `VERSION` make variable, for example `make krbctl/build VERSION=v1.2.3`.
+Both targets build a Linux binary (`GOOS=linux`). On macOS or Windows, use a release archive or `go install`. The version is taken from the `VERSION` make variable, for example `make krbctl/build VERSION=v1.2.3`.
 
 ## Commands
 
@@ -77,7 +77,7 @@ Writes `<output>/compose.yaml`.
 
 `krbctl compose` asks four yes/no questions, all on one screen:
 
-1. Include the echo service? (a test backend that echoes requests back)
+1. Include the echo service? (a [test backend](./echo.md) that replies with the request it received)
 2. Include the observability stack? (Prometheus, Grafana and Jaeger)
 3. Include PostgreSQL as the persistence backend? (SQLite is used if you answer no)
 4. Include the admin-connector service?
@@ -115,8 +115,8 @@ All services use `restart: on-failure`. `kerberos` runs with `LOG_TO_CONSOLE=1`,
 
 - **Observability stack.** If you choose it, `kerberos`, `echo` and `connector` send traces with OTLP over gRPC to `http://jaeger:4317` and expose Prometheus metrics on port `9464` in the Compose network. If you do not choose it, those services get `OTEL_METRICS_EXPORTER=none` and `OTEL_TRACES_EXPORTER=none`. See [Observability](./observability.md).
 - **Jaeger and the connector.** If you choose both, Jaeger's UI is not published on the host. You reach it only through the admin-connector at `http://localhost:30100`, which needs a Kerberos admin login (see [Admin connector](./admin-connector.md)). If you choose the observability stack without the connector, the Jaeger UI is published directly on `http://localhost:16686` with no login.
-- **Connector target.** The connector is set to forward to `jaeger:16686` only when the observability stack is also chosen. See [Limitations](#limitations).
-- **SQLite.** With SQLite, `kerberos`, `connector` and `grafana` share the `krbdata` volume and the same database file, `/krbdata/krb.db`.
+- **Connector target.** With the observability stack, the connector forwards to the Jaeger UI at `jaeger:16686`. To protect a different tool, add `TARGET=<host>:<port>` to the `connector` service's `environment`. See [Admin connector](./admin-connector.md).
+- **Shared database.** `kerberos`, `connector` and `grafana` use the same database: the `/krbdata/krb.db` SQLite file on the `krbdata` volume, or the `kerberos` PostgreSQL database. Grafana keeps its tables next to the Kerberos tables.
 
 ## `krbctl config`
 
@@ -134,7 +134,7 @@ The questions come in this order:
    - **Observability stack:** whether to generate the Prometheus, Grafana and Jaeger files. If yes, you also choose the Prometheus scrape targets (Kerberos, Jaeger and all backends are selected by default) and whether Grafana allows anonymous access (default yes).
    - **Admin-connector:** whether to generate `connector.json`. If yes, you also choose "Allow all CORS origins?" (yes = allow all, no = deny all cross-origin requests).
 
-If you cancel a prompt (for example with Ctrl+C), the command stops and writes nothing.
+Interactive mode runs in a terminal. If you cancel a prompt (for example with Ctrl+C), the command stops and writes nothing. In scripts and CI, use `-y`.
 
 ### Flags
 
@@ -163,10 +163,10 @@ All flags except `-o` and `-y` are only used with `-y`. Without `-y` you are ask
 | --- | --- | --- | --- |
 | `name` | Yes | | Backend name. Requests reach it at `/gw/backend/<name>/...` on the gateway. See [Routing](./routing.md). |
 | `host` | No | `localhost` | Host name as seen from the Kerberos container. |
-| `port` | No | `8080` | A missing, non-numeric or out-of-range value becomes `8080`, without an error. |
+| `port` | No | `8080` | Port the backend listens on. |
 | `auth` | No | `false` | `true` puts the backend behind basic authentication. |
 
-Unknown keys, segments without `=`, or invalid `auth` values are rejected with an error.
+Give each backend a unique name.
 
 #### `--scrape-target` values
 
@@ -176,7 +176,7 @@ Unknown keys, segments without `=`, or invalid `auth` values are rejected with a
 | `jaeger` | `jaeger:8888` |
 | A backend name | `<backend host>:9464` |
 
-Any other value is ignored without an error. When the connector is enabled, `connector:9464` is always added and does not need to be listed.
+When the connector is enabled, `connector:9464` is always added and does not need to be listed.
 
 ### What `krb.json` contains
 
@@ -230,7 +230,7 @@ Example from `krbctl config -y --echo-backend`:
 | `jaeger-config-ui.json` | Observability stack | Jaeger UI settings (archiving enabled). |
 | `connector.json` | Connector | `origins` (`allowAll` or `denyAll`) and the same `persistence` block as `krb.json`. See [Admin connector](./admin-connector.md). |
 
-`krbctl config` creates the `grafana` directory if needed. Existing files are overwritten without a prompt.
+`krbctl config` creates the `grafana` directory if needed and replaces existing files.
 
 ## Give the same answers to both commands
 
@@ -243,9 +243,9 @@ Example from `krbctl config -y --echo-backend`:
 | `--obs-stack` / "Include the observability stack?" | `--obs-stack` / "Generate observability stack config?" |
 | `--connector` / "Include the admin-connector service?" | `--connector` / "Include the admin-connector?" |
 
-If they differ, things break. For example, `compose.yaml` mounts files that `config` did not write, or `krb.json` points to `postgres:5432` but no `postgres` service exists.
+For example, with `--postgres` on both commands, `krb.json` points to `postgres:5432` and `compose.yaml` runs the `postgres` service.
 
-Backends you add with `--backend` (or in the interactive backend questions) are only written to `krb.json`. `krbctl compose` does not add services for them. Either add them to `compose.yaml` yourself or set `host` to an address the Kerberos container can reach. `localhost` inside the container is the container itself, not your machine.
+Backends you add with `--backend` (or in the interactive backend questions) are only written to `krb.json`. `krbctl compose` does not add services for them. Add them to `compose.yaml` yourself, or set `host` to an address the Kerberos container can reach. Inside the container, `localhost` is the container itself, not your machine.
 
 ## Examples
 
@@ -260,7 +260,7 @@ docker compose up -d
 curl -i http://localhost:30000/gw/backend/echo/hello
 ```
 
-This starts `sqlite-init`, `kerberos` and `echo`. Nothing is exported for metrics or traces. See [Getting started](./getting-started.md) for a full first-run walkthrough.
+This starts `sqlite-init`, `kerberos` and [`echo`](./echo.md). Metrics and traces are not exported. See [Getting started](./getting-started.md) for a full first-run walkthrough.
 
 ### Full stack: PostgreSQL, observability and admin-connector
 
@@ -313,30 +313,20 @@ In this example, the `orders` backend is protected with basic auth but has no se
 
 The generated files are a starting point for local and test setups. Before using them for anything else:
 
-- **Change the superuser secret.** The superuser starts with the public default credentials. Change the password through the Admin API as soon as Kerberos is running. Setting `admin.superUser` in `krb.json` only affects the first start. See [Admin API](./admin-api.md) and [Configuration](./configuration.md).
+- **Change the superuser secret.** See [Admin API: the superuser](./admin-api.md#the-superuser).
 - **Change the database passwords.** PostgreSQL uses `kerberos` / `kerberos` in `compose.yaml`, `krb.json`, `connector.json` and `grafana/grafana.ini`, with `sslMode: disable`. See [Persistence](./persistence.md).
 - **Point to real backends.** Edit `gateway.router.backends` in `krb.json` and add auth mappings as needed. See [Routing](./routing.md) and [Authentication](./authentication.md).
-- **Enable TLS.** Nothing is set up for HTTPS, and login cookies need HTTPS outside `localhost`. See [TLS](./tls.md) and [Sessions](./sessions.md).
+- **Enable TLS.** Login cookies need HTTPS on any host other than `localhost`. See [TLS](./tls.md) and [Sessions](./sessions.md).
 - **Pin image versions.** All Kerberos images use the `latest` tag. See [Deployment](./deployment.md) for available tags.
-- **Restrict the connector's origins.** The default `allowAll` accepts cross-origin requests from anywhere. See [Admin connector](./admin-connector.md).
-- **Review Grafana access.** Anonymous viewing is on by default. Grafana's own admin account keeps Grafana's default credentials until you change them. See [Observability](./observability.md).
+- **Restrict the connector's origins.** Replace `allowAll` with the origins you use. See [Admin connector](./admin-connector.md).
+- **Review Grafana access.** Turn off anonymous viewing if you do not want it, and change the password of Grafana's own admin account. See [Observability](./observability.md).
 
 For all configuration keys, see [Configuration](./configuration.md).
-
-## Limitations
-
-- **The output directory must exist.** `-o` does not create the directory. If it is missing, the command fails (for example `open <dir>/compose.yaml: no such file or directory`). Only the `grafana/` subdirectory is created for you.
-- **The connector needs the observability stack in `compose.yaml`.** The connector service only gets its `TARGET` (`jaeger:16686`) when the observability stack is also included. `TARGET` is required, so with `--connector` but without `--obs-stack` the connector container does not start. Add a `TARGET=<host>:<port>` entry to the `connector` service's `environment` for the tool you want to protect.
-- **Grafana uses the Kerberos database.** `grafana/grafana.ini` points Grafana at the same database as Kerberos: the `/krbdata/krb.db` SQLite file or the `kerberos` PostgreSQL database. Grafana's tables are created next to the Kerberos tables. Give Grafana its own database if you want them separate.
-- **No startup ordering for Grafana with PostgreSQL.** `grafana` does not wait for `postgres` to be healthy. It may restart a few times until PostgreSQL is ready.
-- **Interactive mode needs a terminal.** Without a TTY (for example in CI), use `-y`.
-- **Few input checks.** Invalid ports become `8080`, unknown scrape targets are dropped, and duplicate backend names (for example `--echo-backend` plus `--backend name=echo`) are not detected. Check `krb.json` before you start Kerberos.
-- **Existing files are overwritten** without a prompt.
-- **Wrong path in one message.** `krbctl config --connector` prints `connector.json written to connector.json` even when `-o` is set. The file is still written to the `-o` directory.
 
 ## Related docs
 
 - [Getting started](./getting-started.md)
+- [Echo test backend](./echo.md)
 - [Configuration](./configuration.md)
 - [Deployment](./deployment.md)
 - [Persistence](./persistence.md)

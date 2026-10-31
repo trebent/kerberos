@@ -42,15 +42,15 @@ Each API scopes the `refresh` cookie to its own refresh path, so browsers only s
 
 All three cookies also get the `SameSite` and `Domain` attributes from your configuration (see [Cookie configuration](#cookie-configuration)).
 
-On logout, Kerberos expires the `session` and `refresh` cookies. The `csrf` cookie is left in place and stays until its own lifetime runs out. That does no harm, because it does not give access to anything.
+On logout, Kerberos expires the `session` and `refresh` cookies. The `csrf` cookie gives no access on its own and expires after its own lifetime.
 
 ### The Secure flag needs HTTPS
 
-All three cookies always carry the `Secure` flag, and you cannot turn it off. Browsers and most HTTP clients keep and send `Secure` cookies only over HTTPS. The exception is `localhost` and loopback addresses, which browsers, curl and Go's `net/http/cookiejar` treat as secure even over plain HTTP. If you reach Kerberos by any other hostname, serve the admin port over HTTPS (`admin.api.tls`), or put it behind a TLS-terminating proxy. Otherwise logins will appear to work but no session will stick. See [TLS](./tls.md).
+All three cookies always carry the `Secure` flag. Browsers and most HTTP clients keep and send `Secure` cookies only over HTTPS, or to `localhost` and loopback addresses, which browsers, curl and Go's `net/http/cookiejar` treat as secure even over plain HTTP. If you reach Kerberos by any other host name, serve the admin port over HTTPS (`admin.api.tls`), or put it behind a proxy that handles HTTPS. See [TLS](./tls.md).
 
 ## Server-side session lifetime
 
-Each login or refresh creates a session row in the database that expires **15 minutes** after it was created. The cookie lifetime matches that. After 15 minutes the session no longer authenticates anything, even if a client still sends the cookie, and the APIs and gateway answer `401`. Activity does not extend a session. The only way to extend it is to refresh it.
+Each login or refresh creates a session row in the database that expires **15 minutes** after it was created. The cookie lifetime matches that. After 15 minutes the session ends, and the APIs and gateway answer `401`. To keep a session going, refresh it.
 
 Sessions live in the configured database (see [Persistence](./persistence.md)), so they survive a restart and all Kerberos instances sharing that database see them.
 
@@ -72,9 +72,9 @@ When a refresh is allowed depends on the API:
 Further rules:
 
 - A basic-auth refresh token only works on the refresh endpoint of the organisation it was issued for.
-- A superuser refresh token only works on `/api/admin/superuser/refresh`. Using it on the admin-user refresh path fails because of the cookie path. Using an admin user's token on the superuser path returns `403`.
+- A superuser refresh token works on `/api/admin/superuser/refresh`, and an admin user's refresh token works on `/api/admin/refresh`.
 
-Good practice for clients: refresh a little before the 15-minute mark, for example every 10 to 12 minutes, or refresh when a call returns `401` (this works for admin sessions only, because basic-auth sessions cannot be refreshed once expired).
+Good practice for clients: refresh a little before the 15-minute mark, for example every 10 to 12 minutes. Admin clients can also refresh when a call returns `401`.
 
 ## Logging out
 
@@ -95,7 +95,7 @@ The request must then include an `X-Krb-Csrf-Token` header whose value equals th
 
 The login endpoints (`/api/auth/basic/organisations/{orgID}/login`, `/api/admin/login` and `/api/admin/superuser/login`) are exempt, because no `csrf` cookie exists before login. Refresh and logout are **not** exempt.
 
-Requests without an `Origin` header are never CSRF-checked. That covers most scripts, curl and server-to-server clients, unless they set `Origin` themselves. CSRF protection applies only to the basic-auth and Admin APIs. Requests forwarded by the gateway to your backends are not CSRF-checked by Kerberos.
+Requests without an `Origin` header are not CSRF-checked. That covers most scripts, curl and server-to-server clients, unless they set `Origin` themselves. CSRF protection applies to the basic-auth and Admin APIs. For gateway backends, see [CORS and CSRF](./cors.md#cors-and-csrf).
 
 ### Browser example
 
@@ -188,26 +188,18 @@ You configure cookie attributes separately for each API:
 
 Things to know about these settings:
 
-- Kerberos checks `sameSite` against the schema at startup. Any value other than `Strict`, `Lax` or `None` (case-sensitive) stops Kerberos from starting with a schema validation error. Values are never replaced silently. The schema is [`internal/config/schemas/cookies_schema.json`](../internal/config/schemas/cookies_schema.json).
-- Unlike the rest of the configuration, a `cookies` object accepts unknown keys. A misspelled key such as `"samesite"` (lower-case `s`) is ignored without an error, and the key it was meant to set keeps its default.
-- If you configure `auth.methods.basic.api.cookies` but leave out `sameSite`, for example to set only `domain`, Kerberos sends the basic-auth cookies **with no `SameSite` attribute**, and the browser's default applies (usually `Lax`). Leaving out the whole `cookies` block gives `Strict`. Always set `sameSite` explicitly when you set `domain`. For `admin.api.cookies`, a missing `sameSite` stays `Strict`.
+- `sameSite` must be `Strict`, `Lax` or `None`, with that exact capitalisation. Kerberos checks it at startup. The schema is [`internal/config/schemas/cookies_schema.json`](../internal/config/schemas/cookies_schema.json).
+- Check the spelling of the keys: `domain` and `sameSite`.
+- **Always set `sameSite` when you set `domain`**, so the value is clear in the file.
 - Browsers accept `SameSite=None` only on `Secure` cookies. Kerberos cookies are always `Secure`, so `None` works over HTTPS.
 
 Example: organisation users log in through the admin port at `auth.example.com` and call the gateway at `api.example.com`. Cookies ignore ports, so on a single hostname the gateway port receives the `session` cookie automatically. With two hostnames, set `auth.methods.basic.api.cookies.domain` to `example.com` so the browser sends `session` to both.
 
-## Admin and basic-auth sessions share the `session` cookie
+## Keep admin and organisation logins apart
 
-Admin sessions and basic-auth sessions use the same cookie name, `session`, with `Path=/`. Browsers key cookies by name, domain and path, but **not by port**. In one browser, a login on one API therefore overwrites the `session` cookie of the other when both are served from the same host (or both use the same cookie `domain`):
+Admin sessions and basic-auth sessions both use a cookie named `session`, with `Path=/`. Browsers store cookies by name, domain and path, but **not by port**. So in one browser, on one host, the most recent login decides which session the `session` cookie holds. Keep the two kinds of login apart:
 
-- Logging in to the Admin API (for example, the admin UI) replaces an organisation user's `session` cookie. Gateway requests and basic-auth API calls then use the admin session. Gateway routes protected by basic auth answer `401`.
-- Logging in as an organisation user replaces the admin `session` cookie, and Admin API calls answer `401`.
-- While the `session` cookie holds a superuser session, or an admin session with the `basic-auth-org-admin` or `basic-auth-org-viewer` permission, the basic-auth refresh endpoint answers `401` even if a valid basic-auth `refresh` cookie is sent.
-
-The `refresh` cookies do not collide, because their paths differ. The `csrf` cookie is shared too, but any matching value passes the CSRF check, so that alone causes no failures.
-
-Ways to avoid this:
-
-- **Separate hostnames.** Reach the Admin API and the basic-auth flow through different hostnames, for example `admin.example.com` and `auth.example.com` pointing at the same admin port. Leave `domain` unset, or set each API's `cookies.domain` to its own host, so that neither cookie is visible to the other host. Do not set a shared parent domain (such as `example.com`) on both APIs.
+- **Separate host names.** Reach the Admin API and the basic-auth flow through different hostnames, for example `admin.example.com` and `auth.example.com` pointing at the same admin port. Leave `domain` unset, or set each API's `cookies.domain` to its own host, so that each cookie stays with its own host. Do not set a shared parent domain (such as `example.com`) on both APIs.
 - **Separate browser profiles** (or a private window) for admin work and for testing as an organisation user.
 - **Separate cookie jars** for scripts. Use one jar per identity, as in the examples below.
 
@@ -240,7 +232,7 @@ Always pass `-c` on refresh, so the jar picks up the new cookies. The old ones s
 
 ### Go clients
 
-The generated clients `github.com/trebent/kerberos/pkg/auth/client` (basic-auth API) and `github.com/trebent/kerberos/pkg/admin/client` (Admin API) do not manage cookies themselves. Give them an `http.Client` that has a cookie jar:
+The generated clients `github.com/trebent/kerberos/pkg/auth/client` (basic-auth API) and `github.com/trebent/kerberos/pkg/admin/client` (Admin API) work with any `http.Client`. Give them an `http.Client` that has a cookie jar, which stores the cookies for you:
 
 ```go
 import (
@@ -271,16 +263,15 @@ _, err = c.LoginWithResponse(ctx, 1, authclient.LoginJSONRequestBody{
 // send and update the cookies through the jar.
 ```
 
-The same `httpClient` can call the gateway port, because cookie jars ignore ports. Use a separate jar for each identity, and never share one jar between an admin login and an organisation-user login, for the reason explained under [shared cookie name](#admin-and-basic-auth-sessions-share-the-session-cookie). If your client sets an `Origin` header, also add `X-Krb-Csrf-Token` with a request editor (`WithRequestEditorFn`) that copies the `csrf` value from the jar.
+The same `httpClient` can call the gateway port, because cookie jars ignore ports. Use a separate jar for each identity, as explained under [Keep admin and organisation logins apart](#keep-admin-and-organisation-logins-apart). If your client sets an `Origin` header, also add `X-Krb-Csrf-Token` with a request editor (`WithRequestEditorFn`) that copies the `csrf` value from the jar.
 
 ## Things to know
 
-- Sessions last 15 minutes, and activity does not extend them. Clients must refresh.
-- Basic-auth sessions cannot be refreshed after they expire. Admin sessions can be refreshed for up to 45 minutes after they expire.
+- Sessions last 15 minutes. Clients refresh them to keep going.
+- Refresh basic-auth sessions while they are still valid. Admin sessions can be refreshed for up to 45 minutes after they expire.
 - Superuser logout ends every superuser session. Other logouts end only the current session.
 - Cookies are always `Secure`, so use HTTPS for anything other than `localhost`.
-- Admin and basic-auth logins overwrite each other's `session` cookie on the same host.
-- Kerberos does not purge expired sessions or refresh tokens from the database. They stop working but remain stored.
+- Keep admin and organisation logins in separate browsers, host names or cookie jars.
 
 ## Related docs
 

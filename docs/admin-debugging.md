@@ -74,13 +74,13 @@ A session object looks like this:
 
 ### Lifecycle
 
-- **Start.** Only one session can be active per backend. Starting another while one is active returns `409 Conflict`. A session counts as active until it expires or is stopped. Kerberos does not check that the backend exists, so check the spelling: a session for an unknown name simply records nothing.
+- **Start.** One session can be active per backend. Starting another while one is active returns `409 Conflict`. A session is active until it expires or is stopped. Use the backend name exactly as it appears in the router configuration.
 - **Recording.** Calls are recorded until `expiresAt` or until the session is stopped.
-- **Extend.** Adds `additionalDurationSeconds` to the current `expiresAt`. If the result would be more than one hour from now, `expiresAt` is set to one hour after `startedAt` instead. Extending also starts recording again for a session that was stopped or has expired, as long as the new `expiresAt` is in the future. `stoppedAt` keeps its earlier value in that case.
+- **Extend.** Adds `additionalDurationSeconds` to the current `expiresAt`. If the result would be more than one hour from now, `expiresAt` is set to one hour after `startedAt` instead. Extending also starts recording again for a session that was stopped or has expired, as long as the new `expiresAt` is in the future.
 - **Stop.** Ends recording immediately and sets `stoppedAt`. Captured calls are kept.
 - **Delete.** Removes the session and all of its captured calls and transitions.
 
-Sessions and calls are stored in the gateway database (see [Persistence](./persistence.md)) and are kept until you delete them. Nothing is removed automatically.
+Sessions and calls are stored in the gateway database (see [Persistence](./persistence.md)) and are kept until you delete them.
 
 ## Walkthrough
 
@@ -172,9 +172,9 @@ This example assumes a backend called `echo`, the gateway on port 30000 and the 
    ]
    ```
 
-   The `authorizer` failure shows the request never reached validation or the backend. A successful call would instead show `authorizer` and `oas-validator` (if configured) succeeding, followed by `forwarder` inbound and outbound.
+   The `authorizer` failure shows that the request stopped there, before validation and the backend. A successful call would instead show `authorizer` and `oas-validator` (if configured) succeeding, followed by `forwarder` inbound and outbound.
 
-   With `includeTransitions=false` the same list is returned with `"flowTransitions": null`, which is cheaper when a session has many calls. Leaving the parameter out returns `400`.
+   With `includeTransitions=false` the same list is returned with `"flowTransitions": null`, which is faster when a session has many calls.
 
 5. Look at a single call in full:
 
@@ -198,20 +198,17 @@ This example assumes a backend called `echo`, the gateway on port 30000 and the 
    curl -s -b cookies.txt -X DELETE http://localhost:30001/api/admin/debug/echo/sessions/4
    ```
 
-## Limitations and things to know
+## Things to know
 
-- **Not every request is recorded.** Recording is sampled by a rate limit of 1 request per second with a burst of 100. Requests over the limit pass through the gateway normally but are not recorded. The limit is shared by all gateway traffic, not only the debugged backend, so on a busy gateway only a fraction of the requests to the debugged backend appear. Debug sessions work best for reproducing a problem with a handful of requests.
-- **Small cost per recorded request.** Each recorded call is written to the database before the request finishes, which adds a little latency to that request. If the write fails, the error is logged and the call is missing from the session; the client's request is not affected.
-- **Recording state is held in memory per instance.** Which backend is being recorded lives in the memory of the Kerberos instance that received the start (or extend) request. After a restart, no backend is recorded, even if the database still shows a session that has not expired; start a new session, or extend the old one to resume. With several replicas sharing a PostgreSQL database, only the replica that handled the start request records calls, while the other replicas still reject a second start with `409`. See [Deployment](./deployment.md).
-- **One active session per backend.** Use extend rather than starting a new session.
-- **Stopping or deleting any session stops recording for its backend.** This applies even to an older, already finished session of that backend, so stopping or deleting an old session while a newer one is active ends the newer one's recording.
-- **Stop sessions explicitly.** If a session expires without being stopped and you then start a new session for the same backend on the same instance, new calls can be recorded under the earlier session's ID. Stop each session when you are done with it, even if it has already expired.
-- **Requests that do not name a backend** (paths that do not match `/gw/backend/<name>/...`) are never recorded.
-- **Unknown IDs.** Listing calls for a session ID that does not exist returns an empty list rather than `404`.
+- **Built for a handful of requests.** Debug sessions work best when you reproduce a problem with a few requests. Kerberos records about one request per second, with bursts of up to 100, across the whole gateway, and every request is still handled normally.
+- **One instance.** A debug session records the requests handled by the Kerberos instance that started it. After a restart, start or extend a session to record again. See [Deployment](./deployment.md).
+- **One active session per backend.** Extend the active session to record for longer.
+- **Stop sessions when you are done**, and delete them once you no longer need the calls.
+- **Backend paths only.** Requests to `/gw/backend/<name>/...` are recorded.
 
 ## Privacy
 
-A debug session stores only request metadata: method, path, status code, timings, and per-step outcomes. It does **not** store request or response headers, cookies, bodies, query strings, client addresses or the identity of the caller.
+A debug session stores only basic request details: method, path, status code, timings and the result of each step. It does **not** store request or response headers, cookies, bodies, query strings, client addresses or the identity of the caller.
 
 Some stored values can still contain sensitive data:
 
@@ -222,7 +219,7 @@ Debug data stays in the database until the session is deleted, and anyone with t
 
 ## Debug sessions compared with tracing
 
-[Observability](./observability.md) covers tracing, metrics and logs. Tracing is meant to be always on, covers all backends, and sends spans to an external OpenTelemetry collector where they connect to your backend's own spans. Debug sessions are short-lived, cover one backend, need no extra infrastructure, and show the outcome and cause for each gateway step, including requests that were rejected before reaching the backend. Use tracing for production monitoring and latency analysis across services; use a debug session to find out why particular requests are failing at the gateway.
+[Observability](./observability.md) covers tracing, metrics and logs. Tracing is meant to be always on, covers all backends, and sends its data to an OpenTelemetry collector where it joins up with your backend's own traces. Debug sessions are short, cover one backend, need nothing else to be installed, and show the result and cause for each gateway step, including requests that were rejected before reaching the backend. Use tracing for production monitoring and latency analysis across services; use a debug session to find out why particular requests are failing at the gateway.
 
 ## Related docs
 

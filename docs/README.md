@@ -1,73 +1,36 @@
 # Kerberos documentation
 
-Kerberos is an API gateway that puts your backend services behind a single entry point. Clients call `/gw/backend/<name>/...` on the gateway port, and Kerberos forwards the request to the backend registered under that name. Per backend, you can add login-based access control, validate requests against an OpenAPI specification, and control which browser origins may call it, with TLS available on every hop. Kerberos also emits metrics, traces and logs, and serves a platform Admin API and the basic-auth login API on a separate admin port, where you can also open debug sessions to see how requests move through the gateway.
+Kerberos is an API gateway that puts your backend services behind one entry point. Clients call `/gw/backend/<name>/...` on the gateway port, and Kerberos checks each request and forwards it to the backend with that name. Logins, administration and debugging use a separate admin port.
 
-## How a request travels
+New to Kerberos? Start with [Getting started](./getting-started.md).
 
-```text
-                          Gateway port (PORT)
-client --> /gw/backend/<name>/<path>
-             |
-             +- router: find backend <name> (404 if unknown)
-             |          check Origin / CORS (403 if not allowed)
-             |
-             +- access control (auth)        when configured, in the order
-             +- request validation (oas)     set by each section's "order"
-             |
-             `- forward <path> --> backend service
+## Pages
 
-                          Admin port (ADMIN_PORT)
-operators, login pages --> /api/admin/...       Admin API
-                       --> /api/auth/basic/...  basic-auth API (organisation logins)
-```
+| Page | Go here to… |
+| --- | --- |
+| [Getting started](./getting-started.md) | Run Kerberos on your machine and send your first request through it |
+| [Echo test backend](./echo.md) | Use the echo service to see what Kerberos sends to a backend |
+| [krbctl](./krbctl.md) | Install `krbctl` and generate a Docker Compose setup and config |
+| [Deployment](./deployment.md) | Run Kerberos for real: images, environment variables, health checks, timeouts, scaling and the production checklist |
+| [Configuration](./configuration.md) | Write the config file, use environment values in it, and find the page for each section |
+| [Persistence](./persistence.md) | Choose and set up SQLite or PostgreSQL, and back up your data |
+| [Routing](./routing.md) | Add backends and understand what Kerberos forwards to them |
+| [TLS](./tls.md) | Serve HTTPS, and use HTTPS or mutual TLS towards backends |
+| [Origins and CORS](./cors.md) | Let browser apps on other sites call Kerberos |
+| [Request validation](./request-validation.md) | Check requests against a backend's OpenAPI specification |
+| [Authentication and authorisation](./authentication.md) | Require a login for a backend, limit it to groups, and read the caller's identity in your service |
+| [Sessions and cookies](./sessions.md) | Log in, refresh and log out, and set up cookies and CSRF protection |
+| [Organisations, users and groups](./organizations.md) | Manage the organisations, users and groups that log in to your backends |
+| [Admin API](./admin-api.md) | Manage the superuser, admin users, groups and permissions |
+| [Debug sessions](./admin-debugging.md) | See step by step why requests to one backend fail |
+| [Observability](./observability.md) | Collect metrics, traces and logs |
+| [Admin connector](./admin-connector.md) | Put internal tools, such as the Jaeger UI, behind the admin login |
+| [Developer documentation](./dev/README.md) | Change Kerberos itself |
 
 ## Conventions
 
-- **One page per setting.** Every config section, shared config object and environment variable is documented on exactly one page, which is the only place its type, allowed values and default are written down. Other pages link there. [Configuration: root keys](./configuration.md#root-keys) lists the page for each config section, and [Deployment: environment variables](./deployment.md#environment-variables) lists the environment variables.
-- **Examples use the default ports.** Commands such as `curl http://localhost:30000/...` assume Kerberos runs locally with the default `PORT` (gateway) and `ADMIN_PORT` (admin) from [Deployment: environment variables](./deployment.md#environment-variables). If you change them, change the examples to match.
-
-## Start here
-
-New to Kerberos? Follow [Getting started](./getting-started.md) to run it locally and send your first request through it. When you are ready to run it for real, read [Deployment](./deployment.md).
-
-| You are… | Read these first |
-| --- | --- |
-| **Evaluating Kerberos** | The [project README](../README.md) for the feature overview, then [Getting started](./getting-started.md) |
-| **Deploying and operating it** | [Deployment](./deployment.md) (with its production checklist), [Configuration](./configuration.md), [Persistence](./persistence.md), [TLS](./tls.md), [Observability](./observability.md) |
-| **Putting your service behind it** | [Routing](./routing.md), [Authentication](./authentication.md) (identity headers and the Go middleware), [Request validation](./request-validation.md), [CORS](./cors.md) |
-| **Building a login page or client** | [Sessions](./sessions.md), [Organisations](./organizations.md), [CORS](./cors.md), and the [API reference](#api-reference) |
-| **Contributing code** | [Developer documentation](./dev/README.md) |
-
-## Getting started and operations
-
-- [Getting started](./getting-started.md): a first-run tutorial. The recommended path uses krbctl to generate a Docker Compose setup with a protected echo test backend; the alternative runs Kerberos from source. Both end with a logged-in user calling a protected backend with curl.
-- [Deployment](./deployment.md): everything needed to run Kerberos outside a laptop: images and tags, the `--config` flag, environment variables, the two servers, health checks, shutdown and timeouts. Ends with scaling limits and a production checklist.
-- [Configuration](./configuration.md): the JSON config file, how it is loaded and validated, and the `${env:...}` and `${ref:...}` references. Lists every top-level key with the page that documents it, and ends with a complete annotated example.
-- [Persistence](./persistence.md): the database that holds admin users, sessions, organisations and debug captures. Explains choosing between SQLite and PostgreSQL, configuring it, automatic table creation, and backups.
-
-## Routing traffic
-
-- [Routing](./routing.md): how to register backends and reach them at `/gw/backend/<name>/<path>`. Covers naming rules, path stripping, what is and is not forwarded, timeouts, the health endpoint and every error status.
-- [TLS](./tls.md): serving HTTPS on the gateway and admin ports, and using HTTPS or mutual TLS towards backends. Also explains why login cookies need HTTPS and how to run behind a TLS-terminating proxy.
-- [Origins and CORS](./cors.md): controlling which browser origins may call gateway backends, the Admin API and the basic-auth API. Use it when browser applications on other origins call Kerberos.
-- [Request validation](./request-validation.md): checking requests against a backend's OpenAPI 3.0 specification before forwarding them. Unknown paths, bad parameters and invalid JSON bodies are rejected at the gateway, so the backend only sees well-formed requests.
-
-## Users and access control
-
-- [Authentication and authorisation](./authentication.md): protecting gateway backends so that only logged-in organisation users, optionally limited by group, can reach them. Kerberos passes the caller's identity to the backend in `X-Krb-*` headers, and Go backends can read it with the `pkg/auth` middleware.
-- [Sessions and cookies](./sessions.md): how login, refresh and logout work for both the basic-auth API and the Admin API. Covers the session, refresh and CSRF cookies, their lifetimes, CSRF protection and cookie settings.
-- [Organisations, users and groups](./organizations.md): the multi-tenant model behind basic authentication and the basic-auth API that manages it. Explains who can do what, with a walkthrough from creating an organisation to a user's first login.
-- [Admin API](./admin-api.md): the platform administration interface on the admin port. Covers the superuser, admin users and groups, permissions, inspecting the request flow and OpenAPI specifications, and the Go client.
-
-## Operating and troubleshooting
-
-- [Observability](./observability.md): the metrics, traces and logs Kerberos produces and how to export them with standard OpenTelemetry environment variables. Includes a metrics reference, log verbosity levels and example dashboards and queries.
-- [Debug sessions](./admin-debugging.md): recording how individual requests to one backend move through the gateway, step by step, and why they failed. Use it to troubleshoot a specific backend without turning on tracing.
-
-## Tools
-
-- [krbctl](./krbctl.md): a command-line tool that scaffolds a Kerberos deployment. It writes a Docker Compose file and a matching config, optionally with PostgreSQL, the echo test backend, the admin connector and an observability stack.
-- [Admin connector](./admin-connector.md): a separate reverse proxy that puts internal tools, such as the Jaeger UI, behind Admin API login. Only requests with a valid admin or superuser session get through.
+- **One page per setting.** Each config section, shared config object and environment variable is described on one page, and other pages link there. [Configuration: root keys](./configuration.md#root-keys) lists the page for each config section, and [Deployment: environment variables](./deployment.md#environment-variables) lists the environment variables.
+- **Examples use the default ports**: `30000` for the gateway and `30001` for the admin server, as set by `PORT` and `ADMIN_PORT` (see [Deployment: environment variables](./deployment.md#environment-variables)). If you change them, change the examples to match.
 
 ## API reference
 
@@ -76,7 +39,3 @@ The HTTP APIs are described by OpenAPI contracts in [`../openapi/`](../openapi/)
 - [`gateway.yaml`](../openapi/gateway.yaml): the gateway port.
 - [`admin.yaml`](../openapi/admin.yaml): the Admin API.
 - [`auth_basic.yaml`](../openapi/auth_basic.yaml): the basic-auth API.
-
-## Developer documentation
-
-[Developer documentation](./dev/README.md) covers internal architecture and implementation details. It is for contributors to Kerberos, not for operating or integrating it.

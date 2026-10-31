@@ -1,6 +1,6 @@
 # TLS
 
-Kerberos can use HTTPS on the gateway port, on the admin port, and on the connection to each backend. Backend connections can also use mutual TLS (mTLS). This page describes each setting, how certificates are loaded, what is not configurable, and how TLS affects login cookies.
+Kerberos can use HTTPS on the gateway port, on the admin port, and on the connection to each backend. Backend connections can also use mutual TLS (mTLS). This page describes each setting, how certificates are loaded, and how TLS affects login cookies.
 
 - [Overview](#overview)
 - [Gateway server TLS](#gateway-server-tls)
@@ -11,7 +11,6 @@ Kerberos can use HTTPS on the gateway port, on the admin port, and on the connec
 - [Running behind a TLS-terminating proxy](#running-behind-a-tls-terminating-proxy)
 - [Example: certificates mounted as files](#example-certificates-mounted-as-files)
 - [Admin connector](#admin-connector)
-- [Limitations and things to know](#limitations-and-things-to-know)
 - [Related docs](#related-docs)
 
 ## Overview
@@ -52,7 +51,7 @@ The authoritative definitions are the JSON schemas in `internal/config/schemas/`
 
 When `gateway.tls` is set:
 
-- Kerberos does not listen for plain HTTP or redirect it. A plain `http://` request to the gateway port gets `400 Bad Request` with the text `Client sent an HTTP request to an HTTPS server.`
+- Clients must use `https://`. A plain `http://` request to the gateway port gets `400 Bad Request`.
 - The health endpoint `/gw/health` is also HTTPS-only, so health checks and load-balancer probes must use HTTPS. See [Deployment](./deployment.md).
 - Clients can use HTTP/1.1 or HTTP/2.
 
@@ -142,9 +141,9 @@ How verification works:
 - The certificate must chain to a CA in `rootCAFile`, or to a CA in the system pool when `rootCAFile` is `""`. The official Kerberos image includes the standard public CA certificates.
 - For mTLS, the backend decides whether to accept Kerberos's client certificate. Kerberos only presents it.
 
-> **Warning:** `insecureSkipVerify: true` accepts any certificate, including expired, self-signed or forged ones. The connection is still encrypted, but it is not authenticated, so a man-in-the-middle can read and change traffic. Use it only for local testing. `rootCAFile` is still required with `insecureSkipVerify`. Set it to `""` if you have no CA file.
+> **Warning:** `insecureSkipVerify: true` accepts any certificate, including expired, self-signed or forged ones. The connection is still encrypted, but Kerberos cannot tell who it is talking to, so someone on the network could read and change traffic. Use it only for local testing. `rootCAFile` is still required with `insecureSkipVerify`. Set it to `""` if you have no CA file.
 
-If the TLS handshake with a backend fails, for example because the certificate is untrusted, the host name does not match, or the backend rejects the client certificate, the client gets the same response as for any other upstream failure: `500` with `{"errors":["failed to forward request"]}`. The real cause is in the Kerberos log. See [Routing](./routing.md).
+If the TLS connection to a backend fails, for example because the certificate is not trusted or the host name does not match, the client gets `500` with `{"errors":["failed to forward request"]}` and the Kerberos log records the cause. See [Routing](./routing.md).
 
 ## Certificate loading and startup errors
 
@@ -154,7 +153,7 @@ All certificate files are read once, at startup.
 - **Server files** (`gateway.tls` and `admin.api.tls`) are loaded when each listener starts. If a file is missing, unreadable or invalid, Kerberos logs `GW server start error` or `Admin server start error` with the cause and exits with code 1.
 - **Config validation** catches structural mistakes before any files are read. Examples are a `tls` block without `serverCertFile`/`serverKeyFile`, a backend `tls` block without `rootCAFile`, or only one of `clientCertFile`/`clientKeyFile`. See [Configuration](./configuration.md).
 
-Because files are read only at startup, Kerberos does not notice renewed certificates. Restart it after you rotate certificates or CA bundles.
+Restart Kerberos after you replace certificates or CA bundles.
 
 ## Secure cookies need HTTPS
 
@@ -174,11 +173,10 @@ Instead of configuring certificates in Kerberos, you can put a load balancer, in
 
 Things to keep in mind:
 
-- The hop from the proxy to Kerberos is unencrypted. Keep it on a private network. If you need that hop encrypted, configure `gateway.tls`/`admin.api.tls` as well and have the proxy re-encrypt.
-- Kerberos does not read `X-Forwarded-Proto` or similar headers. This does not matter for cookies, which are always marked `Secure`.
-- Kerberos does not add `X-Forwarded-*` headers to backend requests. Headers the proxy adds are passed through to backends unchanged. See [Routing](./routing.md).
+- Keep the link from the proxy to Kerberos on a private network. To encrypt that link too, configure `gateway.tls`/`admin.api.tls` and have the proxy connect over HTTPS.
+- Headers the proxy adds, such as `X-Forwarded-For`, are passed on to backends unchanged. See [Routing](./routing.md).
 - Route both ports through the proxy if browsers use both: the gateway port and the admin port, which serves the admin and login APIs.
-- Use the TLS settings of the proxy to control TLS versions, cipher suites or client-certificate checks. Kerberos does not offer these settings (see [Limitations](#limitations-and-things-to-know)).
+- Use the proxy's own TLS settings to choose TLS versions, cipher suites or client-certificate checks at the edge.
 
 ## Example: certificates mounted as files
 
@@ -260,7 +258,7 @@ services:
       - ./certs:/certs:ro
 ```
 
-The image runs as a non-root user, so the mounted certificate and key files must be readable by that user. For example, run `chmod a+r` on the files in a test setup, or use your orchestrator's secret mechanism with appropriate permissions.
+The image runs as a non-root user, so that user must be able to read the mounted certificate and key files. In a test setup, run `chmod a+r` on the files. In production, use your platform's way of mounting secrets.
 
 Test it:
 
@@ -286,19 +284,15 @@ Include every host name that clients and Kerberos will use in the certificate: t
 
 ## Admin connector
 
-The [admin connector](./admin-connector.md) is a separate binary with its own `tls` and `targetTls` settings. They are documented in [Admin connector: TLS](./admin-connector.md#tls).
+The [admin connector](./admin-connector.md) is a separate binary with its own `tls` setting, documented in [Admin connector: TLS](./admin-connector.md#tls).
 
-## Limitations and things to know
+## Things to know
 
-- **No TLS tuning.** You cannot configure the minimum or maximum TLS version, cipher suites, curves or ALPN protocols. Kerberos uses the Go standard library defaults: TLS 1.2 and 1.3 with Go's default cipher suites.
-- **No client-certificate authentication on the Kerberos ports.** The gateway and admin ports do not request or verify client certificates. mTLS is only available on the connection from Kerberos to backends. If you need client certificates at the edge, check them in a proxy in front of Kerberos.
-- **HTTPS only, no redirect.** When server TLS is enabled on a port, plain HTTP on that port is rejected with `400`. Kerberos cannot serve HTTP and HTTPS on the same port, and it cannot redirect HTTP to HTTPS.
-- **Certificates are read only at startup.** Restart Kerberos after rotating them.
-- **One CA setting per backend.** A file in `rootCAFile` replaces the system pool for that backend. It does not add to it.
-- **Backend connections use HTTP/1.1**, including over TLS.
-- **The backend host name is used for verification.** If you address a backend by IP address or by an internal alias, its certificate must contain that exact name or IP.
-- **TLS errors look like other upstream errors** (`500 failed to forward request`). Check the Kerberos log for the cause.
-- **Database TLS is configured separately.** PostgreSQL connections use `persistence.postgres.sslMode`. See [Persistence](./persistence.md).
+- **TLS versions.** Kerberos uses TLS 1.2 and 1.3.
+- **Client certificates.** Mutual TLS is used on the connection from Kerberos to backends. To check client certificates from callers, do it in a proxy in front of Kerberos.
+- **CA files.** A file in `rootCAFile` is the full list of trusted CAs for that backend. Set it to `""` to trust the system CAs.
+- **Host names.** A backend's certificate must contain the exact `host` value from its config, whether that is a name or an IP address.
+- **Database TLS.** PostgreSQL connections use `persistence.postgres.sslMode`. See [Persistence](./persistence.md).
 
 ## Related docs
 
@@ -306,5 +300,5 @@ The [admin connector](./admin-connector.md) is a separate binary with its own `t
 - [Deployment](./deployment.md): ports, health checks and the production security checklist
 - [Routing](./routing.md): backends, forwarding and upstream errors
 - [Sessions](./sessions.md): cookies and why they require HTTPS
-- [Admin connector](./admin-connector.md): the connector's `tls` and `targetTls`
+- [Admin connector](./admin-connector.md): the connector's `tls` setting
 - [CORS](./cors.md): origins must match the scheme (`https://...`) that browsers use

@@ -4,14 +4,14 @@ Kerberos can protect the backends behind the gateway so that only logged-in user
 
 ## How it works
 
-Kerberos currently offers one authentication method, **basic**:
+Kerberos logs users in with the **basic** method, using a username and password:
 
 1. Users belong to an **organisation** and can be members of **groups** within it. Organisations, users and groups are managed through the basic-auth API. See [Organisations](./organizations.md).
 2. A user logs in by sending a username and password to the basic-auth API on the **admin port** (`POST /api/auth/basic/organisations/{orgID}/login`). Kerberos answers with a `session` cookie (plus `refresh` and `csrf` cookies). See [Sessions](./sessions.md) for cookie lifetimes, refresh and logout.
 3. The client calls a backend through the **gateway port** (`/gw/backend/<name>/...`) and sends the `session` cookie along.
 4. Kerberos looks up the session, applies the backend's authorisation rules, adds identity headers and forwards the request. Requests that fail the checks are answered by Kerberos with `401` or `403` and never reach the backend.
 
-Backends that have no entry in `auth.scheme.mappings` are not protected at all.
+Backends that have no entry in `auth.scheme.mappings` are open to everyone.
 
 The basic-auth API is only served when `auth.methods.basic` is configured. Its OpenAPI contract is [`openapi/auth_basic.yaml`](../openapi/auth_basic.yaml), and `auth_basic.yaml` must be present in the OAS directory at startup.
 
@@ -69,7 +69,7 @@ The authoritative schema is [`internal/config/schemas/auth_schema.json`](../inte
 
 ### `auth`
 
-Leave the whole `auth` section out to disable authentication. If you include it, include both `methods` and `scheme`: the schema requires them together, and an `auth` section without `methods` makes Kerberos fail at startup.
+Leave the whole `auth` section out to turn authentication off. If you include it, include both `methods` and `scheme`.
 
 | Key | Type | Default | Description |
 |---|---|---|---|
@@ -86,7 +86,7 @@ Leave the whole `auth` section out to disable authentication. If you include it,
 | Key | Type | Required | Description |
 |---|---|---|---|
 | `backend` | string | yes | Name of a backend in `gateway.router.backends`. You can use `${ref:gateway.router.backends[1].name}` to avoid repeating it (see [Configuration](./configuration.md)). |
-| `method` | string | yes | Authentication method. Only `basic` is supported. |
+| `method` | string | yes | Authentication method: `basic`. |
 | `exempt` | array of strings | no | Path patterns that skip authentication and authorisation completely. |
 | `authorization` | object | no | Group requirements. Without it, any logged-in user is allowed. |
 | `authorization.groups` | array of strings | no (min. 1 item if set) | Group names required for every path of the backend. The user must be in **any one** of them. |
@@ -126,10 +126,10 @@ An admin API session (see [Admin API](./admin-api.md)) is not a basic-auth sessi
 Things to know:
 
 - Patterns are matched against the path **relative to the backend**, after Kerberos has removed `/gw/backend/<name>`. A request to `/gw/backend/protected-echo/unprotected/x` is matched as `/unprotected/x`. Do not include the `/gw/backend/<name>` prefix in patterns.
-- The whole path must match. `*` matches any characters except `/`, so it never spans more than one path segment. There is no `**`; to cover a subtree, list each depth you need (`/public/*`, `/public/*/*`) or structure the backend's paths so one level is enough.
+- The whole path must match. `*` matches any characters except `/`, so it covers one path segment. To cover deeper paths, list each depth you need (`/public/*`, `/public/*/*`).
 - To cover both a path and its children, list both, as in `["/unprotected", "/unprotected/*"]`.
-- The query string is not part of the path and is ignored.
-- Test new patterns before you deploy them: they use Go `path.Match` syntax, and an unclosed `[` is not a valid pattern.
+- Patterns match the path only, not the query string.
+- Test new patterns before you deploy them.
 
 ## Authorisation semantics
 
@@ -148,9 +148,9 @@ On requests that pass the session check, Kerberos adds these headers before forw
 |---|---|---|
 | `X-Krb-User` | Numeric user ID, e.g. `7` | Every request that passes the session check. |
 | `X-Krb-Org` | Numeric organisation ID, e.g. `1` | Every request that passes the session check. |
-| `X-Krb-Groups` | Group name; one header line per group the user belongs to | Only when a group check ran for the request (the mapping has `authorization` and either a path rule matched or `authorization.groups` is set). Not added if the user has no groups. |
+| `X-Krb-Groups` | Group name; one header line per group the user belongs to | When a group check ran for the request (the mapping has `authorization` and either a path rule matched or `authorization.groups` is set) and the user is in at least one group. |
 
-None of these headers are added for unmapped backends or exempt paths. If your backend needs the user's groups on every protected path, configure `authorization.groups` for the backend.
+These headers are added on protected paths, not on unmapped backends or exempt paths. If your backend needs the user's groups on every protected path, configure `authorization.groups` for the backend.
 
 All other request headers, including the `Cookie` header with the session cookie, are forwarded to the backend as well.
 
@@ -186,20 +186,20 @@ func main() {
 }
 ```
 
-Each getter returns `false` when the header was absent. Use it in backends that can be reached through Kerberos alone (see below).
+Each getter returns `false` when the header is missing. Use it in backends that are reached through Kerberos (see below).
 
-## Security considerations
+## Good practice
 
-Read this section before relying on Kerberos to protect a backend.
+Follow these points when Kerberos protects a backend.
 
 - **Backends must only be reachable through Kerberos.** Kerberos is what enforces authentication, so every request to a protected backend must pass through it. Put backends on a private network, behind a firewall, or use [mutual TLS](./tls.md) between Kerberos and the backend.
 - **Rely on identity headers only on protected routes.** `X-Krb-*` headers describe the caller only on requests that Kerberos authenticated.
 - **Separate tenants in the backend.** If a backend belongs to one organisation, check `X-Krb-Org` in the backend as well as using group rules.
-- **Always configure `methods.basic` when a mapping uses `"method": "basic"`.** The configuration is accepted without it, but every request to the mapped backend then fails instead of being authenticated.
+- **Configure `methods.basic` whenever a mapping uses `"method": "basic"`.**
 - **Use HTTPS.** The session cookies are marked `Secure`, so browsers only send them over HTTPS (except to `localhost`). See [TLS](./tls.md) and [Sessions](./sessions.md).
-- Exempt patterns are matched before anything else; double-check that a broad pattern such as `/*` does not expose more than you intended.
+- **Keep exempt patterns narrow.** Exempt patterns are checked first, so make sure a broad pattern such as `/*` opens only what you intend.
 
-## Walk-through with curl
+## Walkthrough with curl
 
 This assumes the example configuration above, Kerberos on `localhost` on the [default ports](./README.md#conventions), and an organisation with ID `1` containing a user `alice` who is a member of group `staff`. See [Organisations](./organizations.md) for creating the organisation, user and group. The session cookie is `Secure`; curl sends it over plain HTTP only to `localhost`, so use HTTPS for any other host.
 
@@ -248,7 +248,7 @@ This assumes the example configuration above, Kerberos on `localhost` on the [de
    # {"errors":["Forbidden"]}
    ```
 
-The session expires after a short time; refresh it or log in again as described in [Sessions](./sessions.md).
+To keep using the backend after the session expires, refresh it or log in again as described in [Sessions](./sessions.md).
 
 ## Related docs
 
