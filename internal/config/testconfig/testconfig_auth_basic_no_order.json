@@ -1,0 +1,13 @@
+{
+  "methods": {
+    "basic": {}
+  },
+  "scheme": {
+    "mappings": [
+      {
+        "backend": "name",
+        "method": "basic"
+      }
+    ]
+  }
+}

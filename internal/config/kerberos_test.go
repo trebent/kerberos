@@ -114,6 +114,27 @@ func TestConfigAuth(t *testing.T) {
 			t.Fatal("Expected error due to additional property")
 		}
 	})
+
+	t.Run("Basic auth with additional property inside authorization", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_auth_basic_no_order.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		sch := getSchemer(t, authSchema, cookiesSchema, originsSchema, orderedSchema)
+		sch.Load(data)
+
+		target := &Auth{}
+		err = sch.Parse(target)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		target.postProcess()
+
+		if target.Order != 1 {
+			t.Fatal("Expected default order of 1")
+		}
+	})
 }
 
 func TestConfigAdmin(t *testing.T) {
@@ -244,40 +265,62 @@ func TestConfigEmpty(t *testing.T) {
 }
 
 func TestConfigOAS(t *testing.T) {
-	data, err := os.ReadFile("./testconfig/testconfig_oas.json")
-	if err != nil {
-		t.Fatalf("failed to read test config: %v", err)
-	}
+	t.Run("Base", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_oas.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
 
-	sch := getKerberosSchemer(t)
-	sch.Load(data)
+		sch := getKerberosSchemer(t)
+		sch.Load(data)
 
-	target := NewKerberos()
-	if err := sch.Parse(target); err != nil {
-		t.Fatalf("failed to load config: %v", err)
-	}
-	target.PostProcess()
+		target := NewKerberos()
+		if err := sch.Parse(target); err != nil {
+			t.Fatalf("failed to load config: %v", err)
+		}
+		target.PostProcess()
 
-	if len(target.OASCfg.Mappings) != 1 {
-		t.Fatalf("expected 1 OAS mapping, got %d", len(target.OASCfg.Mappings))
-	}
+		if len(target.OASCfg.Mappings) != 1 {
+			t.Fatalf("expected 1 OAS mapping, got %d", len(target.OASCfg.Mappings))
+		}
 
-	mapping := target.OASCfg.Mappings[0]
-	if mapping.Backend != "backend1" {
-		t.Errorf("expected OAS mapping backend to be 'backend1', got '%s'", mapping.Backend)
-	}
+		mapping := target.OASCfg.Mappings[0]
+		if mapping.Backend != "backend1" {
+			t.Errorf("expected OAS mapping backend to be 'backend1', got '%s'", mapping.Backend)
+		}
 
-	if mapping.Specification != "./testconfig/oas_spec.yaml" {
-		t.Errorf("expected OAS mapping specification to be './testconfig/oas_spec.yaml', got '%s'", mapping.Specification)
-	}
+		if mapping.Specification != "./testconfig/oas_spec.yaml" {
+			t.Errorf("expected OAS mapping specification to be './testconfig/oas_spec.yaml', got '%s'", mapping.Specification)
+		}
 
-	if mapping.Options == nil {
-		t.Fatalf("expected OAS mapping options to be non-nil, got nil")
-	}
+		if mapping.Options == nil {
+			t.Fatalf("expected OAS mapping options to be non-nil, got nil")
+		}
 
-	if !mapping.Options.ValidateBody {
-		t.Errorf("expected OAS mapping options to have ValidateBody=true, got false")
-	}
+		if !mapping.Options.ValidateBody {
+			t.Errorf("expected OAS mapping options to have ValidateBody=true, got false")
+		}
+	})
+
+	t.Run("default order", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_oas_no_order.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		sch := getSchemer(t, oasSchema, orderedSchema)
+		sch.Load(data)
+
+		target := &OAS{}
+		if err := sch.Parse(target); err != nil {
+			t.Fatalf("failed to load config: %v", err)
+		}
+		target.postProcess()
+
+		if target.Order != 1 {
+			t.Fatal("Expected default order of 1")
+		}
+	})
 }
 
 func TestConfigPersistence(t *testing.T) {

@@ -276,6 +276,10 @@ func (ac *Auth) postProcess() {
 	if ac.Methods.Basic != nil && ac.Methods.Basic.API.Origins == nil {
 		ac.Methods.Basic.API.Origins = &Origins{}
 	}
+
+	if ac.Order < 1 {
+		ac.Order = 1
+	}
 }
 
 func (gc *Gateway) postProcess() {
@@ -293,5 +297,9 @@ func (oc *OAS) postProcess() {
 		if m.Options == nil {
 			m.Options = &OASBackendMappingOpts{ValidateBody: true}
 		}
+	}
+
+	if oc.Order < 1 {
+		oc.Order = 1
 	}
 }
