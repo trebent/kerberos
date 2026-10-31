@@ -13,6 +13,12 @@ type (
 	GroupsKey struct{}
 )
 
+const (
+	HeaderOrg    = basic.HeaderOrg
+	HeaderUser   = basic.HeaderUser
+	HeaderGroups = basic.HeaderGroups
+)
+
 // ContextMiddleware extracts request information and populates the request context.
 func ContextMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -66,7 +72,7 @@ func extractSliceFromContext(ctx context.Context, key any) ([]string, bool) {
 }
 
 func setUser(ctx context.Context, r *http.Request) context.Context {
-	if val := r.Header.Get(basic.HeaderUser); val != "" {
+	if val := r.Header.Get(HeaderUser); val != "" {
 		ctx = context.WithValue(ctx, UserKey{}, val)
 	}
 
@@ -74,7 +80,7 @@ func setUser(ctx context.Context, r *http.Request) context.Context {
 }
 
 func setOrg(ctx context.Context, r *http.Request) context.Context {
-	if val := r.Header.Get(basic.HeaderOrg); val != "" {
+	if val := r.Header.Get(HeaderOrg); val != "" {
 		ctx = context.WithValue(ctx, OrgKey{}, val)
 	}
 
@@ -82,7 +88,7 @@ func setOrg(ctx context.Context, r *http.Request) context.Context {
 }
 
 func setGroups(ctx context.Context, r *http.Request) context.Context {
-	if val := r.Header.Values(basic.HeaderGroups); len(val) != 0 {
+	if val := r.Header.Values(HeaderGroups); len(val) != 0 {
 		ctx = context.WithValue(ctx, GroupsKey{}, val)
 	}
 

@@ -8,6 +8,7 @@ import (
 
 	lib "github.com/trebent/kerberos/test/suites/lib"
 
+	"github.com/trebent/kerberos/pkg/auth"
 	authbasicapi "github.com/trebent/kerberos/pkg/auth/client"
 )
 
@@ -140,4 +141,31 @@ func TestGatewayAuthBasicAuthorizedPleb(t *testing.T) {
 	if vals := requestHeaders.Values("x-krb-groups"); len(vals) == 0 {
 		t.Fatal("Groups should have been set")
 	}
+}
+
+func TestGatewayAuthBasicHeaderAttack(t *testing.T) {
+	loginResp, err := lib.BasicAuthClient.LoginWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.LoginJSONRequestBody{
+			Username: alwaysUser,
+			Password: alwaysUserPassword,
+		},
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(loginResp.StatusCode(), http.StatusNoContent, t)
+	sessionCookie, err := lib.ExtractSessionCookie(loginResp.HTTPResponse)
+	lib.CheckErr(err, t)
+
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/long/hello", lib.GetHost(), lib.GetPort()), nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	req.AddCookie(sessionCookie)
+	req.Header.Add(auth.HeaderOrg, "123")
+
+	c := http.Client{}
+	resp, err := c.Do(req)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(resp.StatusCode, http.StatusForbidden, t)
 }
