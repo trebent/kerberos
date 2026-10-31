@@ -530,3 +530,21 @@ func TestConfigGateway(t *testing.T) {
 		}
 	})
 }
+
+func TestConfigCookies(t *testing.T) {
+	t.Run("unexpected property", func(t *testing.T) {
+		data, err := os.ReadFile("./testconfig/testconfig_cookies_additional_property.json")
+		if err != nil {
+			t.Fatalf("failed to read test config: %v", err)
+		}
+
+		sch := getSchemer(t)
+		sch.Load(data)
+
+		cookies := &Cookies{}
+
+		if err := sch.Parse(cookies); err == nil {
+			t.Fatal("Expected an error due to additional unexpected property")
+		}
+	})
+}

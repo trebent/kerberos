@@ -4,6 +4,7 @@
   "type": "object",
   "default": {},
   "description": "Cookie management settings.",
+  "additionalProperties": false,
   "properties": {
     "domain": {
       "type": "string",
@@ -18,7 +19,6 @@
         "None"
       ],
       "description": "SameSite setting for cookies, this translates directly to SameSite=<value> for cookies."
-    },
-    "additionalProperties": false
+    }
   }
 }
