@@ -1,9 +1,6 @@
 services:
   postgres:
     image: "postgres:18.4-alpine3.23"
-    depends_on:
-      loki:
-        condition: service_started
     pull_policy: if_not_present
     environment:
       - POSTGRES_DB=kerberos
@@ -20,11 +17,9 @@ services:
 
   kerberos:
     image: "ghcr.io/trebent/kerberos:${VERSION:-unset}"
-    command: --config /config/integration.json
+    command: --config /krb.json
     pull_policy: if_not_present
     depends_on:
-      loki:
-        condition: service_started
       postgres:
         condition: service_healthy
     build:
@@ -51,14 +46,11 @@ services:
       - ADMIN_PORT=${KERBEROS_ADMIN_PORT:-30001}
       - VERSION=${VERSION:-unset}
     volumes:
-      - ../../config:/config:ro
+      - ./krb.json:/krb.json:ro
       - ../../oas:/oas:ro
 
   echo:
     image: "ghcr.io/trebent/kerberos/echo:${VERSION:-unset}"
-    depends_on:
-      loki:
-        condition: service_started
     pull_policy: if_not_present
     build:
       context: ../../..
@@ -77,9 +69,6 @@ services:
 
   protected-echo:
     image: "ghcr.io/trebent/kerberos/echo:${VERSION:-unset}"
-    depends_on:
-      loki:
-        condition: service_started
     pull_policy: if_not_present
     build:
       context: ../../..
@@ -95,54 +84,35 @@ services:
 
   prometheus:
     image: "prom/prometheus:v3"
-    depends_on:
-      loki:
-        condition: service_started
     pull_policy: if_not_present
     command: ["--config.file=/prometheus.yml", "--storage.tsdb.path", "/prometheus/data", "--storage.tsdb.retention.size", "1GB"]
     restart: on-failure
     ports:
       - ${PROM_PORT:-9090}:9090
     volumes:
-      - ../../config/prometheus/prometheus.yml:/prometheus.yml
+      - ./prometheus.yml:/prometheus.yml
       - prometheus:/prometheus
 
   grafana:
     image: "grafana/grafana:13.1"
     pull_policy: if_not_present
     depends_on:
-      loki:
-        condition: service_started
       postgres:
         condition: service_healthy
     restart: on-failure
     ports:
       - ${GRAFANA_PORT:-3000}:3000
     volumes:
-      - ../../../cmd/krbctl/cmd/assets/grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/grafana-datasources.yml
-      - ../../../cmd/krbctl/cmd/assets/grafana/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/grafana-dashboards.yml
-      - ../../../cmd/krbctl/cmd/assets/grafana/prometheus.json:/var/lib/grafana/prometheus.json
-      - ../../../cmd/krbctl/cmd/assets/grafana/kerberos_runtime.json:/var/lib/grafana/kerberos_runtime.json
-      - ../../../cmd/krbctl/cmd/assets/grafana/kerberos_http.json:/var/lib/grafana/kerberos_http.json
-      - ../../../cmd/krbctl/cmd/assets/grafana/jaeger.json:/var/lib/grafana/jaeger.json
-      - ../../../cmd/krbctl/cmd/assets/grafana/loki.json:/var/lib/grafana/loki.json
-      - ../../../cmd/krbctl/cmd/assets/grafana/service_logs.json:/var/lib/grafana/service_logs.json
-      - ../../config/grafana/grafana.ini:/etc/grafana/grafana.ini
-
-  loki:
-    image: grafana/loki:3.7
-    command: "-config.file=/etc/loki/config.yaml"
-    ports:
-      - 127.0.0.1:${LOKI_PORT:-3100}:3100
-    volumes:
-      - ../../../cmd/krbctl/cmd/assets/loki/loki.yml:/etc/loki/config.yaml
-      - loki:/loki
+      - ./grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/grafana-datasources.yml
+      - ./grafana/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/grafana-dashboards.yml
+      - ./grafana/prometheus.json:/var/lib/grafana/prometheus.json
+      - ./grafana/kerberos_runtime.json:/var/lib/grafana/kerberos_runtime.json
+      - ./grafana/kerberos_http.json:/var/lib/grafana/kerberos_http.json
+      - ./grafana/jaeger.json:/var/lib/grafana/jaeger.json
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
 
   jaeger-init:
     image: busybox:1.38
-    depends_on:
-      loki:
-        condition: service_started
     pull_policy: if_not_present
     command: ["sh", "-c", "chown 10001:0 /jaeger"]
     restart: on-failure
@@ -153,8 +123,6 @@ services:
     image: "jaegertracing/jaeger:2.20.0"
     pull_policy: if_not_present
     depends_on:
-      loki:
-        condition: service_started
       jaeger-init:
         condition: service_completed_successfully
     restart: on-failure
@@ -163,12 +131,11 @@ services:
       - 16685:16685
       - 16686:16686
     volumes:
-      - ../../config/jaeger/jaeger.yml:/jaeger.yml
-      - ../../../cmd/krbctl/cmd/assets/jaeger/config-ui.json:/config-ui.json
+      - ./jaeger.yml:/jaeger.yml
+      - ./jaeger-config-ui.json:/jaeger-config-ui.json
       - jaeger:/jaeger
 
 volumes:
   postgres:
   prometheus:
   jaeger:
-  loki:
