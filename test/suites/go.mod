@@ -38,12 +38,12 @@ require (
 	github.com/speakeasy-api/jsonpath v0.7.0 // indirect
 	github.com/speakeasy-api/openapi v1.26.2 // indirect
 	github.com/speakeasy-api/yaml-jsonpath v0.0.0-20261016002013-07e5f48e6d17 // indirect
-	github.com/trebent/schemer v0.1.0 // indirect
-	github.com/trebent/zerologr v1.1.1 // indirect
+	github.com/trebent/schemer v0.1.1 // indirect
+	github.com/trebent/zerologr v1.1.2 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
-	go.yaml.in/yaml/v3 v3.0.5 // indirect
+	go.yaml.in/yaml/v3 v3.0.6 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.6 // indirect
 	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/mod v0.42.0 // indirect
