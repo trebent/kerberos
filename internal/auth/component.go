@@ -139,8 +139,7 @@ func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	debugCall := composer.DebugFromContext(req.Context())
 
 	logger, _ := logr.FromContext(req.Context())
-	logger = logger.WithName("authorizer")
-	logger.Info("Authorizing request")
+	logger.V(20).Info("Authorizing request")
 
 	//nolint:errcheck // if this isn't populated the flow chain has been broken.
 	backend := req.Context().Value(composer.BackendContextKey).(string)

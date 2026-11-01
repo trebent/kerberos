@@ -93,12 +93,11 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	debuggedCall := composer.DebugFromContext(req.Context())
 
 	logger, _ := logr.FromContext(req.Context())
-	rLogger := logger.WithName("router")
-	rLogger.Info("Routing request", "path", req.URL.Path)
+	logger.V(20).Info("Routing request", "path", req.URL.Path)
 
 	backend, err := r.GetBackend(req)
 	if errors.Is(err, apiErrNoBackendFound) {
-		rLogger.Error(err, "Failed to route request")
+		logger.Error(err, "Failed to route request")
 		apierror.ErrorHandler(wrapped, req, apiErrNoBackendFound)
 		debuggedCall.AddTransition(
 			"router",
@@ -117,7 +116,7 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 			origin,
 			backend.Origins,
 		); err != nil {
-			rLogger.Error(err, "Origin denied", "origin", origin)
+			logger.Error(err, "Origin denied", "origin", origin)
 			apierror.ErrorHandler(wrapped, req, err)
 			debuggedCall.AddTransition(
 				"router",

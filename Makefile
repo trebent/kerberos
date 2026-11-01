@@ -31,7 +31,7 @@ YELLOW=\033[33m
 BLUE=\033[34m
 RESET=\033[0m
 
-LOG_VERBOSITY ?= 20
+LOG_VERBOSITY ?= 0
 VERSION ?= $(shell git describe --tags --always)
 GOPATH ?= $(shell go env GOPATH)
 GOBIN ?= $(GOPATH)/bin

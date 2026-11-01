@@ -82,8 +82,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	startLogger := zerologr.WithName("start")
-	startLogger.Info("Starting Kerberos API GW server",
+	zerologr.Info("Starting Kerberos API GW server",
 		"port", Port.Value(),
 		"admin_port", AdminPort.Value())
 
@@ -101,7 +100,7 @@ func main() {
 		Version.Value(),
 	)
 	if err != nil {
-		startLogger.Error(err, "Failed to instrument OpenTelemetry")
+		zerologr.Error(err, "Failed to instrument OpenTelemetry")
 		os.Exit(1) // nolint: gocritic
 	}
 	defer cleanup(context.Background()) // nolint: errcheck
@@ -109,10 +108,10 @@ func main() {
 	// Start Kerberos API GW server
 	// nolint: govet
 	if err := startServer(signalCtx, cfg); !errors.Is(err, http.ErrServerClosed) {
-		startLogger.Error(err, "Kerberos HTTP server failed")
+		zerologr.Error(err, "Kerberos HTTP server failed")
 		os.Exit(1)
 	}
-	startLogger.Info("Kerberos stopped")
+	zerologr.Info("Kerberos stopped")
 }
 
 // newDBClient constructs a db.SQLClient based on the persistence configuration.

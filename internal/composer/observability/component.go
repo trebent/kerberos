@@ -122,7 +122,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	)
 	defer span.End() // Stop the span after EVERYTHING is done
 
-	rLogger := o.logger.WithValues("http.path", req.URL.Path, semconv.HTTPMethodKey, req.Method)
+	logger := o.logger.WithValues("http.path", req.URL.Path, semconv.HTTPMethodKey, req.Method)
 	originalPath := req.URL.Path
 
 	// Wrap the response to extract:
@@ -133,7 +133,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// Extract the backend backendName to enable debugging and context enrichment early on.
 	backendName, err := router.GetBackendName(req)
 	if err != nil {
-		rLogger.Error(err, "Failed to extract backend name from request path")
+		logger.Error(err, "Failed to extract backend name from request path")
 		apierror.ErrorHandler(wrapped, req, err)
 		krbAttributes := extractKrbAttributes(ctx)
 		//nolint:errcheck // no point
@@ -142,7 +142,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		span.SetStatus(codes.Error, http.StatusText(http.StatusBadRequest))
 		span.SetAttributes(krbAttributes...)
 
-		rLogger.Info(
+		logger.Info(
 			req.Method + " " + originalPath + " " + strconv.Itoa(http.StatusBadRequest),
 		)
 
@@ -159,7 +159,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	debugCall.SetURL(req.URL.Path)
 	debugCall.SetMethod(req.Method)
 
-	ctx = logr.NewContext(ctx, rLogger)
+	ctx = logr.NewContext(ctx, logger)
 
 	var bw *response.BodyWrapper
 	// Wrap the request body to extract size
@@ -199,7 +199,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	span.SetStatus(wrapper.SpanStatus())
 	span.SetAttributes(krbAttributes...)
 
-	rLogger.Info(
+	logger.Info(
 		req.Method + " " + originalPath + " " + strconv.Itoa(wrapper.StatusCode()),
 	)
 

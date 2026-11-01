@@ -88,13 +88,12 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 
 	// Obtain matching backend to route to.
 	// Forward request and pipe forwarded response into origin response.
-	rLogger, _ := logr.FromContext(req.Context())
-	rLogger = rLogger.WithName("forwarder")
-	rLogger.V(20).Info("Forwarding request")
+	logger, _ := logr.FromContext(req.Context())
+	logger.V(20).Info("Forwarding request")
 
 	resp, err := f.handleInbound(req)
 	if err != nil {
-		rLogger.Error(err, "Failed to forward request")
+		logger.Error(err, "Failed to forward request")
 		apierror.ErrorHandler(wrapped, req, apiErrFailedForwarding)
 		debugCall.AddTransition(
 			"forwarder",
@@ -120,8 +119,8 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	// Reset to track outbound transition time.
 	debugStart = time.Now()
 
-	if err := f.handleOutbound(resp, wrapped, rLogger); err != nil {
-		rLogger.Error(err, "Failed to handle outbound response")
+	if err := f.handleOutbound(resp, wrapped, logger); err != nil {
+		logger.Error(err, "Failed to handle outbound response")
 		apierror.ErrorHandler(wrapped, req, apiErrFailedForwarding)
 		debugCall.AddTransition(
 			"forwarder",
@@ -143,7 +142,7 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 		"",
 	)
 
-	rLogger.V(50).Info("Forwarded request")
+	logger.V(50).Info("Forwarded request")
 }
 
 func (f *forwarder) handleInbound(req *http.Request) (*http.Response, error) {

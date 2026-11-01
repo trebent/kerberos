@@ -91,9 +91,8 @@ func (v *validator) GetMeta() []adminapi.FlowMeta {
 // ServeHTTP implements [composer.FlowComponent].
 func (v *validator) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	backend, _ := req.Context().Value(composer.BackendContextKey).(string)
-	oLogger, _ := logr.FromContext(req.Context())
-	oLogger = oLogger.WithName("oas-validator")
-	oLogger.Info("Running OAS validation", "backend", backend)
+	logger, _ := logr.FromContext(req.Context())
+	logger.V(20).Info("Running OAS validation", "backend", backend)
 
 	if handler, ok := v.validators[backend]; ok {
 		handler.ServeHTTP(w, req)
