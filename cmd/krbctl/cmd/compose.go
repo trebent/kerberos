@@ -77,8 +77,7 @@ postgres, admin-connector, echo) can be included or skipped at each step.`,
 	cmd.Flags().Bool("echo", false, "Include the echo service. (non-interactive mode only)")
 	cmd.Flags().Bool("obs-stack", false,
 		"Include the observability stack. (non-interactive mode only)")
-	cmd.Flags().Bool("postgres", false,
-		"Use PostgreSQL as the persistence backend. (non-interactive mode only)")
+	addDriverFlag(cmd)
 	cmd.Flags().Bool("connector", false,
 		"Include the admin-connector service. (non-interactive mode only)")
 	cmd.Flags().String("connector-target", "",
@@ -185,9 +184,12 @@ func collectComposeFromFlags(cmd *cobra.Command, opts *composeOptions) error {
 		return err
 	}
 
-	if opts.includePostgres, err = cmd.Flags().GetBool("postgres"); err != nil {
+	driver, err := getDriverFlag(cmd)
+	if err != nil {
 		return err
 	}
+
+	opts.includePostgres = driver == driverPostgres
 
 	if opts.includeConnector, err = cmd.Flags().GetBool("connector"); err != nil {
 		return err

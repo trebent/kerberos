@@ -494,6 +494,25 @@ test/krbctl/json: krbctl/build
 	@mkdir -p build
 	@cd test/suites/krbctl && KRBCTL_BIN=$(CURDIR)/build/krbctl go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/krbctl-test-output.json
 
+test/krbctl/integration: krbctl/build
+	$(call cecho,Running krbctl integration tests for Kerberos...,$(BOLD_YELLOW))
+	$(CURDIR)/build/krbctl compose \
+		-y \
+		--echo \
+		--obs-stack \
+		--driver postgres \
+		--connector \
+		-o $(CURDIR)/build
+	$(CURDIR)/build/krbctl config \
+		-y \
+		--echo \
+		--obs-stack \
+		--driver postgres \
+		--connector \
+		-o $(CURDIR)/build
+	docker compose -f $(CURDIR)/build/compose.yaml up -d
+	docker compose -f $(CURDIR)/build/compose.yaml down 
+
 test/unit:
 	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build

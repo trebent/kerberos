@@ -42,6 +42,28 @@ var (
 	errInvalidPort      = errors.New("port must be a number between 1 and 65535")
 )
 
+// addDriverFlag registers the --driver flag shared by the config and compose
+// commands.
+func addDriverFlag(cmd *cobra.Command) {
+	cmd.Flags().String("driver", driverSQLite,
+		"Persistence driver: sqlite or postgres. (non-interactive mode only)")
+}
+
+// getDriverFlag reads and validates the --driver flag.
+func getDriverFlag(cmd *cobra.Command) (string, error) {
+	driver, err := cmd.Flags().GetString("driver")
+	if err != nil {
+		return "", err
+	}
+
+	if driver != driverSQLite && driver != driverPostgres {
+		return "", fmt.Errorf("invalid driver %q: must be %q or %q",
+			driver, driverSQLite, driverPostgres)
+	}
+
+	return driver, nil
+}
+
 // configOptions holds all answers collected from the interactive config session.
 type configOptions struct {
 	outputPath string
@@ -94,12 +116,11 @@ skipped.`,
 	cmd.Flags().StringP("output", "o", ".", "Output path where config files will be written.")
 	cmd.Flags().BoolP("non-interactive", "y", false,
 		"Skip prompts and build the configuration from flag values.")
-	cmd.Flags().Bool("echo-backend", false,
+	cmd.Flags().Bool("echo", false,
 		"Register the built-in echo service as a router backend. (non-interactive mode only)")
 	cmd.Flags().StringArray("backend", nil,
 		"Router backend as 'name=..,host=..,port=..,auth=..' (repeatable). (non-interactive mode only)")
-	cmd.Flags().String("driver", driverSQLite,
-		"Persistence driver: sqlite or postgres. (non-interactive mode only)")
+	addDriverFlag(cmd)
 	cmd.Flags().Bool("obs-stack", false,
 		"Generate observability stack config files. (non-interactive mode only)")
 	cmd.Flags().Bool("grafana-anonymous", true,
@@ -204,7 +225,7 @@ func collectConfigInteractive(opts *configOptions) error {
 // collectConfigFromFlags populates opts from the command's flag values for
 // non-interactive runs.
 func collectConfigFromFlags(cmd *cobra.Command, opts *configOptions) error {
-	echoBackend, err := cmd.Flags().GetBool("echo-backend")
+	echoBackend, err := cmd.Flags().GetBool("echo")
 	if err != nil {
 		return err
 	}
@@ -236,16 +257,11 @@ func collectConfigFromFlags(cmd *cobra.Command, opts *configOptions) error {
 	}
 
 	if len(opts.backends) == 0 {
-		return errors.New("at least one backend is required (use --echo-backend or --backend)")
+		return errors.New("at least one backend is required (use --echo or --backend)")
 	}
 
-	if opts.driver, err = cmd.Flags().GetString("driver"); err != nil {
+	if opts.driver, err = getDriverFlag(cmd); err != nil {
 		return err
-	}
-
-	if opts.driver != driverSQLite && opts.driver != driverPostgres {
-		return fmt.Errorf("invalid driver %q: must be %q or %q",
-			opts.driver, driverSQLite, driverPostgres)
 	}
 
 	if opts.includeObsStack, err = cmd.Flags().GetBool("obs-stack"); err != nil {
