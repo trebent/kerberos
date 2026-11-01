@@ -221,6 +221,8 @@ func (a *authorizer) RegisterRoutes(
 }
 
 // findMethod attempts to find the method which protects the input backend, if any.
+//
+//nolint:gocognit // welp
 func (a *authorizer) findMethod(backend string, req *http.Request) (method.Method, error) {
 	for _, mapping := range a.cfg.Scheme.Mappings {
 		if mapping.Backend == backend {
