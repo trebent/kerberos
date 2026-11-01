@@ -31,6 +31,10 @@ type (
 		CustomHandler CustomHandlerFunc
 	}
 	CustomHandlerFunc func(FlowComponent, http.ResponseWriter, *http.Request)
+
+	// Noop can be used to replace components with a block that just silently stops processing on a ServeHTTP call.
+	// Useful for benchmarking.
+	Noop struct{}
 )
 
 var _ FlowComponent = (*Dummy)(nil)
@@ -61,4 +65,12 @@ func (d *Dummy) GetMeta() []adminapi.FlowMeta {
 
 func (d *Dummy) defaultHandler(w http.ResponseWriter, req *http.Request) {
 	d.next.ServeHTTP(w, req)
+}
+
+func (d *Noop) ServeHTTP(_ http.ResponseWriter, _ *http.Request) {}
+func (d *Noop) Next(_ FlowComponent)                             {}
+
+// GetMeta implements [FlowComponent].
+func (d *Noop) GetMeta() []adminapi.FlowMeta {
+	return []adminapi.FlowMeta{}
 }

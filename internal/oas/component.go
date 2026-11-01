@@ -92,7 +92,9 @@ func (v *validator) GetMeta() []adminapi.FlowMeta {
 func (v *validator) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	backend, _ := req.Context().Value(composer.BackendContextKey).(string)
 	logger, _ := logr.FromContext(req.Context())
-	logger.V(20).Info("Running OAS validation", "backend", backend)
+	if l := logger.V(20); l.Enabled() {
+		l.Info("Running OAS validation", "backend", backend)
+	}
 
 	if handler, ok := v.validators[backend]; ok {
 		handler.ServeHTTP(w, req)

@@ -28,12 +28,12 @@ func BenchmarkObs_Standard(b *testing.B) {
 	}
 	comp.Next(&dummy)
 
-	req := httptest.NewRequest("GET", "http://example.com/gw/backend/test/", nil)
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest("GET", "http://example.com/gw/backend/test/", nil)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		recorder := httptest.NewRecorder()
-		comp.ServeHTTP(recorder, req)
+		comp.ServeHTTP(recorder, request)
 	}
 }

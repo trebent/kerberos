@@ -2,8 +2,11 @@ package composer_test
 
 import (
 	"bytes"
+	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -18,10 +21,17 @@ import (
 )
 
 func BenchmarkComposer(b *testing.B) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		_, _ = io.Copy(io.Discard, req.Body)
+		w.WriteHeader(http.StatusOK)
+	}))
+	b.Cleanup(srv.Close)
+	addr, _ := srv.Listener.Addr().(*net.TCPAddr)
+
 	cfg := config.NewKerberos()
 	cfg.GatewayCfg.Router = &config.Router{
 		Backends: []*config.RouterBackend{
-			{Name: "backend", Host: "localhost", Port: 15000},
+			{Name: "backend", Host: addr.IP.String(), Port: addr.Port},
 		},
 	}
 	cfg.PostProcess()
@@ -40,12 +50,22 @@ func BenchmarkComposer(b *testing.B) {
 		Forwarder:     forwarder,
 	})
 
+	path := "/gw/backend/backend/hi"
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, path, bytes.NewBuffer([]byte("hi")))
+
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "http://localhost:15000/gw/backend/backend/hi", bytes.NewBuffer([]byte("hi")))
+		clear(recorder.Header())
 
+		request.URL.Path = path
+		request.Body = io.NopCloser(strings.NewReader("hi"))
 		composer.ServeHTTP(recorder, request)
+	}
+
+	if recorder.Result().StatusCode != http.StatusOK {
+		b.Fatal("Expected HTTP status 200")
 	}
 }

@@ -93,7 +93,10 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 	debuggedCall := composer.DebugFromContext(req.Context())
 
 	logger, _ := logr.FromContext(req.Context())
-	logger.V(20).Info("Routing request", "path", req.URL.Path)
+
+	if l := logger.V(20); l.Enabled() {
+		l.Info("Routing request", "path", req.URL.Path)
+	}
 
 	backend, err := r.GetBackend(req)
 	if errors.Is(err, apiErrNoBackendFound) {
