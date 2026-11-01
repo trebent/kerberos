@@ -149,7 +149,7 @@ compose/connector/logs/follow:
 
 compose/staging/up:
 	$(call cecho,Generating self-signed certificates for Kerberos staging test environment...,$(BOLD_YELLOW))
-	test/certs/staging/make_certs.sh
+	test/compose/staging/certs/make_certs.sh
 
 	$(call cecho,Composing Kerberos staging test environment...,$(BOLD_YELLOW))
 	@VERSION=$(VERSION) \

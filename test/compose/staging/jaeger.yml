@@ -18,6 +18,8 @@ service:
                 port: 8888
     logs:
       level: info
+    # TODO Initialize telemetry tracer once OTEL released new feature.
+    # https://github.com/open-telemetry/opentelemetry-collector/issues/10663
 
 extensions:
   jaeger_query:
@@ -25,9 +27,14 @@ extensions:
       traces: badger_store
       traces_archive: badger_archive
     ui:
-      config_file: /config-ui.json
+      config_file: /jaeger-config-ui.json
     http:
       endpoint: 0.0.0.0:16686
+      # To enable TLS:
+      tls:
+        cert_file: /certs/jaeger.pem
+        key_file: /certs/jaeger-key.pem
+    # This port is used by tests and does not need to be exposed to the host. It is used for internal communication between the query service and the storage extension.
     grpc:
       endpoint: 0.0.0.0:16685
   jaeger_storage:
