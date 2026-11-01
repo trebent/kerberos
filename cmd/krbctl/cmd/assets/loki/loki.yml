@@ -1,0 +1,27 @@
+---
+server:
+  http_listen_port: 3100
+
+auth_enabled: false
+
+common:
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory
+  path_prefix: /loki
+  replication_factor: 1
+
+storage_config:
+  filesystem:
+    directory: /loki/chunks
+
+schema_config:
+  configs:
+    - from: 2026-10-01
+      object_store: filesystem
+      store: tsdb
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h

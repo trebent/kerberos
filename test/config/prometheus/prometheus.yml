@@ -14,3 +14,6 @@ scrape_configs:
   - job_name: jaeger
     static_configs:
       - targets: ["jaeger:8888"]
+  - job_name: loki
+    static_configs:
+      - targets: ["loki:3100"]

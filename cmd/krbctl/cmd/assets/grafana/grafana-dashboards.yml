@@ -13,3 +13,11 @@ providers:
     type: file
     options:
       path: /var/lib/grafana/kerberos_http.json
+  - name: "Jaeger"
+    type: file
+    options:
+      path: /var/lib/grafana/jaeger.json
+  - name: "Loki"
+    type: file
+    options:
+      path: /var/lib/grafana/loki.json

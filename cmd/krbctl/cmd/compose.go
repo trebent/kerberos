@@ -16,6 +16,30 @@ import (
 // included: the Jaeger UI.
 const defaultConnectorTarget = "jaeger:16686"
 
+// lokiLoggingAnchor sends container logs to Loki through the Loki Docker logging plugin. The
+// plugin runs on the host, so it reaches Loki on the port published on the loopback interface.
+// Non-blocking mode and short retries keep services from stalling while Loki is unreachable.
+const lokiLoggingAnchor = `x-logging: &loki-logging
+  driver: loki
+  options:
+    loki-url: http://127.0.0.1:3100/loki/api/v1/push
+    mode: non-blocking
+    max-buffer-size: 4m
+    loki-retries: "2"
+    loki-max-backoff: 1s
+    loki-timeout: 1s
+
+`
+
+// dependency is one depends_on entry of a generated service.
+type dependency struct {
+	service   string
+	condition string
+}
+
+// sqliteInitDependency waits for the job that prepares the shared SQLite file.
+var sqliteInitDependency = dependency{"sqlite-init", "service_completed_successfully"}
+
 var (
 	errConnectorTargetRequired = errors.New(
 		"--connector-target is required with --connector when --obs-stack is not set")
@@ -116,7 +140,7 @@ func collectComposeInteractive(opts *composeOptions) error {
 
 			huh.NewConfirm().
 				Title("Include the observability stack?").
-				Description("Adds Prometheus, Grafana, and Jaeger services.").
+				Description("Adds Prometheus, Grafana, Jaeger, and Loki services.").
 				WithButtonAlignment(lipgloss.Left).
 				Value(&opts.includeObsStack),
 
@@ -205,6 +229,10 @@ func validateConnectorTarget(target string) error {
 func buildCompose(opts *composeOptions) string {
 	var b strings.Builder
 
+	if opts.includeObsStack {
+		b.WriteString(lokiLoggingAnchor)
+	}
+
 	b.WriteString("services:\n")
 	writePostgresService(&b, opts)
 	writeSQLiteInitService(&b, opts)
@@ -225,7 +253,9 @@ func writePostgresService(b *strings.Builder, opts *composeOptions) {
 	b.WriteString(`  postgres:
     image: "postgres:18.4-alpine3.23"
     pull_policy: if_not_present
-    environment:
+`)
+	writeServiceObs(b, opts)
+	b.WriteString(`    environment:
       - POSTGRES_DB=kerberos
       - POSTGRES_USER=kerberos
       - POSTGRES_PASSWORD=kerberos
@@ -249,15 +279,9 @@ func writeKerberosService(b *strings.Builder, opts *composeOptions) {
 `)
 
 	if opts.includePostgres {
-		b.WriteString(`    depends_on:
-      postgres:
-        condition: service_healthy
-`)
+		writeServiceObs(b, opts, dependency{driverPostgres, "service_healthy"})
 	} else {
-		b.WriteString(`    depends_on:
-      sqlite-init:
-        condition: service_completed_successfully
-`)
+		writeServiceObs(b, opts, sqliteInitDependency)
 	}
 
 	b.WriteString(`    restart: on-failure
@@ -289,7 +313,9 @@ func writeEchoService(b *strings.Builder, opts *composeOptions) {
 	b.WriteString(`  echo:
     image: "ghcr.io/trebent/kerberos/echo:latest"
     pull_policy: if_not_present
-    restart: on-failure
+`)
+	writeServiceObs(b, opts)
+	b.WriteString(`    restart: on-failure
     environment:
       - PORT=15000
 `)
@@ -307,15 +333,14 @@ func writeConnectorService(b *strings.Builder, opts *composeOptions) {
     image: "ghcr.io/trebent/kerberos/admin-connector:latest"
     command: --config /connector.json
     pull_policy: if_not_present
-    depends_on:
-      kerberos:
-        condition: service_started
 `)
+
+	deps := []dependency{{defaultKRBDB, "service_started"}}
 	if !opts.includePostgres {
-		b.WriteString(`      sqlite-init:
-        condition: service_completed_successfully
-`)
+		deps = append(deps, sqliteInitDependency)
 	}
+
+	writeServiceObs(b, opts, deps...)
 	b.WriteString(`    ports:
       - 30100:30100
 `)
@@ -349,7 +374,9 @@ func writeObsServices(b *strings.Builder, opts *composeOptions) {
     command: ["--config.file=/prometheus.yml", "--storage.tsdb.path", "/prometheus/data",
               "--storage.tsdb.retention.size", "1GB"]
     restart: on-failure
-    volumes:
+`)
+	writeServiceObs(b, opts)
+	b.WriteString(`    volumes:
       - ./prometheus.yml:/prometheus.yml
       - prometheus:/prometheus
 
@@ -358,11 +385,10 @@ func writeObsServices(b *strings.Builder, opts *composeOptions) {
     pull_policy: if_not_present
     restart: on-failure
 `)
-	if !opts.includePostgres {
-		b.WriteString(`    depends_on:
-      sqlite-init:
-        condition: service_completed_successfully
-`)
+	if opts.includePostgres {
+		writeServiceObs(b, opts)
+	} else {
+		writeServiceObs(b, opts, sqliteInitDependency)
 	}
 	b.WriteString(`    ports:
       - 3000:3000
@@ -373,24 +399,38 @@ func writeObsServices(b *strings.Builder, opts *composeOptions) {
       - ./grafana/prometheus.json:/var/lib/grafana/prometheus.json
       - ./grafana/kerberos_runtime.json:/var/lib/grafana/kerberos_runtime.json
       - ./grafana/kerberos_http.json:/var/lib/grafana/kerberos_http.json
+      - ./grafana/jaeger.json:/var/lib/grafana/jaeger.json
+      - ./grafana/loki.json:/var/lib/grafana/loki.json
       - grafana:/var/lib/grafana
 `)
 	fmt.Fprintf(b, "      %s\n\n", krbDataMount(opts.includePostgres))
-	b.WriteString(`  jaeger-init:
+	b.WriteString(`  loki:
+    image: "grafana/loki:3.7"
+    pull_policy: if_not_present
+    command: -config.file=/etc/loki/config.yaml
+    restart: on-failure
+    ports:
+      - 127.0.0.1:3100:3100
+    volumes:
+      - ./loki.yml:/etc/loki/config.yaml
+      - loki:/loki
+
+  jaeger-init:
     image: busybox:1.38
     pull_policy: if_not_present
     command: ["sh", "-c", "chown 10001:0 /jaeger"]
     restart: on-failure
-    volumes:
+`)
+	writeServiceObs(b, opts)
+	b.WriteString(`    volumes:
       - jaeger:/jaeger
 
   jaeger:
     image: "jaegertracing/jaeger:2.20.0"
     pull_policy: if_not_present
-    depends_on:
-      jaeger-init:
-        condition: service_completed_successfully
-    restart: on-failure
+`)
+	writeServiceObs(b, opts, dependency{"jaeger-init", "service_completed_successfully"})
+	b.WriteString(`    restart: on-failure
     command: --config /jaeger.yml
 `)
 	if !opts.includeConnector {
@@ -416,7 +456,9 @@ func writeSQLiteInitService(b *strings.Builder, opts *composeOptions) {
     pull_policy: if_not_present
     command: ["sh", "-c", "chmod 0777 /krbdata && touch /krbdata/krb.db && chmod 0666 /krbdata/krb.db"]
     restart: on-failure
-    volumes:
+`)
+	writeServiceObs(b, opts)
+	b.WriteString(`    volumes:
       - krbdata:/krbdata
 
 `)
@@ -453,7 +495,7 @@ func writeVolumes(b *strings.Builder, opts *composeOptions) {
 	}
 
 	if opts.includeObsStack {
-		volumes = append(volumes, "  prometheus:", "  grafana:", "  jaeger:")
+		volumes = append(volumes, "  prometheus:", "  grafana:", "  jaeger:", "  loki:")
 	}
 
 	if len(volumes) == 0 {
@@ -463,4 +505,24 @@ func writeVolumes(b *strings.Builder, opts *composeOptions) {
 	b.WriteString("volumes:\n")
 	b.WriteString(strings.Join(volumes, "\n"))
 	b.WriteString("\n")
+}
+
+// writeServiceObs writes a service's depends_on block and, with the observability stack, sends
+// its logs to Loki. Loki is then added as a dependency so it starts first and stops last, giving
+// the logging plugin somewhere to send each container's final log lines.
+func writeServiceObs(b *strings.Builder, opts *composeOptions, deps ...dependency) {
+	if opts.includeObsStack {
+		deps = append(deps, dependency{lokiName, "service_started"})
+		b.WriteString("    logging: *loki-logging\n")
+	}
+
+	if len(deps) == 0 {
+		return
+	}
+
+	b.WriteString("    depends_on:\n")
+
+	for _, d := range deps {
+		fmt.Fprintf(b, "      %s:\n        condition: %s\n", d.service, d.condition)
+	}
 }

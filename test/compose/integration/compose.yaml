@@ -1,6 +1,19 @@
+x-logging: &loki-logging
+  driver: loki
+  options:
+    loki-url: http://127.0.0.1:${LOKI_PORT:-3100}/loki/api/v1/push
+    mode: non-blocking
+    max-buffer-size: 4m
+    loki-retries: "2"
+    loki-max-backoff: 1s
+    loki-timeout: 1s
+
 services:
   postgres:
     image: "postgres:18.4-alpine3.23"
+    depends_on:
+      loki:
+        condition: service_started
     pull_policy: if_not_present
     environment:
       - POSTGRES_DB=kerberos
@@ -14,12 +27,15 @@ services:
       retries: 10
     volumes:
       - postgres:/var/lib/postgresql/18/docker
+    logging: *loki-logging
 
   kerberos:
     image: "ghcr.io/trebent/kerberos:${VERSION:-unset}"
     command: --config /config/integration.json
     pull_policy: if_not_present
     depends_on:
+      loki:
+        condition: service_started
       postgres:
         condition: service_healthy
     build:
@@ -40,7 +56,6 @@ services:
       # There are appropriate for development and testing, but can lead to high overhead in production.
       # - OTEL_TRACES_SAMPLER=parentbased_traceidratio
       # - OTEL_TRACES_SAMPLER_ARG=0.1
-      - LOG_TO_CONSOLE=1
       - LOG_VERBOSITY=${LOG_VERBOSITY:-0}
       - PORT=${KERBEROS_PORT:-30000}
       - ADMIN_PORT=${KERBEROS_ADMIN_PORT:-30001}
@@ -48,9 +63,13 @@ services:
     volumes:
       - ../../config:/config:ro
       - ../../oas:/oas:ro
+    logging: *loki-logging
 
   echo:
     image: "ghcr.io/trebent/kerberos/echo:${VERSION:-unset}"
+    depends_on:
+      loki:
+        condition: service_started
     pull_policy: if_not_present
     build:
       context: ../../..
@@ -66,9 +85,13 @@ services:
       - OTEL_METRICS_EXPORTER=prometheus
       - OTEL_EXPORTER_PROMETHEUS_HOST=echo
       - OTEL_EXPORTER_PROMETHEUS_PORT=${ECHO_METRICS_PORT:-9463}
+    logging: *loki-logging
 
   protected-echo:
     image: "ghcr.io/trebent/kerberos/echo:${VERSION:-unset}"
+    depends_on:
+      loki:
+        condition: service_started
     pull_policy: if_not_present
     build:
       context: ../../..
@@ -81,14 +104,19 @@ services:
       - OTEL_METRICS_EXPORTER=prometheus
       - OTEL_EXPORTER_PROMETHEUS_HOST=protected-echo
       - OTEL_EXPORTER_PROMETHEUS_PORT=${ECHO_METRICS_PORT:-9463}
+    logging: *loki-logging
 
   prometheus:
     image: "prom/prometheus:v3"
+    depends_on:
+      loki:
+        condition: service_started
     pull_policy: if_not_present
     command: ["--config.file=/prometheus.yml", "--storage.tsdb.path", "/prometheus/data", "--storage.tsdb.retention.size", "1GB"]
     restart: on-failure
     ports:
       - ${PROM_PORT:-9090}:9090
+    logging: *loki-logging
     volumes:
       - ../../config/prometheus/prometheus.yml:/prometheus.yml
       - prometheus:/prometheus
@@ -97,24 +125,42 @@ services:
     image: "grafana/grafana:13.1"
     pull_policy: if_not_present
     depends_on:
+      loki:
+        condition: service_started
       postgres:
         condition: service_healthy
     restart: on-failure
     ports:
       - ${GRAFANA_PORT:-3000}:3000
+    logging: *loki-logging
     volumes:
       - ../../../cmd/krbctl/cmd/assets/grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/grafana-datasources.yml
       - ../../../cmd/krbctl/cmd/assets/grafana/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/grafana-dashboards.yml
       - ../../../cmd/krbctl/cmd/assets/grafana/prometheus.json:/var/lib/grafana/prometheus.json
       - ../../../cmd/krbctl/cmd/assets/grafana/kerberos_runtime.json:/var/lib/grafana/kerberos_runtime.json
       - ../../../cmd/krbctl/cmd/assets/grafana/kerberos_http.json:/var/lib/grafana/kerberos_http.json
+      - ../../../cmd/krbctl/cmd/assets/grafana/jaeger.json:/var/lib/grafana/jaeger.json
+      - ../../../cmd/krbctl/cmd/assets/grafana/loki.json:/var/lib/grafana/loki.json
       - ../../config/grafana/grafana.ini:/etc/grafana/grafana.ini
+
+  loki:
+    image: grafana/loki:3.7
+    command: "-config.file=/etc/loki/config.yaml"
+    ports:
+      - 127.0.0.1:${LOKI_PORT:-3100}:3100
+    volumes:
+      - ../../../cmd/krbctl/cmd/assets/loki/loki.yml:/etc/loki/config.yaml
+      - loki:/loki
 
   jaeger-init:
     image: busybox:1.38
+    depends_on:
+      loki:
+        condition: service_started
     pull_policy: if_not_present
     command: ["sh", "-c", "chown 10001:0 /jaeger"]
     restart: on-failure
+    logging: *loki-logging
     volumes:
       - jaeger:/jaeger
 
@@ -122,10 +168,13 @@ services:
     image: "jaegertracing/jaeger:2.20.0"
     pull_policy: if_not_present
     depends_on:
+      loki:
+        condition: service_started
       jaeger-init:
         condition: service_completed_successfully
     restart: on-failure
     command: --config /jaeger.yml
+    logging: *loki-logging
     ports:
       - 16685:16685
       - 16686:16686
@@ -138,3 +187,4 @@ volumes:
   postgres:
   prometheus:
   jaeger:
+  loki:
