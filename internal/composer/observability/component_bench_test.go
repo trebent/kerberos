@@ -5,18 +5,21 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/trebent/kerberos/internal/composer"
+	"github.com/trebent/kerberos/internal/composer/debug"
 	obs "github.com/trebent/kerberos/internal/composer/observability"
 	"github.com/trebent/kerberos/internal/config"
 	"github.com/trebent/zerologr"
 )
 
 func BenchmarkObs_Standard(b *testing.B) {
-	zerologr.Set(zerologr.New(&zerologr.Opts{Console: true, V: 20}))
+	zerologr.Set(logr.Discard())
 
 	comp := obs.NewComponent(&obs.Opts{
-		Cfg:     &config.Observability{},
-		Version: "1.0.0",
+		Cfg:      &config.Observability{Enabled: true, RuntimeMetrics: true},
+		Version:  "1.0.0",
+		Debugger: debug.NewDummy(nil),
 	})
 	dummy := composer.Dummy{
 		CustomHandler: func(_ composer.FlowComponent, w http.ResponseWriter, _ *http.Request) {
@@ -25,8 +28,9 @@ func BenchmarkObs_Standard(b *testing.B) {
 	}
 	comp.Next(&dummy)
 
-	req := httptest.NewRequest("GET", "http://example.com/test", nil)
+	req := httptest.NewRequest("GET", "http://example.com/gw/backend/test/", nil)
 
+	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
 		recorder := httptest.NewRecorder()

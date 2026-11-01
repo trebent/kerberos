@@ -9,6 +9,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/composer/custom"
+	"github.com/trebent/kerberos/internal/composer/debug"
 	"github.com/trebent/kerberos/internal/composer/forwarder"
 	obs "github.com/trebent/kerberos/internal/composer/observability"
 	"github.com/trebent/kerberos/internal/composer/router"
@@ -33,7 +34,7 @@ func BenchmarkComposer(b *testing.B) {
 	}
 
 	composer := composer.New(&composer.Opts{
-		Observability: obs.NewComponent(&obs.Opts{Cfg: cfg.ObsCfg}),
+		Observability: obs.NewComponent(&obs.Opts{Cfg: cfg.ObsCfg, Debugger: debug.NewDummy(nil)}),
 		Router:        router.NewComponent(&router.Opts{Cfg: cfg.GatewayCfg.Router}),
 		Custom:        custom.NewComponent(),
 		Forwarder:     forwarder,
@@ -43,7 +44,7 @@ func BenchmarkComposer(b *testing.B) {
 	b.ResetTimer()
 	for b.Loop() {
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "http://localhost:15000/gw/backends/backend/hi", bytes.NewBuffer([]byte("hi")))
+		request := httptest.NewRequest(http.MethodGet, "http://localhost:15000/gw/backend/backend/hi", bytes.NewBuffer([]byte("hi")))
 
 		composer.ServeHTTP(recorder, request)
 	}

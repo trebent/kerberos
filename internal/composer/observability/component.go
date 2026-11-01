@@ -3,7 +3,6 @@ package obs
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -100,11 +99,10 @@ func (o *obs) GetMeta() []adminapi.FlowMeta {
 	}, o.next.GetMeta()...)
 }
 
-func (o *obs) spanStartOpts(req *http.Request) []trace.SpanStartOption {
-	opts := make([]trace.SpanStartOption, len(o.spanOpts)+2)
+func (o *obs) spanStartOpts(req *http.Request, url string) []trace.SpanStartOption {
+	opts := make([]trace.SpanStartOption, len(o.spanOpts)+1)
 	copy(opts, o.spanOpts)
-	opts[len(opts)-1] = trace.WithAttributes(semconv.HTTPMethod(req.Method))
-	opts[len(opts)-2] = trace.WithAttributes(semconv.HTTPURL(req.URL.String()))
+	opts[len(opts)-1] = trace.WithAttributes(semconv.HTTPMethod(req.Method), semconv.HTTPURL(url))
 
 	return opts
 }
@@ -115,10 +113,12 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// Check request trace context
 	ctx := otel.GetTextMapPropagator().Extract(req.Context(), propagation.HeaderCarrier(req.Header))
+
+	url := req.URL.String()
 	ctx, span := o.tracer.Start(
 		ctx,
-		fmt.Sprintf("%s %s", req.Method, req.URL.String()),
-		o.spanStartOpts(req)...,
+		req.Method+" "+url,
+		o.spanStartOpts(req, url)...,
 	)
 	defer span.End() // Stop the span after EVERYTHING is done
 
