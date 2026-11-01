@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -24,7 +22,7 @@ func askYesNo(question, description string) (bool, error) {
 	form := huh.NewForm(huh.NewGroup(confirm))
 
 	if err := form.Run(); err != nil {
-		return false, fmt.Errorf("prompt cancelled: %w", err)
+		return false, err
 	}
 
 	return yes, nil

@@ -18,8 +18,7 @@ func Execute() error {
 		Version: version,
 		Short:   "krbctl is the Kerberos deployment CLI",
 		Long: fmt.Sprintf(`krbctl helps you set up a Kerberos deployment by generating
-a base compose.yaml and a base kerberos configuration file through
-interactive prompts.
+a base compose.yaml and a base kerberos configuration.
 
 Version: %s`, version),
 	}

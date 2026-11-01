@@ -405,7 +405,7 @@ func promptEchoBackend(opts *configOptions) error {
 			echoBackendHost, echoBackendPort,
 		))
 	if err != nil {
-		return fmt.Errorf("prompt cancelled: %w", err)
+		return err
 	}
 
 	if yes {
