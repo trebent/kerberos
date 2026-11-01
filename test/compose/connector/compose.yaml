@@ -17,7 +17,7 @@ services:
 
   kerberos:
     image: "ghcr.io/trebent/kerberos:${VERSION:-unset}"
-    command: --config /config/integration.json
+    command: --config /krb.json
     pull_policy: if_not_present
     depends_on:
       postgres:
@@ -43,7 +43,7 @@ services:
       - ADMIN_PORT=${KERBEROS_ADMIN_PORT:-30001}
       - VERSION=${VERSION:-unset}
     volumes:
-      - ../../config:/config:ro
+      - ./krb.json:/krb.json:ro
       - ../../oas:/oas:ro
 
   connector:

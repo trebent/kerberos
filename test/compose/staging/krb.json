@@ -1,0 +1,102 @@
+{
+  "admin": {
+    "api": {
+      "cookies": {
+        "domain": "trebent.test",
+        "sameSite": "Strict"
+      },
+      "origins": {
+        "allowedOrigins": [
+          "https://trebent.test:4200"
+        ]
+      },
+      "tls": {
+        "serverCertFile": "/certs/staging/krb.pem",
+        "serverKeyFile": "/certs/staging/krb-key.pem"
+      }
+    }
+  },
+  "persistence": {
+    "driver": "postgres",
+    "address": "postgres:5432",
+    "postgres": {
+      "database": "kerberos",
+      "username": "kerberos",
+      "password": "kerberos",
+      "sslMode": "disable"
+    }
+  },
+  "gateway": {
+    "tls": {
+      "serverCertFile": "/certs/staging/krb.pem",
+      "serverKeyFile": "/certs/staging/krb-key.pem"
+    },
+    "router": {
+      "backends": [
+        {
+          "name": "echo",
+          "host": "echo",
+          "port": 15000,
+          "origins": {
+            "allowAll": true
+          }
+        },
+        {
+          "name": "protected-echo",
+          "host": "protected-echo",
+          "port": 15000,
+          "origins": {
+            "denyAll": true
+          }
+        }
+      ]
+    }
+  },
+  "auth": {
+    "methods": {
+      "basic": {
+        "api": {
+          "origins": {
+            "allowAll": true
+          }
+        }
+      }
+    },
+    "scheme": {
+      "mappings": [
+        {
+          "backend": "${ref:gateway.router.backends[1].name}",
+          "method": "basic",
+          "exempt": [
+            "/unprotected",
+            "/unprotected/*"
+          ],
+          "authorization": {
+            "groups": [
+              "staff"
+            ],
+            "paths": {
+              "/long/hello": [
+                "pleb"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "order": 1
+  },
+  "oas": {
+    "mappings": [
+      {
+        "backend": "${ref:gateway.router.backends[0].name}",
+        "specification": "/oas/echo.yaml"
+      },
+      {
+        "backend": "${ref:gateway.router.backends[1].name}",
+        "specification": "/oas/echo-protected.yaml"
+      }
+    ],
+    "order": 100
+  }
+}
