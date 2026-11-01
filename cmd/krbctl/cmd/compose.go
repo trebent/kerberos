@@ -401,6 +401,7 @@ func writeObsServices(b *strings.Builder, opts *composeOptions) {
       - ./grafana/kerberos_http.json:/var/lib/grafana/kerberos_http.json
       - ./grafana/jaeger.json:/var/lib/grafana/jaeger.json
       - ./grafana/loki.json:/var/lib/grafana/loki.json
+      - ./grafana/service_logs.json:/var/lib/grafana/service_logs.json
       - grafana:/var/lib/grafana
 `)
 	fmt.Fprintf(b, "      %s\n\n", krbDataMount(opts.includePostgres))

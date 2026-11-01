@@ -21,3 +21,7 @@ providers:
     type: file
     options:
       path: /var/lib/grafana/loki.json
+  - name: "Service logs"
+    type: file
+    options:
+      path: /var/lib/grafana/service_logs.json

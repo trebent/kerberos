@@ -23,6 +23,9 @@ var grafanaDashboardJaeger []byte
 //go:embed assets/grafana/loki.json
 var grafanaDashboardLoki []byte
 
+//go:embed assets/grafana/service_logs.json
+var grafanaDashboardServiceLogs []byte
+
 //go:embed assets/grafana/grafana-datasources.yml
 var grafanaDataSourceYML []byte
 
@@ -76,6 +79,7 @@ func writeObsFiles(driver string, opts *configOptions) error {
 		{filepath.Join(grafanaDir, "kerberos_http.json"), grafanaDashboardHTTP},
 		{filepath.Join(grafanaDir, "jaeger.json"), grafanaDashboardJaeger},
 		{filepath.Join(grafanaDir, "loki.json"), grafanaDashboardLoki},
+		{filepath.Join(grafanaDir, "service_logs.json"), grafanaDashboardServiceLogs},
 	}
 
 	for _, f := range grafanaFiles {

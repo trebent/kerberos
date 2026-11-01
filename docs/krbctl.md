@@ -124,7 +124,7 @@ All services use `restart: on-failure`. `kerberos` runs with `LOG_TO_CONSOLE=1`,
 
 ### Container logs
 
-With the observability stack, every service except `loki` sends its output to Loki, and you can search it in Grafana with the Loki data source. Each log line is labelled with the service it came from, for example `{compose_service="kerberos"}`. `docker compose logs` keeps working as usual.
+With the observability stack, every service except `loki` sends its output to Loki, and you can read it in Grafana on the **Service logs** dashboard (see [Observability](./observability.md#dashboards-and-prometheus-configuration-from-krbctl)) or search it with the Loki data source. Each log line is labelled with the service it came from, for example `{compose_service="kerberos"}`. `docker compose logs` keeps working as usual.
 
 Logs are sent by the Loki Docker logging plugin. Install it once on the machine that runs Docker, before you run `docker compose up`:
 
@@ -239,12 +239,13 @@ Example from `krbctl config -y --echo-backend`:
 | `prometheus.yml` | Observability stack | Scrapes every 15 seconds, one job per scrape target. |
 | `grafana/grafana.ini` | Observability stack | Grafana database settings (the same database as Kerberos) and anonymous access (`Viewer` role in `Main Org.` when enabled). |
 | `grafana/grafana-datasources.yml` | Observability stack | A Prometheus data source at `http://prometheus:9090` and a Loki data source at `http://loki:3100`. |
-| `grafana/grafana-dashboards.yml` | Observability stack | Loads the five dashboards below. |
+| `grafana/grafana-dashboards.yml` | Observability stack | Loads the six dashboards below. |
 | `grafana/prometheus.json` | Observability stack | Dashboard "Prometheus status". |
 | `grafana/kerberos_runtime.json` | Observability stack | Dashboard "Kerberos runtime". |
 | `grafana/kerberos_http.json` | Observability stack | Dashboard "Kerberos HTTP". |
 | `grafana/jaeger.json` | Observability stack | Dashboard "Jaeger". |
 | `grafana/loki.json` | Observability stack | Dashboard "Loki". |
+| `grafana/service_logs.json` | Observability stack | Dashboard "Service logs". |
 | `jaeger.yml` | Observability stack | Jaeger with an OTLP gRPC receiver on `4317`, UI on `16686`, its own metrics on `8888`, and Badger storage on the `jaeger` volume (traces kept for 48 hours, archived traces for 72 hours). |
 | `jaeger-config-ui.json` | Observability stack | Jaeger UI settings (archiving enabled). |
 | `loki.yml` | Observability stack | Loki as a single process with its data on the `loki` volume. It accepts logs without a login. |
@@ -309,6 +310,7 @@ kerberos-full/grafana/kerberos_runtime.json
 kerberos-full/grafana/kerberos_http.json
 kerberos-full/grafana/jaeger.json
 kerberos-full/grafana/loki.json
+kerberos-full/grafana/service_logs.json
 kerberos-full/jaeger.yml
 kerberos-full/jaeger-config-ui.json
 kerberos-full/loki.yml
