@@ -11,8 +11,8 @@
         ]
       },
       "tls": {
-        "serverCertFile": "/certs/staging/krb.pem",
-        "serverKeyFile": "/certs/staging/krb-key.pem"
+        "serverCertFile": "/certs/krb.pem",
+        "serverKeyFile": "/certs/krb-key.pem"
       }
     }
   },
@@ -28,8 +28,8 @@
   },
   "gateway": {
     "tls": {
-      "serverCertFile": "/certs/staging/krb.pem",
-      "serverKeyFile": "/certs/staging/krb-key.pem"
+      "serverCertFile": "/certs/krb.pem",
+      "serverKeyFile": "/certs/krb-key.pem"
     },
     "router": {
       "backends": [

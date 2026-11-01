@@ -15,7 +15,7 @@ func TestConfigNonInteractive(t *testing.T) {
 	dir := t.TempDir()
 
 	runKrbctl(t, "config", "-y",
-		"--echo-backend",
+		"--echo",
 		"--backend", "name=api,host=api,port=8080,auth=true",
 		"--driver", "postgres",
 		"--obs-stack",
@@ -51,7 +51,7 @@ func TestConfigInputErrors(t *testing.T) {
 		},
 		{
 			name: "echo backend and backend named echo",
-			args: []string{"--echo-backend", "--backend", "name=echo"},
+			args: []string{"--echo", "--backend", "name=echo"},
 			want: `duplicate backend name: "echo"`,
 		},
 		{
@@ -81,7 +81,7 @@ func TestConfigInputErrors(t *testing.T) {
 func TestConfigConnectorMessage(t *testing.T) {
 	dir := t.TempDir()
 
-	out := runKrbctlOutput(t, "config", "-y", "--echo-backend", "--connector", "-o", dir)
+	out := runKrbctlOutput(t, "config", "-y", "--echo", "--connector", "-o", dir)
 
 	if want := "connector.json written to " + dir; !strings.Contains(out, want) {
 		t.Errorf("output does not contain %q:\n%s", want, out)

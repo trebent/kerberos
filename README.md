@@ -44,7 +44,7 @@ With Docker and [`krbctl`](./docs/krbctl.md) (download it from the [releases pag
 ```bash
 mkdir kerberos-demo && cd kerberos-demo
 krbctl compose -y --echo          # compose.yaml: Kerberos + an echo test backend + SQLite
-krbctl config  -y --echo-backend  # krb.json: route /gw/backend/echo/... to the echo service
+krbctl config  -y --echo          # krb.json: route /gw/backend/echo/... to the echo service
 docker compose up -d
 
 curl -i http://localhost:30000/gw/backend/echo/hello

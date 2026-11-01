@@ -149,7 +149,7 @@ compose/connector/logs/follow:
 
 compose/staging/up:
 	$(call cecho,Generating self-signed certificates for Kerberos staging test environment...,$(BOLD_YELLOW))
-	test/certs/staging/make_certs.sh
+	test/compose/staging/certs/make_certs.sh
 
 	$(call cecho,Composing Kerberos staging test environment...,$(BOLD_YELLOW))
 	@VERSION=$(VERSION) \
@@ -330,6 +330,16 @@ krbctl/build:
 	@mkdir -p build
 	@CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="$(KRBCTL_LDFLAGS)" -o build/krbctl ./cmd/krbctl
 
+krbctl/config:
+	$(call cecho,Running krbctl config...,$(BOLD_YELLOW))
+	@mkdir -p build
+	@go run ./cmd/krbctl config -o ./build
+	
+krbctl/compose:
+	$(call cecho,Running krbctl compose...,$(BOLD_YELLOW))
+	@mkdir -p build
+	@go run ./cmd/krbctl compose -o ./build
+
 krbctl/install:
 	$(call cecho,Installing krbctl binary to $(GOBIN)...,$(BOLD_YELLOW))
 	@CGO_ENABLED=0 GOOS=linux go install -trimpath -ldflags="$(KRBCTL_LDFLAGS)" ./cmd/krbctl
@@ -483,6 +493,25 @@ test/krbctl/json: krbctl/build
 	$(call cecho,Running krbctl tests for Kerberos...,$(BOLD_YELLOW))
 	@mkdir -p build
 	@cd test/suites/krbctl && KRBCTL_BIN=$(CURDIR)/build/krbctl go test -v -json ./... -count=1 -failfast > $(CURDIR)/build/krbctl-test-output.json
+
+test/krbctl/integration: krbctl/build
+	$(call cecho,Running krbctl integration tests for Kerberos...,$(BOLD_YELLOW))
+	$(CURDIR)/build/krbctl compose \
+		-y \
+		--echo \
+		--obs-stack \
+		--driver postgres \
+		--connector \
+		-o $(CURDIR)/build
+	$(CURDIR)/build/krbctl config \
+		-y \
+		--echo \
+		--obs-stack \
+		--driver postgres \
+		--connector \
+		-o $(CURDIR)/build
+	docker compose -f $(CURDIR)/build/compose.yaml up -d
+	docker compose -f $(CURDIR)/build/compose.yaml down 
 
 test/unit:
 	$(call cecho,Running unit tests for Kerberos...,$(BOLD_YELLOW))

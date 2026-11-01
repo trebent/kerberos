@@ -15,7 +15,7 @@ func TestComposeNonInteractive(t *testing.T) {
 	runKrbctl(t, "compose", "-y",
 		"--echo",
 		"--obs-stack",
-		"--postgres",
+		"--driver", "postgres",
 		"--connector",
 		"-o", dir)
 

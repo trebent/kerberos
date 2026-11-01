@@ -92,11 +92,11 @@ If you include the admin-connector without the observability stack, a second scr
 | `-y`, `--non-interactive` | `false` | Skip the questions and use the flags below. |
 | `--echo` | `false` | Include the echo service. Only used with `-y`. |
 | `--obs-stack` | `false` | Include Prometheus, Grafana, Jaeger and Loki. Only used with `-y`. |
-| `--postgres` | `false` | Use PostgreSQL instead of SQLite. Only used with `-y`. |
+| `--driver` | `sqlite` | Persistence driver: `sqlite` or `postgres`. Only used with `-y`. |
 | `--connector` | `false` | Include the admin-connector. Only used with `-y`. |
 | `--connector-target` | `jaeger:16686` with `--obs-stack`, otherwise none | `host:port` (or `host`) the admin-connector forwards to, without a scheme or path. Required with `--connector` when `--obs-stack` is not set. Only used with `-y`. |
 
-Without `-y`, the `--echo`, `--obs-stack`, `--postgres`, `--connector` and `--connector-target` flags are ignored and you are asked the questions.
+Without `-y`, the `--echo`, `--obs-stack`, `--driver`, `--connector` and `--connector-target` flags are ignored and you are asked the questions.
 
 ### Generated services
 
@@ -157,8 +157,8 @@ Interactive mode runs in a terminal. If you cancel a prompt (for example with Ct
 | Flag | Default | Description |
 | --- | --- | --- |
 | `-o`, `--output` | `.` | Directory to write files to. It must already exist. |
-| `-y`, `--non-interactive` | `false` | Skip the questions and use the flags below. With `-y`, at least one of `--echo-backend` or `--backend` is required. |
-| `--echo-backend` | `false` | Add the echo service as a backend named `echo` at `echo:15000` (without auth). |
+| `-y`, `--non-interactive` | `false` | Skip the questions and use the flags below. With `-y`, at least one of `--echo` or `--backend` is required. |
+| `--echo` | `false` | Add the echo service as a backend named `echo` at `echo:15000` (without auth). |
 | `--backend` | none | Add a backend. Repeatable. See the syntax below. |
 | `--driver` | `sqlite` | Persistence driver: `sqlite` or `postgres`. |
 | `--obs-stack` | `false` | Generate the observability stack files. |
@@ -182,7 +182,7 @@ All flags except `-o` and `-y` are only used with `-y`. Without `-y` you are ask
 | `port` | No | `8080` | Port the backend listens on, 1–65535. Any other value stops `krbctl` with an error. |
 | `auth` | No | `false` | `true` puts the backend behind basic authentication. |
 
-Backend names must be unique, including against `echo` when you use `--echo-backend`. A duplicate stops `krbctl` with an error.
+Backend names must be unique, including against `echo` when you use `--echo`. A duplicate stops `krbctl` with an error.
 
 #### `--scrape-target` values
 
@@ -206,7 +206,7 @@ When the connector is enabled, `connector:9464` is always added and does not nee
 
 `krb.json` has no `admin` section, so the superuser is created with the [default credentials](./admin-api.md#the-superuser). See [What to change afterwards](#what-to-change-afterwards).
 
-Example from `krbctl config -y --echo-backend`:
+Example from `krbctl config -y --echo`:
 
 ```json
 {
@@ -259,12 +259,12 @@ Example from `krbctl config -y --echo-backend`:
 
 | `krbctl compose` | `krbctl config` |
 | --- | --- |
-| `--echo` / "Include the echo service?" | `--echo-backend` / "Use the echo service as a backend?" |
-| `--postgres` / "Include PostgreSQL...?" | `--driver postgres` / Persistence: PostgreSQL |
+| `--echo` / "Include the echo service?" | `--echo` / "Use the echo service as a backend?" |
+| `--driver postgres` / "Include PostgreSQL...?" | `--driver postgres` / Persistence: PostgreSQL |
 | `--obs-stack` / "Include the observability stack?" | `--obs-stack` / "Generate observability stack config?" |
 | `--connector` / "Include the admin-connector service?" | `--connector` / "Include the admin-connector?" |
 
-For example, with `--postgres` on both commands, `krb.json` points to `postgres:5432` and `compose.yaml` runs the `postgres` service.
+For example, with `--driver postgres` on both commands, `krb.json` points to `postgres:5432` and `compose.yaml` runs the `postgres` service.
 
 Backends you add with `--backend` (or in the interactive backend questions) are only written to `krb.json`. `krbctl compose` does not add services for them. Add them to `compose.yaml` yourself, or set `host` to an address the Kerberos container can reach. Inside the container, `localhost` is the container itself, not your machine.
 
@@ -275,7 +275,7 @@ Backends you add with `--backend` (or in the interactive backend questions) are 
 ```bash
 mkdir kerberos-demo && cd kerberos-demo
 krbctl compose -y --echo
-krbctl config -y --echo-backend
+krbctl config -y --echo
 docker compose up -d
 
 curl -i http://localhost:30000/gw/backend/echo/hello
@@ -287,8 +287,8 @@ This starts `sqlite-init`, `kerberos` and [`echo`](./echo.md). Metrics and trace
 
 ```bash
 mkdir kerberos-full
-krbctl compose -y -o kerberos-full --echo --postgres --obs-stack --connector
-krbctl config  -y -o kerberos-full --echo-backend \
+krbctl compose -y -o kerberos-full --echo --driver postgres --obs-stack --connector
+krbctl config  -y -o kerberos-full --echo \
   --backend 'name=orders,host=orders,port=8000,auth=true' \
   --driver postgres --obs-stack --connector
 cd kerberos-full && docker compose up -d

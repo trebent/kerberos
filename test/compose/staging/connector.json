@@ -1,0 +1,22 @@
+{
+  "origins": {
+    "denyAll": true
+  },
+  "persistence": {
+    "driver": "postgres",
+    "address": "postgres:5432",
+    "postgres": {
+      "database": "kerberos",
+      "username": "kerberos",
+      "password": "kerberos",
+      "sslMode": "disable"
+    }
+  },
+  "tls": {
+    "serverCertFile": "/certs/connector-jaeger.pem",
+    "serverKeyFile": "/certs/connector-jaeger-key.pem"
+  },
+  "targetTls": {
+    "rootCAFile": "/certs/rootCA.pem"
+  }
+}
