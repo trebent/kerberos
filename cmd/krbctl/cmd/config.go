@@ -22,6 +22,7 @@ const (
 	echoBackendHost = "echo"
 	echoBackendPort = 15000
 	jaegerName      = "jaeger"
+	lokiName        = "loki"
 
 	// defaultBackendHost and defaultBackendPort are used when a backend is
 	// registered without an explicit host or port.
@@ -51,7 +52,7 @@ type configOptions struct {
 	// persistence driver selection
 	driver string // "sqlite" or "postgres"
 
-	// Observability stack (Prometheus/Grafana/Jaeger) config generation
+	// Observability stack (Prometheus/Grafana/Jaeger/Loki) config generation
 	includeObsStack bool
 	obsOpts         obsConfigOptions
 
@@ -104,7 +105,7 @@ skipped.`,
 	cmd.Flags().Bool("grafana-anonymous", true,
 		"Enable Grafana anonymous access. (non-interactive mode only)")
 	cmd.Flags().StringArray("scrape-target", nil,
-		"Prometheus scrape target (repeatable); defaults to kerberos, jaeger and all backends. "+
+		"Prometheus scrape target (repeatable); defaults to kerberos, jaeger, loki and all backends. "+
 			"(non-interactive mode only)")
 	cmd.Flags().Bool("connector", false,
 		"Include the admin-connector (generates connector.json). (non-interactive mode only)")
@@ -524,9 +525,9 @@ func promptFixedSections(opts *configOptions) error {
 }
 
 // defaultScrapeTargets returns the scrape targets pre-selected by default:
-// kerberos, jaeger, and every registered router backend.
+// kerberos, jaeger, loki, and every registered router backend.
 func defaultScrapeTargets(opts *configOptions) []string {
-	targets := []string{defaultKRBDB, jaegerName}
+	targets := []string{defaultKRBDB, jaegerName, lokiName}
 	for _, b := range opts.backends {
 		targets = append(targets, b.name)
 	}
@@ -549,12 +550,12 @@ func buildAuthGroup(opts *configOptions) *huh.Group {
 }
 
 // buildObsToggleGroup builds the dedicated toggle controlling generation of the
-// observability stack (Prometheus/Grafana/Jaeger) config files.
+// observability stack (Prometheus/Grafana/Jaeger/Loki) config files.
 func buildObsToggleGroup(opts *configOptions) *huh.Group {
 	return huh.NewGroup(
 		huh.NewConfirm().
 			Title("Generate observability stack config?").
-			Description("Writes Prometheus, Grafana, and Jaeger config files for the " +
+			Description("Writes Prometheus, Grafana, Jaeger, and Loki config files for the " +
 				"observability stack. (Kerberos observability itself is always enabled.)").
 			WithButtonAlignment(lipgloss.Left).
 			Value(&opts.includeObsStack),
@@ -567,6 +568,7 @@ func buildObsOptionsGroup(opts *configOptions) *huh.Group {
 	scrapeOpts := []huh.Option[string]{
 		huh.NewOption(fmt.Sprintf("kerberos (port %d)", scrapeMetricsPort), defaultKRBDB),
 		huh.NewOption("jaeger (port 8888)", jaegerName),
+		huh.NewOption("loki (port 3100)", lokiName),
 	}
 	for _, b := range opts.backends {
 		scrapeOpts = append(scrapeOpts, huh.NewOption(

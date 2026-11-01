@@ -115,33 +115,31 @@ func (s *StdHTTPMetrics) Bump(
 	duration time.Duration,
 	attributes ...attribute.KeyValue,
 ) {
-	//nolint:errcheck // no point
-	statusCodeOpt := metric.WithAttributes(
-		semconv.HTTPStatusCode(responseWrapper.(*response.Wrapper).StatusCode()),
-	)
-	requestMeta := metric.WithAttributes(semconv.HTTPMethod(req.Method))
-	krbMetricMeta := metric.WithAttributes(attributes...)
+	//nolint:errcheck // contract guarantee
+	wrapper := responseWrapper.(*response.Wrapper)
+
+	// Build a single attribute set shared by all instruments. WithAttributeSet avoids the
+	// defensive copy made by WithAttributes, and one option means the SDK has no sets to
+	// merge. The option slices are reused so each call below does not allocate its own
+	// variadic slice.
+	kvs := make([]attribute.KeyValue, 0, 2+len(attributes))
+	kvs = append(kvs, semconv.HTTPStatusCode(wrapper.StatusCode()), semconv.HTTPMethod(req.Method))
+	kvs = append(kvs, attributes...)
+	attrOpt := metric.WithAttributeSet(attribute.NewSet(kvs...))
+	addOpts := []metric.AddOption{attrOpt}
+	recordOpts := []metric.RecordOption{attrOpt}
 
 	// Request
 	var reqBytes int64
 	if bodyWrapper != nil {
-		//nolint:errcheck // no point
 		reqBytes = bodyWrapper.NumBytes()
 	}
 
-	s.requestCountCounter.Add(ctx, 1, requestMeta, krbMetricMeta)
-	s.requestSizeHistogram.Record(ctx, reqBytes, requestMeta, krbMetricMeta)
-	s.requestDurationHistogram.Record(
-		ctx,
-		float64(duration/time.Millisecond),
-		requestMeta,
-		krbMetricMeta,
-	)
+	s.requestCountCounter.Add(ctx, 1, addOpts...)
+	s.requestSizeHistogram.Record(ctx, reqBytes, recordOpts...)
+	s.requestDurationHistogram.Record(ctx, float64(duration/time.Millisecond), recordOpts...)
 
 	// Response
-	s.responseCounter.Add(ctx, 1, statusCodeOpt, requestMeta, krbMetricMeta)
-	//nolint:errcheck // no point
-	s.responseSizeHistogram.Record(
-		ctx, responseWrapper.(*response.Wrapper).NumBytes(), requestMeta, krbMetricMeta,
-	)
+	s.responseCounter.Add(ctx, 1, addOpts...)
+	s.responseSizeHistogram.Record(ctx, wrapper.NumBytes(), recordOpts...)
 }

@@ -139,8 +139,9 @@ func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	debugCall := composer.DebugFromContext(req.Context())
 
 	logger, _ := logr.FromContext(req.Context())
-	logger = logger.WithName("authorizer")
-	logger.Info("Authorizing request")
+	if l := logger.V(20); l.Enabled() {
+		l.Info("Authorizing request")
+	}
 
 	//nolint:errcheck // if this isn't populated the flow chain has been broken.
 	backend := req.Context().Value(composer.BackendContextKey).(string)
@@ -220,12 +221,16 @@ func (a *authorizer) RegisterRoutes(
 }
 
 // findMethod attempts to find the method which protects the input backend, if any.
+//
+//nolint:gocognit // welp
 func (a *authorizer) findMethod(backend string, req *http.Request) (method.Method, error) {
 	for _, mapping := range a.cfg.Scheme.Mappings {
 		if mapping.Backend == backend {
 			switch mapping.Method {
 			case methodBasic:
-				zerologr.V(20).Info("Using basic authentication for backend: " + backend)
+				if l := zerologr.V(20); l.Enabled() {
+					l.Info("Using basic authentication for backend: " + backend)
+				}
 				for _, exemption := range mapping.Exempt {
 					match, err := path.Match(exemption, req.URL.Path)
 					if err != nil {

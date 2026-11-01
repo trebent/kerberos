@@ -305,21 +305,25 @@ When you scaffold a deployment with [krbctl](./krbctl.md) and choose the observa
 
 | File | Contents |
 | --- | --- |
-| `prometheus.yml` | Scrape interval 15 s and one job per selected scrape target: `kerberos` at `kerberos:9464`, `jaeger` at `jaeger:8888`, each selected backend at `<backend host>:9464`, and `connector:9464` when admin-connector is included. Choose targets with `--scrape-target` (by default: Kerberos, Jaeger and all backends). |
-| `grafana/grafana-datasources.yml` | A Prometheus data source at `http://prometheus:9090`. |
-| `grafana/grafana-dashboards.yml` and the dashboard JSON files | Three provisioned dashboards (see below). |
+| `prometheus.yml` | Scrape interval 15 s and one job per selected scrape target: `kerberos` at `kerberos:9464`, `jaeger` at `jaeger:8888`, `loki` at `loki:3100`, each selected backend at `<backend host>:9464`, and `connector:9464` when admin-connector is included. Choose targets with `--scrape-target` (by default: Kerberos, Jaeger, Loki and all backends). |
+| `grafana/grafana-datasources.yml` | A Prometheus data source at `http://prometheus:9090` and a Loki data source at `http://loki:3100`. |
+| `grafana/grafana-dashboards.yml` and the dashboard JSON files | Six provisioned dashboards (see below). |
 | `grafana/grafana.ini` | Grafana database settings and anonymous viewer access (`--grafana-anonymous`, on by default). |
 | `jaeger.yml`, `jaeger-config-ui.json` | Jaeger configuration, receiving OTLP on port 4317. |
+| `loki.yml` | Loki configuration. Loki stores the logs of every service in the stack; see [krbctl: container logs](./krbctl.md#container-logs). |
 
 The provisioned Grafana dashboards are:
 
 - **Kerberos HTTP** (`kerberos_http.json`): gateway request rate and request count per backend and method, responses per status code, and request duration, request size and response size buckets per HTTP method.
 - **Kerberos runtime** (`kerberos_runtime.json`): goroutines, processor limit, memory used and limit, heap allocations, GC goal, and Prometheus exporter errors (`promhttp_metric_handler_errors_total`).
 - **Prometheus status** (`prometheus.json`): scrape duration, samples and series per target, and `target_info`.
+- **Jaeger** (`jaeger.json`): whether Jaeger is up, spans received, spans lost, spans written to storage, trace store reads, memory and CPU.
+- **Service logs** (`service_logs.json`): log volume per service, errors and warnings per service, and the logs of each service in its own panel, newest first. Filter by service, by level and by text the line contains. The level is detected by Loki from each line; lines it cannot read a level from are shown as `unknown`.
+- **Loki** (`loki.json`): whether Loki is up, log lines per service, data received, push requests and their latency, discarded lines, Loki's own warnings and errors, active streams and memory.
 
 Grafana is published on port 3000. Open the Jaeger UI directly (port 16686, or through [admin-connector](./admin-connector.md) when you included it). The generated `krb.json` always contains `"observability": {"enabled": true, "runtimeMetrics": true}`; without `--obs-stack` the Compose file sets `OTEL_METRICS_EXPORTER=none` and `OTEL_TRACES_EXPORTER=none` instead.
 
-The dashboard JSON files can also be imported into an existing Grafana. They expect a Prometheus data source with uid `prometheus`.
+The dashboard JSON files can also be imported into an existing Grafana. They expect a Prometheus data source with uid `prometheus`. The **Loki** and **Service logs** dashboards also use a Loki data source with uid `loki`.
 
 ## Related docs
 

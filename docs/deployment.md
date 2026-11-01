@@ -213,7 +213,7 @@ curl -i http://localhost:30000/gw/health
 curl -i http://localhost:30000/gw/backend/echo/hello
 ```
 
-`krbctl compose` and `krbctl config` generate a fuller version of this, optionally with PostgreSQL, Prometheus, Grafana and Jaeger. The repository's `test/compose/integration/compose.yaml` shows a PostgreSQL and full observability setup.
+`krbctl compose` and `krbctl config` generate a fuller version of this, optionally with PostgreSQL, Prometheus, Grafana, Jaeger and Loki. The repository's `test/compose/integration/compose.yaml` shows a PostgreSQL and full observability setup.
 
 If you use PostgreSQL, start the database first: use `depends_on` with a database health check, and a restart policy.
 

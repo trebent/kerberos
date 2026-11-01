@@ -19,7 +19,7 @@ func NewDummy(returnedCall DebuggedCall) Debugger {
 }
 
 // Start implements [Debugger].
-func (d *dummy) Start(context.Context) (DebuggedCall, context.Context) {
+func (d *dummy) Start(ctx context.Context) (DebuggedCall, context.Context) {
 	//nolint:revive,staticcheck // intentional
-	return noop, context.WithValue(context.Background(), DebugContextKey, noop)
+	return noop, context.WithValue(ctx, DebugContextKey, noop)
 }

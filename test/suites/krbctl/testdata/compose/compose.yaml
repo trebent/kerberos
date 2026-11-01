@@ -1,7 +1,21 @@
+x-logging: &loki-logging
+  driver: loki
+  options:
+    loki-url: http://127.0.0.1:3100/loki/api/v1/push
+    mode: non-blocking
+    max-buffer-size: 4m
+    loki-retries: "2"
+    loki-max-backoff: 1s
+    loki-timeout: 1s
+
 services:
   postgres:
     image: "postgres:18.4-alpine3.23"
     pull_policy: if_not_present
+    logging: *loki-logging
+    depends_on:
+      loki:
+        condition: service_started
     environment:
       - POSTGRES_DB=kerberos
       - POSTGRES_USER=kerberos
@@ -19,9 +33,12 @@ services:
     image: "ghcr.io/trebent/kerberos:latest"
     command: --config /krb.json
     pull_policy: if_not_present
+    logging: *loki-logging
     depends_on:
       postgres:
         condition: service_healthy
+      loki:
+        condition: service_started
     restart: on-failure
     ports:
       - 30000:30000
@@ -43,6 +60,10 @@ services:
   echo:
     image: "ghcr.io/trebent/kerberos/echo:latest"
     pull_policy: if_not_present
+    logging: *loki-logging
+    depends_on:
+      loki:
+        condition: service_started
     restart: on-failure
     environment:
       - PORT=15000
@@ -56,8 +77,11 @@ services:
     image: "ghcr.io/trebent/kerberos/admin-connector:latest"
     command: --config /connector.json
     pull_policy: if_not_present
+    logging: *loki-logging
     depends_on:
       kerberos:
+        condition: service_started
+      loki:
         condition: service_started
     ports:
       - 30100:30100
@@ -82,6 +106,10 @@ services:
     command: ["--config.file=/prometheus.yml", "--storage.tsdb.path", "/prometheus/data",
               "--storage.tsdb.retention.size", "1GB"]
     restart: on-failure
+    logging: *loki-logging
+    depends_on:
+      loki:
+        condition: service_started
     volumes:
       - ./prometheus.yml:/prometheus.yml
       - prometheus:/prometheus
@@ -90,6 +118,10 @@ services:
     image: "grafana/grafana:13.1"
     pull_policy: if_not_present
     restart: on-failure
+    logging: *loki-logging
+    depends_on:
+      loki:
+        condition: service_started
     ports:
       - 3000:3000
     volumes:
@@ -99,23 +131,44 @@ services:
       - ./grafana/prometheus.json:/var/lib/grafana/prometheus.json
       - ./grafana/kerberos_runtime.json:/var/lib/grafana/kerberos_runtime.json
       - ./grafana/kerberos_http.json:/var/lib/grafana/kerberos_http.json
+      - ./grafana/jaeger.json:/var/lib/grafana/jaeger.json
+      - ./grafana/loki.json:/var/lib/grafana/loki.json
+      - ./grafana/service_logs.json:/var/lib/grafana/service_logs.json
       - grafana:/var/lib/grafana
       
+
+  loki:
+    image: "grafana/loki:3.7"
+    pull_policy: if_not_present
+    command: -config.file=/etc/loki/config.yaml
+    restart: on-failure
+    ports:
+      - 127.0.0.1:3100:3100
+    volumes:
+      - ./loki.yml:/etc/loki/config.yaml
+      - loki:/loki
 
   jaeger-init:
     image: busybox:1.38
     pull_policy: if_not_present
     command: ["sh", "-c", "chown 10001:0 /jaeger"]
     restart: on-failure
+    logging: *loki-logging
+    depends_on:
+      loki:
+        condition: service_started
     volumes:
       - jaeger:/jaeger
 
   jaeger:
     image: "jaegertracing/jaeger:2.20.0"
     pull_policy: if_not_present
+    logging: *loki-logging
     depends_on:
       jaeger-init:
         condition: service_completed_successfully
+      loki:
+        condition: service_started
     restart: on-failure
     command: --config /jaeger.yml
     volumes:
@@ -128,3 +181,4 @@ volumes:
   prometheus:
   grafana:
   jaeger:
+  loki:

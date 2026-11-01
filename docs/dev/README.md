@@ -39,7 +39,7 @@ Read the design rules in [`.github/skills/design/SKILL.md`](../../.github/skills
 | `make validate` | Lint, unit tests and vulnerability check: run this before opening a pull request |
 | `make test/unit` | Unit tests only |
 | `make pages/install`, then `make pages/serve` or `make pages/check` | Runs the GitHub Pages site locally, or runs its CI checks |
-| `make compose/up`, then `make test/integration` | Starts the integration environment and runs the integration suite |
+| `make compose/up`, then `make test/integration` | Starts the integration environment and runs the integration suite. Needs the [Loki logging plugin](../krbctl.md#container-logs). Grafana is on `localhost:3000` and Loki on `127.0.0.1:3100`. |
 
 The `security` and `connector` suites follow the same pattern (`make compose/<suite>/up`, then `make test/<suite>`). `make test/krbctl` builds `krbctl` and tests it without a Compose environment. `make build` produces a Linux binary (`GOOS=linux`). The CI workflows in `.github/workflows/` run these targets.
 

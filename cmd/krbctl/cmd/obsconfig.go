@@ -17,6 +17,15 @@ var grafanaDashboardRuntime []byte
 //go:embed assets/grafana/kerberos_http.json
 var grafanaDashboardHTTP []byte
 
+//go:embed assets/grafana/jaeger.json
+var grafanaDashboardJaeger []byte
+
+//go:embed assets/grafana/loki.json
+var grafanaDashboardLoki []byte
+
+//go:embed assets/grafana/service_logs.json
+var grafanaDashboardServiceLogs []byte
+
 //go:embed assets/grafana/grafana-datasources.yml
 var grafanaDataSourceYML []byte
 
@@ -28,6 +37,9 @@ var jaegerConfigUI []byte
 
 //go:embed assets/jaeger/jaeger.yml
 var jaegerYML []byte
+
+//go:embed assets/loki/loki.yml
+var lokiYML []byte
 
 // scrapeJob is a resolved Prometheus scrape target (job name + host:port).
 type scrapeJob struct {
@@ -65,6 +77,9 @@ func writeObsFiles(driver string, opts *configOptions) error {
 		{filepath.Join(grafanaDir, "prometheus.json"), grafanaDashboardPrometheus},
 		{filepath.Join(grafanaDir, "kerberos_runtime.json"), grafanaDashboardRuntime},
 		{filepath.Join(grafanaDir, "kerberos_http.json"), grafanaDashboardHTTP},
+		{filepath.Join(grafanaDir, "jaeger.json"), grafanaDashboardJaeger},
+		{filepath.Join(grafanaDir, "loki.json"), grafanaDashboardLoki},
+		{filepath.Join(grafanaDir, "service_logs.json"), grafanaDashboardServiceLogs},
 	}
 
 	for _, f := range grafanaFiles {
@@ -85,6 +100,10 @@ func writeObsFiles(driver string, opts *configOptions) error {
 		return err
 	}
 
+	if err := writeObsFile(filepath.Join(opts.outputPath, "loki.yml"), lokiYML); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -101,7 +120,7 @@ func writeObsFile(path string, data []byte) error {
 }
 
 // resolveScrapeJobs turns the selected scrape targets into concrete host:port
-// jobs. kerberos and jaeger resolve to their well-known endpoints, every other
+// jobs. kerberos, jaeger and loki resolve to their well-known endpoints, every other
 // selected target is treated as a registered router backend scraped on the
 // default metrics port. The admin-connector is added automatically when the
 // connector is included in the deployment.
@@ -122,6 +141,8 @@ func resolveScrapeJobs(opts *configOptions) []scrapeJob {
 			)
 		case jaegerName:
 			jobs = append(jobs, scrapeJob{jaegerName, "jaeger:8888"})
+		case lokiName:
+			jobs = append(jobs, scrapeJob{lokiName, "loki:3100"})
 		default:
 			host, ok := hosts[target]
 			if !ok {
