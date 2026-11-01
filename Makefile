@@ -330,6 +330,16 @@ krbctl/build:
 	@mkdir -p build
 	@CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="$(KRBCTL_LDFLAGS)" -o build/krbctl ./cmd/krbctl
 
+krbctl/config:
+	$(call cecho,Running krbctl config...,$(BOLD_YELLOW))
+	@mkdir -p build
+	@go run ./cmd/krbctl config -o ./build
+	
+krbctl/compose:
+	$(call cecho,Running krbctl compose...,$(BOLD_YELLOW))
+	@mkdir -p build
+	@go run ./cmd/krbctl compose -o ./build
+
 krbctl/install:
 	$(call cecho,Installing krbctl binary to $(GOBIN)...,$(BOLD_YELLOW))
 	@CGO_ENABLED=0 GOOS=linux go install -trimpath -ldflags="$(KRBCTL_LDFLAGS)" ./cmd/krbctl

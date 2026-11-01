@@ -27,3 +27,7 @@ jobs:
   unit-test:
     uses: ./.github/workflows/callable-test-unit.yaml
     secrets: inherit
+
+  krbctl-test:
+    uses: ./.github/workflows/callable-test-krbctl.yaml
+    secrets: inherit

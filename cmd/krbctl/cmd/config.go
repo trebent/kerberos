@@ -342,6 +342,17 @@ func promptBackends(opts *configOptions) error {
 		return err
 	}
 
+	if len(opts.backends) > 0 {
+		yes, err := askYesNo("Add a real backend as well?", "")
+		if err != nil {
+			return err
+		}
+
+		if !yes {
+			return nil
+		}
+	}
+
 	for {
 		name, err := promptBackendName(opts)
 		if err != nil {
@@ -356,12 +367,12 @@ func promptBackends(opts *configOptions) error {
 			return err
 		}
 
-		addAnother, err := promptAddAnother()
+		yes, err := askYesNo("Add another backend?", "")
 		if err != nil {
 			return err
 		}
 
-		if !addAnother {
+		if !yes {
 			break
 		}
 	}
@@ -371,26 +382,17 @@ func promptBackends(opts *configOptions) error {
 
 // promptEchoBackend asks whether to register the echo service as a backend.
 func promptEchoBackend(opts *configOptions) error {
-	var useEcho bool
-
-	echoForm := huh.NewForm(
-		huh.NewGroup(
-			huh.NewConfirm().
-				Title("Use the echo service as a backend?").
-				Description(fmt.Sprintf(
-					"Registers echo (%s:%d) as a router backend.",
-					echoBackendHost, echoBackendPort,
-				)).
-				WithButtonAlignment(lipgloss.Left).
-				Value(&useEcho),
-		),
-	)
-
-	if err := echoForm.Run(); err != nil {
+	yes, err := askYesNo(
+		"Use the echo service as a backend?",
+		fmt.Sprintf(
+			"Registers echo (%s:%d) as a router backend.",
+			echoBackendHost, echoBackendPort,
+		))
+	if err != nil {
 		return fmt.Errorf("prompt cancelled: %w", err)
 	}
 
-	if useEcho {
+	if yes {
 		opts.backends = append(opts.backends, backendEntry{
 			name: echoBackendName,
 			host: echoBackendHost,
@@ -480,26 +482,6 @@ func promptBackendDetails(opts *configOptions, name string) error {
 	})
 
 	return nil
-}
-
-// promptAddAnother asks whether to register another backend.
-func promptAddAnother() (bool, error) {
-	var addAnother bool
-
-	confirmForm := huh.NewForm(
-		huh.NewGroup(
-			huh.NewConfirm().
-				Title("Add another backend?").
-				WithButtonAlignment(lipgloss.Left).
-				Value(&addAnother),
-		),
-	)
-
-	if err := confirmForm.Run(); err != nil {
-		return false, fmt.Errorf("prompt cancelled: %w", err)
-	}
-
-	return addAnother, nil
 }
 
 // promptFixedSections runs the remaining configuration prompts as a single
