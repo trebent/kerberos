@@ -1,0 +1,93 @@
+services:
+  sqlite-init:
+    image: busybox:1.38
+    pull_policy: if_not_present
+    command: ["sh", "-c", "chmod 0777 /krbdata && touch /krbdata/krb.db && chmod 0666 /krbdata/krb.db"]
+    restart: on-failure
+    volumes:
+      - krbdata:/krbdata
+
+  kerberos:
+    image: "ghcr.io/trebent/kerberos:latest"
+    command: --config /krb.json
+    pull_policy: if_not_present
+    depends_on:
+      sqlite-init:
+        condition: service_completed_successfully
+    restart: on-failure
+    ports:
+      - 30000:30000
+      - 30001:30001
+    environment:
+      - LOG_TO_CONSOLE=true
+      - PORT=30000
+      - ADMIN_PORT=30001
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
+      - OTEL_METRICS_EXPORTER=prometheus
+      - OTEL_EXPORTER_PROMETHEUS_HOST=kerberos
+      - OTEL_EXPORTER_PROMETHEUS_PORT=9464
+    volumes:
+      - ./krb.json:/krb.json:ro
+      - krbdata:/krbdata
+
+  connector:
+    image: "ghcr.io/trebent/kerberos/admin-connector:latest"
+    command: --config /connector.json
+    pull_policy: if_not_present
+    depends_on:
+      kerberos:
+        condition: service_started
+      sqlite-init:
+        condition: service_completed_successfully
+    ports:
+      - 30100:30100
+    restart: on-failure
+    environment:
+      - LOG_TO_CONSOLE=true
+      - PORT=30100
+      - TARGET=jaeger:16686
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=grpc
+      - OTEL_METRICS_EXPORTER=prometheus
+      - OTEL_EXPORTER_PROMETHEUS_HOST=connector
+      - OTEL_EXPORTER_PROMETHEUS_PORT=9464
+    volumes:
+      - ./connector.json:/connector.json:ro
+      - krbdata:/krbdata
+
+  prometheus:
+    image: "prom/prometheus:v3"
+    pull_policy: if_not_present
+    command: ["--config.file=/prometheus.yml", "--storage.tsdb.path", "/prometheus/data",
+              "--storage.tsdb.retention.size", "1GB"]
+    restart: on-failure
+    volumes:
+      - ./prometheus.yml:/prometheus.yml
+      - prometheus:/prometheus
+
+  jaeger-init:
+    image: busybox:1.38
+    pull_policy: if_not_present
+    command: ["sh", "-c", "chown 10001:0 /jaeger"]
+    restart: on-failure
+    volumes:
+      - jaeger:/jaeger
+
+  jaeger:
+    image: "jaegertracing/jaeger:2.20.0"
+    pull_policy: if_not_present
+    depends_on:
+      jaeger-init:
+        condition: service_completed_successfully
+    restart: on-failure
+    command: --config /jaeger.yml
+    volumes:
+      - ./jaeger.yml:/jaeger.yml
+      - ./jaeger-config-ui.json:/jaeger-config-ui.json
+      - jaeger:/jaeger
+
+volumes:
+  krbdata:
+  prometheus:
+  jaeger:
