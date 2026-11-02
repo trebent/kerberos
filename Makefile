@@ -500,6 +500,8 @@ test/krbctl/integration: krbctl/build
 		-y \
 		--echo \
 		--obs-stack \
+		--obs-service prometheus \
+		--obs-service jaeger \
 		--driver postgres \
 		--connector \
 		-o $(CURDIR)/build
@@ -507,6 +509,8 @@ test/krbctl/integration: krbctl/build
 		-y \
 		--echo \
 		--obs-stack \
+		--obs-service prometheus \
+		--obs-service jaeger \
 		--driver postgres \
 		--connector \
 		-o $(CURDIR)/build

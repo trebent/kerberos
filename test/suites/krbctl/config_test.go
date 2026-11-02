@@ -64,6 +64,103 @@ func TestConfigKerberosAndEcho(t *testing.T) {
 	})
 }
 
+// TestConfigObsServices checks that only the files, scrape jobs, data sources and dashboards of
+// the chosen observability stack services are generated.
+func TestConfigObsServices(t *testing.T) {
+	t.Run("prometheus and jaeger", func(t *testing.T) {
+		dir := t.TempDir()
+
+		runKrbctl(t, "config", "-y", "--echo", "--obs-stack",
+			"--obs-service", "prometheus", "--obs-service", "jaeger",
+			"--scrape-target", "kerberos", "--scrape-target", "loki",
+			"-o", dir)
+
+		assertFiles(t, dir, map[string]bool{
+			"prometheus.yml":         true,
+			"jaeger.yml":             true,
+			"jaeger-config-ui.json":  true,
+			"loki.yml":               false,
+			filepath.Join("grafana"): false,
+		})
+		assertFileContains(t, filepath.Join(dir, "prometheus.yml"), "job_name: kerberos")
+		assertFileNotContains(t, filepath.Join(dir, "prometheus.yml"), "job_name: loki")
+	})
+
+	t.Run("default scrape targets skip excluded services", func(t *testing.T) {
+		dir := t.TempDir()
+
+		runKrbctl(t, "config", "-y", "--echo", "--obs-stack",
+			"--obs-service", "prometheus", "--obs-service", "grafana", "-o", dir)
+
+		assertFileNotContains(t, filepath.Join(dir, "prometheus.yml"), "job_name: jaeger")
+		assertFileNotContains(t, filepath.Join(dir, "prometheus.yml"), "job_name: loki")
+		assertFileNotContains(t,
+			filepath.Join(dir, "grafana", "grafana-datasources.yml"), "name: loki")
+		assertDashboards(t, filepath.Join(dir, "grafana", "dashboards"), []string{
+			"prometheus.json",
+			"kerberos_runtime.json",
+			"kerberos_http.json",
+		})
+	})
+
+	t.Run("grafana and loki", func(t *testing.T) {
+		dir := t.TempDir()
+
+		runKrbctl(t, "config", "-y", "--echo", "--obs-stack",
+			"--obs-service", "grafana", "--obs-service", "loki", "-o", dir)
+
+		assertFiles(t, dir, map[string]bool{
+			"prometheus.yml": false,
+			"jaeger.yml":     false,
+			"loki.yml":       true,
+		})
+		assertFileNotContains(t,
+			filepath.Join(dir, "grafana", "grafana-datasources.yml"), "name: prometheus")
+		assertDashboards(t, filepath.Join(dir, "grafana", "dashboards"), []string{
+			"service_logs.json",
+		})
+	})
+
+	t.Run("errors", func(t *testing.T) {
+		tests := map[string]struct {
+			args []string
+			want string
+		}{
+			"unknown service": {
+				args: []string{"--obs-stack", "--obs-service", "tempo"},
+				want: "unknown observability service",
+			},
+			"without obs-stack": {
+				args: []string{"--obs-service", "loki"},
+				want: "--obs-service requires --obs-stack",
+			},
+		}
+
+		for name, tt := range tests {
+			t.Run(name, func(t *testing.T) {
+				args := append([]string{"config", "-y", "--echo", "-o", t.TempDir()}, tt.args...)
+
+				if out := runKrbctlFailure(t, args...); !strings.Contains(out, tt.want) {
+					t.Errorf("output does not contain %q:\n%s", tt.want, out)
+				}
+			})
+		}
+	})
+}
+
+// assertFiles fails the test unless each path in want, relative to dir, exists exactly when
+// its value is true.
+func assertFiles(t *testing.T, dir string, want map[string]bool) {
+	t.Helper()
+
+	for f, expected := range want {
+		_, err := os.Stat(filepath.Join(dir, f))
+		if exists := err == nil; exists != expected {
+			t.Errorf("%s: exists = %t, want %t", f, exists, expected)
+		}
+	}
+}
+
 // TestConfigInputErrors checks that bad backend input is rejected instead of silently replaced.
 func TestConfigInputErrors(t *testing.T) {
 	tests := []struct {

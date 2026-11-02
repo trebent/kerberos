@@ -78,3 +78,17 @@ func assertFileContains(t *testing.T, path, want string) {
 		t.Errorf("%s does not contain %q\n%s", path, want, got)
 	}
 }
+
+// assertFileNotContains fails the test if the file at path contains unwanted.
+func assertFileNotContains(t *testing.T, path, unwanted string) {
+	t.Helper()
+
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read generated file %s: %v", path, err)
+	}
+
+	if strings.Contains(string(got), unwanted) {
+		t.Errorf("%s contains %q\n%s", path, unwanted, got)
+	}
+}
