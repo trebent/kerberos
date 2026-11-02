@@ -116,7 +116,7 @@ compose/security/up:
 	@VERSION=$(VERSION) \
 	LOG_VERBOSITY=$(LOG_VERBOSITY) \
 	docker compose -f test/compose/security/compose.yaml up -d --force-recreate
-	@until [ "$$(curl -s -o /dev/null -w '%{http_code}' --cacert test/certs/ca.crt https://localhost:$(KERBEROS_ADMIN_PORT)/api/admin/flow)" = "401" ]; do \
+	@until [ "$$(curl -s -o /dev/null -w '%{http_code}' --cacert test/compose/security/certs/ca.crt https://localhost:$(KERBEROS_ADMIN_PORT)/api/admin/flow)" = "401" ]; do \
 	echo "Waiting for Kerberos admin API..."; \
 	sleep 1; \
 	done; \

@@ -2,7 +2,7 @@ package security
 
 const (
 	// certDir is relative to the test working directory (test/suites/security/).
-	certDir = "../../certs"
+	certDir = "../../compose/security/certs"
 
 	adminUser         = "security-admin"
 	adminUserPassword = "security-admin-password"
