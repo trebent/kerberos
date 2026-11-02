@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 )
 
@@ -23,6 +22,7 @@ const (
 	echoBackendPort = 15000
 	jaegerName      = "jaeger"
 	lokiName        = "loki"
+	connectorName   = "connector"
 
 	// defaultBackendHost and defaultBackendPort are used when a backend is
 	// registered without an explicit host or port.
@@ -41,6 +41,28 @@ var (
 	errDuplicateBackend = errors.New("duplicate backend name")
 	errInvalidPort      = errors.New("port must be a number between 1 and 65535")
 )
+
+// addDriverFlag registers the --driver flag shared by the config and compose
+// commands.
+func addDriverFlag(cmd *cobra.Command) {
+	cmd.Flags().String("driver", driverSQLite,
+		"Persistence driver: sqlite or postgres. (non-interactive mode only)")
+}
+
+// getDriverFlag reads and validates the --driver flag.
+func getDriverFlag(cmd *cobra.Command) (string, error) {
+	driver, err := cmd.Flags().GetString("driver")
+	if err != nil {
+		return "", err
+	}
+
+	if driver != driverSQLite && driver != driverPostgres {
+		return "", fmt.Errorf("invalid driver %q: must be %q or %q",
+			driver, driverSQLite, driverPostgres)
+	}
+
+	return driver, nil
+}
 
 // configOptions holds all answers collected from the interactive config session.
 type configOptions struct {
@@ -84,28 +106,27 @@ func newConfigCmd() *cobra.Command {
 		Use:   "config",
 		Short: "Interactively generate a base Kerberos configuration file",
 		Long: `Walks you through a series of prompts to build a base Kerberos JSON
-configuration file. Mandatory sections are always included (Kerberos
-observability is always enabled); optional sections (per-backend auth,
-observability-stack config, postgres persistence, admin-connector) can be
-skipped.`,
+configuration file. You first choose what to include (echo backend,
+persistence, basic auth, admin-connector, observability stack), then you are
+asked for the details of each part you chose.`,
 		RunE: runConfig,
 	}
 
 	cmd.Flags().StringP("output", "o", ".", "Output path where config files will be written.")
 	cmd.Flags().BoolP("non-interactive", "y", false,
 		"Skip prompts and build the configuration from flag values.")
-	cmd.Flags().Bool("echo-backend", false,
+	cmd.Flags().Bool("echo", false,
 		"Register the built-in echo service as a router backend. (non-interactive mode only)")
 	cmd.Flags().StringArray("backend", nil,
 		"Router backend as 'name=..,host=..,port=..,auth=..' (repeatable). (non-interactive mode only)")
-	cmd.Flags().String("driver", driverSQLite,
-		"Persistence driver: sqlite or postgres. (non-interactive mode only)")
+	addDriverFlag(cmd)
 	cmd.Flags().Bool("obs-stack", false,
 		"Generate observability stack config files. (non-interactive mode only)")
 	cmd.Flags().Bool("grafana-anonymous", true,
 		"Enable Grafana anonymous access. (non-interactive mode only)")
 	cmd.Flags().StringArray("scrape-target", nil,
-		"Prometheus scrape target (repeatable); defaults to kerberos, jaeger, loki and all backends. "+
+		"Prometheus scrape target (repeatable); defaults to kerberos, jaeger, loki, all backends and "+
+			"the connector when included. "+
 			"(non-interactive mode only)")
 	cmd.Flags().Bool("connector", false,
 		"Include the admin-connector (generates connector.json). (non-interactive mode only)")
@@ -141,7 +162,9 @@ func runConfig(cmd *cobra.Command, _ []string) error {
 		if err := collectConfigFromFlags(cmd, opts); err != nil {
 			return err
 		}
-	} else if err := collectConfigInteractive(opts); err != nil {
+	} else if err := runInteractive(cmd, func() error {
+		return collectConfigInteractive(opts)
+	}); err != nil {
 		return err
 	}
 
@@ -187,34 +210,106 @@ func runConfig(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
+// optInChoices holds the answers from the opt-in form that steer the later prompts but are
+// not stored in configOptions directly.
+type optInChoices struct {
+	useEcho     bool
+	usePostgres bool
+	basicAuth   bool
+}
+
 // collectConfigInteractive drives the interactive prompt sequence, populating
-// opts with the user's answers.
+// opts with the user's answers. A single opt-in form asks what to include, then
+// the prompts dig down into each section that was opted in.
 func collectConfigInteractive(opts *configOptions) error {
+	var choices optInChoices
+
+	if err := runForm(buildOptInGroup(opts, &choices)); err != nil {
+		return err
+	}
+
+	if choices.useEcho {
+		opts.backends = append(opts.backends, echoBackend())
+	}
+
+	if choices.usePostgres {
+		opts.driver = driverPostgres
+	}
+
 	if err := promptBackends(opts); err != nil {
 		return err
 	}
 
-	if err := promptFixedSections(opts); err != nil {
-		return err
+	if choices.basicAuth {
+		for i := range opts.backends {
+			opts.backends[i].auth = true
+		}
 	}
 
-	return nil
+	return promptSectionSettings(opts)
+}
+
+// buildOptInGroup builds the first form, where the user chooses which parts of the
+// deployment to include.
+func buildOptInGroup(opts *configOptions, choices *optInChoices) *huh.Group {
+	return huh.NewGroup(
+		newConfirm(
+			"Use the echo service as a backend?",
+			fmt.Sprintf(
+				"Registers echo (%s:%d) as a router backend.", echoBackendHost, echoBackendPort,
+			),
+			&choices.useEcho,
+		),
+		newPostgresConfirm(&choices.usePostgres),
+		newConfirm(
+			"Enable basic auth?",
+			"Puts every backend behind basic authentication.",
+			&choices.basicAuth,
+		),
+		newConfirm(
+			"Include the admin-connector?",
+			"Generates connector.json for the admin-connector service.",
+			&opts.includeConnector,
+		),
+		newConfirm(
+			"Generate observability stack config?",
+			"Writes Prometheus, Grafana, Jaeger, and Loki config files.",
+			&opts.includeObsStack,
+		),
+	)
+}
+
+// promptSectionSettings asks for the settings of every opted-in section in one form, so the
+// user can move between sections with shift+tab.
+func promptSectionSettings(opts *configOptions) error {
+	groups := make([]*huh.Group, 0, 2)
+
+	if opts.includeConnector {
+		groups = append(groups, buildConnectorConfigGroup(opts))
+	}
+
+	if opts.includeObsStack {
+		opts.obsOpts.scrapeTargets = defaultScrapeTargets(opts)
+		groups = append(groups, buildObsOptionsGroup(opts))
+	}
+
+	if len(groups) == 0 {
+		return nil
+	}
+
+	return runForm(groups...)
 }
 
 // collectConfigFromFlags populates opts from the command's flag values for
 // non-interactive runs.
 func collectConfigFromFlags(cmd *cobra.Command, opts *configOptions) error {
-	echoBackend, err := cmd.Flags().GetBool("echo-backend")
+	useEcho, err := cmd.Flags().GetBool("echo")
 	if err != nil {
 		return err
 	}
 
-	if echoBackend {
-		opts.backends = append(opts.backends, backendEntry{
-			name: echoBackendName,
-			host: echoBackendHost,
-			port: echoBackendPort,
-		})
+	if useEcho {
+		opts.backends = append(opts.backends, echoBackend())
 	}
 
 	backendSpecs, err := cmd.Flags().GetStringArray("backend")
@@ -236,16 +331,11 @@ func collectConfigFromFlags(cmd *cobra.Command, opts *configOptions) error {
 	}
 
 	if len(opts.backends) == 0 {
-		return errors.New("at least one backend is required (use --echo-backend or --backend)")
+		return errors.New("at least one backend is required (use --echo or --backend)")
 	}
 
-	if opts.driver, err = cmd.Flags().GetString("driver"); err != nil {
+	if opts.driver, err = getDriverFlag(cmd); err != nil {
 		return err
-	}
-
-	if opts.driver != driverSQLite && opts.driver != driverPostgres {
-		return fmt.Errorf("invalid driver %q: must be %q or %q",
-			opts.driver, driverSQLite, driverPostgres)
 	}
 
 	if opts.includeObsStack, err = cmd.Flags().GetBool("obs-stack"); err != nil {
@@ -253,6 +343,10 @@ func collectConfigFromFlags(cmd *cobra.Command, opts *configOptions) error {
 	}
 
 	if opts.obsOpts.grafanaAnonymous, err = cmd.Flags().GetBool("grafana-anonymous"); err != nil {
+		return err
+	}
+
+	if opts.includeConnector, err = cmd.Flags().GetBool("connector"); err != nil {
 		return err
 	}
 
@@ -265,10 +359,6 @@ func collectConfigFromFlags(cmd *cobra.Command, opts *configOptions) error {
 		opts.obsOpts.scrapeTargets = scrapeTargets
 	} else {
 		opts.obsOpts.scrapeTargets = defaultScrapeTargets(opts)
-	}
-
-	if opts.includeConnector, err = cmd.Flags().GetBool("connector"); err != nil {
-		return err
 	}
 
 	if opts.connectorOpts.allowAllOrigins, err = cmd.Flags().GetBool(
@@ -338,8 +428,15 @@ func parseBackendFlag(spec string) (backendEntry, error) {
 // service can be registered as a router backend up front; when present the user
 // may finish without registering any manual backend.
 func promptBackends(opts *configOptions) error {
-	if err := promptEchoBackend(opts); err != nil {
-		return err
+	if len(opts.backends) > 0 {
+		yes, err := askYesNo("Add more backends besides echo?", "")
+		if err != nil {
+			return err
+		}
+
+		if !yes {
+			return nil
+		}
 	}
 
 	for {
@@ -356,46 +453,14 @@ func promptBackends(opts *configOptions) error {
 			return err
 		}
 
-		addAnother, err := promptAddAnother()
+		yes, err := askYesNo("Add another backend?", "")
 		if err != nil {
 			return err
 		}
 
-		if !addAnother {
+		if !yes {
 			break
 		}
-	}
-
-	return nil
-}
-
-// promptEchoBackend asks whether to register the echo service as a backend.
-func promptEchoBackend(opts *configOptions) error {
-	var useEcho bool
-
-	echoForm := huh.NewForm(
-		huh.NewGroup(
-			huh.NewConfirm().
-				Title("Use the echo service as a backend?").
-				Description(fmt.Sprintf(
-					"Registers echo (%s:%d) as a router backend.",
-					echoBackendHost, echoBackendPort,
-				)).
-				WithButtonAlignment(lipgloss.Left).
-				Value(&useEcho),
-		),
-	)
-
-	if err := echoForm.Run(); err != nil {
-		return fmt.Errorf("prompt cancelled: %w", err)
-	}
-
-	if useEcho {
-		opts.backends = append(opts.backends, backendEntry{
-			name: echoBackendName,
-			host: echoBackendHost,
-			port: echoBackendPort,
-		})
 	}
 
 	return nil
@@ -482,42 +547,18 @@ func promptBackendDetails(opts *configOptions, name string) error {
 	return nil
 }
 
-// promptAddAnother asks whether to register another backend.
-func promptAddAnother() (bool, error) {
-	var addAnother bool
-
-	confirmForm := huh.NewForm(
-		huh.NewGroup(
-			huh.NewConfirm().
-				Title("Add another backend?").
-				WithButtonAlignment(lipgloss.Left).
-				Value(&addAnother),
-		),
-	)
-
-	if err := confirmForm.Run(); err != nil {
-		return false, fmt.Errorf("prompt cancelled: %w", err)
+// echoBackend returns the backend entry for the built-in echo service.
+func echoBackend() backendEntry {
+	return backendEntry{
+		name: echoBackendName,
+		host: echoBackendHost,
+		port: echoBackendPort,
 	}
-
-	return addAnother, nil
 }
 
-// promptFixedSections runs the remaining configuration prompts as a single
-// multi-group form so the user can move back and forth between sections with
-// shift+tab. Conditional groups are hidden until their toggle is enabled.
-func promptFixedSections(opts *configOptions) error {
-	opts.obsOpts.scrapeTargets = defaultScrapeTargets(opts)
-
-	form := huh.NewForm(
-		buildPersistenceGroup(opts),
-		buildAuthGroup(opts),
-		buildObsToggleGroup(opts),
-		buildObsOptionsGroup(opts),
-		buildConnectorToggleGroup(opts),
-		buildConnectorConfigGroup(opts),
-	)
-
-	if err := form.Run(); err != nil {
+// runForm runs a form made of the given groups.
+func runForm(groups ...*huh.Group) error {
+	if err := huh.NewForm(groups...).Run(); err != nil {
 		return fmt.Errorf("prompt cancelled: %w", err)
 	}
 
@@ -525,45 +566,22 @@ func promptFixedSections(opts *configOptions) error {
 }
 
 // defaultScrapeTargets returns the scrape targets pre-selected by default:
-// kerberos, jaeger, loki, and every registered router backend.
+// kerberos, jaeger, loki, every registered router backend, and the
+// admin-connector when it is included.
 func defaultScrapeTargets(opts *configOptions) []string {
 	targets := []string{defaultKRBDB, jaegerName, lokiName}
 	for _, b := range opts.backends {
 		targets = append(targets, b.name)
 	}
 
+	if opts.includeConnector {
+		targets = append(targets, connectorName)
+	}
+
 	return targets
 }
 
-// buildAuthGroup builds a dedicated authentication section with a per-backend
-// toggle enabling basic auth for that backend.
-func buildAuthGroup(opts *configOptions) *huh.Group {
-	fields := make([]huh.Field, 0, len(opts.backends))
-	for i := range opts.backends {
-		fields = append(fields, huh.NewConfirm().
-			Title(fmt.Sprintf("Enable basic auth for backend %q?", opts.backends[i].name)).
-			WithButtonAlignment(lipgloss.Left).
-			Value(&opts.backends[i].auth))
-	}
-
-	return huh.NewGroup(fields...).Title("Authentication")
-}
-
-// buildObsToggleGroup builds the dedicated toggle controlling generation of the
-// observability stack (Prometheus/Grafana/Jaeger/Loki) config files.
-func buildObsToggleGroup(opts *configOptions) *huh.Group {
-	return huh.NewGroup(
-		huh.NewConfirm().
-			Title("Generate observability stack config?").
-			Description("Writes Prometheus, Grafana, Jaeger, and Loki config files for the " +
-				"observability stack. (Kerberos observability itself is always enabled.)").
-			WithButtonAlignment(lipgloss.Left).
-			Value(&opts.includeObsStack),
-	).Title("Observability stack")
-}
-
-// buildObsOptionsGroup builds the observability stack detail options, hidden
-// unless the observability stack toggle is enabled.
+// buildObsOptionsGroup builds the observability stack settings.
 func buildObsOptionsGroup(opts *configOptions) *huh.Group {
 	scrapeOpts := []huh.Option[string]{
 		huh.NewOption(fmt.Sprintf("kerberos (port %d)", scrapeMetricsPort), defaultKRBDB),
@@ -575,60 +593,35 @@ func buildObsOptionsGroup(opts *configOptions) *huh.Group {
 			fmt.Sprintf("%s (%s:%d)", b.name, b.host, scrapeMetricsPort), b.name))
 	}
 
-	return huh.NewGroup(
-		huh.NewMultiSelect[string]().
-			Title("Prometheus scrape targets").
-			Description("Select services that should expose metrics to Prometheus. "+
-				"The admin-connector is scraped automatically when included.").
-			Options(scrapeOpts...).
-			Value(&opts.obsOpts.scrapeTargets),
-
-		huh.NewConfirm().
-			Title("Enable Grafana anonymous access?").
-			Description("Allows viewing dashboards without logging in.").
-			WithButtonAlignment(lipgloss.Left).
-			Value(&opts.obsOpts.grafanaAnonymous),
-	).Title("Observability stack options").
-		WithHideFunc(func() bool { return !opts.includeObsStack })
-}
-
-// buildPersistenceGroup builds the Kerberos persistence selection section.
-func buildPersistenceGroup(opts *configOptions) *huh.Group {
-	persistenceOpts := []huh.Option[string]{
-		huh.NewOption("SQLite (default, file-based)", driverSQLite),
-		huh.NewOption("PostgreSQL", driverPostgres),
+	if opts.includeConnector {
+		scrapeOpts = append(scrapeOpts, huh.NewOption(
+			fmt.Sprintf("%s (port %d)", connectorName, scrapeMetricsPort), connectorName))
 	}
 
 	return huh.NewGroup(
-		huh.NewSelect[string]().
-			Title("Persistence backend").
-			Options(persistenceOpts...).
-			Value(&opts.driver),
-	).Title("Persistence")
+		huh.NewMultiSelect[string]().
+			Title("Prometheus scrape targets").
+			Description("Select services that should expose metrics to Prometheus.").
+			Options(scrapeOpts...).
+			Value(&opts.obsOpts.scrapeTargets),
+
+		newConfirm(
+			"Enable Grafana anonymous access?",
+			"Allows viewing dashboards without logging in.",
+			&opts.obsOpts.grafanaAnonymous,
+		),
+	).Title("Observability stack")
 }
 
-// buildConnectorToggleGroup builds the dedicated admin-connector on/off section.
-func buildConnectorToggleGroup(opts *configOptions) *huh.Group {
-	return huh.NewGroup(
-		huh.NewConfirm().
-			Title("Include the admin-connector?").
-			Description("Generates connector.json for the admin-connector service.").
-			WithButtonAlignment(lipgloss.Left).
-			Value(&opts.includeConnector),
-	).Title("Admin-connector")
-}
-
-// buildConnectorConfigGroup builds the admin-connector config detail section,
-// hidden unless the admin-connector toggle is enabled.
+// buildConnectorConfigGroup builds the admin-connector settings.
 func buildConnectorConfigGroup(opts *configOptions) *huh.Group {
 	return huh.NewGroup(
-		huh.NewConfirm().
-			Title("Allow all CORS origins?").
-			Description("Yes allows any origin; No denies all cross-origin requests.").
-			WithButtonAlignment(lipgloss.Left).
-			Value(&opts.connectorOpts.allowAllOrigins),
-	).Title("Admin-connector config").
-		WithHideFunc(func() bool { return !opts.includeConnector })
+		newConfirm(
+			"Allow all CORS origins?",
+			"Yes allows any origin; No denies all cross-origin requests.",
+			&opts.connectorOpts.allowAllOrigins,
+		),
+	).Title("Admin-connector")
 }
 
 // hasBackend reports whether a backend with the given name is already registered.

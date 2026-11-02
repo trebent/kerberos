@@ -1,7 +1,7 @@
 services:
   kerberos:
     image: "ghcr.io/trebent/kerberos:${VERSION:-unset}"
-    command: --config /config/security.json
+    command: --config /krb.json
     pull_policy: if_not_present
     build:
       context: ../../..
@@ -17,9 +17,9 @@ services:
       - ADMIN_PORT=${KERBEROS_ADMIN_PORT:-30001}
       - VERSION=${VERSION:-unset}
     volumes:
-      - ../../config:/config:ro
+      - ./krb.json:/krb.json:ro
       - ../../oas:/oas:ro
-      - ../../certs:/certs:ro
+      - ./certs:/certs:ro
 
   mtls-echo:
     image: "ghcr.io/trebent/kerberos/echo:${VERSION:-unset}"
@@ -35,7 +35,7 @@ services:
       - TLS_KEY_FILE=/certs/mtls_echo_server.key
       - TLS_CLIENT_CA_FILE=/certs/ca.crt
     volumes:
-      - ../../certs:/certs:ro
+      - ./certs:/certs:ro
 
   tls-echo:
     image: "ghcr.io/trebent/kerberos/echo:${VERSION:-unset}"
@@ -50,4 +50,4 @@ services:
       - TLS_CERT_FILE=/certs/tls_echo_server.pem
       - TLS_KEY_FILE=/certs/tls_echo_server.key
     volumes:
-      - ../../certs:/certs:ro
+      - ./certs:/certs:ro

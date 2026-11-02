@@ -75,14 +75,17 @@ Writes `<output>/compose.yaml`.
 
 ### Interactive mode
 
-`krbctl compose` asks four yes/no questions, all on one screen:
+`krbctl compose` first asks four yes/no questions, all on one screen:
 
 1. Include the echo service? (a [test backend](./echo.md) that replies with the request it received)
-2. Include the observability stack? (Prometheus, Grafana, Jaeger and Loki)
-3. Include PostgreSQL as the persistence backend? (SQLite is used if you answer no)
-4. Include the admin-connector service?
+2. Include PostgreSQL as the persistence backend? (SQLite is used if you answer no)
+3. Include the admin-connector service?
+4. Include the observability stack?
 
-If you include the admin-connector without the observability stack, a second screen asks which tool it should protect, as `host:port` inside the Compose network.
+Then it asks follow-up questions for the parts you chose:
+
+- **Observability stack:** which services to include: `prometheus`, `grafana`, `jaeger` and `loki`. All are selected by default. Choose at least one.
+- **Admin-connector:** which tool it should protect, as `host:port` inside the Compose network. If you included Jaeger, the answer is filled in with the Jaeger UI, `jaeger:16686`.
 
 ### Flags
 
@@ -91,12 +94,13 @@ If you include the admin-connector without the observability stack, a second scr
 | `-o`, `--output` | `.` | Directory to write `compose.yaml` to. It must already exist. |
 | `-y`, `--non-interactive` | `false` | Skip the questions and use the flags below. |
 | `--echo` | `false` | Include the echo service. Only used with `-y`. |
-| `--obs-stack` | `false` | Include Prometheus, Grafana, Jaeger and Loki. Only used with `-y`. |
-| `--postgres` | `false` | Use PostgreSQL instead of SQLite. Only used with `-y`. |
+| `--obs-stack` | `false` | Include the observability stack. Only used with `-y`. |
+| `--obs-service` | All four | Observability service to include: `prometheus`, `grafana`, `jaeger` or `loki`. Repeatable. If you pass any, only those are included. Needs `--obs-stack`. Only used with `-y`. |
+| `--driver` | `sqlite` | Persistence driver: `sqlite` or `postgres`. Only used with `-y`. |
 | `--connector` | `false` | Include the admin-connector. Only used with `-y`. |
-| `--connector-target` | `jaeger:16686` with `--obs-stack`, otherwise none | `host:port` (or `host`) the admin-connector forwards to, without a scheme or path. Required with `--connector` when `--obs-stack` is not set. Only used with `-y`. |
+| `--connector-target` | `jaeger:16686` when Jaeger is included, otherwise none | `host:port` (or `host`) the admin-connector forwards to, without a scheme or path. Required with `--connector` when Jaeger is not included. Only used with `-y`. |
 
-Without `-y`, the `--echo`, `--obs-stack`, `--postgres`, `--connector` and `--connector-target` flags are ignored and you are asked the questions.
+Without `-y`, the `--echo`, `--obs-stack`, `--obs-service`, `--driver`, `--connector` and `--connector-target` flags are ignored and you are asked the questions.
 
 ### Generated services
 
@@ -107,24 +111,24 @@ Without `-y`, the `--echo`, `--obs-stack`, `--postgres`, `--connector` and `--co
 | `postgres` | `postgres:18.4-alpine3.23` | PostgreSQL chosen | None | `postgres` volume. Database, user and password are all `kerberos`. Has a health check that `kerberos` waits for. |
 | `echo` | `ghcr.io/trebent/kerberos/echo:latest` | Echo chosen | None (reachable inside the Compose network as `echo:15000`) | None |
 | `connector` | `ghcr.io/trebent/kerberos/admin-connector:latest` | Connector chosen | `30100` | `./connector.json` (read-only); `krbdata` volume with SQLite |
-| `prometheus` | `prom/prometheus:v3` | Observability stack chosen | None | `./prometheus.yml`; `prometheus` volume. Data is limited to 1 GB. |
-| `grafana` | `grafana/grafana:13.1` | Observability stack chosen | `3000` | `./grafana/*` files; `grafana` volume; `krbdata` volume with SQLite |
-| `jaeger-init` | `busybox:1.38` | Observability stack chosen | None | `jaeger` volume. Sets ownership for Jaeger, then exits. |
-| `jaeger` | `jaegertracing/jaeger:2.20.0` | Observability stack chosen | `16686` (UI), only if the connector is not chosen | `./jaeger.yml`, `./jaeger-config-ui.json`; `jaeger` volume |
-| `loki` | `grafana/loki:3.7` | Observability stack chosen | `3100`, on `127.0.0.1` only, so only your own machine can reach it | `./loki.yml`; `loki` volume |
+| `prometheus` | `prom/prometheus:v3` | `prometheus` chosen | None | `./prometheus.yml`; `prometheus` volume. Data is limited to 1 GB. |
+| `grafana` | `grafana/grafana:13.1` | `grafana` chosen | `3000` | `./grafana/*` files; `grafana` volume; `krbdata` volume with SQLite |
+| `jaeger-init` | `busybox:1.38` | `jaeger` chosen | None | `jaeger` volume. Sets ownership for Jaeger, then exits. |
+| `jaeger` | `jaegertracing/jaeger:2.20.0` | `jaeger` chosen | `16686` (UI), unless the connector protects the Jaeger UI | `./jaeger.yml`, `./jaeger-config-ui.json`; `jaeger` volume |
+| `loki` | `grafana/loki:3.7` | `loki` chosen | `3100`, on `127.0.0.1` only, so only your own machine can reach it | `./loki.yml`; `loki` volume |
 
-All services use `restart: on-failure`. `kerberos` runs with `LOG_TO_CONSOLE=1`, `PORT=30000` and `ADMIN_PORT=30001`. See [Deployment](./deployment.md) for what these variables do.
+All services use `restart: on-failure`. `kerberos` runs with `LOG_TO_CONSOLE=true`, `PORT=30000` and `ADMIN_PORT=30001`. See [Deployment](./deployment.md) for what these variables do.
 
 ### How the options interact
 
-- **Observability stack.** If you choose it, `kerberos`, `echo` and `connector` send traces with OTLP over gRPC to `http://jaeger:4317` and expose Prometheus metrics on port `9464` in the Compose network. If you do not choose it, those services get `OTEL_METRICS_EXPORTER=none` and `OTEL_TRACES_EXPORTER=none`. See [Observability](./observability.md).
-- **Jaeger and the connector.** If you choose both, Jaeger's UI is not published on the host. You reach it only through the admin-connector at `http://localhost:30100`, which needs a Kerberos admin login (see [Admin connector](./admin-connector.md)). If you choose the observability stack without the connector, the Jaeger UI is published directly on `http://localhost:16686` with no login.
-- **Connector target.** The connector's `TARGET` comes from `--connector-target` or the interactive question. With the observability stack it defaults to the Jaeger UI at `jaeger:16686`; without it, you must give one. See [Admin connector](./admin-connector.md).
+- **Traces and metrics.** With `jaeger`, the `kerberos`, `echo` and `connector` services send traces with OTLP over gRPC to `http://jaeger:4317`; without it they get `OTEL_TRACES_EXPORTER=none`. With `prometheus`, they expose Prometheus metrics on port `9464` in the Compose network; without it they get `OTEL_METRICS_EXPORTER=none`. See [Observability](./observability.md).
+- **Jaeger and the connector.** If the connector protects the Jaeger UI (`jaeger:16686`), the UI is not published on the host. You reach it only through the admin-connector at `http://localhost:30100`, which needs a Kerberos admin login (see [Admin connector](./admin-connector.md)). Otherwise the Jaeger UI is published directly on `http://localhost:16686` with no login.
+- **Connector target.** The connector's `TARGET` comes from `--connector-target` or the interactive question. With `jaeger` it defaults to the Jaeger UI at `jaeger:16686`; without it, you must give one. See [Admin connector](./admin-connector.md).
 - **Shared database.** `kerberos`, `connector` and `grafana` use the same database: the `/krbdata/krb.db` SQLite file on the `krbdata` volume, or the `kerberos` PostgreSQL database. Grafana keeps its tables next to the Kerberos tables.
 
 ### Container logs
 
-With the observability stack, every service except `loki` sends its output to Loki, and you can read it in Grafana on the **Service logs** dashboard (see [Observability](./observability.md#dashboards-and-prometheus-configuration-from-krbctl)) or search it with the Loki data source. Each log line is labelled with the service it came from, for example `{compose_service="kerberos"}`. `docker compose logs` keeps working as usual.
+With `loki` in the observability stack, every other service sends its output to Loki, and you can read it in Grafana on the **Service logs** dashboard (see [Observability](./observability.md#dashboards-and-prometheus-configuration-from-krbctl)) or search it with the Loki data source. Each log line is labelled with the service it came from, for example `{compose_service="kerberos"}`. `docker compose logs` keeps working as usual.
 
 Logs are sent by the Loki Docker logging plugin. Install it once on the machine that runs Docker, before you run `docker compose up`:
 
@@ -132,7 +136,7 @@ Logs are sent by the Loki Docker logging plugin. Install it once on the machine 
 docker plugin install grafana/loki-docker-driver:3.7.9-amd64 --alias loki --grant-all-permissions
 ```
 
-On an ARM machine, use the `3.7.9-arm64` tag. The plugin runs as part of Docker, outside the Compose network, so it sends logs to Loki on `127.0.0.1:3100`. Every service waits for `loki` to start, and Compose stops `loki` last.
+On an ARM machine, use the `3.7.9-arm64` tag. The plugin runs as part of Docker, outside the Compose network, so it sends logs to Loki on `127.0.0.1:3100`. Every service waits for `loki` to start, and Compose stops `loki` last. Without `loki`, services log only to Docker's default log driver.
 
 ## `krbctl config`
 
@@ -140,15 +144,18 @@ Writes `<output>/krb.json`, and optionally the observability stack and admin-con
 
 ### Interactive mode
 
-The questions come in this order:
+First you choose what to include, then you are asked for the details of each part you chose.
 
-1. **Use the echo service as a backend?** If yes, a backend named `echo` at `echo:15000` is added.
-2. **Backends.** For each backend you enter a name, a host (default `localhost`) and a port (default `8080`), then answer "Add another backend?". Leave the name empty and press Enter to finish. At least one backend is required, counting `echo`. A name that is already used, or a port that is not a number between 1 and 65535, is rejected and asked again.
-3. **A final form** with these sections. Press Shift+Tab to go back to an earlier section.
-   - **Persistence:** SQLite (default) or PostgreSQL.
-   - **Authentication:** for each backend, whether to enable basic auth.
-   - **Observability stack:** whether to generate the Prometheus, Grafana, Jaeger and Loki files. If yes, you also choose the Prometheus scrape targets (Kerberos, Jaeger, Loki and all backends are selected by default) and whether Grafana allows anonymous access (default yes).
-   - **Admin-connector:** whether to generate `connector.json`. If yes, you also choose "Allow all CORS origins?" (yes = allow all, no = deny all cross-origin requests).
+1. **What to include.** One form with these questions:
+   - **Use the echo service as a backend?** If yes, a backend named `echo` at `echo:15000` is added.
+   - **Include PostgreSQL as the persistence backend?** If no, SQLite is used.
+   - **Enable basic auth?** If yes, every backend is put behind basic authentication.
+   - **Include the admin-connector?** If yes, `connector.json` is generated.
+   - **Generate observability stack config?** If yes, the Prometheus, Grafana, Jaeger and Loki files are generated.
+2. **Backends.** For each backend you enter a name, a host (default `localhost`) and a port (default `8080`), then answer "Add another backend?". Leave the name empty and press Enter to finish. At least one backend is required, counting `echo`. If you chose echo, you are first asked whether to add more backends. A name that is already used, or a port that is not a number between 1 and 65535, is rejected and asked again.
+3. **Settings** for the parts you chose, in one form. Press Shift+Tab to go back to an earlier section.
+   - **Admin-connector:** "Allow all CORS origins?" (yes = allow all, no = deny all cross-origin requests).
+   - **Observability stack:** the Prometheus scrape targets and whether Grafana allows anonymous access (default yes). The scrape targets list Kerberos, Jaeger, Loki, every backend and, if you included it, the admin-connector. All of them are selected by default.
 
 Interactive mode runs in a terminal. If you cancel a prompt (for example with Ctrl+C), the command stops and writes nothing. In scripts and CI, use `-y`.
 
@@ -157,13 +164,13 @@ Interactive mode runs in a terminal. If you cancel a prompt (for example with Ct
 | Flag | Default | Description |
 | --- | --- | --- |
 | `-o`, `--output` | `.` | Directory to write files to. It must already exist. |
-| `-y`, `--non-interactive` | `false` | Skip the questions and use the flags below. With `-y`, at least one of `--echo-backend` or `--backend` is required. |
-| `--echo-backend` | `false` | Add the echo service as a backend named `echo` at `echo:15000` (without auth). |
+| `-y`, `--non-interactive` | `false` | Skip the questions and use the flags below. With `-y`, at least one of `--echo` or `--backend` is required. |
+| `--echo` | `false` | Add the echo service as a backend named `echo` at `echo:15000` (without auth). |
 | `--backend` | none | Add a backend. Repeatable. See the syntax below. |
 | `--driver` | `sqlite` | Persistence driver: `sqlite` or `postgres`. |
 | `--obs-stack` | `false` | Generate the observability stack files. |
 | `--grafana-anonymous` | `true` | Let anyone view Grafana dashboards without logging in. Use `--grafana-anonymous=false` to turn it off. |
-| `--scrape-target` | Kerberos, Jaeger, Loki and all backends | Prometheus scrape target. Repeatable. If you pass any, only those are used. |
+| `--scrape-target` | Kerberos, Jaeger, Loki, all backends and the connector (with `--connector`) | Prometheus scrape target. Repeatable. If you pass any, only those are used. |
 | `--connector` | `false` | Generate `connector.json` for the admin-connector. |
 | `--connector-allow-all-origins` | `true` | `true` writes `"allowAll": true`. `false` writes `"denyAll": true`. |
 
@@ -182,7 +189,7 @@ All flags except `-o` and `-y` are only used with `-y`. Without `-y` you are ask
 | `port` | No | `8080` | Port the backend listens on, 1–65535. Any other value stops `krbctl` with an error. |
 | `auth` | No | `false` | `true` puts the backend behind basic authentication. |
 
-Backend names must be unique, including against `echo` when you use `--echo-backend`. A duplicate stops `krbctl` with an error.
+Backend names must be unique, including against `echo` when you use `--echo`. A duplicate stops `krbctl` with an error.
 
 #### `--scrape-target` values
 
@@ -191,9 +198,10 @@ Backend names must be unique, including against `echo` when you use `--echo-back
 | `kerberos` | `kerberos:9464` |
 | `jaeger` | `jaeger:8888` |
 | `loki` | `loki:3100` |
+| `connector` | `connector:9464` (only with `--connector`) |
 | A backend name | `<backend host>:9464` |
 
-When the connector is enabled, `connector:9464` is always added and does not need to be listed.
+The scrape targets also decide which Grafana dashboards are generated; see [Other generated files](#other-generated-files).
 
 ### What `krb.json` contains
 
@@ -206,7 +214,7 @@ When the connector is enabled, `connector:9464` is always added and does not nee
 
 `krb.json` has no `admin` section, so the superuser is created with the [default credentials](./admin-api.md#the-superuser). See [What to change afterwards](#what-to-change-afterwards).
 
-Example from `krbctl config -y --echo-backend`:
+Example from `krbctl config -y --echo`:
 
 ```json
 {
@@ -239,19 +247,19 @@ Example from `krbctl config -y --echo-backend`:
 | `prometheus.yml` | Observability stack | Scrapes every 15 seconds, one job per scrape target. |
 | `grafana/grafana.ini` | Observability stack | Grafana database settings (the same database as Kerberos) and anonymous access (`Viewer` role in `Main Org.` when enabled). |
 | `grafana/grafana-datasources.yml` | Observability stack | A Prometheus data source at `http://prometheus:9090` and a Loki data source at `http://loki:3100`. |
-| `grafana/grafana-dashboards.yml` | Observability stack | Loads the six dashboards below. |
-| `grafana/prometheus.json` | Observability stack | Dashboard "Prometheus status". |
-| `grafana/kerberos_runtime.json` | Observability stack | Dashboard "Kerberos runtime". |
-| `grafana/kerberos_http.json` | Observability stack | Dashboard "Kerberos HTTP". |
-| `grafana/jaeger.json` | Observability stack | Dashboard "Jaeger". |
-| `grafana/loki.json` | Observability stack | Dashboard "Loki". |
-| `grafana/service_logs.json` | Observability stack | Dashboard "Service logs". |
+| `grafana/grafana-dashboards.yml` | Observability stack | Loads every dashboard in `grafana/dashboards`. |
+| `grafana/dashboards/prometheus.json` | Observability stack, at least one scrape target | Dashboard "Prometheus status". |
+| `grafana/dashboards/kerberos_runtime.json` | Scrape target `kerberos` | Dashboard "Kerberos runtime". |
+| `grafana/dashboards/kerberos_http.json` | Scrape target `kerberos` | Dashboard "Kerberos HTTP". |
+| `grafana/dashboards/jaeger.json` | Scrape target `jaeger` | Dashboard "Jaeger". |
+| `grafana/dashboards/loki.json` | Scrape target `loki` | Dashboard "Loki". |
+| `grafana/dashboards/service_logs.json` | Observability stack | Dashboard "Service logs". |
 | `jaeger.yml` | Observability stack | Jaeger with an OTLP gRPC receiver on `4317`, UI on `16686`, its own metrics on `8888`, and Badger storage on the `jaeger` volume (traces kept for 48 hours, archived traces for 72 hours). |
 | `jaeger-config-ui.json` | Observability stack | Jaeger UI settings (archiving enabled). |
 | `loki.yml` | Observability stack | Loki as a single process with its data on the `loki` volume. It accepts logs without a login. |
 | `connector.json` | Connector | `origins` (`allowAll` or `denyAll`) and the same `persistence` block as `krb.json`. See [Admin connector](./admin-connector.md). |
 
-`krbctl config` creates the `grafana` directory if needed and replaces existing files.
+`krbctl config` creates the `grafana` and `grafana/dashboards` directories if needed and replaces existing files. It also removes dashboards from `grafana/dashboards` that do not match the chosen scrape targets, so a dashboard is only shown in Grafana when Prometheus collects its data.
 
 ## Give the same answers to both commands
 
@@ -259,12 +267,12 @@ Example from `krbctl config -y --echo-backend`:
 
 | `krbctl compose` | `krbctl config` |
 | --- | --- |
-| `--echo` / "Include the echo service?" | `--echo-backend` / "Use the echo service as a backend?" |
-| `--postgres` / "Include PostgreSQL...?" | `--driver postgres` / Persistence: PostgreSQL |
+| `--echo` / "Include the echo service?" | `--echo` / "Use the echo service as a backend?" |
+| `--driver postgres` / "Include PostgreSQL...?" | `--driver postgres` / "Include PostgreSQL...?" |
 | `--obs-stack` / "Include the observability stack?" | `--obs-stack` / "Generate observability stack config?" |
 | `--connector` / "Include the admin-connector service?" | `--connector` / "Include the admin-connector?" |
 
-For example, with `--postgres` on both commands, `krb.json` points to `postgres:5432` and `compose.yaml` runs the `postgres` service.
+For example, with `--driver postgres` on both commands, `krb.json` points to `postgres:5432` and `compose.yaml` runs the `postgres` service.
 
 Backends you add with `--backend` (or in the interactive backend questions) are only written to `krb.json`. `krbctl compose` does not add services for them. Add them to `compose.yaml` yourself, or set `host` to an address the Kerberos container can reach. Inside the container, `localhost` is the container itself, not your machine.
 
@@ -275,7 +283,7 @@ Backends you add with `--backend` (or in the interactive backend questions) are 
 ```bash
 mkdir kerberos-demo && cd kerberos-demo
 krbctl compose -y --echo
-krbctl config -y --echo-backend
+krbctl config -y --echo
 docker compose up -d
 
 curl -i http://localhost:30000/gw/backend/echo/hello
@@ -287,8 +295,8 @@ This starts `sqlite-init`, `kerberos` and [`echo`](./echo.md). Metrics and trace
 
 ```bash
 mkdir kerberos-full
-krbctl compose -y -o kerberos-full --echo --postgres --obs-stack --connector
-krbctl config  -y -o kerberos-full --echo-backend \
+krbctl compose -y -o kerberos-full --echo --driver postgres --obs-stack --connector
+krbctl config  -y -o kerberos-full --echo \
   --backend 'name=orders,host=orders,port=8000,auth=true' \
   --driver postgres --obs-stack --connector
 cd kerberos-full && docker compose up -d
@@ -305,12 +313,12 @@ kerberos-full/prometheus.yml
 kerberos-full/grafana/grafana.ini
 kerberos-full/grafana/grafana-datasources.yml
 kerberos-full/grafana/grafana-dashboards.yml
-kerberos-full/grafana/prometheus.json
-kerberos-full/grafana/kerberos_runtime.json
-kerberos-full/grafana/kerberos_http.json
-kerberos-full/grafana/jaeger.json
-kerberos-full/grafana/loki.json
-kerberos-full/grafana/service_logs.json
+kerberos-full/grafana/dashboards/prometheus.json
+kerberos-full/grafana/dashboards/kerberos_runtime.json
+kerberos-full/grafana/dashboards/kerberos_http.json
+kerberos-full/grafana/dashboards/jaeger.json
+kerberos-full/grafana/dashboards/loki.json
+kerberos-full/grafana/dashboards/service_logs.json
 kerberos-full/jaeger.yml
 kerberos-full/jaeger-config-ui.json
 kerberos-full/loki.yml

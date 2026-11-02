@@ -117,36 +117,52 @@ func TestAdminUserGetNotFound(t *testing.T) {
 
 // TestAdminUserUpdate verifies that an admin user's username can be updated.
 func TestAdminUserUpdate(t *testing.T) {
-	t.Parallel()
-	superRequestEditor := lib.SuperLogin(t)
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+		superRequestEditor := lib.SuperLogin(t)
 
-	name := lib.Username()
-	createResp, err := lib.AdminClient.CreateUserWithResponse(
-		t.Context(),
-		adminapi.CreateUserJSONRequestBody{Username: name, Password: "password123"},
-		adminapi.RequestEditorFn(superRequestEditor),
-	)
-	lib.CheckErr(err, t)
-	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+		name := lib.Username()
+		createResp, err := lib.AdminClient.CreateUserWithResponse(
+			t.Context(),
+			adminapi.CreateUserJSONRequestBody{Username: name, Password: "password123"},
+			adminapi.RequestEditorFn(superRequestEditor),
+		)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
 
-	newName := lib.Username()
-	updateResp, err := lib.AdminClient.UpdateUserWithResponse(
-		t.Context(),
-		createResp.JSON201.Id,
-		adminapi.UpdateUserJSONRequestBody{Username: newName},
-		adminapi.RequestEditorFn(superRequestEditor),
-	)
-	lib.CheckErr(err, t)
-	lib.VerifyStatusCode(updateResp.StatusCode(), http.StatusNoContent, t)
+		newName := lib.Username()
+		updateResp, err := lib.AdminClient.UpdateUserWithResponse(
+			t.Context(),
+			createResp.JSON201.Id,
+			adminapi.UpdateUserJSONRequestBody{Username: newName},
+			adminapi.RequestEditorFn(superRequestEditor),
+		)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(updateResp.StatusCode(), http.StatusNoContent, t)
 
-	getResp, err := lib.AdminClient.GetUserWithResponse(
-		t.Context(),
-		createResp.JSON201.Id,
-		adminapi.RequestEditorFn(superRequestEditor),
-	)
-	lib.CheckErr(err, t)
-	lib.VerifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
-	lib.Matches(getResp.JSON200.Username, newName, t)
+		getResp, err := lib.AdminClient.GetUserWithResponse(
+			t.Context(),
+			createResp.JSON201.Id,
+			adminapi.RequestEditorFn(superRequestEditor),
+		)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
+		lib.Matches(getResp.JSON200.Username, newName, t)
+	})
+
+	t.Run("not-exist", func(t *testing.T) {
+		t.Parallel()
+		superRequestEditor := lib.SuperLogin(t)
+
+		updateResp, err := lib.AdminClient.UpdateUserWithResponse(
+			t.Context(),
+			49874112, // does not exist
+			adminapi.UpdateUserJSONRequestBody{Username: lib.Username()},
+			adminapi.RequestEditorFn(superRequestEditor),
+		)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(updateResp.StatusCode(), http.StatusNotFound, t)
+	})
 }
 
 // TestAdminUserUpdateConflict verifies that updating an admin user's username to an existing username returns a conflict.

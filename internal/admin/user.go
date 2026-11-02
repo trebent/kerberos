@@ -564,6 +564,16 @@ func (i *impl) UpdateUser(
 		return adminapi.UpdateUser403JSONResponse(apiErrForbidden), nil
 	}
 
+	_, err := admindb.GetUser(ctx, i.sqlClient, int64(request.UserID))
+	if errors.Is(err, db.ErrRowNotFound) {
+		return adminapi.UpdateUser404JSONResponse(apiErrNotFound), nil
+	}
+
+	if err != nil {
+		zerologr.Error(err, "Failed to get user")
+		return adminapi.UpdateUser500JSONResponse(apiErrInternal), nil
+	}
+
 	if err := admindb.UpdateUser(
 		ctx,
 		i.sqlClient,

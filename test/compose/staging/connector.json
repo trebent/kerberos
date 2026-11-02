@@ -13,10 +13,10 @@
     }
   },
   "tls": {
-    "serverCertFile": "/certs/staging/connector-jaeger.pem",
-    "serverKeyFile": "/certs/staging/connector-jaeger-key.pem"
+    "serverCertFile": "/certs/connector-jaeger.pem",
+    "serverKeyFile": "/certs/connector-jaeger-key.pem"
   },
   "targetTls": {
-    "rootCAFile": "/certs/staging/rootCA.pem"
+    "rootCAFile": "/certs/rootCA.pem"
   }
 }

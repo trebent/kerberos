@@ -8,7 +8,7 @@ Use echo for trying Kerberos out, for testing your configuration and for trouble
 
 ### With krbctl
 
-`krbctl compose --echo` adds an `echo` service to the generated `compose.yaml`, and `krbctl config --echo-backend` registers it as the backend `echo`. See [krbctl](./krbctl.md). The [Getting started](./getting-started.md) tutorial uses this setup.
+`krbctl compose --echo` adds an `echo` service to the generated `compose.yaml`, and `krbctl config --echo` registers it as the backend `echo`. See [krbctl](./krbctl.md). The [Getting started](./getting-started.md) tutorial uses this setup.
 
 ### With Docker
 

@@ -305,14 +305,14 @@ When you scaffold a deployment with [krbctl](./krbctl.md) and choose the observa
 
 | File | Contents |
 | --- | --- |
-| `prometheus.yml` | Scrape interval 15 s and one job per selected scrape target: `kerberos` at `kerberos:9464`, `jaeger` at `jaeger:8888`, `loki` at `loki:3100`, each selected backend at `<backend host>:9464`, and `connector:9464` when admin-connector is included. Choose targets with `--scrape-target` (by default: Kerberos, Jaeger, Loki and all backends). |
+| `prometheus.yml` | Scrape interval 15 s and one job per selected scrape target: `kerberos` at `kerberos:9464`, `jaeger` at `jaeger:8888`, `loki` at `loki:3100`, `connector` at `connector:9464` when admin-connector is included, and each selected backend at `<backend host>:9464`. Choose targets with `--scrape-target` (by default: Kerberos, Jaeger, Loki, all backends and admin-connector when included). |
 | `grafana/grafana-datasources.yml` | A Prometheus data source at `http://prometheus:9090` and a Loki data source at `http://loki:3100`. |
-| `grafana/grafana-dashboards.yml` and the dashboard JSON files | Six provisioned dashboards (see below). |
+| `grafana/grafana-dashboards.yml` and `grafana/dashboards/` | The provisioned dashboards below that match the selected scrape targets. [krbctl: other generated files](./krbctl.md#other-generated-files) lists which target each dashboard needs. |
 | `grafana/grafana.ini` | Grafana database settings and anonymous viewer access (`--grafana-anonymous`, on by default). |
 | `jaeger.yml`, `jaeger-config-ui.json` | Jaeger configuration, receiving OTLP on port 4317. |
 | `loki.yml` | Loki configuration. Loki stores the logs of every service in the stack; see [krbctl: container logs](./krbctl.md#container-logs). |
 
-The provisioned Grafana dashboards are:
+The Grafana dashboards krbctl can provision are:
 
 - **Kerberos HTTP** (`kerberos_http.json`): gateway request rate and request count per backend and method, responses per status code, and request duration, request size and response size buckets per HTTP method.
 - **Kerberos runtime** (`kerberos_runtime.json`): goroutines, processor limit, memory used and limit, heap allocations, GC goal, and Prometheus exporter errors (`promhttp_metric_handler_errors_total`).

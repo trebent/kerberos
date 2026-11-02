@@ -1,0 +1,19 @@
+apiVersion: 1
+
+providers:
+  - name: "Prometheus status"
+    type: file
+    options:
+      path: /var/lib/grafana/prometheus.json
+  - name: "Kerberos runtime"
+    type: file
+    options:
+      path: /var/lib/grafana/kerberos_runtime.json
+  - name: "Kerberos HTTP"
+    type: file
+    options:
+      path: /var/lib/grafana/kerberos_http.json
+  - name: "Jaeger"
+    type: file
+    options:
+      path: /var/lib/grafana/jaeger.json

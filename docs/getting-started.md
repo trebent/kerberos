@@ -46,7 +46,7 @@ krbctl config -y --backend name=echo,host=echo,port=15000,auth=true
 
 About the flags used here:
 
-- `--backend ...,auth=true` registers echo behind a login, so that this tutorial can show the login flow. To see traffic flow without a login, use `krbctl config -y --echo-backend` instead and stop after [step 4](#4-send-a-request-through-the-gateway).
+- `--backend ...,auth=true` registers echo behind a login, so that this tutorial can show the login flow. To see traffic flow without a login, use `krbctl config -y --echo` instead and stop after [step 4](#4-send-a-request-through-the-gateway).
 - Give both commands the same options. See [krbctl: give the same answers to both commands](./krbctl.md#give-the-same-answers-to-both-commands) and the rest of that page for every flag and the files they generate.
 
 The generated `krb.json` looks like this:
@@ -122,7 +122,7 @@ Content-Type: application/json
 {"errors":["Unauthorized"]}
 ```
 
-(If you generated the config with `--echo-backend`, the request is forwarded and echo answers `200` with a description of the request, as shown in [step 7](#7-call-the-protected-backend-as-the-user).)
+(If you generated the config with `--echo`, the request is forwarded and echo answers `200` with a description of the request, as shown in [step 7](#7-call-the-protected-backend-as-the-user).)
 
 The path needs a slash after the backend name: `/gw/backend/echo/` reaches the backend root `/`. See [Routing: URL format](./routing.md#url-format).
 

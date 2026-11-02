@@ -1,0 +1,32 @@
+services:
+  sqlite-init:
+    image: busybox:1.38
+    pull_policy: if_not_present
+    command: ["sh", "-c", "chmod 0777 /krbdata && touch /krbdata/krb.db && chmod 0666 /krbdata/krb.db"]
+    restart: on-failure
+    volumes:
+      - krbdata:/krbdata
+
+  kerberos:
+    image: "ghcr.io/trebent/kerberos:latest"
+    command: --config /krb.json
+    pull_policy: if_not_present
+    depends_on:
+      sqlite-init:
+        condition: service_completed_successfully
+    restart: on-failure
+    ports:
+      - 30000:30000
+      - 30001:30001
+    environment:
+      - LOG_TO_CONSOLE=true
+      - PORT=30000
+      - ADMIN_PORT=30001
+      - OTEL_METRICS_EXPORTER=none
+      - OTEL_TRACES_EXPORTER=none
+    volumes:
+      - ./krb.json:/krb.json:ro
+      - krbdata:/krbdata
+
+volumes:
+  krbdata:

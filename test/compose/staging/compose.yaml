@@ -17,7 +17,7 @@ services:
 
   kerberos:
     image: "ghcr.io/trebent/kerberos:${VERSION:-unset}"
-    command: --config /config/staging.json
+    command: --config /krb.json
     pull_policy: if_not_present
     depends_on:
       postgres:
@@ -45,9 +45,9 @@ services:
       - ADMIN_PORT=${KERBEROS_ADMIN_PORT:-30001}
       - VERSION=${VERSION:-unset}
     volumes:
-      - ../../config:/config:ro
+      - ./krb.json:/krb.json:ro
       - ../../oas:/oas:ro
-      - ../../certs:/certs:ro
+      - ./certs:/certs:ro
 
   echo:
     image: "ghcr.io/trebent/kerberos/echo:${VERSION:-unset}"
@@ -88,7 +88,7 @@ services:
     command: ["--config.file=/prometheus.yml", "--storage.tsdb.path", "/prometheus/data", "--storage.tsdb.retention.size", "1GB"]
     restart: on-failure
     volumes:
-      - ../../config/prometheus/prometheus.yml:/prometheus.yml
+      - ./prometheus.yml:/prometheus.yml
       - prometheus:/prometheus
 
   grafana:
@@ -101,17 +101,17 @@ services:
     ports:
       - ${GRAFANA_PORT:-3000}:3000
     volumes:
-      - ../../../cmd/krbctl/cmd/assets/grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/grafana-datasources.yml
-      - ../../../cmd/krbctl/cmd/assets/grafana/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/grafana-dashboards.yml
-      - ../../../cmd/krbctl/cmd/assets/grafana/prometheus.json:/var/lib/grafana/prometheus.json
-      - ../../../cmd/krbctl/cmd/assets/grafana/kerberos_runtime.json:/var/lib/grafana/kerberos_runtime.json
-      - ../../../cmd/krbctl/cmd/assets/grafana/kerberos_http.json:/var/lib/grafana/kerberos_http.json
-      - ../../config/grafana/staging.ini:/etc/grafana/grafana.ini
-      - ../../certs:/certs:ro
+      - ./grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/grafana-datasources.yml
+      - ./grafana/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/grafana-dashboards.yml
+      - ./grafana/prometheus.json:/var/lib/grafana/prometheus.json
+      - ./grafana/kerberos_runtime.json:/var/lib/grafana/kerberos_runtime.json
+      - ./grafana/kerberos_http.json:/var/lib/grafana/kerberos_http.json
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./certs:/certs:ro
 
   connector:
     image: "ghcr.io/trebent/kerberos/admin-connector:${VERSION:-unset}"
-    command: --config /config/staging.json
+    command: --config /connector.json
     pull_policy: if_not_present
     depends_on:
       kerberos:
@@ -135,8 +135,8 @@ services:
       - PORT=${CONNECTOR_PORT:-30100}
       - TARGET=jaeger:16686
     volumes:
-      - ../../config/connector:/config:ro
-      - ../../certs:/certs:ro
+      - ./connector.json:/connector.json:ro
+      - ./certs:/certs:ro
 
   jaeger-init:
     image: busybox:1.38
@@ -153,14 +153,14 @@ services:
       jaeger-init:
         condition: service_completed_successfully
     restart: on-failure
-    command: --config /staging.yml
+    command: --config /jaeger.yml
     ports:
       - 16685:16685
       - 16686:16686
     volumes:
-      - ../../config/jaeger/staging.yml:/staging.yml
-      - ../../../cmd/krbctl/cmd/assets/jaeger/config-ui.json:/config-ui.json
-      - ../../certs:/certs:ro
+      - ./jaeger.yml:/jaeger.yml
+      - ./jaeger-config-ui.json:/jaeger-config-ui.json
+      - ./certs:/certs:ro
       - jaeger:/jaeger
 
 volumes:

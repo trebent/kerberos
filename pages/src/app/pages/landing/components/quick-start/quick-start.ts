@@ -10,7 +10,7 @@ interface TerminalLine {
 const LINES: readonly TerminalLine[] = [
   { kind: 'comment', text: '# scaffold a Compose stack with an echo test backend' },
   { kind: 'command', text: 'krbctl compose -y --echo' },
-  { kind: 'command', text: 'krbctl config -y --echo-backend' },
+  { kind: 'command', text: 'krbctl config -y --echo' },
   { kind: 'command', text: 'docker compose up -d' },
   { kind: 'blank', text: '' },
   { kind: 'comment', text: '# send a request through the gateway' },
