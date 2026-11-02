@@ -570,6 +570,7 @@ func (i *impl) UpdateUser(
 	}
 
 	if err != nil {
+		zerologr.Error(err, "Failed to get user")
 		return adminapi.UpdateUser500JSONResponse(apiErrInternal), nil
 	}
 
