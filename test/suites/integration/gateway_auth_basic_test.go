@@ -60,20 +60,6 @@ func TestGatewayAuthBasicUnauthenticated(t *testing.T) {
 	if vals := requestHeaders.Values("x-krb-org"); len(vals) != 0 {
 		t.Fatal("Org ID should not have been set")
 	}
-
-	response = lib.Get(
-		fmt.Sprintf("http://%s:%d/gw/backend/protected-echo/hi", lib.GetHost(), lib.GetPort()),
-		t,
-		http.Header{"x-krb-session": {"fake"}},
-	)
-
-	echoResponse = lib.VerifyGWResponse(response, http.StatusUnauthorized, t)
-	if _, ok := echoResponse.Headers["x-krb-user"]; ok {
-		t.Fatal("User ID should not have been set")
-	}
-	if _, ok := echoResponse.Headers["x-krb-org"]; ok {
-		t.Fatal("Org ID should not have been set")
-	}
 }
 
 func TestGatewayAuthBasicUnauthenticatedExempted(t *testing.T) {

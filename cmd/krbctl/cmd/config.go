@@ -75,8 +75,8 @@ type configOptions struct {
 	driver string // "sqlite" or "postgres"
 
 	// Observability stack (Prometheus/Grafana/Jaeger/Loki) config generation
-	includeObsStack bool
-	obsOpts         obsConfigOptions
+	obsSelection
+	obsOpts obsConfigOptions
 
 	// Admin-connector
 	includeConnector bool
@@ -122,11 +122,12 @@ asked for the details of each part you chose.`,
 	addDriverFlag(cmd)
 	cmd.Flags().Bool("obs-stack", false,
 		"Generate observability stack config files. (non-interactive mode only)")
+	addObsServiceFlag(cmd)
 	cmd.Flags().Bool("grafana-anonymous", true,
 		"Enable Grafana anonymous access. (non-interactive mode only)")
 	cmd.Flags().StringArray("scrape-target", nil,
-		"Prometheus scrape target (repeatable); defaults to kerberos, jaeger, loki, all backends and "+
-			"the connector when included. "+
+		"Prometheus scrape target (repeatable); defaults to kerberos, all backends, and jaeger, "+
+			"loki and the connector when included. "+
 			"(non-interactive mode only)")
 	cmd.Flags().Bool("connector", false,
 		"Include the admin-connector (generates connector.json). (non-interactive mode only)")
@@ -228,6 +229,10 @@ func collectConfigInteractive(opts *configOptions) error {
 		return err
 	}
 
+	if err := promptObsServices(&opts.obsSelection); err != nil {
+		return err
+	}
+
 	if choices.useEcho {
 		opts.backends = append(opts.backends, echoBackend())
 	}
@@ -273,7 +278,7 @@ func buildOptInGroup(opts *configOptions, choices *optInChoices) *huh.Group {
 		),
 		newConfirm(
 			"Generate observability stack config?",
-			"Writes Prometheus, Grafana, Jaeger, and Loki config files.",
+			"Choose from Prometheus, Grafana, Jaeger, and Loki next.",
 			&opts.includeObsStack,
 		),
 	)
@@ -290,7 +295,10 @@ func promptSectionSettings(opts *configOptions) error {
 
 	if opts.includeObsStack {
 		opts.obsOpts.scrapeTargets = defaultScrapeTargets(opts)
-		groups = append(groups, buildObsOptionsGroup(opts))
+
+		if group := buildObsOptionsGroup(opts); group != nil {
+			groups = append(groups, group)
+		}
 	}
 
 	if len(groups) == 0 {
@@ -338,7 +346,7 @@ func collectConfigFromFlags(cmd *cobra.Command, opts *configOptions) error {
 		return err
 	}
 
-	if opts.includeObsStack, err = cmd.Flags().GetBool("obs-stack"); err != nil {
+	if opts.obsSelection, err = getObsSelectionFlags(cmd); err != nil {
 		return err
 	}
 
@@ -566,51 +574,73 @@ func runForm(groups ...*huh.Group) error {
 }
 
 // defaultScrapeTargets returns the scrape targets pre-selected by default:
-// kerberos, jaeger, loki, every registered router backend, and the
-// admin-connector when it is included.
+// kerberos, every registered router backend, and jaeger, loki and the
+// admin-connector when they are included.
 func defaultScrapeTargets(opts *configOptions) []string {
-	targets := []string{defaultKRBDB, jaegerName, lokiName}
-	for _, b := range opts.backends {
-		targets = append(targets, b.name)
-	}
+	options := scrapeTargetOptions(opts)
 
-	if opts.includeConnector {
-		targets = append(targets, connectorName)
+	targets := make([]string, 0, len(options))
+	for _, o := range options {
+		targets = append(targets, o.Value)
 	}
 
 	return targets
 }
 
-// buildObsOptionsGroup builds the observability stack settings.
-func buildObsOptionsGroup(opts *configOptions) *huh.Group {
-	scrapeOpts := []huh.Option[string]{
+// scrapeTargetOptions lists the services Prometheus can scrape in this deployment: kerberos,
+// every registered router backend, and jaeger, loki and the admin-connector when included.
+func scrapeTargetOptions(opts *configOptions) []huh.Option[string] {
+	options := []huh.Option[string]{
 		huh.NewOption(fmt.Sprintf("kerberos (port %d)", scrapeMetricsPort), defaultKRBDB),
-		huh.NewOption("jaeger (port 8888)", jaegerName),
-		huh.NewOption("loki (port 3100)", lokiName),
 	}
+
+	if opts.includes(jaegerName) {
+		options = append(options, huh.NewOption("jaeger (port 8888)", jaegerName))
+	}
+
+	if opts.includes(lokiName) {
+		options = append(options, huh.NewOption("loki (port 3100)", lokiName))
+	}
+
 	for _, b := range opts.backends {
-		scrapeOpts = append(scrapeOpts, huh.NewOption(
+		options = append(options, huh.NewOption(
 			fmt.Sprintf("%s (%s:%d)", b.name, b.host, scrapeMetricsPort), b.name))
 	}
 
 	if opts.includeConnector {
-		scrapeOpts = append(scrapeOpts, huh.NewOption(
+		options = append(options, huh.NewOption(
 			fmt.Sprintf("%s (port %d)", connectorName, scrapeMetricsPort), connectorName))
 	}
 
-	return huh.NewGroup(
-		huh.NewMultiSelect[string]().
+	return options
+}
+
+// buildObsOptionsGroup builds the settings of the chosen observability stack services, or
+// returns nil when none of them has settings.
+func buildObsOptionsGroup(opts *configOptions) *huh.Group {
+	fields := make([]huh.Field, 0, 2)
+
+	if opts.includes(prometheusName) {
+		fields = append(fields, huh.NewMultiSelect[string]().
 			Title("Prometheus scrape targets").
 			Description("Select services that should expose metrics to Prometheus.").
-			Options(scrapeOpts...).
-			Value(&opts.obsOpts.scrapeTargets),
+			Options(scrapeTargetOptions(opts)...).
+			Value(&opts.obsOpts.scrapeTargets))
+	}
 
-		newConfirm(
+	if opts.includes(grafanaName) {
+		fields = append(fields, newConfirm(
 			"Enable Grafana anonymous access?",
 			"Allows viewing dashboards without logging in.",
 			&opts.obsOpts.grafanaAnonymous,
-		),
-	).Title("Observability stack")
+		))
+	}
+
+	if len(fields) == 0 {
+		return nil
+	}
+
+	return huh.NewGroup(fields...).Title("Observability stack")
 }
 
 // buildConnectorConfigGroup builds the admin-connector settings.

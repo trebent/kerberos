@@ -150,6 +150,7 @@ func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		zerologr.Error(errors.New("auth headers detected"), "User supplied a X-Krb-* header")
 		apierror.ErrorHandler(w, req, apierror.ErrForbidden)
 		transitionFailure(debugCall, debugStart, apierror.ErrForbidden.Error())
+		return
 	}
 
 	m, err := a.findMethod(backend, req)

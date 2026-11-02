@@ -301,12 +301,12 @@ The admin server logs the same `<METHOD> <path> <status>` line for each admin AP
 
 ## Dashboards and Prometheus configuration from krbctl
 
-When you scaffold a deployment with [krbctl](./krbctl.md) and choose the observability stack (`--obs-stack`), it generates, next to the Compose file and `krb.json`:
+When you scaffold a deployment with [krbctl](./krbctl.md) and choose the observability stack (`--obs-stack`), it generates, next to the Compose file and `krb.json`, the files below for the services you choose (`--obs-service`, all four by default):
 
 | File | Contents |
 | --- | --- |
-| `prometheus.yml` | Scrape interval 15 s and one job per selected scrape target: `kerberos` at `kerberos:9464`, `jaeger` at `jaeger:8888`, `loki` at `loki:3100`, `connector` at `connector:9464` when admin-connector is included, and each selected backend at `<backend host>:9464`. Choose targets with `--scrape-target` (by default: Kerberos, Jaeger, Loki, all backends and admin-connector when included). |
-| `grafana/grafana-datasources.yml` | A Prometheus data source at `http://prometheus:9090` and a Loki data source at `http://loki:3100`. |
+| `prometheus.yml` | Scrape interval 15 s and one job per selected scrape target: `kerberos` at `kerberos:9464`, `jaeger` at `jaeger:8888`, `loki` at `loki:3100`, `connector` at `connector:9464` when admin-connector is included, and each selected backend at `<backend host>:9464`. Choose targets with `--scrape-target` (by default: Kerberos, all backends, and Jaeger, Loki and admin-connector when included). |
+| `grafana/grafana-datasources.yml` | A Prometheus data source at `http://prometheus:9090` and a Loki data source at `http://loki:3100`, for the services you chose. |
 | `grafana/grafana-dashboards.yml` and `grafana/dashboards/` | The provisioned dashboards below that match the selected scrape targets. [krbctl: other generated files](./krbctl.md#other-generated-files) lists which target each dashboard needs. |
 | `grafana/grafana.ini` | Grafana database settings and anonymous viewer access (`--grafana-anonymous`, on by default). |
 | `jaeger.yml`, `jaeger-config-ui.json` | Jaeger configuration, receiving OTLP on port 4317. |

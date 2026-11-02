@@ -58,26 +58,33 @@ var (
 		"connector target must be host:port or host, without a scheme or path")
 )
 
+// obsSelection is the choice of observability stack services, shared by the compose and config
+// commands.
+type obsSelection struct {
+	includeObsStack bool
+
+	// obsServices are the observability stack services to include when includeObsStack is set.
+	obsServices []string
+}
+
+// includes reports whether the given observability stack service is part of the deployment.
+func (o *obsSelection) includes(service string) bool {
+	return o.includeObsStack && slices.Contains(o.obsServices, service)
+}
+
 // composeOptions holds the answers collected from the interactive compose session.
 type composeOptions struct {
 	outputPath string
 
 	// Enablement flags.
 	includeEcho      bool
-	includeObsStack  bool
 	includePostgres  bool
 	includeConnector bool
 
-	// obsServices are the observability stack services to include when includeObsStack is set.
-	obsServices []string
+	obsSelection
 
 	// connectorTarget is the host:port the admin-connector forwards to (its TARGET).
 	connectorTarget string
-}
-
-// includes reports whether the given observability stack service is part of the deployment.
-func (o *composeOptions) includes(service string) bool {
-	return o.includeObsStack && slices.Contains(o.obsServices, service)
 }
 
 func newComposeCmd() *cobra.Command {
@@ -96,9 +103,7 @@ postgres, admin-connector, echo) can be included or skipped at each step.`,
 	cmd.Flags().Bool("echo", false, "Include the echo service. (non-interactive mode only)")
 	cmd.Flags().Bool("obs-stack", false,
 		"Include the observability stack. (non-interactive mode only)")
-	cmd.Flags().StringArray("obs-service", nil,
-		"Observability stack service to include (repeatable): "+strings.Join(obsServices, ", ")+
-			". Defaults to all. Requires --obs-stack. (non-interactive mode only)")
+	addObsServiceFlag(cmd)
 	addDriverFlag(cmd)
 	cmd.Flags().Bool("connector", false,
 		"Include the admin-connector service. (non-interactive mode only)")
@@ -167,12 +172,8 @@ func collectComposeInteractive(opts *composeOptions) error {
 		return err
 	}
 
-	if opts.includeObsStack {
-		opts.obsServices = slices.Clone(obsServices)
-
-		if err := runForm(buildObsServicesGroup(opts)); err != nil {
-			return err
-		}
+	if err := promptObsServices(&opts.obsSelection); err != nil {
+		return err
 	}
 
 	if opts.includeConnector {
@@ -188,14 +189,21 @@ func collectComposeInteractive(opts *composeOptions) error {
 	return nil
 }
 
-// buildObsServicesGroup asks which observability stack services to include.
-func buildObsServicesGroup(opts *composeOptions) *huh.Group {
+// promptObsServices asks which observability stack services to include when the stack is
+// included. Every service is selected by default.
+func promptObsServices(sel *obsSelection) error {
+	if !sel.includeObsStack {
+		return nil
+	}
+
+	sel.obsServices = slices.Clone(obsServices)
+
 	options := make([]huh.Option[string], 0, len(obsServices))
 	for _, service := range obsServices {
 		options = append(options, huh.NewOption(service, service))
 	}
 
-	return huh.NewGroup(
+	return runForm(huh.NewGroup(
 		huh.NewMultiSelect[string]().
 			Title("Which observability services should be included?").
 			Options(options...).
@@ -206,8 +214,8 @@ func buildObsServicesGroup(opts *composeOptions) *huh.Group {
 
 				return nil
 			}).
-			Value(&opts.obsServices),
-	)
+			Value(&sel.obsServices),
+	))
 }
 
 // buildConnectorTargetGroup asks which tool the admin-connector protects.
@@ -231,11 +239,7 @@ func collectComposeFromFlags(cmd *cobra.Command, opts *composeOptions) error {
 		return err
 	}
 
-	if opts.includeObsStack, err = cmd.Flags().GetBool("obs-stack"); err != nil {
-		return err
-	}
-
-	if opts.obsServices, err = getObsServicesFlag(cmd, opts.includeObsStack); err != nil {
+	if opts.obsSelection, err = getObsSelectionFlags(cmd); err != nil {
 		return err
 	}
 
@@ -257,29 +261,41 @@ func collectComposeFromFlags(cmd *cobra.Command, opts *composeOptions) error {
 	return nil
 }
 
-// getObsServicesFlag reads and validates the --obs-service flag. Without it, every
-// observability stack service is included.
-func getObsServicesFlag(cmd *cobra.Command, includeObsStack bool) ([]string, error) {
+// addObsServiceFlag registers the --obs-service flag shared by the compose and config commands.
+func addObsServiceFlag(cmd *cobra.Command) {
+	cmd.Flags().StringArray("obs-service", nil,
+		"Observability stack service to include (repeatable): "+strings.Join(obsServices, ", ")+
+			". Defaults to all. Requires --obs-stack. (non-interactive mode only)")
+}
+
+// getObsSelectionFlags reads and validates the --obs-stack and --obs-service flags. Without
+// --obs-service, every observability stack service is included.
+func getObsSelectionFlags(cmd *cobra.Command) (obsSelection, error) {
+	includeObsStack, err := cmd.Flags().GetBool("obs-stack")
+	if err != nil {
+		return obsSelection{}, err
+	}
+
 	services, err := cmd.Flags().GetStringArray("obs-service")
 	if err != nil {
-		return nil, err
+		return obsSelection{}, err
 	}
 
 	if len(services) == 0 {
-		return slices.Clone(obsServices), nil
+		return obsSelection{includeObsStack, slices.Clone(obsServices)}, nil
 	}
 
 	if !includeObsStack {
-		return nil, errObsServiceWithoutStack
+		return obsSelection{}, errObsServiceWithoutStack
 	}
 
 	for _, service := range services {
 		if !slices.Contains(obsServices, service) {
-			return nil, fmt.Errorf("%w: %q", errUnknownObsService, service)
+			return obsSelection{}, fmt.Errorf("%w: %q", errUnknownObsService, service)
 		}
 	}
 
-	return services, nil
+	return obsSelection{includeObsStack, services}, nil
 }
 
 // resolveConnectorTarget makes sure an included admin-connector has a target, defaulting to the

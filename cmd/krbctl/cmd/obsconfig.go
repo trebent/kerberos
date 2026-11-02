@@ -28,9 +28,6 @@ var grafanaDashboardLoki []byte
 //go:embed assets/grafana/service_logs.json
 var grafanaDashboardServiceLogs []byte
 
-//go:embed assets/grafana/grafana-datasources.yml
-var grafanaDataSourceYML []byte
-
 //go:embed assets/grafana/grafana-dashboards.yml
 var grafanaDashboardsYML []byte
 
@@ -51,21 +48,28 @@ type dashboard struct {
 	file string
 	data []byte
 	// target is the scrape job the dashboard needs, anyScrapeTarget for any job, or empty when
-	// the dashboard does not use Prometheus and is always included.
+	// the dashboard does not use Prometheus.
 	target string
+	// service is the observability stack service the dashboard reads its data from.
+	service string
 }
 
 var dashboards = []dashboard{
-	{"prometheus.json", grafanaDashboardPrometheus, anyScrapeTarget},
-	{"kerberos_runtime.json", grafanaDashboardRuntime, defaultKRBDB},
-	{"kerberos_http.json", grafanaDashboardHTTP, defaultKRBDB},
-	{"jaeger.json", grafanaDashboardJaeger, jaegerName},
-	{"loki.json", grafanaDashboardLoki, lokiName},
-	{"service_logs.json", grafanaDashboardServiceLogs, ""},
+	{"prometheus.json", grafanaDashboardPrometheus, anyScrapeTarget, prometheusName},
+	{"kerberos_runtime.json", grafanaDashboardRuntime, defaultKRBDB, prometheusName},
+	{"kerberos_http.json", grafanaDashboardHTTP, defaultKRBDB, prometheusName},
+	{"jaeger.json", grafanaDashboardJaeger, jaegerName, prometheusName},
+	{"loki.json", grafanaDashboardLoki, lokiName, prometheusName},
+	{"service_logs.json", grafanaDashboardServiceLogs, "", lokiName},
 }
 
-// included reports whether the dashboard has data to show given the scraped job names.
-func (d dashboard) included(scraped map[string]bool) bool {
+// included reports whether the dashboard has data to show given the chosen services and the
+// scraped job names.
+func (d dashboard) included(sel *obsSelection, scraped map[string]bool) bool {
+	if !sel.includes(d.service) {
+		return false
+	}
+
 	switch d.target {
 	case "":
 		return true
@@ -82,30 +86,60 @@ type scrapeJob struct {
 	target string
 }
 
-// writeObsFiles creates all observability config files in the current directory.
-func writeObsFiles(driver string, opts *configOptions) error {
-	jobs := resolveScrapeJobs(opts)
+// obsFile is a generated observability config file.
+type obsFile struct {
+	path string
+	data []byte
+}
 
-	prometheusData := []byte(buildPrometheusYML(jobs))
-	if err := writeObsFile(
-		filepath.Join(opts.outputPath, "prometheus.yml"), prometheusData,
-	); err != nil {
-		return err
+// writeObsFiles creates the config files of the chosen observability stack services in the
+// output directory.
+func writeObsFiles(driver string, opts *configOptions) error {
+	var files []obsFile
+
+	if opts.includes(prometheusName) {
+		files = append(files, obsFile{
+			filepath.Join(opts.outputPath, "prometheus.yml"),
+			[]byte(buildPrometheusYML(resolveScrapeJobs(opts))),
+		})
 	}
 
+	if opts.includes(jaegerName) {
+		files = append(files,
+			obsFile{filepath.Join(opts.outputPath, "jaeger.yml"), jaegerYML},
+			obsFile{filepath.Join(opts.outputPath, "jaeger-config-ui.json"), jaegerConfigUI},
+		)
+	}
+
+	if opts.includes(lokiName) {
+		files = append(files, obsFile{filepath.Join(opts.outputPath, "loki.yml"), lokiYML})
+	}
+
+	for _, f := range files {
+		if err := writeObsFile(f.path, f.data); err != nil {
+			return err
+		}
+	}
+
+	if opts.includes(grafanaName) {
+		return writeGrafanaFiles(driver, opts)
+	}
+
+	return nil
+}
+
+// writeGrafanaFiles creates the Grafana config files and dashboards in the grafana directory.
+func writeGrafanaFiles(driver string, opts *configOptions) error {
 	grafanaDir := filepath.Join(opts.outputPath, "grafana")
 	if err := os.MkdirAll(grafanaDir, 0o750); err != nil {
 		return fmt.Errorf("failed to create grafana directory: %w", err)
 	}
 
-	grafanaFiles := []struct {
-		path string
-		data []byte
-	}{
+	grafanaFiles := []obsFile{
 		{filepath.Join(grafanaDir, "grafana.ini"), []byte(buildGrafanaINI(driver, &opts.obsOpts))},
 		{
 			filepath.Join(grafanaDir, "grafana-datasources.yml"),
-			grafanaDataSourceYML,
+			[]byte(buildGrafanaDatasourcesYML(&opts.obsSelection)),
 		},
 		{
 			filepath.Join(grafanaDir, "grafana-dashboards.yml"),
@@ -119,35 +153,18 @@ func writeObsFiles(driver string, opts *configOptions) error {
 		}
 	}
 
-	if err := writeDashboards(filepath.Join(grafanaDir, "dashboards"), jobs); err != nil {
-		return err
-	}
-
-	if err := writeObsFile(
-		filepath.Join(opts.outputPath, "jaeger.yml"), jaegerYML,
-	); err != nil {
-		return err
-	}
-
-	if err := writeObsFile(
-		filepath.Join(opts.outputPath, "jaeger-config-ui.json"), jaegerConfigUI,
-	); err != nil {
-		return err
-	}
-
-	if err := writeObsFile(filepath.Join(opts.outputPath, "loki.yml"), lokiYML); err != nil {
-		return err
-	}
-
-	return nil
+	return writeDashboards(filepath.Join(grafanaDir, "dashboards"), opts)
 }
 
-// writeDashboards writes the Grafana dashboards that have data to show for the given scrape
-// jobs into dir, and removes the other dashboards in case an earlier run wrote them there.
-func writeDashboards(dir string, jobs []scrapeJob) error {
+// writeDashboards writes the Grafana dashboards that have data to show for the chosen services
+// and scrape jobs into dir, and removes the other dashboards in case an earlier run wrote them
+// there.
+func writeDashboards(dir string, opts *configOptions) error {
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("failed to create grafana dashboards directory: %w", err)
 	}
+
+	jobs := resolveScrapeJobs(opts)
 
 	scraped := make(map[string]bool, len(jobs))
 	for _, job := range jobs {
@@ -157,7 +174,7 @@ func writeDashboards(dir string, jobs []scrapeJob) error {
 	for _, d := range dashboards {
 		path := filepath.Join(dir, d.file)
 
-		if d.included(scraped) {
+		if d.included(&opts.obsSelection, scraped) {
 			if err := writeObsFile(path, d.data); err != nil {
 				return err
 			}
@@ -188,9 +205,15 @@ func writeObsFile(path string, data []byte) error {
 // resolveScrapeJobs turns the selected scrape targets into concrete host:port
 // jobs. kerberos, jaeger, loki and the admin-connector resolve to their well-known
 // endpoints, every other selected target is treated as a registered router backend
-// scraped on the default metrics port. The admin-connector is skipped when it is not
-// included in the deployment.
+// scraped on the default metrics port. Jaeger, Loki and the admin-connector are skipped
+// when they are not included in the deployment, and there are no jobs without Prometheus.
+//
+//nolint:cyclop // one case per kind of scrape target
 func resolveScrapeJobs(opts *configOptions) []scrapeJob {
+	if !opts.includes(prometheusName) {
+		return nil
+	}
+
 	hosts := make(map[string]string, len(opts.backends))
 	for _, b := range opts.backends {
 		hosts[b.name] = b.host
@@ -206,9 +229,13 @@ func resolveScrapeJobs(opts *configOptions) []scrapeJob {
 				scrapeJob{defaultKRBDB, fmt.Sprintf("%s:%d", defaultKRBDB, scrapeMetricsPort)},
 			)
 		case jaegerName:
-			jobs = append(jobs, scrapeJob{jaegerName, "jaeger:8888"})
+			if opts.includes(jaegerName) {
+				jobs = append(jobs, scrapeJob{jaegerName, "jaeger:8888"})
+			}
 		case lokiName:
-			jobs = append(jobs, scrapeJob{lokiName, "loki:3100"})
+			if opts.includes(lokiName) {
+				jobs = append(jobs, scrapeJob{lokiName, "loki:3100"})
+			}
 		case connectorName:
 			if opts.includeConnector {
 				target := fmt.Sprintf("%s:%d", connectorName, scrapeMetricsPort)
@@ -239,6 +266,43 @@ func buildPrometheusYML(jobs []scrapeJob) string {
 			job.name, job.target,
 		)
 	}
+
+	return b.String()
+}
+
+// grafanaDatasources maps each observability stack service Grafana can read from to its URL.
+var grafanaDatasources = []struct {
+	service string
+	url     string
+}{
+	{prometheusName, "http://prometheus:9090"},
+	{lokiName, "http://loki:3100"},
+}
+
+// buildGrafanaDatasourcesYML generates the Grafana data sources of the chosen services.
+func buildGrafanaDatasourcesYML(sel *obsSelection) string {
+	var b strings.Builder
+
+	b.WriteString("apiVersion: 1\n\ndatasources:")
+
+	written := false
+
+	for _, ds := range grafanaDatasources {
+		if !sel.includes(ds.service) {
+			continue
+		}
+
+		fmt.Fprintf(&b, "\n  - name: %[1]s\n    type: %[1]s\n    url: %[2]s\n    uid: %[1]s",
+			ds.service, ds.url)
+
+		written = true
+	}
+
+	if !written {
+		b.WriteString(" []")
+	}
+
+	b.WriteString("\n")
 
 	return b.String()
 }
