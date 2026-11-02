@@ -291,8 +291,7 @@ func writeKerberosService(b *strings.Builder, opts *composeOptions) {
       - 30000:30000
       - 30001:30001
     environment:
-      - LOG_TO_CONSOLE=1
-      - LOG_VERBOSITY=0
+      - LOG_TO_CONSOLE=true
       - PORT=30000
       - ADMIN_PORT=30001
 `)
@@ -349,7 +348,6 @@ func writeConnectorService(b *strings.Builder, opts *composeOptions) {
 	b.WriteString(`    restart: on-failure
     environment:
       - LOG_TO_CONSOLE=true
-      - LOG_VERBOSITY=0
       - PORT=30100
 `)
 
@@ -398,12 +396,7 @@ func writeObsServices(b *strings.Builder, opts *composeOptions) {
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
       - ./grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/grafana-datasources.yml
       - ./grafana/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/grafana-dashboards.yml
-      - ./grafana/prometheus.json:/var/lib/grafana/prometheus.json
-      - ./grafana/kerberos_runtime.json:/var/lib/grafana/kerberos_runtime.json
-      - ./grafana/kerberos_http.json:/var/lib/grafana/kerberos_http.json
-      - ./grafana/jaeger.json:/var/lib/grafana/jaeger.json
-      - ./grafana/loki.json:/var/lib/grafana/loki.json
-      - ./grafana/service_logs.json:/var/lib/grafana/service_logs.json
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
       - grafana:/var/lib/grafana
 `)
 	fmt.Fprintf(b, "      %s\n\n", krbDataMount(opts.includePostgres))

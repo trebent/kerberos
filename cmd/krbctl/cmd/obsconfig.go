@@ -2,7 +2,9 @@ package cmd
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,7 +34,7 @@ var grafanaDataSourceYML []byte
 //go:embed assets/grafana/grafana-dashboards.yml
 var grafanaDashboardsYML []byte
 
-//go:embed assets/jaeger/config-ui.json
+//go:embed assets/jaeger/jaeger-config-ui.json
 var jaegerConfigUI []byte
 
 //go:embed assets/jaeger/jaeger.yml
@@ -40,6 +42,39 @@ var jaegerYML []byte
 
 //go:embed assets/loki/loki.yml
 var lokiYML []byte
+
+// anyScrapeTarget marks a dashboard that is included when at least one scrape job exists.
+const anyScrapeTarget = "*"
+
+// dashboard is a provisioned Grafana dashboard and the scrape job it reads its metrics from.
+type dashboard struct {
+	file string
+	data []byte
+	// target is the scrape job the dashboard needs, anyScrapeTarget for any job, or empty when
+	// the dashboard does not use Prometheus and is always included.
+	target string
+}
+
+var dashboards = []dashboard{
+	{"prometheus.json", grafanaDashboardPrometheus, anyScrapeTarget},
+	{"kerberos_runtime.json", grafanaDashboardRuntime, defaultKRBDB},
+	{"kerberos_http.json", grafanaDashboardHTTP, defaultKRBDB},
+	{"jaeger.json", grafanaDashboardJaeger, jaegerName},
+	{"loki.json", grafanaDashboardLoki, lokiName},
+	{"service_logs.json", grafanaDashboardServiceLogs, ""},
+}
+
+// included reports whether the dashboard has data to show given the scraped job names.
+func (d dashboard) included(scraped map[string]bool) bool {
+	switch d.target {
+	case "":
+		return true
+	case anyScrapeTarget:
+		return len(scraped) > 0
+	default:
+		return scraped[d.target]
+	}
+}
 
 // scrapeJob is a resolved Prometheus scrape target (job name + host:port).
 type scrapeJob struct {
@@ -49,7 +84,9 @@ type scrapeJob struct {
 
 // writeObsFiles creates all observability config files in the current directory.
 func writeObsFiles(driver string, opts *configOptions) error {
-	prometheusData := []byte(buildPrometheusYML(resolveScrapeJobs(opts)))
+	jobs := resolveScrapeJobs(opts)
+
+	prometheusData := []byte(buildPrometheusYML(jobs))
 	if err := writeObsFile(
 		filepath.Join(opts.outputPath, "prometheus.yml"), prometheusData,
 	); err != nil {
@@ -74,18 +111,16 @@ func writeObsFiles(driver string, opts *configOptions) error {
 			filepath.Join(grafanaDir, "grafana-dashboards.yml"),
 			grafanaDashboardsYML,
 		},
-		{filepath.Join(grafanaDir, "prometheus.json"), grafanaDashboardPrometheus},
-		{filepath.Join(grafanaDir, "kerberos_runtime.json"), grafanaDashboardRuntime},
-		{filepath.Join(grafanaDir, "kerberos_http.json"), grafanaDashboardHTTP},
-		{filepath.Join(grafanaDir, "jaeger.json"), grafanaDashboardJaeger},
-		{filepath.Join(grafanaDir, "loki.json"), grafanaDashboardLoki},
-		{filepath.Join(grafanaDir, "service_logs.json"), grafanaDashboardServiceLogs},
 	}
 
 	for _, f := range grafanaFiles {
 		if err := writeObsFile(f.path, f.data); err != nil {
 			return err
 		}
+	}
+
+	if err := writeDashboards(filepath.Join(grafanaDir, "dashboards"), jobs); err != nil {
+		return err
 	}
 
 	if err := writeObsFile(
@@ -107,6 +142,37 @@ func writeObsFiles(driver string, opts *configOptions) error {
 	return nil
 }
 
+// writeDashboards writes the Grafana dashboards that have data to show for the given scrape
+// jobs into dir, and removes the other dashboards in case an earlier run wrote them there.
+func writeDashboards(dir string, jobs []scrapeJob) error {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return fmt.Errorf("failed to create grafana dashboards directory: %w", err)
+	}
+
+	scraped := make(map[string]bool, len(jobs))
+	for _, job := range jobs {
+		scraped[job.name] = true
+	}
+
+	for _, d := range dashboards {
+		path := filepath.Join(dir, d.file)
+
+		if d.included(scraped) {
+			if err := writeObsFile(path, d.data); err != nil {
+				return err
+			}
+
+			continue
+		}
+
+		if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("failed to remove %s: %w", path, err)
+		}
+	}
+
+	return nil
+}
+
 // writeObsFile writes data to path and prints a confirmation line.
 func writeObsFile(path string, data []byte) error {
 	//nolint:gosec // welp
@@ -120,17 +186,17 @@ func writeObsFile(path string, data []byte) error {
 }
 
 // resolveScrapeJobs turns the selected scrape targets into concrete host:port
-// jobs. kerberos, jaeger and loki resolve to their well-known endpoints, every other
-// selected target is treated as a registered router backend scraped on the
-// default metrics port. The admin-connector is added automatically when the
-// connector is included in the deployment.
+// jobs. kerberos, jaeger, loki and the admin-connector resolve to their well-known
+// endpoints, every other selected target is treated as a registered router backend
+// scraped on the default metrics port. The admin-connector is skipped when it is not
+// included in the deployment.
 func resolveScrapeJobs(opts *configOptions) []scrapeJob {
 	hosts := make(map[string]string, len(opts.backends))
 	for _, b := range opts.backends {
 		hosts[b.name] = b.host
 	}
 
-	jobs := make([]scrapeJob, 0, len(opts.obsOpts.scrapeTargets)+1)
+	jobs := make([]scrapeJob, 0, len(opts.obsOpts.scrapeTargets))
 
 	for _, target := range opts.obsOpts.scrapeTargets {
 		switch target {
@@ -143,6 +209,11 @@ func resolveScrapeJobs(opts *configOptions) []scrapeJob {
 			jobs = append(jobs, scrapeJob{jaegerName, "jaeger:8888"})
 		case lokiName:
 			jobs = append(jobs, scrapeJob{lokiName, "loki:3100"})
+		case connectorName:
+			if opts.includeConnector {
+				target := fmt.Sprintf("%s:%d", connectorName, scrapeMetricsPort)
+				jobs = append(jobs, scrapeJob{connectorName, target})
+			}
 		default:
 			host, ok := hosts[target]
 			if !ok {
@@ -151,10 +222,6 @@ func resolveScrapeJobs(opts *configOptions) []scrapeJob {
 
 			jobs = append(jobs, scrapeJob{target, fmt.Sprintf("%s:%d", host, scrapeMetricsPort)})
 		}
-	}
-
-	if opts.includeConnector {
-		jobs = append(jobs, scrapeJob{"connector", fmt.Sprintf("connector:%d", scrapeMetricsPort)})
 	}
 
 	return jobs

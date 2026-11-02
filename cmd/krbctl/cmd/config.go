@@ -23,6 +23,7 @@ const (
 	echoBackendPort = 15000
 	jaegerName      = "jaeger"
 	lokiName        = "loki"
+	connectorName   = "connector"
 
 	// defaultBackendHost and defaultBackendPort are used when a backend is
 	// registered without an explicit host or port.
@@ -126,7 +127,8 @@ skipped.`,
 	cmd.Flags().Bool("grafana-anonymous", true,
 		"Enable Grafana anonymous access. (non-interactive mode only)")
 	cmd.Flags().StringArray("scrape-target", nil,
-		"Prometheus scrape target (repeatable); defaults to kerberos, jaeger, loki and all backends. "+
+		"Prometheus scrape target (repeatable); defaults to kerberos, jaeger, loki, all backends and "+
+			"the connector when included. "+
 			"(non-interactive mode only)")
 	cmd.Flags().Bool("connector", false,
 		"Include the admin-connector (generates connector.json). (non-interactive mode only)")
@@ -219,6 +221,10 @@ func collectConfigInteractive(opts *configOptions) error {
 		return err
 	}
 
+	if err := promptObservability(opts); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -272,6 +278,10 @@ func collectConfigFromFlags(cmd *cobra.Command, opts *configOptions) error {
 		return err
 	}
 
+	if opts.includeConnector, err = cmd.Flags().GetBool("connector"); err != nil {
+		return err
+	}
+
 	scrapeTargets, err := cmd.Flags().GetStringArray("scrape-target")
 	if err != nil {
 		return err
@@ -281,10 +291,6 @@ func collectConfigFromFlags(cmd *cobra.Command, opts *configOptions) error {
 		opts.obsOpts.scrapeTargets = scrapeTargets
 	} else {
 		opts.obsOpts.scrapeTargets = defaultScrapeTargets(opts)
-	}
-
-	if opts.includeConnector, err = cmd.Flags().GetBool("connector"); err != nil {
-		return err
 	}
 
 	if opts.connectorOpts.allowAllOrigins, err = cmd.Flags().GetBool(
@@ -500,22 +506,33 @@ func promptBackendDetails(opts *configOptions, name string) error {
 	return nil
 }
 
-// promptFixedSections runs the remaining configuration prompts as a single
+// promptFixedSections runs the service configuration prompts as a single
 // multi-group form so the user can move back and forth between sections with
 // shift+tab. Conditional groups are hidden until their toggle is enabled.
 func promptFixedSections(opts *configOptions) error {
-	opts.obsOpts.scrapeTargets = defaultScrapeTargets(opts)
-
-	form := huh.NewForm(
+	return runForm(
 		buildPersistenceGroup(opts),
 		buildAuthGroup(opts),
-		buildObsToggleGroup(opts),
-		buildObsOptionsGroup(opts),
 		buildConnectorToggleGroup(opts),
 		buildConnectorConfigGroup(opts),
 	)
+}
 
-	if err := form.Run(); err != nil {
+// promptObservability runs the observability stack prompts. It runs after
+// promptFixedSections so every service chosen there, including the
+// admin-connector, can be offered as a Prometheus scrape target.
+func promptObservability(opts *configOptions) error {
+	opts.obsOpts.scrapeTargets = defaultScrapeTargets(opts)
+
+	return runForm(
+		buildObsToggleGroup(opts),
+		buildObsOptionsGroup(opts),
+	)
+}
+
+// runForm runs a form made of the given groups.
+func runForm(groups ...*huh.Group) error {
+	if err := huh.NewForm(groups...).Run(); err != nil {
 		return fmt.Errorf("prompt cancelled: %w", err)
 	}
 
@@ -523,11 +540,16 @@ func promptFixedSections(opts *configOptions) error {
 }
 
 // defaultScrapeTargets returns the scrape targets pre-selected by default:
-// kerberos, jaeger, loki, and every registered router backend.
+// kerberos, jaeger, loki, every registered router backend, and the
+// admin-connector when it is included.
 func defaultScrapeTargets(opts *configOptions) []string {
 	targets := []string{defaultKRBDB, jaegerName, lokiName}
 	for _, b := range opts.backends {
 		targets = append(targets, b.name)
+	}
+
+	if opts.includeConnector {
+		targets = append(targets, connectorName)
 	}
 
 	return targets
@@ -554,7 +576,7 @@ func buildObsToggleGroup(opts *configOptions) *huh.Group {
 		huh.NewConfirm().
 			Title("Generate observability stack config?").
 			Description("Writes Prometheus, Grafana, Jaeger, and Loki config files for the " +
-				"observability stack. (Kerberos observability itself is always enabled.)").
+				"observability stack.").
 			WithButtonAlignment(lipgloss.Left).
 			Value(&opts.includeObsStack),
 	).Title("Observability stack")
@@ -573,11 +595,15 @@ func buildObsOptionsGroup(opts *configOptions) *huh.Group {
 			fmt.Sprintf("%s (%s:%d)", b.name, b.host, scrapeMetricsPort), b.name))
 	}
 
+	if opts.includeConnector {
+		scrapeOpts = append(scrapeOpts, huh.NewOption(
+			fmt.Sprintf("%s (port %d)", connectorName, scrapeMetricsPort), connectorName))
+	}
+
 	return huh.NewGroup(
 		huh.NewMultiSelect[string]().
 			Title("Prometheus scrape targets").
-			Description("Select services that should expose metrics to Prometheus. "+
-				"The admin-connector is scraped automatically when included.").
+			Description("Select services that should expose metrics to Prometheus.").
 			Options(scrapeOpts...).
 			Value(&opts.obsOpts.scrapeTargets),
 

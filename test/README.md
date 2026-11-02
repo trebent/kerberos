@@ -28,7 +28,7 @@ The staging environment does not have a test suite, it's intended as the standar
 
 ### Certificates
 
-To generate the certificates needed for a local staging environment, check `certs/staging/make_certs.sh`, this is also done automatically on `make compose/staging/up`. You need to have `mkcert` installed. This allows the staging environment to closely replicate *real* Kerberos deployments with actual certificate validation and HTTPs browser usage.
+To generate the certificates needed for a local staging environment, check `compose/staging/certs/make_certs.sh`, this is also done automatically on `make compose/staging/up`. You need to have `mkcert` installed. This allows the staging environment to closely replicate *real* Kerberos deployments with actual certificate validation and HTTPs browser usage.
 
 The staging environment certificates target dedicated hostnames; the Jaeger server certificate uses `jaeger`, grafana uses `grafana.trebent.test`, and the admin connector proxying Jaeger uses `jaeger.trebent.test`. Kerberos uses `gw.trebent.test` and `admin.trebent.test`, all certificates also use `localhost`.
 

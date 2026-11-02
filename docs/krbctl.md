@@ -144,11 +144,11 @@ The questions come in this order:
 
 1. **Use the echo service as a backend?** If yes, a backend named `echo` at `echo:15000` is added.
 2. **Backends.** For each backend you enter a name, a host (default `localhost`) and a port (default `8080`), then answer "Add another backend?". Leave the name empty and press Enter to finish. At least one backend is required, counting `echo`. A name that is already used, or a port that is not a number between 1 and 65535, is rejected and asked again.
-3. **A final form** with these sections. Press Shift+Tab to go back to an earlier section.
+3. **A services form** with these sections. Press Shift+Tab to go back to an earlier section.
    - **Persistence:** SQLite (default) or PostgreSQL.
    - **Authentication:** for each backend, whether to enable basic auth.
-   - **Observability stack:** whether to generate the Prometheus, Grafana, Jaeger and Loki files. If yes, you also choose the Prometheus scrape targets (Kerberos, Jaeger, Loki and all backends are selected by default) and whether Grafana allows anonymous access (default yes).
    - **Admin-connector:** whether to generate `connector.json`. If yes, you also choose "Allow all CORS origins?" (yes = allow all, no = deny all cross-origin requests).
+4. **An observability form:** whether to generate the Prometheus, Grafana, Jaeger and Loki files. If yes, you also choose the Prometheus scrape targets and whether Grafana allows anonymous access (default yes). The scrape targets list Kerberos, Jaeger, Loki, every backend and, if you included it, the admin-connector. All of them are selected by default.
 
 Interactive mode runs in a terminal. If you cancel a prompt (for example with Ctrl+C), the command stops and writes nothing. In scripts and CI, use `-y`.
 
@@ -163,7 +163,7 @@ Interactive mode runs in a terminal. If you cancel a prompt (for example with Ct
 | `--driver` | `sqlite` | Persistence driver: `sqlite` or `postgres`. |
 | `--obs-stack` | `false` | Generate the observability stack files. |
 | `--grafana-anonymous` | `true` | Let anyone view Grafana dashboards without logging in. Use `--grafana-anonymous=false` to turn it off. |
-| `--scrape-target` | Kerberos, Jaeger, Loki and all backends | Prometheus scrape target. Repeatable. If you pass any, only those are used. |
+| `--scrape-target` | Kerberos, Jaeger, Loki, all backends and the connector (with `--connector`) | Prometheus scrape target. Repeatable. If you pass any, only those are used. |
 | `--connector` | `false` | Generate `connector.json` for the admin-connector. |
 | `--connector-allow-all-origins` | `true` | `true` writes `"allowAll": true`. `false` writes `"denyAll": true`. |
 
@@ -191,9 +191,10 @@ Backend names must be unique, including against `echo` when you use `--echo`. A 
 | `kerberos` | `kerberos:9464` |
 | `jaeger` | `jaeger:8888` |
 | `loki` | `loki:3100` |
+| `connector` | `connector:9464` (only with `--connector`) |
 | A backend name | `<backend host>:9464` |
 
-When the connector is enabled, `connector:9464` is always added and does not need to be listed.
+The scrape targets also decide which Grafana dashboards are generated; see [Other generated files](#other-generated-files).
 
 ### What `krb.json` contains
 
@@ -239,19 +240,19 @@ Example from `krbctl config -y --echo`:
 | `prometheus.yml` | Observability stack | Scrapes every 15 seconds, one job per scrape target. |
 | `grafana/grafana.ini` | Observability stack | Grafana database settings (the same database as Kerberos) and anonymous access (`Viewer` role in `Main Org.` when enabled). |
 | `grafana/grafana-datasources.yml` | Observability stack | A Prometheus data source at `http://prometheus:9090` and a Loki data source at `http://loki:3100`. |
-| `grafana/grafana-dashboards.yml` | Observability stack | Loads the six dashboards below. |
-| `grafana/prometheus.json` | Observability stack | Dashboard "Prometheus status". |
-| `grafana/kerberos_runtime.json` | Observability stack | Dashboard "Kerberos runtime". |
-| `grafana/kerberos_http.json` | Observability stack | Dashboard "Kerberos HTTP". |
-| `grafana/jaeger.json` | Observability stack | Dashboard "Jaeger". |
-| `grafana/loki.json` | Observability stack | Dashboard "Loki". |
-| `grafana/service_logs.json` | Observability stack | Dashboard "Service logs". |
+| `grafana/grafana-dashboards.yml` | Observability stack | Loads every dashboard in `grafana/dashboards`. |
+| `grafana/dashboards/prometheus.json` | Observability stack, at least one scrape target | Dashboard "Prometheus status". |
+| `grafana/dashboards/kerberos_runtime.json` | Scrape target `kerberos` | Dashboard "Kerberos runtime". |
+| `grafana/dashboards/kerberos_http.json` | Scrape target `kerberos` | Dashboard "Kerberos HTTP". |
+| `grafana/dashboards/jaeger.json` | Scrape target `jaeger` | Dashboard "Jaeger". |
+| `grafana/dashboards/loki.json` | Scrape target `loki` | Dashboard "Loki". |
+| `grafana/dashboards/service_logs.json` | Observability stack | Dashboard "Service logs". |
 | `jaeger.yml` | Observability stack | Jaeger with an OTLP gRPC receiver on `4317`, UI on `16686`, its own metrics on `8888`, and Badger storage on the `jaeger` volume (traces kept for 48 hours, archived traces for 72 hours). |
 | `jaeger-config-ui.json` | Observability stack | Jaeger UI settings (archiving enabled). |
 | `loki.yml` | Observability stack | Loki as a single process with its data on the `loki` volume. It accepts logs without a login. |
 | `connector.json` | Connector | `origins` (`allowAll` or `denyAll`) and the same `persistence` block as `krb.json`. See [Admin connector](./admin-connector.md). |
 
-`krbctl config` creates the `grafana` directory if needed and replaces existing files.
+`krbctl config` creates the `grafana` and `grafana/dashboards` directories if needed and replaces existing files. It also removes dashboards from `grafana/dashboards` that do not match the chosen scrape targets, so a dashboard is only shown in Grafana when Prometheus collects its data.
 
 ## Give the same answers to both commands
 
@@ -305,12 +306,12 @@ kerberos-full/prometheus.yml
 kerberos-full/grafana/grafana.ini
 kerberos-full/grafana/grafana-datasources.yml
 kerberos-full/grafana/grafana-dashboards.yml
-kerberos-full/grafana/prometheus.json
-kerberos-full/grafana/kerberos_runtime.json
-kerberos-full/grafana/kerberos_http.json
-kerberos-full/grafana/jaeger.json
-kerberos-full/grafana/loki.json
-kerberos-full/grafana/service_logs.json
+kerberos-full/grafana/dashboards/prometheus.json
+kerberos-full/grafana/dashboards/kerberos_runtime.json
+kerberos-full/grafana/dashboards/kerberos_http.json
+kerberos-full/grafana/dashboards/jaeger.json
+kerberos-full/grafana/dashboards/loki.json
+kerberos-full/grafana/dashboards/service_logs.json
 kerberos-full/jaeger.yml
 kerberos-full/jaeger-config-ui.json
 kerberos-full/loki.yml
