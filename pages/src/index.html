@@ -20,6 +20,32 @@
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&display=block"
       rel="stylesheet"
     />
+    <script>
+      // GitHub Pages answers every unknown path with the live site's 404.html, even paths inside
+      // a pull request preview (pr-preview/pr-<n>/, which has its own base href). Send such a
+      // deep link to its preview, which then restores the path before Angular starts.
+      (function () {
+        var key = 'kerberos.previewPath';
+        var base = new URL(document.baseURI).pathname;
+        var preview = /^.*?\/pr-preview\/pr-\d+\//.exec(location.pathname);
+        if (preview && preview[0] !== base && preview[0] !== location.pathname) {
+          try {
+            sessionStorage.setItem(key, location.pathname + location.search + location.hash);
+          } catch (e) {
+            // Storage unavailable: the preview opens at its start page.
+          }
+          location.replace(preview[0]);
+          return;
+        }
+        try {
+          var saved = sessionStorage.getItem(key);
+          sessionStorage.removeItem(key);
+          if (saved && saved.indexOf(base) === 0) history.replaceState(null, '', saved);
+        } catch (e) {
+          // Storage unavailable: nothing to restore.
+        }
+      })();
+    </script>
   </head>
   <body>
     <app-root></app-root>

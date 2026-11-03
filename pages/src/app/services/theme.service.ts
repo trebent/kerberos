@@ -1,6 +1,9 @@
-import { DOCUMENT, effect, inject, Service, signal } from '@angular/core';
+import { computed, DOCUMENT, effect, inject, Service, Signal, signal } from '@angular/core';
 
 export type ThemeMode = 'system' | 'light' | 'dark';
+
+/** The colours actually shown: `mode`, with `system` resolved. */
+export type ColorScheme = 'light' | 'dark';
 
 const STORAGE_KEY = 'kerberos.theme';
 const MODES: readonly ThemeMode[] = ['system', 'light', 'dark'];
@@ -24,6 +27,15 @@ export class ThemeService {
 
   readonly mode = signal<ThemeMode>(storedMode());
 
+  private readonly systemDark = this.watchSystemDark();
+
+  /** For content that cannot use `light-dark()`, such as Redoc. */
+  readonly scheme = computed<ColorScheme>(() => {
+    const mode = this.mode();
+    if (mode !== 'system') return mode;
+    return this.systemDark() ? 'dark' : 'light';
+  });
+
   constructor() {
     effect(() => {
       const mode = this.mode();
@@ -35,5 +47,12 @@ export class ThemeService {
         // Storage unavailable: the choice lasts for this page load.
       }
     });
+  }
+
+  private watchSystemDark(): Signal<boolean> {
+    const query = this.document.defaultView?.matchMedia?.('(prefers-color-scheme: dark)');
+    const dark = signal(query?.matches ?? false);
+    query?.addEventListener('change', (event) => dark.set(event.matches));
+    return dark.asReadonly();
   }
 }

@@ -23,6 +23,27 @@ describe('ThemeService', () => {
     expect(localStorage.getItem('kerberos.theme')).toBe('dark');
   });
 
+  it('resolves the colour scheme, following the system preference in system mode', () => {
+    const listeners: ((event: { matches: boolean }) => void)[] = [];
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
+      addEventListener: (_: string, listener: (event: { matches: boolean }) => void) =>
+        listeners.push(listener),
+    }));
+    try {
+      const theme = TestBed.inject(ThemeService);
+      expect(theme.scheme()).toBe('light');
+
+      listeners.forEach((listener) => listener({ matches: true }));
+      expect(theme.scheme()).toBe('dark');
+
+      theme.mode.set('light');
+      expect(theme.scheme()).toBe('light');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('restores the saved choice', () => {
     localStorage.setItem('kerberos.theme', 'light');
 

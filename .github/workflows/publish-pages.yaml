@@ -1,5 +1,8 @@
 name: Deploy to GitHub Pages
 
+# GitHub Pages serves the gh-pages branch. This workflow publishes the live site to its root;
+# pull-request-pages.yaml publishes pull request previews under pr-preview/.
+
 on:
   workflow_dispatch:
   push:
@@ -13,8 +16,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: "pages"
@@ -25,9 +26,14 @@ jobs:
   check:
     uses: ./.github/workflows/callable-pages.yaml
 
-  build:
+  deploy:
     needs: check
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    environment:
+      name: api-pages
+      url: https://trebent.github.io/kerberos/
     defaults:
       run:
         working-directory: pages
@@ -42,28 +48,15 @@ jobs:
 
       - run: make install
 
-      - name: Build for production
-        run: make build/prod
+      - name: Build for GitHub Pages
+        run: make build/pages BASE_HREF=/kerberos/
 
-      # GitHub Pages has no SPA fallback: serve the app for unknown paths so deep links work.
-      - name: Add SPA fallback
-        run: cp dist/kerberos-pages/browser/index.html dist/kerberos-pages/browser/404.html
-
-      - name: Setup Pages
-        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+      - name: Publish to the gh-pages branch
+        uses: JamesIves/github-pages-deploy-action@fa24774553152dd7873cd16ebd8d959b010c5445 # v4.9.0
         with:
-          path: pages/dist/kerberos-pages/browser
-
-  deploy:
-    needs: build
-    environment:
-      name: api-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+          folder: pages/dist/kerberos-pages/browser
+          branch: gh-pages
+          # Keep the pull request previews, and rebase onto them rather than force-push.
+          clean-exclude: pr-preview/
+          force: false
+          commit-message: "Deploy the site from ${{ github.sha }}"

@@ -4,6 +4,8 @@ run-name: "Pages pull request validation: ${{ github.event.pull_request.title }}
 
 on:
   pull_request:
+    # `closed` removes the preview.
+    types: [opened, reopened, synchronize, closed]
     branches:
       - main
     paths:
@@ -21,4 +23,41 @@ permissions:
 
 jobs:
   check:
+    if: github.event.action != 'closed'
     uses: ./.github/workflows/callable-pages.yaml
+
+  # Publishes the site under https://trebent.github.io/kerberos/pr-preview/pr-<number>/ and links
+  # it in a pull request comment. Not for forks: their token cannot push to gh-pages.
+  preview:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    defaults:
+      run:
+        working-directory: pages
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: github.event.action != 'closed'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: pages/package-lock.json
+
+      - if: github.event.action != 'closed'
+        run: make install
+
+      - name: Build for GitHub Pages
+        if: github.event.action != 'closed'
+        run: make build/pages BASE_HREF=/kerberos/pr-preview/pr-${{ github.event.number }}/
+
+      - name: Deploy or remove the preview
+        uses: rossjrw/pr-preview-action@873417d2df72380da1f3978378fb58560bcde976 # v1.8.2
+        with:
+          source-dir: pages/dist/kerberos-pages/browser
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
+          qr-code: false

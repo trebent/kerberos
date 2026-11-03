@@ -20,13 +20,14 @@ that matter here. The layout and routes are described in [`README.md`](README.md
 - Lazy-load every page from `app.routes.ts`, the only file that imports a page.
 - Prefer the `@Service` decorator for singleton services.
 - Use only `--mat-sys-*` tokens for colours, except in the always-dark `.code-panel` and the
-  always-light Redoc panel.
+  Redoc overrides in `src/styles.scss` (Redoc has its own light and dark palettes).
 
 ## Accessibility
 
 - It MUST pass all axe checks and meet WCAG 2.2 AA, in both light and dark mode.
 - Every page and component spec calls `expectNoAxeViolations` from `src/testing/axe.ts`. jsdom
-  cannot check colour contrast, so check it in a browser.
+  cannot check colour contrast, so check it in a browser. That includes the rendered Redoc
+  reference: after a Redoc upgrade, run axe on it in both themes.
 
 ## Verification
 

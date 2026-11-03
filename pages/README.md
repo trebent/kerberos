@@ -14,15 +14,16 @@ specs with axe-core accessibility checks.
 
 Run these in `pages/`. Node.js 22 or later is required.
 
-| Command           | What it does                                         |
-| ----------------- | ---------------------------------------------------- |
-| `make install`    | Install dependencies (`npm ci`)                      |
-| `make serve`      | Start the dev server on `http://localhost:4200`      |
-| `make check`      | Run everything CI runs: format, lint, build and test |
-| `make format`     | Format the code with Prettier                        |
-| `make lint`       | Lint and auto-fix with ESLint                        |
-| `make build/prod` | Production build into `dist/kerberos-pages/browser/` |
-| `make test`       | Run the unit tests once                              |
+| Command            | What it does                                             |
+| ------------------ | -------------------------------------------------------- |
+| `make install`     | Install dependencies (`npm ci`)                          |
+| `make serve`       | Start the dev server on `http://localhost:4200`          |
+| `make check`       | Run everything CI runs: format, lint, build and test     |
+| `make format`      | Format the code with Prettier                            |
+| `make lint`        | Lint and auto-fix with ESLint                            |
+| `make build/prod`  | Production build into `dist/kerberos-pages/browser/`     |
+| `make build/pages` | The build GitHub Pages serves; `BASE_HREF` sets its path |
+| `make test`        | Run the unit tests once                                  |
 
 ## Routes
 
@@ -37,13 +38,29 @@ Run these in `pages/`. Node.js 22 or later is required.
 
 - `public/openapi` is a symlink to `../openapi`, so the build always ships the current contracts
   at `openapi/*.yaml`. There is no copy to keep in sync.
-- `angular.json` copies Redoc's standalone bundle to `redoc/`. `RedocService` downloads it the
-  first time a reference is shown, so it is not part of the app bundle.
+- `RedocService` imports Redoc's standalone bundle (`redoc/bundles/redoc.standalone.js`) with a
+  dynamic `import()`, so it is a lazy chunk downloaded the first time a reference is shown.
+- Redoc has its own light and dark themes. `RedocView` switches them with the site's theme, and
+  `src/styles.scss` sets Redoc's accent and fonts and the colour fixes that keep it at WCAG AA.
 - `go.mod` in this directory only keeps `pages/` (and Go files inside `node_modules/`) out of the
   root Go module.
-- `.github/workflows/publish-pages.yaml` deploys on every push to `main` that touches `pages/` or
-  `openapi/`, after the same checks that `pull-request-pages.yaml` runs on pull requests. It adds a
-  `404.html` copy of `index.html` so deep links work on GitHub Pages.
+
+## Publishing
+
+GitHub Pages serves the `gh-pages` branch (**Settings → Pages → Build and deployment → Deploy from
+a branch**, `gh-pages`, `/ (root)`). Both workflows build with `make build/pages`, which adds a
+`404.html` copy of `index.html` so deep links work.
+
+- `.github/workflows/publish-pages.yaml` publishes the live site to the root of `gh-pages` on
+  every push to `main` that touches `pages/` or `openapi/`, after the same checks that pull
+  requests run. It needs approval if the `api-pages` environment requires it.
+- `.github/workflows/pull-request-pages.yaml` runs those checks on pull requests and publishes a
+  preview to `https://trebent.github.io/kerberos/pr-preview/pr-<number>/`, linked in a comment on
+  the pull request. Each push updates the preview, and closing the pull request removes it.
+  Pull requests from forks get the checks but no preview.
+
+GitHub Pages answers every unknown path with the live site's `404.html`. For a deep link into a
+preview, a short script in `src/index.html` passes the path on to the preview's own app.
 
 ## Project layout
 
