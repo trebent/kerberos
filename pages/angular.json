@@ -29,11 +29,6 @@
               {
                 "glob": "**/*",
                 "input": "public"
-              },
-              {
-                "glob": "redoc.standalone.js",
-                "input": "node_modules/redoc/bundles",
-                "output": "redoc"
               }
             ],
             "styles": ["src/styles.scss"]

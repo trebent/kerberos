@@ -13,13 +13,13 @@ describe('ApiReference', () => {
   let render: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    render = vi.fn(async () => undefined);
+    render = vi.fn(async () => ({ destroy: vi.fn() }));
     TestBed.configureTestingModule({
       providers: [
         provideRouter(routes, withComponentInputBinding()),
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: RedocService, useValue: { render } },
+        { provide: RedocService, useValue: { render, setColorMode: vi.fn() } },
       ],
     });
   });

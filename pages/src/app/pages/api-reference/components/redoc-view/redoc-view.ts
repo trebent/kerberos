@@ -1,6 +1,8 @@
 import {
   afterRenderEffect,
   Component,
+  DestroyRef,
+  effect,
   ElementRef,
   inject,
   input,
@@ -10,25 +12,11 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { RedocService } from '../../../../services/redoc.service';
+import { RedocHandle, RedocService } from '../../../../services/redoc.service';
+import { ThemeService } from '../../../../services/theme.service';
 import { ApiInfo, specPath } from '../../../../utils/apis';
 
 type Status = 'loading' | 'ready' | 'failed';
-
-/**
- * Redoc styles itself and has no dark mode, so its panel always uses Redoc's light theme,
- * tinted with the site's primary colour.
- */
-const REDOC_THEME = {
-  colors: { primary: { main: '#a43c00' } },
-  typography: {
-    fontFamily: 'Roboto, system-ui, sans-serif',
-    headings: { fontFamily: 'Roboto, system-ui, sans-serif', fontWeight: '500' },
-    code: { fontFamily: '"Roboto Mono", ui-monospace, monospace' },
-  },
-  sidebar: { activeTextColor: '#a43c00' },
-  rightPanel: { backgroundColor: '#14161d' },
-};
 
 @Component({
   imports: [RouterLink],
@@ -47,11 +35,12 @@ const REDOC_THEME = {
         </p>
       }
     }
-    <div #host class="redoc" [hidden]="status() !== 'ready'"></div>
+    <div #host class="redoc" [hidden]="status() === 'failed'"></div>
   `,
 })
 export class RedocView {
   private readonly redoc = inject(RedocService);
+  private readonly theme = inject(ThemeService);
   private readonly host = viewChild.required<ElementRef<HTMLElement>>('host');
 
   readonly api = input.required<ApiInfo>();
@@ -60,8 +49,12 @@ export class RedocView {
 
   protected readonly status = signal<Status>('loading');
   private run = 0;
+  private rendered?: RedocHandle;
 
   constructor() {
+    // Redoc has its own light and dark themes: follow the site's choice. Runs before the first
+    // render below, so Redoc starts in the right mode.
+    effect(() => this.redoc.setColorMode(this.theme.scheme()));
     afterRenderEffect({
       write: () => {
         const api = this.api();
@@ -69,23 +62,40 @@ export class RedocView {
         untracked(() => this.render(api, host));
       },
     });
+    inject(DestroyRef).onDestroy(() => {
+      this.run++;
+      this.clear();
+    });
   }
 
   private async render(api: ApiInfo, host: HTMLElement): Promise<void> {
     // Ignore a slow render that finishes after the user moved on to another API.
     const run = ++this.run;
     this.status.set('loading');
+    this.clear();
+    // A fresh element per render: React must not reuse a container it has unmounted from.
+    const element = host.ownerDocument.createElement('div');
+    host.replaceChildren(element);
     try {
-      await this.redoc.render(specPath(api), host, {
+      const rendered = await this.redoc.render(specPath(api), element, {
         scrollYOffset: this.scrollOffset(),
         hideDownloadButtons: true,
-        expandResponses: '200,201',
-        theme: REDOC_THEME,
+        disableTelemetry: true,
       });
-      if (run === this.run) this.status.set('ready');
+      if (run !== this.run) {
+        rendered.destroy();
+        return;
+      }
+      this.rendered = rendered;
+      this.status.set('ready');
     } catch (error) {
       console.error(error);
       if (run === this.run) this.status.set('failed');
     }
+  }
+
+  private clear(): void {
+    this.rendered?.destroy();
+    this.rendered = undefined;
   }
 }

@@ -139,3 +139,57 @@ pre {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+// Redoc (the API reference) renders outside Angular's view encapsulation and themes itself with
+// CSS custom properties declared on :root, light by default and dark under `:root.dark`.
+// RedocView keeps that class in step with ThemeService. The overrides below need `html:root`
+// to outrank Redoc's own rules, which are injected later.
+html:root.light,
+html:root.dark {
+  --color-primary-base: var(--mat-sys-primary);
+  --font-family-base: var(--mat-sys-body-medium-font);
+  --font-family-monospaced: var(--app-mono-font);
+  // Redoc's default placeholder grey is below 4.5:1 in both themes.
+  --input-content-placeholder-color: var(--text-color-description);
+  // Room for the 24px sample expand toggles below, one per line.
+  --code-block-line-height: var(--line-height-lg);
+}
+
+// Darker shades for the light theme, where Redoc's defaults are below 4.5:1. The dark theme's
+// defaults already pass.
+html:root.light {
+  --color-blue-7: #235fc9;
+  --color-green-7: #0f7a43;
+
+  .tag-get,
+  .tag-query {
+    --tag-color: #0f7a43;
+  }
+
+  .tag-post {
+    --tag-color: #1a56d6;
+  }
+
+  .tag-put {
+    --tag-color: #ad4f00;
+  }
+
+  .tag-patch {
+    --tag-color: #856000;
+  }
+
+  .tag-delete {
+    --tag-color: #c2083a;
+  }
+}
+
+// WCAG 2.2 target size: Redoc's small buttons (such as the sample expand toggles) are 20px.
+.redoc .button.button-size-small {
+  min-inline-size: 24px;
+  min-block-size: 24px;
+}
+
+// The header's theme menu is the only colour switch, so hide Redoc's own.
+.redoc [data-testid='color-mode-switcher'] {
+  display: none;
+}
