@@ -59,6 +59,9 @@ a branch**, `gh-pages`, `/ (root)`). Both workflows build with `make build/pages
   the pull request. Each push updates the preview, and closing the pull request removes it.
   Pull requests from forks get the checks but no preview.
 
+To review a change to the site, open the preview link in the pull request's "PR Preview Action"
+comment. It updates a minute or so after each push, once GitHub Pages has redeployed.
+
 GitHub Pages answers every unknown path with the live site's `404.html`. For a deep link into a
 preview, a short script in `src/index.html` passes the path on to the preview's own app.
 
