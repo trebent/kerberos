@@ -103,15 +103,7 @@ func loadConfig(path string) (*config.Connector, error) {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	cfg := config.NewConnector()
-	sch := config.NewConnectorSchemer()
-	sch.Load(data)
-
-	if err := sch.Parse(cfg); err != nil {
-		return nil, err
-	}
-
-	return cfg, nil
+	return config.ParseConnector(data)
 }
 
 func startServer(signalCtx context.Context, cfg *config.Connector) error {
