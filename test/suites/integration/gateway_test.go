@@ -24,6 +24,7 @@ func TestGWHappy(t *testing.T) {
 		body   []byte
 	}{
 		{name: "GET", method: http.MethodGet, path: "/hi"},
+		{name: "GET with query", method: http.MethodGet, path: "/hi?a=1&b=two%20words&a=2"},
 		{name: "POST", method: http.MethodPost, path: "/", body: bodyData},
 		{name: "PUT", method: http.MethodPut, path: "/long/hello", body: bodyData},
 		{name: "DELETE", method: http.MethodDelete, path: "/hi"},
