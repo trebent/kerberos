@@ -432,3 +432,68 @@ func (ca testCA) signCert(t *testing.T, serial int64, ipSANs []net.IP) signedCer
 
 	return signedCert{certFile: cf.Name(), keyFile: kf.Name(), tlsCert: tlsCert}
 }
+
+func TestForwarderQueryParameters(t *testing.T) {
+	var received *url.URL
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received = r.URL
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL)
+	if err != nil {
+		t.Fatalf("Failed to parse server URL: %v", err)
+	}
+	port, _ := strconv.Atoi(serverURL.Port())
+	backend := &config.RouterBackend{
+		Name: "query-backend",
+		Host: serverURL.Hostname(),
+		Port: port,
+	}
+
+	fwd, err := forwarder.NewComponent(&forwarder.Opts{
+		Backends: []*config.RouterBackend{backend},
+	})
+	if err != nil {
+		t.Fatalf("Failed to create forwarder component: %v", err)
+	}
+
+	cases := []struct {
+		name     string
+		rawQuery string
+	}{
+		{name: "none", rawQuery: ""},
+		{name: "single", rawQuery: "a=1"},
+		{name: "repeated keys keep order", rawQuery: "a=1&b=2&a=3"},
+		{name: "encoded values", rawQuery: "q=two%20words&path=%2Fx%2Fy&plus=a%2Bb"},
+		{name: "empty value and bare key", rawQuery: "empty=&flag"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			received = nil
+			recorder := httptest.NewRecorder()
+			request := &http.Request{
+				Method: http.MethodGet,
+				URL:    &url.URL{Path: "/test", RawQuery: tc.rawQuery},
+			}
+			ctx := context.WithValue(request.Context(), composer.TargetContextKey, backend)
+
+			fwd.ServeHTTP(recorder, request.WithContext(ctx))
+
+			if recorder.Code != http.StatusOK {
+				t.Fatalf("Expected status code %d, got %d", http.StatusOK, recorder.Code)
+			}
+			if received == nil {
+				t.Fatal("Backend did not receive the request")
+			}
+			if received.Path != "/test" {
+				t.Errorf("Expected path %q, got %q", "/test", received.Path)
+			}
+			if received.RawQuery != tc.rawQuery {
+				t.Errorf("Expected raw query %q, got %q", tc.rawQuery, received.RawQuery)
+			}
+		})
+	}
+}

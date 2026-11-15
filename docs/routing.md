@@ -122,10 +122,11 @@ router -> (auth and oas, sorted by order) -> forward to backend
 
 ## What is forwarded
 
-Kerberos builds the upstream URL as `http://<host>:<port><backend-path>`, or `https://` when the backend has a `tls` block, and forwards:
+Kerberos builds the upstream URL as `http://<host>:<port><backend-path>?<query>`, or `https://` when the backend has a `tls` block, and forwards:
 
 - **Method.** The method is forwarded unchanged.
 - **Path.** Kerberos forwards the stripped backend path. Percent-encoded characters are decoded and encoded again, so an encoded slash (`%2F`) reaches the backend as `/`.
+- **Query string.** The query string is forwarded exactly as the client sent it, including repeated keys, their order and any percent-encoding. For example, `/gw/backend/echo/search?q=two%20words&tag=a&tag=b` reaches the backend as `/search?q=two%20words&tag=a&tag=b`.
 - **Headers.** Client headers are forwarded as-is, including `Authorization`, `Cookie`, `Origin` and any `X-Forwarded-*` headers the client sent itself.
 - **`Host`.** `Host` is set to the backend's `host:port`, not the host the client used.
 - **Body.** The body is streamed to the backend with `Transfer-Encoding: chunked`.
