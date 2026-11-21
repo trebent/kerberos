@@ -102,6 +102,11 @@ type ChangePasswordJSONBody struct {
 	Password    string `json:"password"`
 }
 
+// ResetPasswordJSONBody defines parameters for ResetPassword.
+type ResetPasswordJSONBody struct {
+	Password string `json:"password"`
+}
+
 // CreateOrganisationJSONRequestBody defines body for CreateOrganisation for application/json ContentType.
 type CreateOrganisationJSONRequestBody CreateOrganisationJSONBody
 
@@ -128,6 +133,9 @@ type UpdateUserGroupsJSONRequestBody = UserGroups
 
 // ChangePasswordJSONRequestBody defines body for ChangePassword for application/json ContentType.
 type ChangePasswordJSONRequestBody ChangePasswordJSONBody
+
+// ResetPasswordJSONRequestBody defines body for ResetPassword for application/json ContentType.
+type ResetPasswordJSONRequestBody ResetPasswordJSONBody
 
 // RequestEditorFn is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -313,6 +321,20 @@ type ClientInterface interface {
 	// ChangePassword performs a PUT /api/auth/basic/organisations/{orgID}/users/{userID}/password (the `ChangePassword` operationId) request.
 	// Takes a body of the `application/json` content type.
 	ChangePassword(ctx context.Context, orgID Orgid, userID Userid, body ChangePasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ResetPasswordWithBody performs a PUT /api/auth/basic/organisations/{orgID}/users/{userID}/password/reset (the `ResetPassword` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Sets a new password for a user without the old one, and ends all of the user's sessions.
+	// Requires an organisation administrator.
+	ResetPasswordWithBody(ctx context.Context, orgID Orgid, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ResetPassword performs a PUT /api/auth/basic/organisations/{orgID}/users/{userID}/password/reset (the `ResetPassword` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Sets a new password for a user without the old one, and ends all of the user's sessions.
+	// Requires an organisation administrator.
+	ResetPassword(ctx context.Context, orgID Orgid, userID Userid, body ResetPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // ListOrganisations performs a GET /api/auth/basic/organisations (the `ListOrganisations` operationId) request.
@@ -726,6 +748,40 @@ func (c *Client) ChangePasswordWithBody(ctx context.Context, orgID Orgid, userID
 // Takes a body of the `application/json` content type.
 func (c *Client) ChangePassword(ctx context.Context, orgID Orgid, userID Userid, body ChangePasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewChangePasswordRequest(c.Server, orgID, userID, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ResetPasswordWithBody performs a PUT /api/auth/basic/organisations/{orgID}/users/{userID}/password/reset (the `ResetPassword` operationId) request,
+// with any type of body and a specified content type.
+//
+// Sets a new password for a user without the old one, and ends all of the user's sessions.
+// Requires an organisation administrator.
+func (c *Client) ResetPasswordWithBody(ctx context.Context, orgID Orgid, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewResetPasswordRequestWithBody(c.Server, orgID, userID, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ResetPassword performs a PUT /api/auth/basic/organisations/{orgID}/users/{userID}/password/reset (the `ResetPassword` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Sets a new password for a user without the old one, and ends all of the user's sessions.
+// Requires an organisation administrator.
+func (c *Client) ResetPassword(ctx context.Context, orgID Orgid, userID Userid, body ResetPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewResetPasswordRequest(c.Server, orgID, userID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1650,6 +1706,60 @@ func NewChangePasswordRequestWithBody(server string, orgID Orgid, userID Userid,
 	return req, nil
 }
 
+// NewResetPasswordRequest calls the generic ResetPassword builder with application/json body
+func NewResetPasswordRequest(server string, orgID Orgid, userID Userid, body ResetPasswordJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewResetPasswordRequestWithBody(server, orgID, userID, "application/json", bodyReader)
+}
+
+// NewResetPasswordRequestWithBody constructs an http.Request for the ResetPassword method, with any body, and a specified content type
+func NewResetPasswordRequestWithBody(server string, orgID Orgid, userID Userid, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "orgID", orgID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "userID", userID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/auth/basic/organisations/%s/users/%s/password/reset", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -1848,6 +1958,22 @@ type ClientWithResponsesInterface interface {
 	// ChangePasswordWithResponse performs a PUT /api/auth/basic/organisations/{orgID}/users/{userID}/password (the `ChangePassword` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	ChangePasswordWithResponse(ctx context.Context, orgID Orgid, userID Userid, body ChangePasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ChangePasswordResponse, error)
+
+	// ResetPasswordWithBodyWithResponse performs a PUT /api/auth/basic/organisations/{orgID}/users/{userID}/password/reset (the `ResetPassword` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Sets a new password for a user without the old one, and ends all of the user's sessions.
+	// Requires an organisation administrator.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ResetPasswordWithBodyWithResponse(ctx context.Context, orgID Orgid, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResetPasswordResponse, error)
+
+	// ResetPasswordWithResponse performs a PUT /api/auth/basic/organisations/{orgID}/users/{userID}/password/reset (the `ResetPassword` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Sets a new password for a user without the old one, and ends all of the user's sessions.
+	// Requires an organisation administrator.
+	ResetPasswordWithResponse(ctx context.Context, orgID Orgid, userID Userid, body ResetPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ResetPasswordResponse, error)
 }
 
 type ListOrganisationsResponse struct {
@@ -3275,6 +3401,68 @@ func (r ChangePasswordResponse) ContentType() string {
 	return ""
 }
 
+type ResetPasswordResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *APIErrorResponse
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *APIErrorResponse
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *APIErrorResponse
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *APIErrorResponse
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ResetPasswordResponse) GetJSON400() *APIErrorResponse {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ResetPasswordResponse) GetJSON401() *APIErrorResponse {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ResetPasswordResponse) GetJSON403() *APIErrorResponse {
+	return r.JSON403
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ResetPasswordResponse) GetJSON500() *APIErrorResponse {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ResetPasswordResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ResetPasswordResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ResetPasswordResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ResetPasswordResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // ListOrganisationsWithResponse performs a GET /api/auth/basic/organisations (the `ListOrganisations` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -3614,6 +3802,34 @@ func (c *ClientWithResponses) ChangePasswordWithResponse(ctx context.Context, or
 		return nil, err
 	}
 	return ParseChangePasswordResponse(rsp)
+}
+
+// ResetPasswordWithBodyWithResponse performs a PUT /api/auth/basic/organisations/{orgID}/users/{userID}/password/reset (the `ResetPassword` operationId) request,
+// with any type of body and a specified content type.
+//
+// Sets a new password for a user without the old one, and ends all of the user's sessions.
+// Requires an organisation administrator.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ResetPasswordWithBodyWithResponse(ctx context.Context, orgID Orgid, userID Userid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResetPasswordResponse, error) {
+	rsp, err := c.ResetPasswordWithBody(ctx, orgID, userID, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseResetPasswordResponse(rsp)
+}
+
+// ResetPasswordWithResponse performs a PUT /api/auth/basic/organisations/{orgID}/users/{userID}/password/reset (the `ResetPassword` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Sets a new password for a user without the old one, and ends all of the user's sessions.
+// Requires an organisation administrator.
+func (c *ClientWithResponses) ResetPasswordWithResponse(ctx context.Context, orgID Orgid, userID Userid, body ResetPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ResetPasswordResponse, error) {
+	rsp, err := c.ResetPassword(ctx, orgID, userID, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseResetPasswordResponse(rsp)
 }
 
 // ParseListOrganisationsResponse parses an HTTP response from a ListOrganisationsWithResponse call
@@ -4749,6 +4965,59 @@ func ParseChangePasswordResponse(rsp *http.Response) (*ChangePasswordResponse, e
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseResetPasswordResponse parses an HTTP response from a ResetPasswordWithResponse call
+func ParseResetPasswordResponse(rsp *http.Response) (*ResetPasswordResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ResetPasswordResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest APIErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case rsp.StatusCode == 404:
+		break // No content-type
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest APIErrorResponse

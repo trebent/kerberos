@@ -411,6 +411,83 @@ func TestBasicAuthUserChangePassword(t *testing.T) {
 	lib.VerifyAuthBasicAPIErrorResponse(oldLoginResp.JSON401, t)
 }
 
+// TestBasicAuthUserResetPassword verifies that an organisation administrator can reset a user's
+// password without the old one, that the reset ends the user's sessions, and that a regular user
+// cannot reset passwords.
+func TestBasicAuthUserResetPassword(t *testing.T) {
+	t.Parallel()
+	superRequestEditor := lib.SuperLogin(t)
+
+	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
+		t.Context(),
+		authbasicapi.CreateOrganisationJSONRequestBody{Name: lib.OrgName()},
+		authbasicapi.RequestEditorFn(superRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createOrgResp.StatusCode(), http.StatusCreated, t)
+	orgID := createOrgResp.JSON201.Id
+
+	login := func(name, pw string, want int) lib.RequestEditorFn {
+		t.Helper()
+		resp, err := lib.BasicAuthClient.LoginWithResponse(
+			t.Context(),
+			orgID,
+			authbasicapi.LoginJSONRequestBody{Username: name, Password: pw},
+		)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(resp.StatusCode(), want, t)
+		if want != http.StatusNoContent {
+			return nil
+		}
+		return lib.SessionCookieRequestEditor(resp.HTTPResponse, t)
+	}
+
+	reset := func(editor lib.RequestEditorFn, userID int64) int {
+		t.Helper()
+		resp, err := lib.BasicAuthClient.ResetPasswordWithResponse(
+			t.Context(),
+			orgID,
+			userID,
+			authbasicapi.ResetPasswordJSONRequestBody{Password: "new-password-456"},
+			authbasicapi.RequestEditorFn(editor),
+		)
+		lib.CheckErr(err, t)
+		return resp.StatusCode()
+	}
+
+	const oldPassword = "old-password-123"
+	name := lib.Username()
+	createUserResp, err := lib.BasicAuthClient.CreateUserWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.CreateUserJSONRequestBody{Name: name, Password: oldPassword},
+		authbasicapi.RequestEditorFn(superRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createUserResp.StatusCode(), http.StatusCreated, t)
+	userID := createUserResp.JSON201.Id
+	userRequestEditor := login(name, oldPassword, http.StatusNoContent)
+
+	// A regular user cannot reset passwords, not even their own.
+	lib.VerifyStatusCode(reset(userRequestEditor, userID), http.StatusForbidden, t)
+
+	// The organisation's administrator can.
+	adminRequestEditor := login(
+		createOrgResp.JSON201.AdminUsername, createOrgResp.JSON201.AdminPassword, http.StatusNoContent,
+	)
+	lib.VerifyStatusCode(reset(adminRequestEditor, 999999), http.StatusNotFound, t)
+	lib.VerifyStatusCode(reset(adminRequestEditor, userID), http.StatusNoContent, t)
+
+	// The user's existing session has ended, and only the new password works.
+	meResp, err := lib.BasicAuthClient.GetMeWithResponse(
+		t.Context(), orgID, authbasicapi.RequestEditorFn(userRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(meResp.StatusCode(), http.StatusUnauthorized, t)
+	login(name, oldPassword, http.StatusUnauthorized)
+	login(name, "new-password-456", http.StatusNoContent)
+}
+
 // TestBasicAuthUserChangePasswordOASValidation verifies that the OAS validator rejects change-password
 // requests with credentials that violate the schema length constraints.
 // Note: the spec does not define a 400 response body for this endpoint, so only the
