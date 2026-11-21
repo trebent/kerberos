@@ -291,7 +291,8 @@ The same `session` cookie now authenticates Alice on the gateway port, for examp
   characters can be used.
 - A password change needs the current password in `oldPassword`, for every role. If a user forgets
   their password, an administrator sets a new one with
-  `PUT .../users/{userID}/password/reset`, which needs no old password. A reset ends all of the
+  `PUT /api/auth/basic/organisations/{orgID}/users/{userID}/password/reset`, which needs no old
+  password. A reset ends all of the
   user's sessions, so anyone still logged in as that user is logged out.
 - Passwords are stored as salted bcrypt hashes.
 
