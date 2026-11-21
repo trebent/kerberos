@@ -27,7 +27,7 @@ var (
 	errMalformedUserID = errors.New("malformed user ID")
 )
 
-//nolint:funlen // welp
+//nolint:funlen,cyclop // one case per operation
 func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictMiddlewareFunc {
 	apiImpl, ok := ssi.(*impl)
 	if !ok {
@@ -166,8 +166,13 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 					administratorValidator(session.Administrator),
 					ownerUserValidator(session.UserID, r),
 				)
-			case "UpdateUserGroups", "ResetPassword":
-				zerologr.V(20).Info("Validating auth for administrator-only user paths")
+			case "UpdateUserGroups":
+				zerologr.V(20).Info("Validating auth for update user membership paths")
+				validation = make([]error, 2)
+				validation[0] = orgValidator(session.OrgID, r)
+				validation[1] = administratorValidator(session.Administrator)
+			case "ResetPassword":
+				zerologr.V(20).Info("Validating auth for reset password path")
 				validation = make([]error, 2)
 				validation[0] = orgValidator(session.OrgID, r)
 				validation[1] = administratorValidator(session.Administrator)
