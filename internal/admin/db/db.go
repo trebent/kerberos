@@ -821,6 +821,42 @@ func ResetUserPassword(
 	userID int64,
 	salt, hashedPassword string,
 ) error {
+	return resetPassword(ctx, client, &resetPasswordOpts{
+		update: updateAdminUserPassword,
+		updateArgs: []any{
+			sql.NamedArg{Name: argSalt, Value: salt},
+			sql.NamedArg{Name: argHashedPassword, Value: hashedPassword},
+			sql.NamedArg{Name: argUserID, Value: userID},
+		},
+		deleteSessions:     deleteAdminUserSessions,
+		deleteSessionsArgs: []any{sql.NamedArg{Name: argUserID, Value: userID}},
+	})
+}
+
+// ResetSuperuserPassword sets a new superuser password and deletes all superuser sessions, in one
+// transaction.
+func ResetSuperuserPassword(ctx context.Context, client db.SQLClient, salt, hashedPassword string) error {
+	return resetPassword(ctx, client, &resetPasswordOpts{
+		update: updateSuperuserPassword,
+		updateArgs: []any{
+			sql.NamedArg{Name: argSalt, Value: salt},
+			sql.NamedArg{Name: argHashedPassword, Value: hashedPassword},
+		},
+		deleteSessions: deleteSuperSessions,
+	})
+}
+
+// resetPasswordOpts holds the statements and arguments of a password reset.
+type resetPasswordOpts struct {
+	update             string
+	updateArgs         []any
+	deleteSessions     string
+	deleteSessionsArgs []any
+}
+
+// resetPassword runs a password update and a session deletion in one transaction. It returns
+// db.ErrRowNotFound if the update changed no row.
+func resetPassword(ctx context.Context, client db.SQLClient, opts *resetPasswordOpts) error {
 	tx, err := client.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("start transaction: %w", err)
@@ -828,32 +864,22 @@ func ResetUserPassword(
 	//nolint:errcheck // intentional: no-op if already committed
 	defer tx.Rollback()
 
-	res, err := tx.Exec(
-		ctx,
-		updateAdminUserPassword,
-		sql.NamedArg{Name: argSalt, Value: salt},
-		sql.NamedArg{Name: argHashedPassword, Value: hashedPassword},
-		sql.NamedArg{Name: argUserID, Value: userID},
-	)
+	res, err := tx.Exec(ctx, opts.update, opts.updateArgs...)
 	if err != nil {
-		return fmt.Errorf("update admin user password: %w", err)
+		return fmt.Errorf("update password: %w", err)
 	}
 
 	updated, err := res.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("update admin user password: %w", err)
+		return fmt.Errorf("update password: %w", err)
 	}
 
 	if updated == 0 {
 		return db.ErrRowNotFound
 	}
 
-	if _, err := tx.Exec(
-		ctx,
-		deleteAdminUserSessions,
-		sql.NamedArg{Name: argUserID, Value: userID},
-	); err != nil {
-		return fmt.Errorf("delete admin user sessions: %w", err)
+	if _, err := tx.Exec(ctx, opts.deleteSessions, opts.deleteSessionsArgs...); err != nil {
+		return fmt.Errorf("delete sessions: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {

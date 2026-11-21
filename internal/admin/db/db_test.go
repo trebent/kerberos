@@ -607,6 +607,26 @@ func TestDBUsers(t *testing.T) {
 		}
 	})
 
+	t.Run("reset superuser password ends superuser sessions", func(t *testing.T) {
+		superuser, err := GetSuperuser(ctx, testClient)
+		if err != nil {
+			t.Fatalf("GetSuperuser error: %v", err)
+		}
+
+		sessionID := uniqueName(t, "super-reset")
+		if err := CreateSession(ctx, testClient, superuser.ID, sessionID+"-refresh", sessionID); err != nil {
+			t.Fatalf("CreateSession error: %v", err)
+		}
+
+		if err := ResetSuperuserPassword(ctx, testClient, superuser.Salt, superuser.HashedPassword); err != nil {
+			t.Fatalf("ResetSuperuserPassword error: %v", err)
+		}
+
+		if _, err := GetSession(ctx, testClient, sessionID); !errors.Is(err, db.ErrRowNotFound) {
+			t.Fatalf("expected the superuser session to be deleted, got %v", err)
+		}
+	})
+
 	t.Run("update superuser password", func(t *testing.T) {
 		oldSuperuser, err := GetSuperuser(ctx, testClient)
 		if err != nil {

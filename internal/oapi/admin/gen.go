@@ -333,6 +333,11 @@ type ChangeSuperuserPasswordJSONBody struct {
 	OldPassword string `json:"oldPassword"`
 }
 
+// ResetSuperuserPasswordJSONBody defines parameters for ResetSuperuserPassword.
+type ResetSuperuserPasswordJSONBody struct {
+	NewPassword string `json:"newPassword"`
+}
+
 // CreateUserJSONBody defines parameters for CreateUser.
 type CreateUserJSONBody struct {
 	Password string `json:"password"`
@@ -380,6 +385,9 @@ type LoginSuperuserJSONRequestBody LoginSuperuserJSONBody
 
 // ChangeSuperuserPasswordJSONRequestBody defines body for ChangeSuperuserPassword for application/json ContentType.
 type ChangeSuperuserPasswordJSONRequestBody ChangeSuperuserPasswordJSONBody
+
+// ResetSuperuserPasswordJSONRequestBody defines body for ResetSuperuserPassword for application/json ContentType.
+type ResetSuperuserPasswordJSONRequestBody ResetSuperuserPasswordJSONBody
 
 // CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
 type CreateUserJSONRequestBody CreateUserJSONBody
@@ -607,6 +615,9 @@ type ServerInterface interface {
 
 	// (PUT /api/admin/superuser/password)
 	ChangeSuperuserPassword(w http.ResponseWriter, r *http.Request)
+
+	// (PUT /api/admin/superuser/password/reset)
+	ResetSuperuserPassword(w http.ResponseWriter, r *http.Request)
 
 	// (POST /api/admin/superuser/refresh)
 	RefreshSuperuserSession(w http.ResponseWriter, r *http.Request)
@@ -1190,6 +1201,20 @@ func (siw *ServerInterfaceWrapper) ChangeSuperuserPassword(w http.ResponseWriter
 	handler.ServeHTTP(w, r)
 }
 
+// ResetSuperuserPassword operation middleware
+func (siw *ServerInterfaceWrapper) ResetSuperuserPassword(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ResetSuperuserPassword(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // RefreshSuperuserSession operation middleware
 func (siw *ServerInterfaceWrapper) RefreshSuperuserSession(w http.ResponseWriter, r *http.Request) {
 
@@ -1511,6 +1536,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/admin/superuser/login", wrapper.LoginSuperuser)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/admin/superuser/logout", wrapper.LogoutSuperuser)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/admin/superuser/refresh", wrapper.RefreshSuperuserSession)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/api/admin/superuser/password/reset", wrapper.ResetSuperuserPassword)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/api/admin/superuser/password", wrapper.ChangeSuperuserPassword)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/admin/me", wrapper.GetMe)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/admin/users", wrapper.GetUsers)
@@ -3328,6 +3354,78 @@ func (response ChangeSuperuserPassword500JSONResponse) VisitChangeSuperuserPassw
 	return err
 }
 
+type ResetSuperuserPasswordRequestObject struct {
+	Body *ResetSuperuserPasswordJSONRequestBody
+}
+
+type ResetSuperuserPasswordResponseObject interface {
+	VisitResetSuperuserPasswordResponse(w http.ResponseWriter) error
+}
+
+type ResetSuperuserPassword204Response struct {
+}
+
+func (response ResetSuperuserPassword204Response) VisitResetSuperuserPasswordResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type ResetSuperuserPassword400JSONResponse APIErrorResponse
+
+func (response ResetSuperuserPassword400JSONResponse) VisitResetSuperuserPasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResetSuperuserPassword401JSONResponse APIErrorResponse
+
+func (response ResetSuperuserPassword401JSONResponse) VisitResetSuperuserPasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResetSuperuserPassword403JSONResponse APIErrorResponse
+
+func (response ResetSuperuserPassword403JSONResponse) VisitResetSuperuserPasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResetSuperuserPassword500JSONResponse APIErrorResponse
+
+func (response ResetSuperuserPassword500JSONResponse) VisitResetSuperuserPasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type RefreshSuperuserSessionRequestObject struct {
 }
 
@@ -4160,6 +4258,9 @@ type StrictServerInterface interface {
 	// (PUT /api/admin/superuser/password)
 	ChangeSuperuserPassword(ctx context.Context, request ChangeSuperuserPasswordRequestObject) (ChangeSuperuserPasswordResponseObject, error)
 
+	// (PUT /api/admin/superuser/password/reset)
+	ResetSuperuserPassword(ctx context.Context, request ResetSuperuserPasswordRequestObject) (ResetSuperuserPasswordResponseObject, error)
+
 	// (POST /api/admin/superuser/refresh)
 	RefreshSuperuserSession(ctx context.Context, request RefreshSuperuserSessionRequestObject) (RefreshSuperuserSessionResponseObject, error)
 
@@ -4856,6 +4957,37 @@ func (sh *strictHandler) ChangeSuperuserPassword(w http.ResponseWriter, r *http.
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ChangeSuperuserPasswordResponseObject); ok {
 		if err := validResponse.VisitChangeSuperuserPasswordResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ResetSuperuserPassword operation middleware
+func (sh *strictHandler) ResetSuperuserPassword(w http.ResponseWriter, r *http.Request) {
+	var request ResetSuperuserPasswordRequestObject
+
+	var body ResetSuperuserPasswordJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ResetSuperuserPassword(ctx, request.(ResetSuperuserPasswordRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ResetSuperuserPassword")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ResetSuperuserPasswordResponseObject); ok {
+		if err := validResponse.VisitResetSuperuserPasswordResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

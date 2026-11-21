@@ -812,3 +812,41 @@ func TestAdminPermissionsPasswordReset(t *testing.T) {
 	lib.VerifyStatusCode(oldLogin.StatusCode(), http.StatusUnauthorized, t)
 	lib.AdminUserLogin(t, name, newPass)
 }
+
+// TestAdminPermissionsPasswordResetSuperuser verifies that a holder of the password-reset
+// permission can reset the superuser's password without the old one, and that the reset ends all
+// superuser sessions. It is not parallel, because ending superuser sessions would break other
+// tests. The password is reset to the same value so later superuser logins keep working.
+func TestAdminPermissionsPasswordResetSuperuser(t *testing.T) {
+	superRequestEditor := lib.SuperLogin(t)
+
+	reset := func(editor lib.RequestEditorFn, pw string) *adminapi.ResetSuperuserPasswordResponse {
+		t.Helper()
+		resp, err := lib.AdminClient.ResetSuperuserPasswordWithResponse(
+			t.Context(),
+			adminapi.ResetSuperuserPasswordJSONRequestBody{NewPassword: pw},
+			adminapi.RequestEditorFn(editor),
+		)
+		lib.CheckErr(err, t)
+		return resp
+	}
+
+	mgmtRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDAdminUserMgmtAdmin})
+	denied := reset(mgmtRequestEditor, lib.SuperUserClientSecret)
+	lib.VerifyStatusCode(denied.StatusCode(), http.StatusForbidden, t)
+	lib.VerifyAdminAPIErrorResponse(denied.JSON403, t)
+
+	resetRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDPasswordReset})
+
+	tooShort := reset(resetRequestEditor, "123456789")
+	lib.VerifyStatusCode(tooShort.StatusCode(), http.StatusBadRequest, t)
+
+	ok := reset(resetRequestEditor, lib.SuperUserClientSecret)
+	lib.VerifyStatusCode(ok.StatusCode(), http.StatusNoContent, t)
+
+	// The superuser's existing session has ended, and a new login works.
+	meResp, err := lib.AdminClient.GetMeWithResponse(t.Context(), adminapi.RequestEditorFn(superRequestEditor))
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(meResp.StatusCode(), http.StatusUnauthorized, t)
+	lib.SuperLogin(t)
+}

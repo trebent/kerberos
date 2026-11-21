@@ -621,6 +621,30 @@ func (i *impl) DeleteUser(
 	return adminapi.DeleteUser204Response{}, nil
 }
 
+// ResetSuperuserPassword implements [withExtensions]. It sets a new superuser password without the
+// old one and ends all superuser sessions.
+func (i *impl) ResetSuperuserPassword(
+	ctx context.Context,
+	request adminapi.ResetSuperuserPasswordRequestObject,
+) (adminapi.ResetSuperuserPasswordResponseObject, error) {
+	if !ContextCanResetPasswords(ctx) {
+		return adminapi.ResetSuperuserPassword403JSONResponse(apiErrForbidden), nil
+	}
+
+	_, salt, hashed, err := password.Make(request.Body.NewPassword)
+	if err != nil {
+		zerologr.Error(err, "Failed to hash superuser password")
+		return adminapi.ResetSuperuserPassword500JSONResponse(apiErrInternal), nil
+	}
+
+	if err := admindb.ResetSuperuserPassword(ctx, i.sqlClient, salt, hashed); err != nil {
+		zerologr.Error(err, "Failed to reset superuser password")
+		return adminapi.ResetSuperuserPassword500JSONResponse(apiErrInternal), nil
+	}
+
+	return adminapi.ResetSuperuserPassword204Response{}, nil
+}
+
 // ResetUserPassword implements [withExtensions]. It sets a new password without the old one and
 // ends all of the user's sessions.
 func (i *impl) ResetUserPassword(
