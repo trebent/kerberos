@@ -189,7 +189,7 @@ make echo/run   # echo backend on port 15000
 make run        # Kerberos with test/config/local.json
 ```
 
-`test/config/local.json` protects the `echo` backend with authentication and request validation. To try plain forwarding first, use a minimal config with only `gateway.router.backends` (see [Getting started](./getting-started.md)). Then:
+`test/config/local.json` protects the `echo` backend with authentication and request validation. To try plain forwarding first, use a minimal config with only `gateway.router.backends` and `admin.superUser.clientSecret` (see [Configuration](./configuration.md)). Then:
 
 ```bash
 curl -s http://localhost:30000/gw/backend/echo/a/b -H "X-Custom: hi"

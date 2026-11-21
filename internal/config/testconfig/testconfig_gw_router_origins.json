@@ -15,5 +15,10 @@
         }
       ]
     }
+  },
+  "admin": {
+    "superUser": {
+      "clientSecret": "kerberos-dev-secret"
+    }
   }
 }

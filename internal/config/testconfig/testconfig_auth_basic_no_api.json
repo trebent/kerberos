@@ -23,5 +23,10 @@
       ]
     },
     "order": 2
+  },
+  "admin": {
+    "superUser": {
+      "clientSecret": "kerberos-dev-secret"
+    }
   }
 }

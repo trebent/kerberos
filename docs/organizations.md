@@ -181,7 +181,7 @@ Log in as the superuser (or an admin user holding `basic-auth-org-admin`) throug
 ```bash
 curl -i -c platform.jar -X POST http://localhost:30001/api/admin/superuser/login \
   -H 'Content-Type: application/json' \
-  -d '{"clientId": "admin", "clientSecret": "secret"}'
+  -d '{"clientId": "admin", "clientSecret": "<superuser secret>"}'
 ```
 
 ### 2. Create the organisation

@@ -13,5 +13,10 @@
       "serverCertFile": "/certs/server.crt",
       "serverKeyFile": "/certs/server.key"
     }
+  },
+  "admin": {
+    "superUser": {
+      "clientSecret": "kerberos-dev-secret"
+    }
   }
 }

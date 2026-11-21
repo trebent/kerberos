@@ -214,7 +214,7 @@ Use `-c` to save cookies and `-b` to send them, with one jar file per identity:
 ```sh
 # Superuser
 curl -s -c admin.jar -b admin.jar -H 'Content-Type: application/json' \
-  -d '{"clientId":"admin","clientSecret":"secret"}' \
+  -d '{"clientId":"admin","clientSecret":"<superuser secret>"}' \
   http://localhost:30001/api/admin/superuser/login
 curl -s -b admin.jar http://localhost:30001/api/admin/me
 

@@ -1,6 +1,6 @@
 # User config
 SUPERUSER_CLIENT_ID ?= admin
-SUPERUSER_CLIENT_SECRET ?= secret
+SUPERUSER_CLIENT_SECRET ?= kerberos-dev-secret
 ADMIN_USER_ALWAYS ?= always
 ADMIN_USER_ALWAYS_PASSWORD ?= password123
 AUTH_BASIC_USER_ALWAYS ?= always

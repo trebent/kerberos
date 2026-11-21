@@ -11,7 +11,7 @@ import (
 
 const (
 	SuperUserClientID     = "admin"
-	SuperUserClientSecret = "secret"
+	SuperUserClientSecret = "kerberos-dev-secret"
 )
 
 var (

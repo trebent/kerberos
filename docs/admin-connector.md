@@ -74,7 +74,7 @@ From the command line, use a cookie jar:
 ```bash
 curl -c admin.jar -X POST http://localhost:30001/api/admin/superuser/login \
   -H 'Content-Type: application/json' \
-  -d '{"clientId":"admin","clientSecret":"secret"}'
+  -d '{"clientId":"admin","clientSecret":"<superuser secret>"}'
 
 curl -b admin.jar http://localhost:30100/
 ```
