@@ -3,6 +3,7 @@ package config
 import (
 	_ "embed"
 	"errors"
+	"fmt"
 
 	utilhttp "github.com/trebent/kerberos/internal/util/http"
 	"github.com/trebent/schemer"
@@ -234,15 +235,42 @@ func newPersistenceConfig() *Persistence {
 	}
 }
 
+// Validate runs the semantic checks that the JSON schema cannot express: backend names must be
+// unique, and every auth and OAS mapping must name a backend that the router knows.
 func (kc *Kerberos) Validate() error {
-	seen := make(map[string]struct{}, len(kc.GatewayCfg.Router.Backends))
+	backends := make(map[string]struct{}, len(kc.GatewayCfg.Router.Backends))
 
 	for _, b := range kc.GatewayCfg.Router.Backends {
-		if _, ok := seen[b.Name]; ok {
+		if _, ok := backends[b.Name]; ok {
 			return errors.New("duplicate backend " + b.Name)
 		}
 
-		seen[b.Name] = struct{}{}
+		backends[b.Name] = struct{}{}
+	}
+
+	if kc.AuthCfg != nil && kc.AuthCfg.Scheme != nil {
+		for i, m := range kc.AuthCfg.Scheme.Mappings {
+			if err := checkMappedBackend(backends, "auth.scheme.mappings", i, m.Backend); err != nil {
+				return err
+			}
+		}
+	}
+
+	if kc.OASCfg != nil {
+		for i, m := range kc.OASCfg.Mappings {
+			if err := checkMappedBackend(backends, "oas.mappings", i, m.Backend); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// checkMappedBackend returns an error if the backend named by the mapping at field[index] is not a router backend.
+func checkMappedBackend(backends map[string]struct{}, field string, index int, name string) error {
+	if _, ok := backends[name]; !ok {
+		return fmt.Errorf("%s.%d.backend - unknown backend %q, it must match a gateway.router.backends name", field, index, name)
 	}
 
 	return nil

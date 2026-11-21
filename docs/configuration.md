@@ -76,9 +76,10 @@ Loading happens once, at startup, in this order:
 
 1. **Resolve references.** Every `${env:...}` and `${ref:...}` reference is replaced with its value. See [References](#references).
 2. **Validate against the JSON schema.** The resolved document is checked against the schema files in [`internal/config/schemas/`](#schema-files). This step checks structure only: required keys, types, enums, ranges and unknown keys.
-3. **Apply defaults.** Kerberos fills in values for settings you left out. Each section's page lists its defaults.
+3. **Check backend names.** Each name in `gateway.router.backends` must be unique, and every `backend` in `auth.scheme.mappings` and `oas.mappings` must match one of them exactly.
+4. **Apply defaults.** Kerberos fills in values for settings you left out. Each section's page lists its defaults.
 
-Any failure in steps 1 or 2 stops the process with exit status 1 before it opens any port. Kerberos then loads certificates, keys and OpenAPI files and connects to the database. A problem there also stops the process with a message that names the cause.
+Any failure in steps 1 to 3 stops the process with exit status 1 before it opens any port. Kerberos then loads certificates, keys and OpenAPI files and connects to the database. A problem there also stops the process with a message that names the cause.
 
 Because references are resolved before validation, the schema checks the final values. A port that comes from an environment variable must still be a number in range.
 
@@ -201,6 +202,13 @@ Common messages:
 | `gateway.router.backends.0.port - Must be greater than or equal to 1` | A value is out of range. |
 | `admin.api.cookies.sameSite - admin.api.cookies.sameSite must be one of the following: "Strict", "Lax", "None"` | Enum values are case-sensitive: `Lax`, not `lax`. |
 | `gateway.router.backends.0.origins.allowedOrigins - Array must have at most 0 items` | `allowAll` or `denyAll` combined with a non-empty `allowedOrigins`. |
+
+Errors from the backend name check are not prefixed with `schema validation failed` either. They name the problem directly:
+
+| Message | Cause |
+| --- | --- |
+| `duplicate backend orders` | Two router backends have the same `name`. |
+| `auth.scheme.mappings.0.backend - unknown backend "ordres", it must match a gateway.router.backends name` | A mapping names a backend that the router does not have, often because of a typo. The same message is used for `oas.mappings`. |
 
 Errors from the reference step and from JSON parsing are not prefixed with `schema validation failed`. They read like `environment variable not found: NAME`, `malformed env var reference: ...`, `referenced path was not found: ...` or a Go JSON message such as `invalid character '}' looking for beginning of object key string` (for example after a trailing comma).
 
@@ -345,7 +353,7 @@ kerberos --config /etc/kerberos/config.json
 
 ## Things to know
 
-- **Keep backend names in step.** Backend names in `auth.scheme.mappings` and `oas.mappings` must match a router backend exactly. Use `${ref:gateway.router.backends[n].name}` for these names, and check the flow with the admin API after changes (see [Admin API](./admin-api.md)).
+- **Keep backend names in step.** Backend names in `auth.scheme.mappings` and `oas.mappings` must match a router backend exactly, or Kerberos does not start (see [How the file is loaded](#how-the-file-is-loaded)). Use `${ref:gateway.router.backends[n].name}` for these names, and check the flow with the admin API after changes (see [Admin API](./admin-api.md)).
 - **Defaults are listed on each section's page.** Write values such as `order` and `validateBody` out in full so the file is easy to read.
 - **The config is read at startup.** Restart Kerberos to apply changes.
 

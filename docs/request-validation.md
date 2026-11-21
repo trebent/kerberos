@@ -57,7 +57,7 @@ You can use a [config reference](./configuration.md) such as `"${ref:gateway.rou
 | Key | Type | Default | Description |
 |---|---|---|---|
 | `oas.mappings` | array | (required) | One entry per backend to validate. At least one entry is required. |
-| `oas.mappings[].backend` | string | (required) | Name of a backend from `gateway.router.backends`. Must match exactly. |
+| `oas.mappings[].backend` | string | (required) | Name of a backend from `gateway.router.backends`. Must match exactly, or Kerberos does not start (see [Configuration](./configuration.md#how-the-file-is-loaded)). |
 | `oas.mappings[].specification` | string | (required) | Path to the OpenAPI file (YAML or JSON). Relative paths are resolved against the working directory of the Kerberos process. |
 | `oas.mappings[].options` | object | `{ "validateBody": true }` when omitted | Validation options for this backend. Always set `validateBody` when you include `options`. |
 | `oas.mappings[].options.validateBody` | boolean | `true` when `options` is omitted, `false` when `options` is set without it | When `true`, request bodies are checked against the operation's `requestBody`. When `false`, any body, or no body, is accepted. Paths, methods and parameters are still checked. |
