@@ -224,7 +224,7 @@ X-Echo-Server: true
 
 - `url` is `/hello`: the gateway prefix was stripped.
 - Kerberos added `X-Krb-Org` and `X-Krb-User`, the numeric IDs of the caller's organisation and user. Backends use these to identify the caller. See [Authentication](./authentication.md).
-- The client's headers, including `Cookie`, are forwarded unchanged.
+- The client's other headers are forwarded unchanged. The Kerberos `session`, `refresh` and `csrf` cookies are removed (see [Routing](./routing.md#what-is-forwarded)).
 
 The session lasts 15 minutes (see [Sessions](./sessions.md#server-side-session-lifetime)). Log out with:
 

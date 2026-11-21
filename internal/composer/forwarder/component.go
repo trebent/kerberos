@@ -16,6 +16,7 @@ import (
 	"github.com/trebent/kerberos/internal/config"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
+	"github.com/trebent/kerberos/internal/security"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 )
@@ -180,7 +181,8 @@ func (f *forwarder) handleInbound(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	forwardRequest.Header = req.Header
+	forwardRequest.Header = req.Header.Clone()
+	security.StripKerberosCookies(forwardRequest.Header)
 	otel.GetTextMapPropagator().
 		Inject(req.Context(), propagation.HeaderCarrier(forwardRequest.Header))
 

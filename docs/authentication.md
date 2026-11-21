@@ -152,7 +152,7 @@ On requests that pass the session check, Kerberos adds these headers before forw
 
 These headers are added on protected paths, not on unmapped backends or exempt paths. If your backend needs the user's groups on every protected path, configure `authorization.groups` for the backend.
 
-All other request headers, including the `Cookie` header with the session cookie, are forwarded to the backend as well.
+All other request headers are forwarded to the backend as well, except the Kerberos cookies (see [Routing](./routing.md#what-is-forwarded)).
 
 ### Reading the headers in a Go backend
 

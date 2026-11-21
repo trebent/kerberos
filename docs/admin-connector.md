@@ -33,8 +33,9 @@ Things to know about the check:
 
 ### What is forwarded
 
-The request reaches the target with the same method, path, query string, body and headers, including the `Cookie` header. Differences from the original request:
+The request reaches the target with the same method, path, query string, body and headers. Differences from the original request:
 
+- The Kerberos `session`, `refresh` and `csrf` cookies are removed from the `Cookie` header. The target's own cookies are forwarded.
 - The `Host` header is set to the target's host.
 - Incoming `X-Forwarded-For`, `X-Forwarded-Host`, `X-Forwarded-Proto` and `Forwarded` headers are removed.
 - When observability is enabled, trace context headers (`traceparent`) are added so the target can join the trace.
