@@ -1,7 +1,7 @@
 {
   "admin": {
     "superUser": {
-      "clientSecret": "kerberos-dev-secret"
+      "clientSecret": "generated-superuser-secret"
     }
   },
   "auth": {

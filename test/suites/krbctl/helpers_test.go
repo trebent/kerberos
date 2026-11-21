@@ -4,9 +4,51 @@ import (
 	"bytes"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"testing"
 )
+
+// goldenSuperUserSecret stands in for the random superuser secret in golden krb.json files.
+const goldenSuperUserSecret = "generated-superuser-secret"
+
+// superUserSecretPattern matches the clientSecret line krbctl writes: 43 URL-safe characters.
+var superUserSecretPattern = regexp.MustCompile(`"clientSecret": "([A-Za-z0-9_-]{43})"`)
+
+// superUserSecret returns the generated superuser secret in the krb.json at path.
+func superUserSecret(t *testing.T, path string) string {
+	t.Helper()
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read generated file %s: %v", path, err)
+	}
+
+	m := superUserSecretPattern.FindSubmatch(data)
+	if m == nil {
+		t.Fatalf("%s has no generated superuser secret\n%s", path, data)
+	}
+
+	return string(m[1])
+}
+
+// replaceSuperUserSecret swaps the random superuser secret in the krb.json at path for
+// goldenSuperUserSecret, so the file can be compared with a golden fixture.
+func replaceSuperUserSecret(t *testing.T, path string) {
+	t.Helper()
+
+	secret := superUserSecret(t, path)
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read generated file %s: %v", path, err)
+	}
+
+	data = bytes.Replace(data, []byte(secret), []byte(goldenSuperUserSecret), 1)
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatalf("write generated file %s: %v", path, err)
+	}
+}
 
 // runKrbctl runs the krbctl binary with the given args, failing the test on a
 // non-zero exit and surfacing the combined output for diagnostics.
