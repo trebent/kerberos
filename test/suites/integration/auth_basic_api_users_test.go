@@ -3,6 +3,7 @@ package integration
 import (
 	"net/http"
 	"slices"
+	"strings"
 	"testing"
 
 	lib "github.com/trebent/kerberos/test/suites/lib"
@@ -331,11 +332,11 @@ func TestBasicAuthUserCreateOASValidation(t *testing.T) {
 	lib.VerifyStatusCode(shortPasswordResp.StatusCode(), http.StatusBadRequest, t)
 	lib.VerifyAuthBasicAPIErrorResponse(shortPasswordResp.JSON400, t)
 
-	// Password above maxLength: 40 — must be rejected.
+	// Password above maxLength: 64 — must be rejected.
 	longPasswordResp, err := lib.BasicAuthClient.CreateUserWithResponse(
 		t.Context(),
 		authbasicapi.Orgid(alwaysOrgID),
-		authbasicapi.CreateUserJSONRequestBody{Name: lib.Username(), Password: "this-password-is-way-too-long-for-the-schema-limits"},
+		authbasicapi.CreateUserJSONRequestBody{Name: lib.Username(), Password: strings.Repeat("a", 65)},
 		authbasicapi.RequestEditorFn(superRequestEditor),
 	)
 	lib.CheckErr(err, t)
@@ -438,6 +439,20 @@ func TestBasicAuthUserChangePasswordOASValidation(t *testing.T) {
 	)
 	lib.CheckErr(err, t)
 	lib.VerifyStatusCode(shortNewPwResp.StatusCode(), http.StatusBadRequest, t)
+
+	// new password above maxLength: 64 — must be rejected.
+	longNewPwResp, err := lib.BasicAuthClient.ChangePasswordWithResponse(
+		t.Context(),
+		authbasicapi.Orgid(alwaysOrgID),
+		authbasicapi.Userid(alwaysUserID),
+		authbasicapi.ChangePasswordJSONRequestBody{
+			OldPassword: "validoldpassword",
+			Password:    strings.Repeat("a", 65),
+		},
+		authbasicapi.RequestEditorFn(superRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(longNewPwResp.StatusCode(), http.StatusBadRequest, t)
 }
 
 // TestBasicAuthUserNoSession verifies that every user-scoped endpoint returns 401 with a populated

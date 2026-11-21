@@ -45,7 +45,7 @@ components:
               password:
                 type: string
                 minLength: 10
-                maxLength: 40
+                maxLength: 64
             required:
               - name
               - password
@@ -782,6 +782,7 @@ paths:
                 password:
                   type: string
                   minLength: 10
+                  maxLength: 64
               required:
                 - oldPassword
                 - password

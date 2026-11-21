@@ -2,6 +2,7 @@ package integration
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	lib "github.com/trebent/kerberos/test/suites/lib"
@@ -21,6 +22,47 @@ func TestAdminUserCreate(t *testing.T) {
 	)
 	lib.CheckErr(err, t)
 	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+}
+
+// TestAdminUserPasswordLength verifies that admin passwords outside 10 to 64 characters are
+// rejected when creating a user and when changing a password, and that 64 characters work.
+func TestAdminUserPasswordLength(t *testing.T) {
+	t.Parallel()
+	superRequestEditor := lib.SuperLogin(t)
+
+	for _, pw := range []string{"123456789", strings.Repeat("a", 65)} {
+		resp, err := lib.AdminClient.CreateUserWithResponse(
+			t.Context(),
+			adminapi.CreateUserJSONRequestBody{Username: lib.Username(), Password: pw},
+			adminapi.RequestEditorFn(superRequestEditor),
+		)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(resp.StatusCode(), http.StatusBadRequest, t)
+		lib.VerifyAdminAPIErrorResponse(resp.JSON400, t)
+	}
+
+	name, longest := lib.Username(), strings.Repeat("a", 64)
+	createResp, err := lib.AdminClient.CreateUserWithResponse(
+		t.Context(),
+		adminapi.CreateUserJSONRequestBody{Username: name, Password: longest},
+		adminapi.RequestEditorFn(superRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+
+	userRequestEditor := lib.AdminUserLogin(t, name, longest)
+
+	for _, pw := range []string{"123456789", strings.Repeat("a", 65)} {
+		resp, err := lib.AdminClient.ChangeUserPasswordWithResponse(
+			t.Context(),
+			createResp.JSON201.Id,
+			adminapi.ChangeUserPasswordJSONRequestBody{OldPassword: longest, NewPassword: pw},
+			adminapi.RequestEditorFn(userRequestEditor),
+		)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(resp.StatusCode(), http.StatusBadRequest, t)
+		lib.VerifyAdminAPIErrorResponse(resp.JSON400, t)
+	}
 }
 
 // TestAdminUserCreateConflict verifies that creating a duplicate admin username is rejected.
