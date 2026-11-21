@@ -1,0 +1,21 @@
+{
+  "gateway": {
+    "router": {
+      "backends": [
+        {
+          "name": "backend1",
+          "host": "localhost",
+          "port": 8080
+        }
+      ]
+    }
+  },
+  "oas": {
+    "mappings": [
+      {
+        "backend": "bakcend1",
+        "specification": "./testconfig/oas_spec.yaml"
+      }
+    ]
+  }
+}

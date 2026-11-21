@@ -42,7 +42,7 @@ The smallest working config has one backend:
 }
 ```
 
-With this file, Kerberos forwards `/gw/backend/echo/...` on the gateway port to `http://localhost:15000/...`. Every section you leave out takes the defaults documented on its own page. Two of them matter before you expose Kerberos: the Admin API always runs and creates a superuser with default credentials that you should change (see [Admin API: the superuser](./admin-api.md#the-superuser)), and data is kept in a local SQLite file (see [Persistence](./persistence.md)).
+Every section you leave out takes the defaults documented on its own page. Two of them matter before you expose Kerberos: `admin.superUser` has default credentials that you should change (see [Admin API: the superuser](./admin-api.md#the-superuser)), and `persistence` defaults to a local SQLite file (see [Persistence](./persistence.md)).
 
 ## Root keys
 
@@ -51,7 +51,7 @@ This page owns the top level of the file. Each section is documented on one page
 | Key | Required | What it configures | Documented in |
 | --- | --- | --- | --- |
 | `gateway` | yes | The backends behind the gateway (`router`) and HTTPS on the gateway port (`tls`). | [Routing](./routing.md) (`gateway.router`), [TLS](./tls.md) (`gateway.tls`) |
-| `admin` | no | The first superuser (`superUser`) and the Admin API's cookies, origins and HTTPS (`api`). The Admin API runs whether or not this section is present. | [Admin API](./admin-api.md) |
+| `admin` | no | The first superuser (`superUser`) and the Admin API's cookies, origins and HTTPS (`api`). | [Admin API](./admin-api.md) |
 | `auth` | no | Which backends need a login, which groups they require, and the basic-auth API. Leave it out to turn authentication off. | [Authentication](./authentication.md) |
 | `oas` | no | Validating requests against each backend's OpenAPI specification. Leave it out to turn validation off. | [Request validation](./request-validation.md) |
 | `observability` | no | Turning OpenTelemetry metrics and tracing on or off. | [Observability](./observability.md) |
@@ -76,11 +76,10 @@ Loading happens once, at startup, in this order:
 
 1. **Resolve references.** Every `${env:...}` and `${ref:...}` reference is replaced with its value. See [References](#references).
 2. **Validate against the JSON schema.** The resolved document is checked against the schema files in [`internal/config/schemas/`](#schema-files). This step checks structure only: required keys, types, enums, ranges and unknown keys.
-3. **Apply defaults.** Kerberos fills in values for settings you left out. Each section's page lists its defaults.
+3. **Check backend names.** Each name in `gateway.router.backends` must be unique, and every `backend` in `auth.scheme.mappings` and `oas.mappings` must match one of them exactly.
+4. **Apply defaults.** Kerberos fills in values for settings you left out. Each section's page lists its defaults.
 
-Any failure in steps 1 or 2 stops the process with exit status 1 before it opens any port. Kerberos then loads certificates, keys and OpenAPI files and connects to the database. A problem there also stops the process with a message that names the cause.
-
-Because references are resolved before validation, the schema checks the final values. A port that comes from an environment variable must still be a number in range.
+Any failure in steps 1 to 3 stops the process with exit status 1.
 
 ## References
 
@@ -201,8 +200,8 @@ Common messages:
 | `gateway.router.backends.0.port - Must be greater than or equal to 1` | A value is out of range. |
 | `admin.api.cookies.sameSite - admin.api.cookies.sameSite must be one of the following: "Strict", "Lax", "None"` | Enum values are case-sensitive: `Lax`, not `lax`. |
 | `gateway.router.backends.0.origins.allowedOrigins - Array must have at most 0 items` | `allowAll` or `denyAll` combined with a non-empty `allowedOrigins`. |
-
-Errors from the reference step and from JSON parsing are not prefixed with `schema validation failed`. They read like `environment variable not found: NAME`, `malformed env var reference: ...`, `referenced path was not found: ...` or a Go JSON message such as `invalid character '}' looking for beginning of object key string` (for example after a trailing comma).
+| `duplicate backend orders` | Two router backends have the same `name`. |
+| `auth.scheme.mappings.0.backend - unknown backend "ordres", it must match a gateway.router.backends name` | A mapping names a backend that the router does not have, often because of a typo. The same message is used for `oas.mappings`. |
 
 ## Complete example
 
@@ -323,9 +322,9 @@ This example uses every section: two backends (one over mTLS), HTTPS on both por
 
 Section by section:
 
-- **`gateway.tls`** and **`admin.api.tls`**: both ports serve HTTPS only. The admin port also serves the basic-auth API. See [TLS](./tls.md).
+- **`gateway.tls`** and **`admin.api.tls`**: both ports serve HTTPS only. See [TLS](./tls.md).
 - **`orders` backend**: reached at `/gw/backend/orders/...` (see [Routing](./routing.md) for naming rules). The timeout is an **unquoted** reference, so it resolves to a number. Keep it below the server write timeout (see [Deployment: timeouts](./deployment.md#timeouts)). Browser calls are allowed only from `https://app.example.com` (see [CORS](./cors.md)).
-- **`billing` backend**: Kerberos connects over HTTPS, checks the backend's certificate against `internal-ca.pem` and presents its own client certificate (mTLS). See [TLS](./tls.md).
+- **`billing` backend**: uses mTLS. `rootCAFile` is the CA for the backend's certificate, and `clientCertFile` and `clientKeyFile` are Kerberos's own client certificate. See [TLS](./tls.md).
 - **`admin.superUser`**: the secret has no fallback in its reference, so startup fails if `KRB_SUPERUSER_SECRET` is not set. See [Admin API: the superuser](./admin-api.md#the-superuser) for when these values are used.
 - **`auth`**: both backends need a basic-auth login. On `orders`, paths matching `/public/*` need no login, every other path needs membership of `staff`, and `/refunds/*` needs `finance`. The `backend` values are field references, so they always match the router names. See [Authentication](./authentication.md).
 - **`order`**: authentication (`1`) runs before validation (`100`). See [Routing: pipeline order](./routing.md#pipeline-order).
@@ -345,13 +344,12 @@ kerberos --config /etc/kerberos/config.json
 
 ## Things to know
 
-- **Keep backend names in step.** Backend names in `auth.scheme.mappings` and `oas.mappings` must match a router backend exactly. Use `${ref:gateway.router.backends[n].name}` for these names, and check the flow with the admin API after changes (see [Admin API](./admin-api.md)).
 - **Defaults are listed on each section's page.** Write values such as `order` and `validateBody` out in full so the file is easy to read.
 - **The config is read at startup.** Restart Kerberos to apply changes.
 
 ## Schema files
 
-The JSON Schema (draft-07) files under `internal/config/schemas/` are the full reference for every key, type, enum, range and required field. Kerberos embeds them in the binary at build time.
+The JSON Schema (draft-07) files under `internal/config/schemas/` are the full reference for every key, type, enum, range and required field.
 
 | File | Covers | Documented in |
 | --- | --- | --- |
