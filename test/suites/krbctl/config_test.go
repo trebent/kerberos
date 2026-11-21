@@ -22,6 +22,7 @@ func TestConfigNonInteractive(t *testing.T) {
 		"--driver", "postgres",
 		"--obs-stack",
 		"--connector",
+		"--superuser-secret", "kerberos-dev-secret",
 		"-o", dir)
 
 	files := []string{
@@ -314,4 +315,22 @@ func TestConfigConnectorScrapeTarget(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestConfigSuperUserSecret checks that krbctl generates a valid superuser secret when none is
+// given, and rejects a given secret outside the allowed length.
+func TestConfigSuperUserSecret(t *testing.T) {
+	t.Run("generated", func(t *testing.T) {
+		dir := t.TempDir()
+		runKrbctl(t, "config", "-y", "--echo", "-o", dir)
+
+		krb := filepath.Join(dir, "krb.json")
+		assertFileContains(t, krb, `"clientSecret": "`)
+		assertOutputContains(t, runKrbctlOutput(t, "validate", "kerberos", krb), krb+": ok")
+	})
+
+	t.Run("too short", func(t *testing.T) {
+		out := runKrbctlFailure(t, "config", "-y", "--echo", "--superuser-secret", "short", "-o", t.TempDir())
+		assertOutputContains(t, out, "superuser secret must be 10 to 64 characters")
+	})
 }

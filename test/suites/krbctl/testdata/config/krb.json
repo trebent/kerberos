@@ -1,4 +1,9 @@
 {
+  "admin": {
+    "superUser": {
+      "clientSecret": "kerberos-dev-secret"
+    }
+  },
   "auth": {
     "methods": {
       "basic": {}

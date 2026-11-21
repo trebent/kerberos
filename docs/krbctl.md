@@ -175,8 +175,9 @@ Interactive mode runs in a terminal. If you cancel a prompt (for example with Ct
 | `--scrape-target` | Kerberos, all backends, and Jaeger, Loki and the connector when included | Prometheus scrape target. Repeatable. If you pass any, only those are used. |
 | `--connector` | `false` | Generate `connector.json` for the admin-connector. |
 | `--connector-allow-all-origins` | `true` | `true` writes `"allowAll": true`. `false` writes `"denyAll": true`. |
+| `--superuser-secret` | random | Initial superuser password, 10 to 64 characters. If you leave it out, `krbctl` generates a random 43-character password. Any other length stops `krbctl` with an error. |
 
-All flags except `-o` and `-y` are only used with `-y`. Without `-y` you are asked the questions instead.
+All flags except `-o`, `-y` and `--superuser-secret` are only used with `-y`. Without `-y` you are asked the questions instead.
 
 #### `--backend` syntax
 
@@ -207,6 +208,7 @@ The scrape targets also decide which Grafana dashboards are generated; see [Othe
 
 ### What `krb.json` contains
 
+- `admin.superUser.clientSecret`: the initial superuser password, from `--superuser-secret` or generated at random. Log in as the superuser with client ID `admin` and this password. See [Admin API: the superuser](./admin-api.md#the-superuser).
 - `gateway.router.backends`: one entry per backend with `name`, `host` and `port`.
 - `observability`: always `{"enabled": true, "runtimeMetrics": true}`. Whether anything is exported depends on the `OTEL_*` variables in `compose.yaml`.
 - `auth`: only if at least one backend has auth enabled. It enables the `basic` method, adds one mapping per protected backend with `method: "basic"` and an empty `exempt` list, and sets `order: 1`. See [Authentication](./authentication.md).
@@ -214,12 +216,15 @@ The scrape targets also decide which Grafana dashboards are generated; see [Othe
   - SQLite: `{"driver": "sqlite", "address": "/krbdata/krb.db"}`
   - PostgreSQL: `{"driver": "postgres", "address": "postgres:5432", "postgres": {"database": "kerberos", "username": "kerberos", "password": "kerberos", "sslMode": "disable"}}`
 
-`krb.json` has no `admin` section, so the superuser is created with the [default credentials](./admin-api.md#the-superuser). See [What to change afterwards](#what-to-change-afterwards).
-
 Example from `krbctl config -y --echo`:
 
 ```json
 {
+  "admin": {
+    "superUser": {
+      "clientSecret": "<random secret>"
+    }
+  },
   "gateway": {
     "router": {
       "backends": [
@@ -360,7 +365,7 @@ Log in as the superuser so the connector lets you through. The session cookie is
 ```bash
 curl -i -c cookies.txt -X POST http://localhost:30001/api/admin/superuser/login \
   -H 'Content-Type: application/json' \
-  -d '{"clientId":"admin","clientSecret":"secret"}'
+  -d '{"clientId":"admin","clientSecret":"<superuser secret>"}'
 ```
 
 In this example, the `orders` backend is protected with basic auth but has no service in `compose.yaml`. Add an `orders` service listening on port `8000`, or Kerberos cannot reach it. Its Prometheus job (`orders:9464`) only gets data if the service exposes metrics on that port.
@@ -369,7 +374,7 @@ In this example, the `orders` backend is protected with basic auth but has no se
 
 The generated files are a starting point for local and test setups. Before using them for anything else:
 
-- **Change the superuser secret.** See [Admin API: the superuser](./admin-api.md#the-superuser).
+- **Change the superuser password** after the first start. See [Admin API: the superuser](./admin-api.md#the-superuser).
 - **Change the database passwords.** PostgreSQL uses `kerberos` / `kerberos` in `compose.yaml`, `krb.json`, `connector.json` and `grafana/grafana.ini`, with `sslMode: disable`. See [Persistence](./persistence.md).
 - **Point to real backends.** Edit `gateway.router.backends` in `krb.json` and add auth mappings as needed. See [Routing](./routing.md) and [Authentication](./authentication.md).
 - **Enable TLS.** Login cookies need HTTPS on any host other than `localhost`. See [TLS](./tls.md) and [Sessions](./sessions.md).
