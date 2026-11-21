@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"slices"
 	"time"
 
@@ -1135,7 +1136,11 @@ func BootstrapSuperuser(client db.SQLClient, clientID, clientSecret string) erro
 		zerologr.Info("No super user found, creating one with the provided credentials")
 
 		// No super user exists, create one with the provided credentials.
-		_, salt, hashedPassword := password.Make(clientSecret)
+		_, salt, hashedPassword, err := password.Make(clientSecret)
+		if err != nil {
+			return fmt.Errorf("bootstrap superuser: %w", err)
+		}
+
 		if _, err := client.Exec(
 			context.TODO(),
 			insertSuperuser,

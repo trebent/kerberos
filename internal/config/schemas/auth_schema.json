@@ -106,30 +106,8 @@
       "$ref": "http://trebent.com/kerberos/schemas/ordered_schema.json"
     }
   },
-  "allOf": [
-    {
-      "if": {
-        "required": [
-          "methods"
-        ]
-      },
-      "then": {
-        "required": [
-          "scheme"
-        ]
-      }
-    },
-    {
-      "if": {
-        "required": [
-          "scheme"
-        ]
-      },
-      "then": {
-        "required": [
-          "methods"
-        ]
-      }
-    }
+  "required": [
+    "methods",
+    "scheme"
   ]
 }

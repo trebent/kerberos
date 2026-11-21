@@ -369,7 +369,8 @@ Go's cookie jar sends `Secure` cookies over plain HTTP only to `localhost`; for 
 ## Things to know
 
 - **Platform administrators use their own user ID routes.** They log in through the Admin API, so
-  they use `GET .../users/{userID}` rather than `GET .../users/me`, and log out through the Admin API.
+  they use `GET .../users/{userID}` rather than `GET .../users/me`, and log out through the Admin API. With an
+  admin session, `GET .../users/me` and `POST .../logout` respond `401`.
 - **Deletes always succeed.** Deleting an organisation, user or group returns `204`, also when it is
   already gone.
 - **Keep names short.** Names can be up to 100 characters. The administrator is named

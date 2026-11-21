@@ -244,7 +244,12 @@ func (i *impl) ChangePassword(
 		return authbasicapi.ChangePassword401JSONResponse(apiErrUnauthorized), nil
 	}
 
-	_, newSalt, newHashedPassword := password.Make(req.Body.Password)
+	_, newSalt, newHashedPassword, err := password.Make(req.Body.Password)
+	if err != nil {
+		zerologr.Error(err, "Failed to hash user password")
+		return authbasicapi.ChangePassword500JSONResponse(apiErrInternal), nil
+	}
+
 	if err := dbUpdateUserPassword(ctx, i.db, req.UserID, newSalt, newHashedPassword); err != nil {
 		zerologr.Error(err, "Failed to update user password")
 		return authbasicapi.ChangePassword500JSONResponse(apiErrInternal), nil
@@ -305,7 +310,12 @@ func (i *impl) CreateUser(
 	ctx context.Context,
 	req authbasicapi.CreateUserRequestObject,
 ) (authbasicapi.CreateUserResponseObject, error) {
-	_, salt, hashedPassword := password.Make(req.Body.Password)
+	_, salt, hashedPassword, err := password.Make(req.Body.Password)
+	if err != nil {
+		zerologr.Error(err, "Failed to hash user password")
+		return authbasicapi.CreateUser500JSONResponse(apiErrInternal), nil
+	}
+
 	id, err := dbCreateUser(ctx, i.db, req.Body.Name, salt, hashedPassword, req.OrgID)
 	if err != nil {
 		if errors.Is(err, db.ErrUnique) {

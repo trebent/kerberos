@@ -236,7 +236,8 @@ func newPersistenceConfig() *Persistence {
 }
 
 // Validate runs the semantic checks that the JSON schema cannot express: backend names must be
-// unique, and every auth and OAS mapping must name a backend that the router knows.
+// unique, every auth and OAS mapping must name a backend that the router knows, and every auth
+// mapping must use a method configured under auth.methods.
 func (kc *Kerberos) Validate() error {
 	backends := make(map[string]struct{}, len(kc.GatewayCfg.Router.Backends))
 
@@ -255,6 +256,13 @@ func (kc *Kerberos) Validate() error {
 		for i, m := range kc.AuthCfg.Scheme.Mappings {
 			if _, ok := backends[m.Backend]; !ok {
 				return fmt.Errorf(unknownBackend, "auth.scheme.mappings", i, m.Backend)
+			}
+
+			if !kc.AuthCfg.Methods.configured(m.Method) {
+				return fmt.Errorf(
+					"auth.scheme.mappings.%d.method - method %q is not configured in auth.methods",
+					i, m.Method,
+				)
 			}
 		}
 	}
@@ -295,6 +303,16 @@ func (kc *Kerberos) AuthEnabled() bool {
 // OASEnabled returns true if OAS validation is enabled.
 func (kc *Kerberos) OASEnabled() bool {
 	return kc.OASCfg != nil
+}
+
+// configured reports whether the named method is set up under auth.methods.
+func (am *AuthMethods) configured(method string) bool {
+	switch method {
+	case "basic":
+		return am != nil && am.Basic != nil
+	default:
+		return false
+	}
 }
 
 func (ac *Auth) postProcess() {

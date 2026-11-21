@@ -423,7 +423,11 @@ func (i *impl) CreateUser(
 		return adminapi.CreateUser403JSONResponse(apiErrForbidden), nil
 	}
 
-	_, salt, hashedPassword := password.Make(request.Body.Password)
+	_, salt, hashedPassword, err := password.Make(request.Body.Password)
+	if err != nil {
+		zerologr.Error(err, "Failed to hash admin user password")
+		return adminapi.CreateUser500JSONResponse(apiErrInternal), nil
+	}
 
 	id, err := admindb.CreateUser(
 		ctx,
@@ -643,7 +647,12 @@ func (i *impl) ChangeUserPassword(
 		return adminapi.ChangeUserPassword400JSONResponse(apiErrUnauthorized), nil
 	}
 
-	_, newSalt, newHashed := password.Make(request.Body.NewPassword)
+	_, newSalt, newHashed, err := password.Make(request.Body.NewPassword)
+	if err != nil {
+		zerologr.Error(err, "Failed to hash admin user password")
+		return adminapi.ChangeUserPassword500JSONResponse(apiErrInternal), nil
+	}
+
 	if err := admindb.UpdateUserPassword(
 		ctx,
 		i.sqlClient,
@@ -676,7 +685,12 @@ func (i *impl) ChangeSuperuserPassword(
 		return adminapi.ChangeSuperuserPassword400JSONResponse(apiErrUnauthorized), nil
 	}
 
-	_, newSalt, newHashed := password.Make(request.Body.NewPassword)
+	_, newSalt, newHashed, err := password.Make(request.Body.NewPassword)
+	if err != nil {
+		zerologr.Error(err, "Failed to hash superuser password")
+		return adminapi.ChangeSuperuserPassword500JSONResponse(apiErrInternal), nil
+	}
+
 	if err := admindb.UpdateSuperuserPassword(
 		ctx,
 		i.sqlClient,

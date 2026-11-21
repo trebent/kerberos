@@ -49,6 +49,14 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 				return f(ctx, w, r, request)
 			}
 
+			// GetMe and Logout act on the caller's own user session. Admin sessions have none, and
+			// the admin checks below would let them through without a user in the context.
+			ownSessionPath := operationID == "GetMe" || operationID == "Logout"
+			if ownSessionPath && admin.ContextSessionValid(ctx) {
+				zerologr.V(20).Info("Denying admin session access to a user session path")
+				return nil, apierror.ErrUnauthorized
+			}
+
 			if admin.IsSuperUserContext(ctx) {
 				zerologr.V(20).Info("Permitting super user access")
 				return f(ctx, w, r, request)
