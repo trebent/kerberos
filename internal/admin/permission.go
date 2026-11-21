@@ -17,6 +17,7 @@ const (
 	PermissionIDAdminUserMgmtAdmin  = int64(5)
 	PermissionIDAdminUserMgmtViewer = int64(6)
 	PermissionIDDebugger            = int64(7)
+	PermissionIDPasswordReset       = int64(8)
 
 	// Permission names.
 
@@ -27,6 +28,7 @@ const (
 	PermissionNameAdminUserMgmtAdmin  = "admin-user-mgmt-admin"
 	PermissionNameAdminUserMgmtViewer = "admin-user-mgmt-viewer"
 	PermissionNameDebugger            = "debugger"
+	PermissionNamePasswordReset       = "password-reset"
 )
 
 // ContextSessionValid reports whether the context contains an admin session.
@@ -104,4 +106,9 @@ func ContextIsAdminUserMgmtViewer(ctx context.Context) bool {
 // ContextIsDebugger reports whether the calling admin user has the debugger permission.
 func ContextIsDebugger(ctx context.Context) bool {
 	return ContextHasPermission(ctx, PermissionIDDebugger)
+}
+
+// ContextCanResetPasswords reports whether the calling admin user has the password-reset permission.
+func ContextCanResetPasswords(ctx context.Context) bool {
+	return ContextHasPermission(ctx, PermissionIDPasswordReset)
 }

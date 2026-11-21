@@ -552,6 +552,61 @@ func TestDBUsers(t *testing.T) {
 		}
 	})
 
+	t.Run("reset password ends sessions", func(t *testing.T) {
+		userID := mustCreateAdminUser(t, uniqueName(t, "user-reset"))
+		otherID := mustCreateAdminUser(t, uniqueName(t, "user-reset-other"))
+
+		sessionIDs := []string{uniqueName(t, "reset-a"), uniqueName(t, "reset-b")}
+		for _, id := range sessionIDs {
+			if err := CreateSession(ctx, testClient, userID, id+"-refresh", id); err != nil {
+				t.Fatalf("CreateSession error: %v", err)
+			}
+		}
+
+		otherSession := uniqueName(t, "reset-other")
+		if err := CreateSession(ctx, testClient, otherID, otherSession+"-refresh", otherSession); err != nil {
+			t.Fatalf("CreateSession error: %v", err)
+		}
+
+		if err := ResetUserPassword(ctx, testClient, userID, "resetsalt", "resethash"); err != nil {
+			t.Fatalf("ResetUserPassword error: %v", err)
+		}
+
+		auth, err := GetUserAuth(ctx, testClient, userID)
+		if err != nil {
+			t.Fatalf("GetUserAuth error: %v", err)
+		}
+		if auth.Salt != "resetsalt" || auth.HashedPassword != "resethash" {
+			t.Fatalf("expected the reset password, got salt %q hash %q", auth.Salt, auth.HashedPassword)
+		}
+
+		for _, id := range sessionIDs {
+			if _, err := GetSession(ctx, testClient, id); !errors.Is(err, db.ErrRowNotFound) {
+				t.Fatalf("expected session %q to be deleted, got %v", id, err)
+			}
+		}
+
+		if _, err := GetSession(ctx, testClient, otherSession); err != nil {
+			t.Fatalf("expected another user's session to remain, got %v", err)
+		}
+	})
+
+	t.Run("reset password not found", func(t *testing.T) {
+		if err := ResetUserPassword(ctx, testClient, 999999, "s", "h"); !errors.Is(err, db.ErrRowNotFound) {
+			t.Fatalf("expected db.ErrRowNotFound, got %v", err)
+		}
+
+		superuser, err := GetSuperuser(ctx, testClient)
+		if err != nil {
+			t.Fatalf("GetSuperuser error: %v", err)
+		}
+
+		err = ResetUserPassword(ctx, testClient, superuser.ID, "s", "h")
+		if !errors.Is(err, db.ErrRowNotFound) {
+			t.Fatalf("expected the superuser to be out of reach, got %v", err)
+		}
+	})
+
 	t.Run("update superuser password", func(t *testing.T) {
 		oldSuperuser, err := GetSuperuser(ctx, testClient)
 		if err != nil {

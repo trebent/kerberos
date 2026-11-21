@@ -259,6 +259,11 @@ type LoginUserRequest struct {
 	Username string `json:"username"`
 }
 
+// ResetPasswordRequest defines model for ResetPasswordRequest.
+type ResetPasswordRequest struct {
+	NewPassword string `json:"newPassword"`
+}
+
 // StartDebugSessionRequest defines model for StartDebugSessionRequest.
 type StartDebugSessionRequest struct {
 	// DurationSeconds Duration in seconds to keep the backend in debug mode. If not provided, the backend will be kept in debug mode until debug is disabled, or for a maximum of 1 hour. Minimum is 1 minute, defaults to 5 minutes.
@@ -350,6 +355,11 @@ type ChangeUserPasswordJSONBody struct {
 	OldPassword string `json:"oldPassword"`
 }
 
+// ResetUserPasswordJSONBody defines parameters for ResetUserPassword.
+type ResetUserPasswordJSONBody struct {
+	NewPassword string `json:"newPassword"`
+}
+
 // StartDebugSessionJSONRequestBody defines body for StartDebugSession for application/json ContentType.
 type StartDebugSessionJSONRequestBody StartDebugSessionJSONBody
 
@@ -382,6 +392,9 @@ type UpdateUserGroupsJSONRequestBody UpdateUserGroupsJSONBody
 
 // ChangeUserPasswordJSONRequestBody defines body for ChangeUserPassword for application/json ContentType.
 type ChangeUserPasswordJSONRequestBody ChangeUserPasswordJSONBody
+
+// ResetUserPasswordJSONRequestBody defines body for ResetUserPassword for application/json ContentType.
+type ResetUserPasswordJSONRequestBody ResetUserPasswordJSONBody
 
 // AsFlowMetaDataObservability returns the union data inside the FlowMeta_Data as a FlowMetaDataObservability
 func (t FlowMeta_Data) AsFlowMetaDataObservability() (FlowMetaDataObservability, error) {
@@ -618,6 +631,9 @@ type ServerInterface interface {
 
 	// (PUT /api/admin/users/{userID}/password)
 	ChangeUserPassword(w http.ResponseWriter, r *http.Request, userID int)
+
+	// (PUT /api/admin/users/{userID}/password/reset)
+	ResetUserPassword(w http.ResponseWriter, r *http.Request, userID int)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -1346,6 +1362,32 @@ func (siw *ServerInterfaceWrapper) ChangeUserPassword(w http.ResponseWriter, r *
 	handler.ServeHTTP(w, r)
 }
 
+// ResetUserPassword operation middleware
+func (siw *ServerInterfaceWrapper) ResetUserPassword(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "userID" -------------
+	var userID int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userID", r.PathValue("userID"), &userID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userID", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ResetUserPassword(w, r, userID)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -1477,6 +1519,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/admin/users/{userID}", wrapper.GetUser)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/api/admin/users/{userID}", wrapper.UpdateUser)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/api/admin/users/{userID}/password", wrapper.ChangeUserPassword)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/api/admin/users/{userID}/password/reset", wrapper.ResetUserPassword)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/api/admin/users/{userID}/groups", wrapper.UpdateUserGroups)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/admin/login", wrapper.Login)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/admin/logout", wrapper.Logout)
@@ -3958,6 +4001,93 @@ func (response ChangeUserPassword500JSONResponse) VisitChangeUserPasswordRespons
 	return err
 }
 
+type ResetUserPasswordRequestObject struct {
+	UserID int `json:"userID"`
+	Body   *ResetUserPasswordJSONRequestBody
+}
+
+type ResetUserPasswordResponseObject interface {
+	VisitResetUserPasswordResponse(w http.ResponseWriter) error
+}
+
+type ResetUserPassword204Response struct {
+}
+
+func (response ResetUserPassword204Response) VisitResetUserPasswordResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type ResetUserPassword400JSONResponse APIErrorResponse
+
+func (response ResetUserPassword400JSONResponse) VisitResetUserPasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResetUserPassword401JSONResponse APIErrorResponse
+
+func (response ResetUserPassword401JSONResponse) VisitResetUserPasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResetUserPassword403JSONResponse APIErrorResponse
+
+func (response ResetUserPassword403JSONResponse) VisitResetUserPasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResetUserPassword404JSONResponse APIErrorResponse
+
+func (response ResetUserPassword404JSONResponse) VisitResetUserPasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResetUserPassword500JSONResponse APIErrorResponse
+
+func (response ResetUserPassword500JSONResponse) VisitResetUserPasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
@@ -4053,6 +4183,9 @@ type StrictServerInterface interface {
 
 	// (PUT /api/admin/users/{userID}/password)
 	ChangeUserPassword(ctx context.Context, request ChangeUserPasswordRequestObject) (ChangeUserPasswordResponseObject, error)
+
+	// (PUT /api/admin/users/{userID}/password/reset)
+	ResetUserPassword(ctx context.Context, request ResetUserPasswordRequestObject) (ResetUserPasswordResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -4953,6 +5086,39 @@ func (sh *strictHandler) ChangeUserPassword(w http.ResponseWriter, r *http.Reque
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ChangeUserPasswordResponseObject); ok {
 		if err := validResponse.VisitChangeUserPasswordResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ResetUserPassword operation middleware
+func (sh *strictHandler) ResetUserPassword(w http.ResponseWriter, r *http.Request, userID int) {
+	var request ResetUserPasswordRequestObject
+
+	request.UserID = userID
+
+	var body ResetUserPasswordJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ResetUserPassword(ctx, request.(ResetUserPasswordRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ResetUserPassword")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ResetUserPasswordResponseObject); ok {
+		if err := validResponse.VisitResetUserPasswordResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

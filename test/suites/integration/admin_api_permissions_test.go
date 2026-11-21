@@ -19,6 +19,7 @@ const (
 	PermissionIDAdminUserMgmtAdmin  = 5
 	PermissionIDAdminUserMgmtViewer = 6
 	PermissionIDDebugger            = 7
+	PermissionIDPasswordReset       = 8
 
 	// Permission names.
 
@@ -29,6 +30,7 @@ const (
 	PermissionNameAdminUserMgmtAdmin  = "admin-user-mgmt-admin"
 	PermissionNameAdminUserMgmtViewer = "admin-user-mgmt-viewer"
 	PermissionNameDebugger            = "debugger"
+	PermissionNamePasswordReset       = "password-reset"
 )
 
 // --- GetPermissions ---
@@ -64,6 +66,7 @@ func TestAdminPermissionsGetPermissions(t *testing.T) {
 		PermissionIDAdminUserMgmtViewer: PermissionNameAdminUserMgmtViewer,
 		PermissionIDAdminUserMgmtAdmin:  PermissionNameAdminUserMgmtAdmin,
 		PermissionIDDebugger:            PermissionNameDebugger,
+		PermissionIDPasswordReset:       PermissionNamePasswordReset,
 	}
 	for id, name := range expected {
 		if nameByID[id] != name {
@@ -745,4 +748,67 @@ func TestAdminPermissionsDebuggerDenied(t *testing.T) {
 	lib.CheckErr(err, t)
 	lib.VerifyStatusCode(resp.StatusCode(), http.StatusForbidden, t)
 	lib.VerifyAdminAPIErrorResponse(resp.JSON403, t)
+}
+
+// --- Password reset ---
+
+// TestAdminPermissionsPasswordReset verifies that only holders of the password-reset permission can
+// reset an admin user's password, that the reset needs no old password, and that it ends the
+// user's sessions.
+func TestAdminPermissionsPasswordReset(t *testing.T) {
+	t.Parallel()
+	superRequestEditor := lib.SuperLogin(t)
+
+	const oldPass, newPass = "old-password-123", "new-password-123"
+	name := lib.Username()
+	createResp, err := lib.AdminClient.CreateUserWithResponse(
+		t.Context(),
+		adminapi.CreateUserJSONRequestBody{Username: name, Password: oldPass},
+		adminapi.RequestEditorFn(superRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+	targetID := createResp.JSON201.Id
+	targetRequestEditor := lib.AdminUserLogin(t, name, oldPass)
+
+	reset := func(editor lib.RequestEditorFn, userID int) *adminapi.ResetUserPasswordResponse {
+		t.Helper()
+		resp, err := lib.AdminClient.ResetUserPasswordWithResponse(
+			t.Context(),
+			userID,
+			adminapi.ResetUserPasswordJSONRequestBody{NewPassword: newPass},
+			adminapi.RequestEditorFn(editor),
+		)
+		lib.CheckErr(err, t)
+		return resp
+	}
+
+	// admin-user-mgmt-admin alone is not enough.
+	mgmtRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDAdminUserMgmtAdmin})
+	denied := reset(mgmtRequestEditor, targetID)
+	lib.VerifyStatusCode(denied.StatusCode(), http.StatusForbidden, t)
+	lib.VerifyAdminAPIErrorResponse(denied.JSON403, t)
+
+	resetRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDPasswordReset})
+
+	missing := reset(resetRequestEditor, 999999)
+	lib.VerifyStatusCode(missing.StatusCode(), http.StatusNotFound, t)
+	lib.VerifyAdminAPIErrorResponse(missing.JSON404, t)
+
+	ok := reset(resetRequestEditor, targetID)
+	lib.VerifyStatusCode(ok.StatusCode(), http.StatusNoContent, t)
+
+	// The target's existing session has ended.
+	meResp, err := lib.AdminClient.GetMeWithResponse(t.Context(), adminapi.RequestEditorFn(targetRequestEditor))
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(meResp.StatusCode(), http.StatusUnauthorized, t)
+
+	// The old password no longer works, the new one does.
+	oldLogin, err := lib.AdminClient.LoginWithResponse(
+		t.Context(),
+		adminapi.LoginJSONRequestBody{Username: name, Password: oldPass},
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(oldLogin.StatusCode(), http.StatusUnauthorized, t)
+	lib.AdminUserLogin(t, name, newPass)
 }
