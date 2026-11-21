@@ -3,6 +3,7 @@ package security
 import (
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 )
 
@@ -92,4 +93,69 @@ func TestSelectCORSMiddleware(t *testing.T) {
 			t.Errorf("Expected Access-Control-Allow-Origin header to be empty, got %s", w.Header().Get("Access-Control-Allow-Origin"))
 		}
 	})
+}
+
+func TestCORSVaryOrigin(t *testing.T) {
+	tests := []struct {
+		name           string
+		allowedOrigins []string
+		allowAll       bool
+		denyAll        bool
+		origin         string
+		wantVary       bool
+	}{
+		{
+			name:     "allowAll with origin",
+			allowAll: true,
+			origin:   "http://example.com",
+			wantVary: true,
+		},
+		{name: "allowAll without origin", allowAll: true, wantVary: true},
+		{
+			name:           "allowed origin",
+			allowedOrigins: []string{"http://allowed.com"},
+			origin:         "http://allowed.com",
+			wantVary:       true,
+		},
+		{
+			name:           "origin not allowed",
+			allowedOrigins: []string{"http://allowed.com"},
+			origin:         "http://not-allowed.com",
+			wantVary:       true,
+		},
+		{
+			name:           "allowedOrigins without origin",
+			allowedOrigins: []string{"http://allowed.com"},
+			wantVary:       true,
+		},
+		{name: "denyAll with origin", denyAll: true, origin: "http://example.com", wantVary: true},
+		{name: "denyAll without origin", denyAll: true, wantVary: true},
+		{name: "no CORS configuration", origin: "http://example.com", wantVary: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Add("Vary", "Accept-Encoding")
+				w.WriteHeader(http.StatusOK)
+			})
+			handler := SelectCORSMiddleware(tt.allowedOrigins, tt.allowAll, tt.denyAll)(next)
+
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			if tt.origin != "" {
+				req.Header.Set("Origin", tt.origin)
+			}
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, req)
+
+			vary := w.Header().Values("Vary")
+			if got := slices.Contains(vary, "Origin"); got != tt.wantVary {
+				t.Fatalf("expected Vary: Origin to be %t, got Vary values %v", tt.wantVary, vary)
+			}
+
+			if w.Code == http.StatusOK && !slices.Contains(vary, "Accept-Encoding") {
+				t.Fatalf("expected the handler's own Vary value to be kept, got %v", vary)
+			}
+		})
+	}
 }

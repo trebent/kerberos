@@ -137,7 +137,7 @@ Kerberos does no CORS handling: the `Origin` header is not checked and no `Acces
 
 ### Rejected origins
 
-A rejected request gets `403` with a JSON error body and no CORS headers. Because there are no CORS headers, a browser shows it as a CORS failure and the page's JavaScript cannot read the status or body.
+A rejected request gets `403` with a JSON error body and no `Access-Control-*` headers. Because there are no CORS headers, a browser shows it as a CORS failure and the page's JavaScript cannot read the status or body.
 
 - Gateway: `{"errors":["origin denied"]}`
 - Admin and basic-auth APIs: `{"errors":["Forbidden"]}`
@@ -154,12 +154,15 @@ When the origin is allowed, Kerberos sets these headers on the response:
 | `Access-Control-Allow-Methods` | `GET, POST, PUT, PATCH, DELETE, OPTIONS` |
 | `Access-Control-Allow-Headers` | `Content-Type, X-Krb-Csrf-Token` |
 | `Access-Control-Allow-Credentials` | `true` |
+| `Vary` | `Origin` |
 
 In practice:
 
 - **Request headers.** Browser pages can send `Content-Type` and `X-Krb-Csrf-Token` on cross-origin requests. Kerberos logins use cookies, so pages do not need an `Authorization` header (see [Sessions](./sessions.md)).
 - **Cookies.** Browsers send and accept cookies on cross-origin requests when the page uses `credentials: "include"` (or `withCredentials`).
 - **Response headers.** Page scripts can read the standard response headers, such as `Content-Type`.
+
+- **Caches.** `Vary: Origin` tells caches, such as a CDN or reverse proxy, to keep a separate copy of the response for each origin. When `origins` is set, Kerberos adds it to every response, including `403` rejections and requests without an `Origin` header. A `Vary` header from the backend is kept.
 
 The headers are added before the later checks run, so error responses from Kerberos (for example `401` from authentication or `400` from request validation) also carry them, and the page can read those errors.
 
@@ -205,6 +208,7 @@ Access-Control-Allow-Credentials: true
 Access-Control-Allow-Headers: Content-Type, X-Krb-Csrf-Token
 Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
 Access-Control-Allow-Origin: https://shop.example.com
+Vary: Origin
 ```
 
 (Other headers such as `Date` are omitted here and below.)
@@ -220,6 +224,7 @@ curl -i -X OPTIONS http://localhost:30000/gw/backend/shop/orders \
 ```http
 HTTP/1.1 403 Forbidden
 Content-Type: application/json
+Vary: Origin
 
 {"errors":["origin denied"]}
 ```
@@ -231,7 +236,7 @@ curl -i http://localhost:30000/gw/backend/shop/orders \
   -H 'Origin: https://shop.example.com'
 ```
 
-The response is whatever the backend returns (or an authentication or validation error from Kerberos), plus the four `Access-Control-*` headers.
+The response is whatever the backend returns (or an authentication or validation error from Kerberos), plus the four `Access-Control-*` headers and `Vary: Origin`.
 
 ### Preflight to the basic-auth API
 
@@ -242,7 +247,7 @@ curl -i -X OPTIONS http://localhost:30001/api/auth/basic/organisations/1/login \
   -H 'Access-Control-Request-Headers: content-type'
 ```
 
-This returns `204` with the same four headers.
+This returns `204` with the same headers.
 
 ### Calling Kerberos from a browser application
 

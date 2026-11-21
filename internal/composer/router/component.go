@@ -113,7 +113,12 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if security.HasOrigin(req) && corsConfigured(backend) {
+	cors := corsConfigured(backend)
+	if cors {
+		security.AddVaryOrigin(wrapped)
+	}
+
+	if security.HasOrigin(req) && cors {
 		origin := req.Header.Get("Origin")
 		if err := ValidateOrigin(
 			origin,
