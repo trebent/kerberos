@@ -621,6 +621,58 @@ func (i *impl) DeleteUser(
 	return adminapi.DeleteUser204Response{}, nil
 }
 
+// ResetSuperuserPassword implements [withExtensions]. It sets a new superuser password without the
+// old one and ends all superuser sessions.
+func (i *impl) ResetSuperuserPassword(
+	ctx context.Context,
+	request adminapi.ResetSuperuserPasswordRequestObject,
+) (adminapi.ResetSuperuserPasswordResponseObject, error) {
+	if !ContextCanResetSuperuserPassword(ctx) {
+		return adminapi.ResetSuperuserPassword403JSONResponse(apiErrForbidden), nil
+	}
+
+	_, salt, hashed, err := password.Make(request.Body.NewPassword)
+	if err != nil {
+		zerologr.Error(err, "Failed to hash superuser password")
+		return adminapi.ResetSuperuserPassword500JSONResponse(apiErrInternal), nil
+	}
+
+	if err := admindb.ResetSuperuserPassword(ctx, i.sqlClient, salt, hashed); err != nil {
+		zerologr.Error(err, "Failed to reset superuser password")
+		return adminapi.ResetSuperuserPassword500JSONResponse(apiErrInternal), nil
+	}
+
+	return adminapi.ResetSuperuserPassword204Response{}, nil
+}
+
+// ResetUserPassword implements [withExtensions]. It sets a new password without the old one and
+// ends all of the user's sessions.
+func (i *impl) ResetUserPassword(
+	ctx context.Context,
+	request adminapi.ResetUserPasswordRequestObject,
+) (adminapi.ResetUserPasswordResponseObject, error) {
+	if !ContextCanResetPasswords(ctx) {
+		return adminapi.ResetUserPassword403JSONResponse(apiErrForbidden), nil
+	}
+
+	_, salt, hashed, err := password.Make(request.Body.NewPassword)
+	if err != nil {
+		zerologr.Error(err, "Failed to hash admin user password")
+		return adminapi.ResetUserPassword500JSONResponse(apiErrInternal), nil
+	}
+
+	err = admindb.ResetUserPassword(ctx, i.sqlClient, int64(request.UserID), salt, hashed)
+	if errors.Is(err, db.ErrRowNotFound) {
+		return adminapi.ResetUserPassword404JSONResponse(apiErrNotFound), nil
+	}
+	if err != nil {
+		zerologr.Error(err, "Failed to reset admin user password")
+		return adminapi.ResetUserPassword500JSONResponse(apiErrInternal), nil
+	}
+
+	return adminapi.ResetUserPassword204Response{}, nil
+}
+
 // ChangeUserPassword implements [withExtensions].
 func (i *impl) ChangeUserPassword(
 	ctx context.Context,

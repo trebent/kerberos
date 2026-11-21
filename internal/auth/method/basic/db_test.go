@@ -652,6 +652,52 @@ func TestDBSessions(t *testing.T) {
 			t.Fatalf("expected errNoSession after delete, got %v", err)
 		}
 	})
+
+	t.Run("reset password ends sessions", func(t *testing.T) {
+		resetID := mustCreateUser(t, orgID, uniqueName(t, "user-reset"))
+		sessionIDs := []string{uniqueName(t, "reset-a"), uniqueName(t, "reset-b")}
+		for _, id := range sessionIDs {
+			if err := dbCreateSession(ctx, testClient, resetID, orgID, id+"-refresh", id); err != nil {
+				t.Fatalf("dbCreateSession error: %v", err)
+			}
+		}
+
+		otherSession := uniqueName(t, "reset-other")
+		if err := dbCreateSession(ctx, testClient, userID, orgID, otherSession+"-refresh", otherSession); err != nil {
+			t.Fatalf("dbCreateSession error: %v", err)
+		}
+
+		if err := dbResetUserPassword(ctx, testClient, orgID, resetID, "resetsalt", "resethash"); err != nil {
+			t.Fatalf("dbResetUserPassword error: %v", err)
+		}
+
+		auth, err := dbGetUserAuth(ctx, testClient, orgID, resetID)
+		if err != nil {
+			t.Fatalf("dbGetUserAuth error: %v", err)
+		}
+		if auth.Salt != "resetsalt" || auth.HashedPassword != "resethash" {
+			t.Fatalf("expected the reset password, got salt %q hash %q", auth.Salt, auth.HashedPassword)
+		}
+
+		for _, id := range sessionIDs {
+			if _, err := dbGetSessionRow(ctx, testClient, id); !errors.Is(err, errNoSession) {
+				t.Fatalf("expected session %q to be deleted, got %v", id, err)
+			}
+		}
+
+		if _, err := dbGetSessionRow(ctx, testClient, otherSession); err != nil {
+			t.Fatalf("expected another user's session to remain, got %v", err)
+		}
+	})
+
+	t.Run("reset password wrong organisation", func(t *testing.T) {
+		otherOrgID, _ := mustCreateOrg(t, uniqueName(t, "org-reset-other"))
+
+		err := dbResetUserPassword(ctx, testClient, otherOrgID, userID, "s", "h")
+		if !errors.Is(err, errNoUser) {
+			t.Fatalf("expected errNoUser for a user of another organisation, got %v", err)
+		}
+	})
 }
 
 // --- Cascade Deletes ---

@@ -41,6 +41,7 @@ const (
 	deleteAdminUser          = "DELETE FROM admin_users WHERE id = @userID AND superuser = false;"
 	//nolint:gosec // not a password
 	updateAdminUserPassword = "UPDATE admin_users SET salt = @salt, hashed_password = @hashedPassword WHERE id = @userID AND superuser = false;"
+	deleteAdminUserSessions = "DELETE FROM admin_sessions WHERE user_id = @userID;"
 
 	// Groups.
 	selectAdminGroups         = "SELECT id, name FROM admin_groups;"
@@ -812,6 +813,86 @@ func UpdateUserPassword(
 	return err
 }
 
+// ResetUserPassword sets a new password for a non-superuser admin user and deletes all of the
+// user's sessions, in one transaction. It returns db.ErrRowNotFound if no such user exists.
+func ResetUserPassword(
+	ctx context.Context,
+	client db.SQLClient,
+	userID int64,
+	salt, hashedPassword string,
+) error {
+	return resetPassword(ctx, client, &resetPasswordOpts{
+		update: updateAdminUserPassword,
+		updateArgs: []any{
+			sql.NamedArg{Name: argSalt, Value: salt},
+			sql.NamedArg{Name: argHashedPassword, Value: hashedPassword},
+			sql.NamedArg{Name: argUserID, Value: userID},
+		},
+		deleteSessions:     deleteAdminUserSessions,
+		deleteSessionsArgs: []any{sql.NamedArg{Name: argUserID, Value: userID}},
+	})
+}
+
+// ResetSuperuserPassword sets a new superuser password and deletes all superuser sessions, in one
+// transaction.
+func ResetSuperuserPassword(
+	ctx context.Context,
+	client db.SQLClient,
+	salt, hashedPassword string,
+) error {
+	return resetPassword(ctx, client, &resetPasswordOpts{
+		update: updateSuperuserPassword,
+		updateArgs: []any{
+			sql.NamedArg{Name: argSalt, Value: salt},
+			sql.NamedArg{Name: argHashedPassword, Value: hashedPassword},
+		},
+		deleteSessions: deleteSuperSessions,
+	})
+}
+
+// resetPasswordOpts holds the statements and arguments of a password reset.
+type resetPasswordOpts struct {
+	update             string
+	updateArgs         []any
+	deleteSessions     string
+	deleteSessionsArgs []any
+}
+
+// resetPassword runs a password update and a session deletion in one transaction. It returns
+// db.ErrRowNotFound if the update changed no row.
+func resetPassword(ctx context.Context, client db.SQLClient, opts *resetPasswordOpts) error {
+	tx, err := client.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("start transaction: %w", err)
+	}
+	//nolint:errcheck // intentional: no-op if already committed
+	defer tx.Rollback()
+
+	res, err := tx.Exec(ctx, opts.update, opts.updateArgs...)
+	if err != nil {
+		return fmt.Errorf("update password: %w", err)
+	}
+
+	updated, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("update password: %w", err)
+	}
+
+	if updated == 0 {
+		return db.ErrRowNotFound
+	}
+
+	if _, err := tx.Exec(ctx, opts.deleteSessions, opts.deleteSessionsArgs...); err != nil {
+		return fmt.Errorf("delete sessions: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit password reset: %w", err)
+	}
+
+	return nil
+}
+
 func UpdateSuperuserPassword(
 	ctx context.Context,
 	client db.SQLClient,
@@ -1172,6 +1253,8 @@ func BootstrapPermissions(client db.SQLClient) error {
 		{5, "admin-user-mgmt-admin"},
 		{6, "admin-user-mgmt-viewer"},
 		{7, "debugger"},
+		{8, "password-reset"},
+		{9, "superuser-password-reset"},
 	}
 
 	for _, p := range perms {

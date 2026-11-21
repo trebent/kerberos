@@ -12,23 +12,27 @@ import (
 
 // Permission IDs are the fixed permission IDs bootstrapped by the server.
 const (
-	PermissionIDFlowViewer          = 1
-	PermissionIDOASViewer           = 2
-	PermissionIDBasicAuthOrgAdmin   = 3
-	PermissionIDBasicAuthOrgViewer  = 4
-	PermissionIDAdminUserMgmtAdmin  = 5
-	PermissionIDAdminUserMgmtViewer = 6
-	PermissionIDDebugger            = 7
+	PermissionIDFlowViewer             = 1
+	PermissionIDOASViewer              = 2
+	PermissionIDBasicAuthOrgAdmin      = 3
+	PermissionIDBasicAuthOrgViewer     = 4
+	PermissionIDAdminUserMgmtAdmin     = 5
+	PermissionIDAdminUserMgmtViewer    = 6
+	PermissionIDDebugger               = 7
+	PermissionIDPasswordReset          = 8
+	PermissionIDSuperuserPasswordReset = 9
 
 	// Permission names.
 
-	PermissionNameFlowViewer          = "flow-viewer"
-	PermissionNameOASViewer           = "oas-viewer"
-	PermissionNameBasicAuthOrgAdmin   = "basic-auth-org-admin"
-	PermissionNameBasicAuthOrgViewer  = "basic-auth-org-viewer"
-	PermissionNameAdminUserMgmtAdmin  = "admin-user-mgmt-admin"
-	PermissionNameAdminUserMgmtViewer = "admin-user-mgmt-viewer"
-	PermissionNameDebugger            = "debugger"
+	PermissionNameFlowViewer             = "flow-viewer"
+	PermissionNameOASViewer              = "oas-viewer"
+	PermissionNameBasicAuthOrgAdmin      = "basic-auth-org-admin"
+	PermissionNameBasicAuthOrgViewer     = "basic-auth-org-viewer"
+	PermissionNameAdminUserMgmtAdmin     = "admin-user-mgmt-admin"
+	PermissionNameAdminUserMgmtViewer    = "admin-user-mgmt-viewer"
+	PermissionNameDebugger               = "debugger"
+	PermissionNamePasswordReset          = "password-reset"
+	PermissionNameSuperuserPasswordReset = "superuser-password-reset"
 )
 
 // --- GetPermissions ---
@@ -57,13 +61,15 @@ func TestAdminPermissionsGetPermissions(t *testing.T) {
 	}
 
 	expected := map[int]string{
-		PermissionIDFlowViewer:          PermissionNameFlowViewer,
-		PermissionIDOASViewer:           PermissionNameOASViewer,
-		PermissionIDBasicAuthOrgViewer:  PermissionNameBasicAuthOrgViewer,
-		PermissionIDBasicAuthOrgAdmin:   PermissionNameBasicAuthOrgAdmin,
-		PermissionIDAdminUserMgmtViewer: PermissionNameAdminUserMgmtViewer,
-		PermissionIDAdminUserMgmtAdmin:  PermissionNameAdminUserMgmtAdmin,
-		PermissionIDDebugger:            PermissionNameDebugger,
+		PermissionIDFlowViewer:             PermissionNameFlowViewer,
+		PermissionIDOASViewer:              PermissionNameOASViewer,
+		PermissionIDBasicAuthOrgViewer:     PermissionNameBasicAuthOrgViewer,
+		PermissionIDBasicAuthOrgAdmin:      PermissionNameBasicAuthOrgAdmin,
+		PermissionIDAdminUserMgmtViewer:    PermissionNameAdminUserMgmtViewer,
+		PermissionIDAdminUserMgmtAdmin:     PermissionNameAdminUserMgmtAdmin,
+		PermissionIDDebugger:               PermissionNameDebugger,
+		PermissionIDPasswordReset:          PermissionNamePasswordReset,
+		PermissionIDSuperuserPasswordReset: PermissionNameSuperuserPasswordReset,
 	}
 	for id, name := range expected {
 		if nameByID[id] != name {
@@ -745,4 +751,113 @@ func TestAdminPermissionsDebuggerDenied(t *testing.T) {
 	lib.CheckErr(err, t)
 	lib.VerifyStatusCode(resp.StatusCode(), http.StatusForbidden, t)
 	lib.VerifyAdminAPIErrorResponse(resp.JSON403, t)
+}
+
+// --- Password reset ---
+
+// TestAdminPermissionsPasswordReset verifies that only holders of the password-reset permission can
+// reset an admin user's password, that the reset needs no old password, and that it ends the
+// user's sessions.
+func TestAdminPermissionsPasswordReset(t *testing.T) {
+	t.Parallel()
+	superRequestEditor := lib.SuperLogin(t)
+
+	const oldPass, newPass = "old-password-123", "new-password-123"
+	name := lib.Username()
+	createResp, err := lib.AdminClient.CreateUserWithResponse(
+		t.Context(),
+		adminapi.CreateUserJSONRequestBody{Username: name, Password: oldPass},
+		adminapi.RequestEditorFn(superRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+	targetID := createResp.JSON201.Id
+	targetRequestEditor := lib.AdminUserLogin(t, name, oldPass)
+
+	reset := func(editor lib.RequestEditorFn, userID int) *adminapi.ResetUserPasswordResponse {
+		t.Helper()
+		resp, err := lib.AdminClient.ResetUserPasswordWithResponse(
+			t.Context(),
+			userID,
+			adminapi.ResetUserPasswordJSONRequestBody{NewPassword: newPass},
+			adminapi.RequestEditorFn(editor),
+		)
+		lib.CheckErr(err, t)
+		return resp
+	}
+
+	// admin-user-mgmt-admin alone is not enough.
+	mgmtRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDAdminUserMgmtAdmin})
+	denied := reset(mgmtRequestEditor, targetID)
+	lib.VerifyStatusCode(denied.StatusCode(), http.StatusForbidden, t)
+	lib.VerifyAdminAPIErrorResponse(denied.JSON403, t)
+
+	resetRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDPasswordReset})
+
+	missing := reset(resetRequestEditor, 999999)
+	lib.VerifyStatusCode(missing.StatusCode(), http.StatusNotFound, t)
+	lib.VerifyAdminAPIErrorResponse(missing.JSON404, t)
+
+	ok := reset(resetRequestEditor, targetID)
+	lib.VerifyStatusCode(ok.StatusCode(), http.StatusNoContent, t)
+
+	// The target's existing session has ended.
+	meResp, err := lib.AdminClient.GetMeWithResponse(t.Context(), adminapi.RequestEditorFn(targetRequestEditor))
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(meResp.StatusCode(), http.StatusUnauthorized, t)
+
+	// The old password no longer works, the new one does.
+	oldLogin, err := lib.AdminClient.LoginWithResponse(
+		t.Context(),
+		adminapi.LoginJSONRequestBody{Username: name, Password: oldPass},
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(oldLogin.StatusCode(), http.StatusUnauthorized, t)
+	lib.AdminUserLogin(t, name, newPass)
+}
+
+// TestAdminPermissionsPasswordResetSuperuser verifies that a holder of the superuser-password-reset
+// permission, and not of password-reset alone, can reset the superuser's password without the old one, and that the reset ends all
+// superuser sessions. It is not parallel, because ending superuser sessions would break other
+// tests. The password is reset to the same value so later superuser logins keep working.
+func TestAdminPermissionsPasswordResetSuperuser(t *testing.T) {
+	superRequestEditor := lib.SuperLogin(t)
+
+	reset := func(editor lib.RequestEditorFn, pw string) *adminapi.ResetSuperuserPasswordResponse {
+		t.Helper()
+		resp, err := lib.AdminClient.ResetSuperuserPasswordWithResponse(
+			t.Context(),
+			adminapi.ResetSuperuserPasswordJSONRequestBody{NewPassword: pw},
+			adminapi.RequestEditorFn(editor),
+		)
+		lib.CheckErr(err, t)
+		return resp
+	}
+
+	mgmtRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDAdminUserMgmtAdmin})
+	denied := reset(mgmtRequestEditor, lib.SuperUserClientSecret)
+	lib.VerifyStatusCode(denied.StatusCode(), http.StatusForbidden, t)
+	lib.VerifyAdminAPIErrorResponse(denied.JSON403, t)
+
+	// password-reset covers admin users only.
+	adminResetRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDPasswordReset})
+	adminOnly := reset(adminResetRequestEditor, lib.SuperUserClientSecret)
+	lib.VerifyStatusCode(adminOnly.StatusCode(), http.StatusForbidden, t)
+	lib.VerifyAdminAPIErrorResponse(adminOnly.JSON403, t)
+
+	resetRequestEditor := lib.CreateAdminUserInGroup(
+		t, superRequestEditor, []int{PermissionIDSuperuserPasswordReset},
+	)
+
+	tooShort := reset(resetRequestEditor, "123456789")
+	lib.VerifyStatusCode(tooShort.StatusCode(), http.StatusBadRequest, t)
+
+	ok := reset(resetRequestEditor, lib.SuperUserClientSecret)
+	lib.VerifyStatusCode(ok.StatusCode(), http.StatusNoContent, t)
+
+	// The superuser's existing session has ended, and a new login works.
+	meResp, err := lib.AdminClient.GetMeWithResponse(t.Context(), adminapi.RequestEditorFn(superRequestEditor))
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(meResp.StatusCode(), http.StatusUnauthorized, t)
+	lib.SuperLogin(t)
 }

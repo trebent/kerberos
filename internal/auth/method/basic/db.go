@@ -43,7 +43,9 @@ const (
 	updateUser          = "UPDATE users SET name = @name WHERE id = @userID AND organisation_id = @orgID;"
 	//nolint:gosec // not a password
 	updateUserPassword = "UPDATE users SET salt = @salt, hashed_password = @hashedPassword WHERE id = @id;"
-	selectLoginUser    = "SELECT id, name, salt, hashed_password, organisation_id FROM users WHERE organisation_id = @orgID AND name = @username;"
+	//nolint:gosec // not a password
+	resetUserPassword = "UPDATE users SET salt = @salt, hashed_password = @hashedPassword WHERE id = @userID AND organisation_id = @orgID;"
+	selectLoginUser   = "SELECT id, name, salt, hashed_password, organisation_id FROM users WHERE organisation_id = @orgID AND name = @username;"
 
 	// Group bindings.
 	selectUserGroups    = "SELECT id, name FROM groups WHERE id IN (SELECT group_id FROM group_bindings WHERE user_id = @userID) AND organisation_id = @orgID;"
@@ -56,6 +58,7 @@ const (
 	selectSession          = "SELECT s.session_id, s.refresh_id, s.user_id, s.organisation_id, u.administrator, s.expires FROM sessions s INNER JOIN users u ON s.user_id = u.id WHERE session_id = @sessionID;"
 	selectSessionByRefresh = "SELECT s.session_id, s.refresh_id, s.user_id, s.organisation_id, u.administrator, s.expires FROM sessions s INNER JOIN users u ON s.user_id = u.id WHERE refresh_id = @refreshID AND s.organisation_id = @orgID;"
 	deleteUserSession      = "DELETE FROM sessions WHERE organisation_id = @orgID AND user_id = @userID AND session_id = @sessionID;"
+	deleteUserSessions     = "DELETE FROM sessions WHERE organisation_id = @orgID AND user_id = @userID;"
 
 	// Named arg keys.
 	argSession        = "session"
@@ -468,6 +471,58 @@ func dbUpdateUserPassword(
 		zerologr.Error(err, "Failed to update user password")
 	}
 	return err
+}
+
+// dbResetUserPassword sets a new password for a user of the organisation and deletes all of the
+// user's sessions, in one transaction. It returns errNoUser if the organisation has no such user.
+func dbResetUserPassword(
+	ctx context.Context,
+	client db.SQLClient,
+	orgID, userID int64,
+	salt, hashedPassword string,
+) error {
+	tx, err := client.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("start transaction: %w", err)
+	}
+	//nolint:errcheck // intentional: no-op if already committed
+	defer tx.Rollback()
+
+	res, err := tx.Exec(
+		ctx,
+		resetUserPassword,
+		sql.NamedArg{Name: argSalt, Value: salt},
+		sql.NamedArg{Name: argHashedPassword, Value: hashedPassword},
+		sql.NamedArg{Name: argUserID, Value: userID},
+		sql.NamedArg{Name: argOrgID, Value: orgID},
+	)
+	if err != nil {
+		return fmt.Errorf("update user password: %w", err)
+	}
+
+	updated, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("update user password: %w", err)
+	}
+
+	if updated == 0 {
+		return errNoUser
+	}
+
+	if _, err := tx.Exec(
+		ctx,
+		deleteUserSessions,
+		sql.NamedArg{Name: argOrgID, Value: orgID},
+		sql.NamedArg{Name: argUserID, Value: userID},
+	); err != nil {
+		return fmt.Errorf("delete user sessions: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit password reset: %w", err)
+	}
+
+	return nil
 }
 
 // --- Organisations ---

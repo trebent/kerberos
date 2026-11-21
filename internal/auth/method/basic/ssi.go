@@ -225,6 +225,30 @@ func (i *impl) Refresh(
 	}, nil
 }
 
+// ResetPassword implements [StrictServerInterface]. It sets a new password without the old one and
+// ends all of the user's sessions. The middleware only lets organisation administrators through.
+func (i *impl) ResetPassword(
+	ctx context.Context,
+	req authbasicapi.ResetPasswordRequestObject,
+) (authbasicapi.ResetPasswordResponseObject, error) {
+	_, salt, hashed, err := password.Make(req.Body.Password)
+	if err != nil {
+		zerologr.Error(err, "Failed to hash user password")
+		return authbasicapi.ResetPassword500JSONResponse(apiErrInternal), nil
+	}
+
+	err = dbResetUserPassword(ctx, i.db, req.OrgID, req.UserID, salt, hashed)
+	if errors.Is(err, errNoUser) {
+		return authbasicapi.ResetPassword404Response{}, nil
+	}
+	if err != nil {
+		zerologr.Error(err, "Failed to reset user password")
+		return authbasicapi.ResetPassword500JSONResponse(apiErrInternal), nil
+	}
+
+	return authbasicapi.ResetPassword204Response{}, nil
+}
+
 // ChangePassword implements [StrictServerInterface].
 func (i *impl) ChangePassword(
 	ctx context.Context,

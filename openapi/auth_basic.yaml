@@ -808,6 +808,60 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
 
+  /api/auth/basic/organisations/{orgID}/users/{userID}/password/reset:
+    parameters:
+      - $ref: "#/components/parameters/orgid"
+      - $ref: "#/components/parameters/userid"
+    put:
+      tags:
+        - users
+      operationId: ResetPassword
+      description: |
+        Sets a new password for a user without the old one, and ends all of the user's sessions.
+        Requires an organisation administrator.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  minLength: 10
+                  maxLength: 64
+              required:
+                - password
+      responses:
+        "204":
+          description: Reset the user's password and ended their sessions.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
+        "404":
+          description: User not found.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+
   /api/auth/basic/organisations/{orgID}/groups:
     parameters:
       - "$ref": "#/components/parameters/orgid"

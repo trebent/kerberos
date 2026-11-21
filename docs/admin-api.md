@@ -78,6 +78,18 @@ curl -i -c su.jar -b su.jar -X PUT http://localhost:30001/api/admin/superuser/pa
 
 A successful change returns `204`. A wrong `oldPassword` returns `400`. The superuser's name (`clientId`) stays as it was set on the first start.
 
+### Reset a lost password
+
+If the superuser password is lost, an admin user with the `superuser-password-reset` permission sets a new one without the old one. Here that user's session cookies are in `admin.jar`:
+
+```bash
+curl -i -b admin.jar -X PUT http://localhost:30001/api/admin/superuser/password/reset \
+  -H 'Content-Type: application/json' \
+  -d '{"newPassword": "a-long-random-passphrase"}'
+```
+
+A successful reset returns `204` and ends all superuser sessions.
+
 ### What the superuser can do
 
 - The superuser holds **every permission**, including permissions added to Kerberos in the future. Permission checks always pass for the superuser.
@@ -108,6 +120,8 @@ The set of permissions is fixed. Their IDs are stable and are the same on every 
 | 5 | `admin-user-mgmt-admin` | Create, update and delete admin users and admin groups; set users' group memberships; change other users' passwords. Includes everything `admin-user-mgmt-viewer` allows. |
 | 6 | `admin-user-mgmt-viewer` | List and read admin users and admin groups. |
 | 7 | `debugger` | All `/api/admin/debug/...` endpoints. See [Admin debugging](./admin-debugging.md). |
+| 8 | `password-reset` | `PUT /api/admin/users/{userID}/password/reset`: set a new password for any admin user without the old one. Grant it with care: its holder can take over any admin account. |
+| 9 | `superuser-password-reset` | `PUT /api/admin/superuser/password/reset`: set a new superuser password without the old one. Grant it with care: its holder can take over the superuser. |
 
 ### How effective permissions are computed
 
@@ -151,6 +165,7 @@ All paths are relative to `/api/admin` on the admin port. "Any session" means an
 | `POST /superuser/logout` | superuser | none | `204` ends all superuser sessions; `403` if caller is not the superuser |
 | `POST /superuser/refresh` | superuser refresh cookie | none | `204` + new cookies; `401` missing, unknown or expired refresh token; `403` token belongs to an admin user |
 | `PUT /superuser/password` | superuser | `{"oldPassword", "newPassword"}` | `204`; `400` wrong old password or `newPassword` not 10 to 64 characters; `403` not the superuser |
+| `PUT /superuser/password/reset` | `superuser-password-reset` | `{"newPassword"}` | `204` and all superuser sessions end; `400` `newPassword` not 10 to 64 characters; `403` |
 
 ### Admin-user session
 
@@ -177,11 +192,12 @@ All paths are relative to `/api/admin` on the admin port. "Any session" means an
 | `PUT /users/{userID}` | self, or `admin-user-mgmt-admin` | `{"username"}` | `204`; `409` username taken |
 | `DELETE /users/{userID}` | `admin-user-mgmt-admin` | none | `204`; `404` |
 | `PUT /users/{userID}/password` | self, or `admin-user-mgmt-admin` | `{"oldPassword", "newPassword"}` | `204`; `400` wrong old password or `newPassword` not 10 to 64 characters; `404` |
+| `PUT /users/{userID}/password/reset` | `password-reset` | `{"newPassword"}` | `204` and the user's sessions end; `400` `newPassword` not 10 to 64 characters; `404` |
 | `PUT /users/{userID}/groups` | `admin-user-mgmt-admin` | `{"groupIDs": [int]}` | `204`; `404` user not found |
 
 `PUT /users/{userID}/groups` sets the **complete** list of groups. Groups that are not in `groupIDs` are removed, and `{"groupIDs": []}` removes the user from every group.
 
-`PUT /users/{userID}/password` takes the user's current password, also when an `admin-user-mgmt-admin` changes someone else's password. If a user forgets their password, delete the user and create it again.
+`PUT /api/admin/users/{userID}/password` takes the user's current password, also when an `admin-user-mgmt-admin` changes someone else's password. If a user forgets their password, someone with the `password-reset` permission sets a new one with `PUT /api/admin/users/{userID}/password/reset`. A reset ends all of the user's sessions, so anyone still logged in as that user is logged out.
 
 ### Admin groups
 
