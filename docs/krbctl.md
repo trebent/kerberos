@@ -63,7 +63,7 @@ Both targets build a Linux binary (`GOOS=linux`). On macOS or Windows, use a rel
 | --- | --- |
 | `krbctl compose` | Writes `compose.yaml`. |
 | `krbctl config` | Writes `krb.json`, plus observability stack and admin-connector files if you choose them. |
-| `krbctl validate <file>` (`v`) | Checks a `krb.json`, or with `-c` a `connector.json`. |
+| `krbctl validate <kerberos\|connector> <file>` (`val`) | Checks a `krb.json` or a `connector.json`. |
 | `krbctl completion <bash\|zsh\|fish\|powershell>` | Prints a shell completion script. See `krbctl completion <shell> --help` for how to load it. |
 | `krbctl --version` (`-v`) | Prints the version. |
 | `krbctl help [command]`, `-h` | Prints help. |
@@ -265,12 +265,17 @@ The observability files are only written with `--obs-stack` (or "Generate observ
 
 ## `krbctl validate`
 
-Checks a configuration file the same way Kerberos does at startup, without starting anything.
-Add `-c` (`--connector`) to check an admin-connector configuration instead.
+Checks a configuration file the same way Kerberos or the admin-connector checks it at startup,
+without starting anything. Name the kind of file with a subcommand:
+
+| Subcommand | Checks |
+| --- | --- |
+| `kerberos <file>` (`krb`) | A Kerberos configuration, such as `krb.json`. |
+| `connector <file>` (`conn`) | An admin-connector configuration, such as `connector.json`. |
 
 ```bash
-krbctl v krb.json
-krbctl v -c connector.json
+krbctl val krb krb.json
+krbctl val conn connector.json
 ```
 
 It prints `<file>: ok` and exits with 0, or prints what is wrong and exits with 1.

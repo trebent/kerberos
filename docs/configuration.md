@@ -179,6 +179,8 @@ At `LOG_VERBOSITY` 100 or more, Kerberos logs every step of reference resolution
 
 ## Validation errors
 
+To check a file without starting Kerberos, use [`krbctl validate`](./krbctl.md#krbctl-validate).
+
 When the resolved file breaks the schema, startup fails with one error that starts with `schema validation failed` and lists every problem as `<field path> - <description>`, for example:
 
 ```text
