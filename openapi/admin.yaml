@@ -56,6 +56,20 @@ components:
             required:
               - oldPassword
               - newPassword
+    ResetPasswordRequest:
+      description: Request body for resetting a password without the old one.
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              newPassword:
+                type: string
+                minLength: 10
+                maxLength: 64
+            required:
+              - newPassword
     UpdateUserGroupsRequest:
       description: Request body for updating a user's groups.
       required: true
@@ -577,6 +591,44 @@ paths:
                 $ref: "#/components/schemas/APIErrorResponse"
           description: Internal error.
 
+  /api/admin/superuser/password/reset:
+    put:
+      tags:
+        - users
+      operationId: ResetSuperuserPassword
+      description: |
+        Sets a new superuser password without the old one, and ends all superuser sessions.
+        Requires the superuser-password-reset permission.
+      requestBody:
+        $ref: "#/components/requestBodies/ResetPasswordRequest"
+      responses:
+        "204":
+          description: Reset the superuser's password and ended all superuser sessions.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+
   /api/admin/superuser/password:
     put:
       tags:
@@ -876,6 +928,56 @@ paths:
       responses:
         "204":
           description: Changed the user's password successfully.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Bad request.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Unauthorized.
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Forbidden.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Not found.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorResponse"
+          description: Internal error.
+
+  /api/admin/users/{userID}/password/reset:
+    put:
+      tags:
+        - users
+      operationId: ResetUserPassword
+      description: |
+        Sets a new password for an admin user without the old one, and ends all of the user's
+        sessions. Requires the password-reset permission.
+      parameters:
+        - name: userID
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        $ref: "#/components/requestBodies/ResetPasswordRequest"
+      responses:
+        "204":
+          description: Reset the user's password and ended their sessions.
         "400":
           content:
             application/json:
