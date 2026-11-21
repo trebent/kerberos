@@ -27,6 +27,7 @@ func TestParseKerberosUnknownMappedBackend(t *testing.T) {
 	}{
 		{file: "testconfig_auth_unknown_backend.json", want: `auth.scheme.mappings.1.backend - unknown backend "bakcend1"`},
 		{file: "testconfig_oas_unknown_backend.json", want: `oas.mappings.0.backend - unknown backend "bakcend1"`},
+		{file: "testconfig_auth_method_not_configured.json", want: `auth.scheme.mappings.0.method - method "basic" is not configured`},
 	}
 
 	for _, tt := range tests {
@@ -38,6 +39,16 @@ func TestParseKerberosUnknownMappedBackend(t *testing.T) {
 
 			if !strings.Contains(err.Error(), tt.want) {
 				t.Fatalf("expected error to contain %q, got %q", tt.want, err.Error())
+			}
+		})
+	}
+}
+
+func TestParseKerberosIncompleteSections(t *testing.T) {
+	for _, name := range []string{"testconfig_gw_no_router.json", "testconfig_auth_empty.json"} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := ParseKerberos(readTestConfig(t, name)); err == nil {
+				t.Fatal("expected an error for an incomplete section")
 			}
 		})
 	}

@@ -209,18 +209,22 @@ func withUser(ctx context.Context, userID int64) context.Context {
 	return context.WithValue(ctx, userContextKey, userID)
 }
 
-func userFromContext(ctx context.Context) int64 {
-	//nolint:errcheck // welp
-	return ctx.Value(userContextKey).(int64)
+// userFromContext returns the user the middleware authenticated. ok is false when the request was
+// let through without a user session, for example by an admin session.
+func userFromContext(ctx context.Context) (int64, bool) {
+	userID, ok := ctx.Value(userContextKey).(int64)
+	return userID, ok
 }
 
 func withSession(ctx context.Context, sessionID string) context.Context {
 	return context.WithValue(ctx, sessionContextKey, sessionID)
 }
 
-func sessionFromContext(ctx context.Context) string {
-	//nolint:errcheck // welp
-	return ctx.Value(sessionContextKey).(string)
+// sessionFromContext returns the session the middleware authenticated. ok is false when the
+// request was let through without a user session, for example by an admin session.
+func sessionFromContext(ctx context.Context) (string, bool) {
+	sessionID, ok := ctx.Value(sessionContextKey).(string)
+	return sessionID, ok
 }
 
 func orgValidator(orgID int64, r *http.Request) error {

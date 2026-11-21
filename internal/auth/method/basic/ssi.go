@@ -137,8 +137,11 @@ func (i *impl) Logout(
 	ctx context.Context,
 	req authbasicapi.LogoutRequestObject,
 ) (authbasicapi.LogoutResponseObject, error) {
-	userID := userFromContext(ctx)
-	sessionID := sessionFromContext(ctx)
+	userID, okUser := userFromContext(ctx)
+	sessionID, okSession := sessionFromContext(ctx)
+	if !okUser || !okSession {
+		return authbasicapi.Logout401JSONResponse(apiErrUnauthorized), nil
+	}
 
 	if err := dbDeleteUserSession(ctx, i.db, req.OrgID, userID, sessionID); err != nil {
 		zerologr.Error(err, "Failed to delete user sessions")
@@ -244,7 +247,12 @@ func (i *impl) ChangePassword(
 		return authbasicapi.ChangePassword401JSONResponse(apiErrUnauthorized), nil
 	}
 
-	_, newSalt, newHashedPassword := password.Make(req.Body.Password)
+	_, newSalt, newHashedPassword, err := password.Make(req.Body.Password)
+	if err != nil {
+		zerologr.Error(err, "Failed to hash user password")
+		return authbasicapi.ChangePassword500JSONResponse(apiErrInternal), nil
+	}
+
 	if err := dbUpdateUserPassword(ctx, i.db, req.UserID, newSalt, newHashedPassword); err != nil {
 		zerologr.Error(err, "Failed to update user password")
 		return authbasicapi.ChangePassword500JSONResponse(apiErrInternal), nil
@@ -305,7 +313,12 @@ func (i *impl) CreateUser(
 	ctx context.Context,
 	req authbasicapi.CreateUserRequestObject,
 ) (authbasicapi.CreateUserResponseObject, error) {
-	_, salt, hashedPassword := password.Make(req.Body.Password)
+	_, salt, hashedPassword, err := password.Make(req.Body.Password)
+	if err != nil {
+		zerologr.Error(err, "Failed to hash user password")
+		return authbasicapi.CreateUser500JSONResponse(apiErrInternal), nil
+	}
+
 	id, err := dbCreateUser(ctx, i.db, req.Body.Name, salt, hashedPassword, req.OrgID)
 	if err != nil {
 		if errors.Is(err, db.ErrUnique) {
@@ -421,7 +434,10 @@ func (i *impl) GetMe(
 	ctx context.Context,
 	req authbasicapi.GetMeRequestObject,
 ) (authbasicapi.GetMeResponseObject, error) {
-	userID := userFromContext(ctx)
+	userID, ok := userFromContext(ctx)
+	if !ok {
+		return authbasicapi.GetMe401JSONResponse(apiErrUnauthorized), nil
+	}
 
 	u, err := dbGetUser(ctx, i.db, req.OrgID, userID)
 	if err != nil {

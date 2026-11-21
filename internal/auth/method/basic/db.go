@@ -766,7 +766,10 @@ func dbCreateOrganisation(
 	zerologr.Info(fmt.Sprintf("Created organisation with id %d", orgID))
 
 	adminUsername = fmt.Sprintf("%s-%s", "admin", name)
-	adminPassword, salt, hashedAdminPassword := password.Make("")
+	adminPassword, salt, hashedAdminPassword, err := password.Make("")
+	if err != nil {
+		return 0, 0, "", "", fmt.Errorf("create organisation admin: %w", err)
+	}
 
 	if client.Dialect() == db.PostgresDialect {
 		adminUserID, err = postgres.InsertReturningID(ctx, tx, insertUserReturning,
