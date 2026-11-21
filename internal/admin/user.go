@@ -627,7 +627,7 @@ func (i *impl) ResetSuperuserPassword(
 	ctx context.Context,
 	request adminapi.ResetSuperuserPasswordRequestObject,
 ) (adminapi.ResetSuperuserPasswordResponseObject, error) {
-	if !ContextCanResetPasswords(ctx) {
+	if !ContextCanResetSuperuserPassword(ctx) {
 		return adminapi.ResetSuperuserPassword403JSONResponse(apiErrForbidden), nil
 	}
 

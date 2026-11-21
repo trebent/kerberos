@@ -598,7 +598,7 @@ paths:
       operationId: ResetSuperuserPassword
       description: |
         Sets a new superuser password without the old one, and ends all superuser sessions.
-        Requires the password-reset permission.
+        Requires the superuser-password-reset permission.
       requestBody:
         $ref: "#/components/requestBodies/ResetPasswordRequest"
       responses:

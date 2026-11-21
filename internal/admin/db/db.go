@@ -1254,6 +1254,7 @@ func BootstrapPermissions(client db.SQLClient) error {
 		{6, "admin-user-mgmt-viewer"},
 		{7, "debugger"},
 		{8, "password-reset"},
+		{9, "superuser-password-reset"},
 	}
 
 	for _, p := range perms {
