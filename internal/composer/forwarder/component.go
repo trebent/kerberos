@@ -182,7 +182,7 @@ func (f *forwarder) handleInbound(req *http.Request) (*http.Response, error) {
 	}
 
 	forwardRequest.Header = req.Header.Clone()
-	security.StripKerberosCookies(forwardRequest.Header)
+	security.StripKerberosCookies(forwardRequest)
 	otel.GetTextMapPropagator().
 		Inject(req.Context(), propagation.HeaderCarrier(forwardRequest.Header))
 

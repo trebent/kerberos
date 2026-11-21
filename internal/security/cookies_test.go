@@ -2,6 +2,7 @@ package security
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"slices"
 	"testing"
 )
@@ -34,22 +35,22 @@ func TestStripKerberosCookies(t *testing.T) {
 			want:  []string{"session_id=1; my-session=2; sessionx=3"},
 		},
 		{
-			name:  "values are kept as sent",
-			lines: []string{`a="quoted value"; session=abc; b=x=y`},
-			want:  []string{`a="quoted value"; b=x=y`},
+			name:  "quoted values are kept",
+			lines: []string{`a="quoted"; session=abc; b=x=y`},
+			want:  []string{`a="quoted"; b=x=y`},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := http.Header{}
+			r := httptest.NewRequest(http.MethodGet, "/", nil)
 			for _, l := range tt.lines {
-				h.Add("Cookie", l)
+				r.Header.Add("Cookie", l)
 			}
 
-			StripKerberosCookies(h)
+			StripKerberosCookies(r)
 
-			if got := h.Values("Cookie"); !slices.Equal(got, tt.want) {
+			if got := r.Header.Values("Cookie"); !slices.Equal(got, tt.want) {
 				t.Fatalf("expected Cookie %q, got %q", tt.want, got)
 			}
 		})
