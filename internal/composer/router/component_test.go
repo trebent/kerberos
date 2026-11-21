@@ -100,7 +100,7 @@ func TestRouterVaryOrigin(t *testing.T) {
 			wantStatus: http.StatusForbidden,
 			wantVary:   true,
 		},
-		{name: "no origin", backend: "cors", wantStatus: http.StatusNoContent, wantVary: false},
+		{name: "no origin", backend: "cors", wantStatus: http.StatusNoContent, wantVary: true},
 		{
 			name:       "backend without CORS",
 			backend:    "plain",

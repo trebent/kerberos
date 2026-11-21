@@ -41,9 +41,10 @@ func DenyAllOriginsMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			zerologr.V(20).Info("CORS middleware: denying all origins")
+			// Before the Origin check on purpose, see AddVaryOrigin.
+			AddVaryOrigin(w)
 
 			if HasOrigin(r) {
-				AddVaryOrigin(w)
 				apierror.ErrorHandler(w, r, apierror.ErrForbidden)
 				return
 			}
@@ -60,7 +61,10 @@ func HasOrigin(r *http.Request) bool {
 }
 
 // AddVaryOrigin marks the response as depending on the request's Origin header, so that caches
-// do not serve a response built for one origin to a request from another.
+// do not serve a response built for one origin to a request from another. Call it for every
+// response whose CORS handling looks at the Origin header, including requests without one:
+// otherwise a cached response to a request without Origin, which has no CORS headers, can be
+// served to a browser request for the same URL.
 func AddVaryOrigin(w http.ResponseWriter) {
 	w.Header().Add("Vary", "Origin")
 }
@@ -71,13 +75,14 @@ func MirrorCORSMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			zerologr.V(20).Info("CORS middleware: attaching CORS headers")
+			// Before the Origin check on purpose, see AddVaryOrigin.
+			AddVaryOrigin(w)
 			if !HasOrigin(r) {
 				// No Origin header present, so this is not a browser request.
 				zerologr.V(20).Info("CORS middleware: not a CORS request, skipping CORS headers")
 				next.ServeHTTP(w, r)
 				return
 			}
-			AddVaryOrigin(w)
 			SetCORSHeaders(w, r.Header.Get("Origin"))
 
 			if r.Method == http.MethodOptions {
@@ -96,6 +101,8 @@ func WhitelistCORSMiddleware(allowedOrigins []string) func(http.Handler) http.Ha
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			zerologr.V(20).Info("Whitelist CORS middleware: checking allowed origins")
+			// Before the Origin check on purpose, see AddVaryOrigin.
+			AddVaryOrigin(w)
 			if !HasOrigin(r) {
 				// No Origin header present, so this is not a browser request.
 				zerologr.V(20).Info(
@@ -104,7 +111,6 @@ func WhitelistCORSMiddleware(allowedOrigins []string) func(http.Handler) http.Ha
 				next.ServeHTTP(w, r)
 				return
 			}
-			AddVaryOrigin(w)
 
 			origin := r.Header.Get("Origin")
 			for _, allowedOrigin := range allowedOrigins {

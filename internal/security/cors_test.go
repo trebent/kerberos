@@ -110,7 +110,7 @@ func TestCORSVaryOrigin(t *testing.T) {
 			origin:   "http://example.com",
 			wantVary: true,
 		},
-		{name: "allowAll without origin", allowAll: true, wantVary: false},
+		{name: "allowAll without origin", allowAll: true, wantVary: true},
 		{
 			name:           "allowed origin",
 			allowedOrigins: []string{"http://allowed.com"},
@@ -126,10 +126,10 @@ func TestCORSVaryOrigin(t *testing.T) {
 		{
 			name:           "allowedOrigins without origin",
 			allowedOrigins: []string{"http://allowed.com"},
-			wantVary:       false,
+			wantVary:       true,
 		},
 		{name: "denyAll with origin", denyAll: true, origin: "http://example.com", wantVary: true},
-		{name: "denyAll without origin", denyAll: true, wantVary: false},
+		{name: "denyAll without origin", denyAll: true, wantVary: true},
 		{name: "no CORS configuration", origin: "http://example.com", wantVary: false},
 	}
 
