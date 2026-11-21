@@ -39,6 +39,16 @@ func TestStripKerberosCookies(t *testing.T) {
 			lines: []string{`a="quoted"; session=abc; b=x=y`},
 			want:  []string{`a="quoted"; b=x=y`},
 		},
+		{
+			name:  "cookies Go cannot parse are dropped",
+			lines: []string{"bad=caf\u00e9; b@d=1; esc=a\\b; theme=dark; session=abc"},
+			want:  []string{"theme=dark"},
+		},
+		{
+			name:  "values with spaces or commas are quoted",
+			lines: []string{"a=has space; session=abc; b=x,y"},
+			want:  []string{`a="has space"; b="x,y"`},
+		},
 	}
 
 	for _, tt := range tests {
