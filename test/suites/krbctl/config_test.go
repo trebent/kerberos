@@ -32,6 +32,8 @@ func TestConfigNonInteractive(t *testing.T) {
 		filepath.Join("grafana", "grafana-datasources.yml"),
 	}
 
+	replaceSuperUserSecret(t, filepath.Join(dir, "krb.json"))
+
 	for _, f := range files {
 		assertGoldenFile(t,
 			filepath.Join(dir, f),
@@ -313,5 +315,20 @@ func TestConfigConnectorScrapeTarget(t *testing.T) {
 				t.Errorf("connector scraped = %t, want %t\n%s", scraped, tt.scraped, got)
 			}
 		})
+	}
+}
+
+// TestConfigSuperUserSecret checks that krbctl writes a valid superuser secret, and a different
+// one on every run.
+func TestConfigSuperUserSecret(t *testing.T) {
+	first, second := t.TempDir(), t.TempDir()
+	runKrbctl(t, "config", "-y", "--echo", "-o", first)
+	runKrbctl(t, "config", "-y", "--echo", "-o", second)
+
+	krb := filepath.Join(first, "krb.json")
+	assertOutputContains(t, runKrbctlOutput(t, "validate", "kerberos", krb), krb+": ok")
+
+	if superUserSecret(t, krb) == superUserSecret(t, filepath.Join(second, "krb.json")) {
+		t.Error("expected a different superuser secret on every run")
 	}
 }

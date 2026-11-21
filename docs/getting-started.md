@@ -53,6 +53,11 @@ The generated `krb.json` looks like this:
 
 ```json
 {
+  "admin": {
+    "superUser": {
+      "clientSecret": "<random secret>"
+    }
+  },
   "auth": {
     "methods": {
       "basic": {}
@@ -128,12 +133,12 @@ The path needs a slash after the backend name: `/gw/backend/echo/` reaches the b
 
 ### 5. Log in as the superuser
 
-Kerberos creates a **superuser** the first time it starts, with the [default credentials](./admin-api.md#the-superuser) client ID `admin` and client secret `secret`. Log in on the admin port and keep the session cookies in a cookie jar file (`-c` writes the jar, `-b` sends it):
+Kerberos creates a **superuser** the first time it starts, with the client ID `admin` and the password that `krbctl config` wrote to `admin.superUser.clientSecret` in `krb.json` (see [Admin API: the superuser](./admin-api.md#the-superuser)). Use it in place of `<superuser secret>` below. Log in on the admin port and keep the session cookies in a cookie jar file (`-c` writes the jar, `-b` sends it):
 
 ```bash
 curl -i -c admin.txt -X POST http://localhost:30001/api/admin/superuser/login \
   -H 'Content-Type: application/json' \
-  -d '{"clientId":"admin","clientSecret":"secret"}'
+  -d '{"clientId":"admin","clientSecret":"<superuser secret>"}'
 ```
 
 A successful login answers `204 No Content` and sets three cookies: `session`, `refresh` and `csrf`. Check who you are:
@@ -148,7 +153,7 @@ curl -b admin.txt http://localhost:30001/api/admin/me
 ```bash
 curl -i -b admin.txt -X PUT http://localhost:30001/api/admin/superuser/password \
   -H 'Content-Type: application/json' \
-  -d '{"oldPassword":"secret","newPassword":"<a long random secret>"}'
+  -d '{"oldPassword":"<superuser secret>","newPassword":"<a long random secret>"}'
 ```
 
 See [Admin API](./admin-api.md) for admin users, groups and permissions.

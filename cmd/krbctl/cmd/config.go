@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -35,6 +37,9 @@ const (
 	// sqliteSharedPath is the SQLite file location on the shared krbdata volume,
 	// letting Kerberos and the admin-connector share one database file.
 	sqliteSharedPath = "/krbdata/krb.db"
+
+	// superUserSecretBytes of randomness encode to a 43-character secret.
+	superUserSecretBytes = 32
 )
 
 var (
@@ -67,6 +72,9 @@ func getDriverFlag(cmd *cobra.Command) (string, error) {
 // configOptions holds all answers collected from the interactive config session.
 type configOptions struct {
 	outputPath string
+
+	// superUserSecret is the initial superuser password written to krb.json.
+	superUserSecret string
 
 	// Kerberos gateway
 	backends []backendEntry
@@ -148,8 +156,14 @@ func runConfig(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
+	superUserSecret, err := generateSuperUserSecret()
+	if err != nil {
+		return err
+	}
+
 	opts := &configOptions{
-		outputPath: output,
+		outputPath:      output,
+		superUserSecret: superUserSecret,
 		connectorOpts: connectorOptions{
 			allowAllOrigins: true,
 		},
@@ -183,6 +197,9 @@ func runConfig(cmd *cobra.Command, _ []string) error {
 	}
 
 	fmt.Fprintf(os.Stdout, "krb.json written to %s\n", opts.outputPath)
+	fmt.Fprintln(os.Stdout,
+		"The superuser password is admin.superUser.clientSecret in krb.json. "+
+			"Log in with client ID \"admin\" and that password.")
 
 	// Write observability stack config files
 	if opts.includeObsStack {
@@ -209,6 +226,16 @@ func runConfig(cmd *cobra.Command, _ []string) error {
 	}
 
 	return nil
+}
+
+// generateSuperUserSecret returns a random, URL-safe superuser secret.
+func generateSuperUserSecret() (string, error) {
+	b := make([]byte, superUserSecretBytes)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("generate superuser secret: %w", err)
+	}
+
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 // optInChoices holds the answers from the opt-in form that steer the later prompts but are
@@ -696,6 +723,12 @@ func buildConfig(opts *configOptions) ([]byte, error) {
 			"router": map[string]any{
 				"backends": backends,
 			},
+		},
+	}
+
+	root["admin"] = map[string]any{
+		"superUser": map[string]any{
+			"clientSecret": opts.superUserSecret,
 		},
 	}
 

@@ -1,4 +1,9 @@
 {
+  "admin": {
+    "superUser": {
+      "clientSecret": "generated-superuser-secret"
+    }
+  },
   "auth": {
     "methods": {
       "basic": {}
