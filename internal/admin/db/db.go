@@ -835,7 +835,11 @@ func ResetUserPassword(
 
 // ResetSuperuserPassword sets a new superuser password and deletes all superuser sessions, in one
 // transaction.
-func ResetSuperuserPassword(ctx context.Context, client db.SQLClient, salt, hashedPassword string) error {
+func ResetSuperuserPassword(
+	ctx context.Context,
+	client db.SQLClient,
+	salt, hashedPassword string,
+) error {
 	return resetPassword(ctx, client, &resetPasswordOpts{
 		update: updateSuperuserPassword,
 		updateArgs: []any{
