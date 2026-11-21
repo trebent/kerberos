@@ -196,7 +196,7 @@ All paths are relative to `/api/admin` on the admin port. "Any session" means an
 
 `PUT /users/{userID}/groups` sets the **complete** list of groups. Groups that are not in `groupIDs` are removed, and `{"groupIDs": []}` removes the user from every group.
 
-`PUT /users/{userID}/password` takes the user's current password, also when an `admin-user-mgmt-admin` changes someone else's password. If a user forgets their password, someone with the `password-reset` permission sets a new one with `PUT /users/{userID}/password/reset`. A reset ends all of the user's sessions, so anyone still logged in as that user is logged out.
+`PUT /api/admin/users/{userID}/password` takes the user's current password, also when an `admin-user-mgmt-admin` changes someone else's password. If a user forgets their password, someone with the `password-reset` permission sets a new one with `PUT /api/admin/users/{userID}/password/reset`. A reset ends all of the user's sessions, so anyone still logged in as that user is logged out.
 
 ### Admin groups
 
