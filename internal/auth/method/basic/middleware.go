@@ -49,6 +49,13 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 				return f(ctx, w, r, request)
 			}
 
+			// GetMe and Logout act on the caller's own user session. Admin sessions have none, and
+			// the admin checks below would let them through without a user in the context.
+			if (operationID == "GetMe" || operationID == "Logout") && admin.ContextSessionValid(ctx) {
+				zerologr.V(20).Info("Denying admin session access to a user session path")
+				return nil, apierror.ErrUnauthorized
+			}
+
 			if admin.IsSuperUserContext(ctx) {
 				zerologr.V(20).Info("Permitting super user access")
 				return f(ctx, w, r, request)
@@ -209,22 +216,18 @@ func withUser(ctx context.Context, userID int64) context.Context {
 	return context.WithValue(ctx, userContextKey, userID)
 }
 
-// userFromContext returns the user the middleware authenticated. ok is false when the request was
-// let through without a user session, for example by an admin session.
-func userFromContext(ctx context.Context) (int64, bool) {
-	userID, ok := ctx.Value(userContextKey).(int64)
-	return userID, ok
+func userFromContext(ctx context.Context) int64 {
+	//nolint:errcheck // welp
+	return ctx.Value(userContextKey).(int64)
 }
 
 func withSession(ctx context.Context, sessionID string) context.Context {
 	return context.WithValue(ctx, sessionContextKey, sessionID)
 }
 
-// sessionFromContext returns the session the middleware authenticated. ok is false when the
-// request was let through without a user session, for example by an admin session.
-func sessionFromContext(ctx context.Context) (string, bool) {
-	sessionID, ok := ctx.Value(sessionContextKey).(string)
-	return sessionID, ok
+func sessionFromContext(ctx context.Context) string {
+	//nolint:errcheck // welp
+	return ctx.Value(sessionContextKey).(string)
 }
 
 func orgValidator(orgID int64, r *http.Request) error {

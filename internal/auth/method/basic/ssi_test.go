@@ -48,25 +48,3 @@ func TestBasicSSIRefresh(t *testing.T) {
 		t.Fatalf("expected customRefreshSessionResponse, got %T", resp)
 	}
 }
-
-// TestBasicSSINoUserSession verifies that GetMe and Logout return 401 instead of panicking when the
-// middleware let the request through without a user session, as it does for admin sessions.
-func TestBasicSSINoUserSession(t *testing.T) {
-	ssi := newSSI(testClient, &config.Cookies{})
-
-	me, err := ssi.GetMe(t.Context(), authbasicapi.GetMeRequestObject{OrgID: 1})
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-	if _, ok := me.(authbasicapi.GetMe401JSONResponse); !ok {
-		t.Fatalf("expected GetMe401JSONResponse, got %T", me)
-	}
-
-	logout, err := ssi.Logout(t.Context(), authbasicapi.LogoutRequestObject{OrgID: 1})
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-	if _, ok := logout.(authbasicapi.Logout401JSONResponse); !ok {
-		t.Fatalf("expected Logout401JSONResponse, got %T", logout)
-	}
-}

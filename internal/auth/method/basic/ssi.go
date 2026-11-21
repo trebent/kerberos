@@ -137,11 +137,8 @@ func (i *impl) Logout(
 	ctx context.Context,
 	req authbasicapi.LogoutRequestObject,
 ) (authbasicapi.LogoutResponseObject, error) {
-	userID, okUser := userFromContext(ctx)
-	sessionID, okSession := sessionFromContext(ctx)
-	if !okUser || !okSession {
-		return authbasicapi.Logout401JSONResponse(apiErrUnauthorized), nil
-	}
+	userID := userFromContext(ctx)
+	sessionID := sessionFromContext(ctx)
 
 	if err := dbDeleteUserSession(ctx, i.db, req.OrgID, userID, sessionID); err != nil {
 		zerologr.Error(err, "Failed to delete user sessions")
@@ -434,10 +431,7 @@ func (i *impl) GetMe(
 	ctx context.Context,
 	req authbasicapi.GetMeRequestObject,
 ) (authbasicapi.GetMeResponseObject, error) {
-	userID, ok := userFromContext(ctx)
-	if !ok {
-		return authbasicapi.GetMe401JSONResponse(apiErrUnauthorized), nil
-	}
+	userID := userFromContext(ctx)
 
 	u, err := dbGetUser(ctx, i.db, req.OrgID, userID)
 	if err != nil {
