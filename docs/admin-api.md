@@ -120,7 +120,7 @@ The set of permissions is fixed. Their IDs are stable and are the same on every 
 | 5 | `admin-user-mgmt-admin` | Create, update and delete admin users and admin groups; set users' group memberships; change other users' passwords. Includes everything `admin-user-mgmt-viewer` allows. |
 | 6 | `admin-user-mgmt-viewer` | List and read admin users and admin groups. |
 | 7 | `debugger` | All `/api/admin/debug/...` endpoints. See [Admin debugging](./admin-debugging.md). |
-| 8 | `password-reset` | `PUT /users/{userID}/password/reset` and `PUT /superuser/password/reset`: set a new password for any admin user, or the superuser, without the old one. Grant it with care: its holder can take over any admin account, the superuser included. |
+| 8 | `password-reset` | `PUT /api/admin/users/{userID}/password/reset` and `PUT /api/admin/superuser/password/reset`: set a new password for any admin user, or the superuser, without the old one. Grant it with care: its holder can take over any admin account, the superuser included. |
 
 ### How effective permissions are computed
 
