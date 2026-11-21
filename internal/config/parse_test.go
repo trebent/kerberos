@@ -54,6 +54,36 @@ func TestParseKerberosIncompleteSections(t *testing.T) {
 	}
 }
 
+func TestParseKerberosSuperUserSecret(t *testing.T) {
+	const gateway = `"gateway": {"router": {"backends": [{"name": "a", "host": "h", "port": 1}]}}`
+
+	tests := map[string]struct {
+		admin   string
+		wantErr bool
+	}{
+		"no admin section": {admin: "", wantErr: true},
+		"no superuser":     {admin: `, "admin": {}`, wantErr: true},
+		"no secret":        {admin: `, "admin": {"superUser": {}}`, wantErr: true},
+		"secret too short": {admin: `, "admin": {"superUser": {"clientSecret": "123456789"}}`, wantErr: true},
+		"secret too long":  {admin: `, "admin": {"superUser": {"clientSecret": "` + strings.Repeat("a", 65) + `"}}`, wantErr: true},
+		"shortest secret":  {admin: `, "admin": {"superUser": {"clientSecret": "1234567890"}}`},
+		"longest secret":   {admin: `, "admin": {"superUser": {"clientSecret": "` + strings.Repeat("a", 64) + `"}}`},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			_, err := ParseKerberos([]byte("{" + gateway + tt.admin + "}"))
+			if tt.wantErr && err == nil {
+				t.Fatal("expected an error")
+			}
+
+			if !tt.wantErr && err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+		})
+	}
+}
+
 func TestParseConnector(t *testing.T) {
 	if _, err := ParseConnector(readTestConfig(t, "connector.json")); err != nil {
 		t.Fatal(err)

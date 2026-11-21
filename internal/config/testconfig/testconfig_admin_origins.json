@@ -7,6 +7,9 @@
           "https://admin.example.com"
         ]
       }
+    },
+    "superUser": {
+      "clientSecret": "kerberos-dev-secret"
     }
   },
   "gateway": {

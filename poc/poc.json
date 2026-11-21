@@ -30,5 +30,10 @@
   },
   "observability": {
     "enabled": false
+  },
+  "admin": {
+    "superUser": {
+      "clientSecret": "kerberos-dev-secret"
+    }
   }
 }

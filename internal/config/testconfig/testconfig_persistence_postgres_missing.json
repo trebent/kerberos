@@ -13,5 +13,10 @@
   "persistence": {
     "driver": "postgres",
     "address": "localhost:5432"
+  },
+  "admin": {
+    "superUser": {
+      "clientSecret": "kerberos-dev-secret"
+    }
   }
 }

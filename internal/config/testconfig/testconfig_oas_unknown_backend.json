@@ -17,5 +17,10 @@
         "specification": "./testconfig/oas_spec.yaml"
       }
     ]
+  },
+  "admin": {
+    "superUser": {
+      "clientSecret": "kerberos-dev-secret"
+    }
   }
 }

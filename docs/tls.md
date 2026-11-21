@@ -87,7 +87,7 @@ Gateway TLS and admin TLS are independent. You can use the same certificate for 
 ```bash
 curl --cacert ca.pem -X POST https://localhost:30001/api/admin/superuser/login \
   -H 'Content-Type: application/json' \
-  -d '{"clientId":"admin","clientSecret":"secret"}'
+  -d '{"clientId":"admin","clientSecret":"<superuser secret>"}'
 ```
 
 ## Backend TLS and mutual TLS

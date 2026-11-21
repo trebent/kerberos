@@ -19,5 +19,10 @@
       "password": "password",
       "sslMode": "require"
     }
+  },
+  "admin": {
+    "superUser": {
+      "clientSecret": "kerberos-dev-secret"
+    }
   }
 }

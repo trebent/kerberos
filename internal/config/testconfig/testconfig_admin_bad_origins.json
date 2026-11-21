@@ -8,6 +8,9 @@
         ],
         "allowAll": true
       }
+    },
+    "superUser": {
+      "clientSecret": "kerberos-dev-secret"
     }
   },
   "gateway": {

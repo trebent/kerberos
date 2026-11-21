@@ -179,8 +179,8 @@ func TestConfigAdmin(t *testing.T) {
 			t.Errorf("expected superuser client ID to be 'admin', got '%s'", target.AdminCfg.SuperUser.ClientID)
 		}
 
-		if target.AdminCfg.SuperUser.ClientSecret != "secret" {
-			t.Errorf("expected superuser client secret to be 'secret', got '%s'", target.AdminCfg.SuperUser.ClientSecret)
+		if target.AdminCfg.SuperUser.ClientSecret != "kerberos-dev-secret" {
+			t.Errorf("expected superuser client secret to be 'kerberos-dev-secret', got '%s'", target.AdminCfg.SuperUser.ClientSecret)
 		}
 	})
 

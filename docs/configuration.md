@@ -24,11 +24,11 @@ The config file controls what Kerberos does. Process-level settings come from en
 ## File format
 
 - The file is plain JSON, without comments or trailing commas.
-- Only the `gateway` section is required. Every other top-level section is optional.
+- The `gateway` and `admin` sections are required. Every other top-level section is optional.
 - Unknown keys are rejected, so a misspelt key stops startup with a clear message.
 - Relative file paths in the config (TLS certificates and keys, OpenAPI specifications, the SQLite database file) are resolved against the working directory of the Kerberos process, not against the directory that holds the config file. Use absolute paths in containers.
 
-The smallest working config has one backend:
+The smallest working config has one backend and the superuser's password:
 
 ```json
 {
@@ -38,11 +38,14 @@ The smallest working config has one backend:
         { "name": "echo", "host": "localhost", "port": 15000 }
       ]
     }
+  },
+  "admin": {
+    "superUser": { "clientSecret": "${env:KRB_SUPERUSER_SECRET}" }
   }
 }
 ```
 
-Every section you leave out takes the defaults documented on its own page. Two of them matter before you expose Kerberos: `admin.superUser` has default credentials that you should change (see [Admin API: the superuser](./admin-api.md#the-superuser)), and `persistence` defaults to a local SQLite file (see [Persistence](./persistence.md)).
+Every section you leave out takes the defaults documented on its own page. `gateway` and `admin.superUser.clientSecret` have no defaults and must be set (see [Admin API: the superuser](./admin-api.md#the-superuser)). Before you expose Kerberos, also note that `persistence` defaults to a local SQLite file (see [Persistence](./persistence.md)).
 
 ## Root keys
 
@@ -51,7 +54,7 @@ This page owns the top level of the file. Each section is documented on one page
 | Key | Required | What it configures | Documented in |
 | --- | --- | --- | --- |
 | `gateway` | yes | The backends behind the gateway (`router`) and HTTPS on the gateway port (`tls`). | [Routing](./routing.md) (`gateway.router`), [TLS](./tls.md) (`gateway.tls`) |
-| `admin` | no | The first superuser (`superUser`) and the Admin API's cookies, origins and HTTPS (`api`). | [Admin API](./admin-api.md) |
+| `admin` | yes | The first superuser (`superUser`) and the Admin API's cookies, origins and HTTPS (`api`). `admin.superUser.clientSecret` is required. | [Admin API](./admin-api.md) |
 | `auth` | no | Which backends need a login, which groups they require, and the basic-auth API. Leave it out to turn authentication off. | [Authentication](./authentication.md) |
 | `oas` | no | Validating requests against each backend's OpenAPI specification. Leave it out to turn validation off. | [Request validation](./request-validation.md) |
 | `observability` | no | Turning OpenTelemetry metrics and tracing on or off. | [Observability](./observability.md) |

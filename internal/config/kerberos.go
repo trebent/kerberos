@@ -215,8 +215,7 @@ func newAdminConfig() *Admin {
 			Origins: &Origins{},
 		},
 		SuperUser: &SuperUser{
-			ClientID:     "admin",
-			ClientSecret: "secret",
+			ClientID: "admin",
 		},
 	}
 }

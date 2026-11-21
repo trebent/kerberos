@@ -14,6 +14,9 @@
         "serverCertFile": "/certs/krb_server.pem",
         "serverKeyFile": "/certs/krb_server.key"
       }
+    },
+    "superUser": {
+      "clientSecret": "kerberos-dev-secret"
     }
   },
   "observability": {

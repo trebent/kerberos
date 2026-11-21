@@ -91,7 +91,7 @@ This example assumes a backend called `echo`, the gateway on port 30000 and the 
    ```bash
    curl -s -c cookies.txt -X POST http://localhost:30001/api/admin/superuser/login \
      -H 'Content-Type: application/json' \
-     -d '{"clientId": "admin", "clientSecret": "secret"}'
+     -d '{"clientId": "admin", "clientSecret": "<superuser secret>"}'
    ```
 
    Admin cookies are marked `Secure`, which curl accepts for `localhost`. For other hosts use HTTPS; see [Sessions](./sessions.md).

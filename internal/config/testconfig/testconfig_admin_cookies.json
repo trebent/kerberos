@@ -5,6 +5,9 @@
         "domain": "example.com",
         "sameSite": "Lax"
       }
+    },
+    "superUser": {
+      "clientSecret": "kerberos-dev-secret"
     }
   },
   "gateway": {

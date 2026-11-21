@@ -17,7 +17,7 @@ Admin users, admin groups and the superuser are separate from the users and grou
 
 ## Configuration
 
-The `admin` section of the configuration file is optional. With no `admin` section, the Admin API runs with the defaults below.
+The `admin` section of the configuration file is required, because it holds the first superuser's password. Everything else in it has a default.
 
 ```json
 {
@@ -46,7 +46,7 @@ The `admin` section of the configuration file is optional. With no `admin` secti
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
 | `admin.superUser.clientId` | string | `admin` | Superuser login name. Used only on the first start (see [The superuser](#the-superuser)). |
-| `admin.superUser.clientSecret` | string | `secret` | Initial superuser password. Used only on the first start. |
+| `admin.superUser.clientSecret` | string | - | Required. Initial superuser password, 10 to 64 characters. Used only on the first start. `krbctl config` generates one for you (see [krbctl](./krbctl.md#what-krbjson-contains)). |
 | `admin.api` | object | - | Settings for the admin port's HTTP API. |
 | `admin.api.cookies` | object | see [Sessions: cookie configuration](./sessions.md#cookie-configuration) | Attributes of the session, refresh and CSRF cookies set by Admin API logins. |
 | `admin.api.origins` | object | see [CORS](./cors.md#the-origins-object) | Browser origins allowed to call the Admin API. |
@@ -58,7 +58,7 @@ The authoritative schema is [`internal/config/schemas/admin_schema.json`](../int
 
 ### First start
 
-When Kerberos starts and its database has no superuser, it creates one from `admin.superUser.clientId` and `admin.superUser.clientSecret`. If you leave those keys out, the defaults from the [Configuration](#configuration) table are used.
+When Kerberos starts and its database has no superuser, it creates one from `admin.superUser.clientId` (default `admin`) and `admin.superUser.clientSecret`.
 
 From then on, the superuser's name and password live in the database. To change the password, use the API as shown below.
 
@@ -69,11 +69,11 @@ As soon as Kerberos has started for the first time, log in as the superuser and 
 ```bash
 curl -i -c su.jar -b su.jar -X POST http://localhost:30001/api/admin/superuser/login \
   -H 'Content-Type: application/json' \
-  -d '{"clientId": "admin", "clientSecret": "secret"}'
+  -d '{"clientId": "admin", "clientSecret": "<superuser secret>"}'
 
 curl -i -c su.jar -b su.jar -X PUT http://localhost:30001/api/admin/superuser/password \
   -H 'Content-Type: application/json' \
-  -d '{"oldPassword": "secret", "newPassword": "a-long-random-passphrase"}'
+  -d '{"oldPassword": "<superuser secret>", "newPassword": "a-long-random-passphrase"}'
 ```
 
 A successful change returns `204`. A wrong `oldPassword` returns `400`. The superuser's name (`clientId`) stays as it was set on the first start.

@@ -38,8 +38,7 @@
     },
     "superUser": {
       "type": "object",
-      "description": "Superuser settings. NOTE: keep in mind to change the provisioned credentials ASAP after first start. The provided credentials here are only consumed once. Once changed, this settings block becomes obsolete.",
-      "default": {},
+      "description": "Superuser settings. The credentials are only used to create the superuser on the first start.",
       "properties": {
         "clientId": {
           "type": "string",
@@ -47,11 +46,19 @@
         },
         "clientSecret": {
           "type": "string",
-          "default": "secret"
+          "description": "Initial superuser password, 10 to 64 characters.",
+          "minLength": 10,
+          "maxLength": 64
         }
       },
+      "required": [
+        "clientSecret"
+      ],
       "additionalProperties": false
     }
   },
+  "required": [
+    "superUser"
+  ],
   "additionalProperties": false
 }

@@ -4,6 +4,9 @@
       "origins": {
         "allowAll": true
       }
+    },
+    "superUser": {
+      "clientSecret": "kerberos-dev-secret"
     }
   },
   "persistence": {
