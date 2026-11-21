@@ -727,14 +727,14 @@ type ClientInterface interface {
 	// with any type of body and a specified content type.
 	//
 	// Sets a new superuser password without the old one, and ends all superuser sessions.
-	// Requires the password-reset permission.
+	// Requires the superuser-password-reset permission.
 	ResetSuperuserPasswordWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ResetSuperuserPassword performs a PUT /api/admin/superuser/password/reset (the `ResetSuperuserPassword` operationId) request.
 	// Takes a body of the `application/json` content type.
 	//
 	// Sets a new superuser password without the old one, and ends all superuser sessions.
-	// Requires the password-reset permission.
+	// Requires the superuser-password-reset permission.
 	ResetSuperuserPassword(ctx context.Context, body ResetSuperuserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RefreshSuperuserSession performs a POST /api/admin/superuser/refresh (the `RefreshSuperuserSession` operationId) request.
@@ -1204,7 +1204,7 @@ func (c *Client) ChangeSuperuserPassword(ctx context.Context, body ChangeSuperus
 // with any type of body and a specified content type.
 //
 // Sets a new superuser password without the old one, and ends all superuser sessions.
-// Requires the password-reset permission.
+// Requires the superuser-password-reset permission.
 func (c *Client) ResetSuperuserPasswordWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewResetSuperuserPasswordRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -1221,7 +1221,7 @@ func (c *Client) ResetSuperuserPasswordWithBody(ctx context.Context, contentType
 // Takes a body of the `application/json` content type.
 //
 // Sets a new superuser password without the old one, and ends all superuser sessions.
-// Requires the password-reset permission.
+// Requires the superuser-password-reset permission.
 func (c *Client) ResetSuperuserPassword(ctx context.Context, body ResetSuperuserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewResetSuperuserPasswordRequest(c.Server, body)
 	if err != nil {
@@ -2888,7 +2888,7 @@ type ClientWithResponsesInterface interface {
 	// with any type of body and a specified content type.
 	//
 	// Sets a new superuser password without the old one, and ends all superuser sessions.
-	// Requires the password-reset permission.
+	// Requires the superuser-password-reset permission.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	ResetSuperuserPasswordWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResetSuperuserPasswordResponse, error)
@@ -2897,7 +2897,7 @@ type ClientWithResponsesInterface interface {
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Sets a new superuser password without the old one, and ends all superuser sessions.
-	// Requires the password-reset permission.
+	// Requires the superuser-password-reset permission.
 	ResetSuperuserPasswordWithResponse(ctx context.Context, body ResetSuperuserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ResetSuperuserPasswordResponse, error)
 
 	// RefreshSuperuserSessionWithResponse performs a POST /api/admin/superuser/refresh (the `RefreshSuperuserSession` operationId) request.
@@ -5553,7 +5553,7 @@ func (c *ClientWithResponses) ChangeSuperuserPasswordWithResponse(ctx context.Co
 // with any type of body and a specified content type.
 //
 // Sets a new superuser password without the old one, and ends all superuser sessions.
-// Requires the password-reset permission.
+// Requires the superuser-password-reset permission.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) ResetSuperuserPasswordWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResetSuperuserPasswordResponse, error) {
@@ -5568,7 +5568,7 @@ func (c *ClientWithResponses) ResetSuperuserPasswordWithBodyWithResponse(ctx con
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Sets a new superuser password without the old one, and ends all superuser sessions.
-// Requires the password-reset permission.
+// Requires the superuser-password-reset permission.
 func (c *ClientWithResponses) ResetSuperuserPasswordWithResponse(ctx context.Context, body ResetSuperuserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ResetSuperuserPasswordResponse, error) {
 	rsp, err := c.ResetSuperuserPassword(ctx, body, reqEditors...)
 	if err != nil {

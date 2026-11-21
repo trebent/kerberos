@@ -80,7 +80,7 @@ A successful change returns `204`. A wrong `oldPassword` returns `400`. The supe
 
 ### Reset a lost password
 
-If the superuser password is lost, an admin user with the `password-reset` permission sets a new one without the old one. Here that user's session cookies are in `admin.jar`:
+If the superuser password is lost, an admin user with the `superuser-password-reset` permission sets a new one without the old one. Here that user's session cookies are in `admin.jar`:
 
 ```bash
 curl -i -b admin.jar -X PUT http://localhost:30001/api/admin/superuser/password/reset \
@@ -120,7 +120,8 @@ The set of permissions is fixed. Their IDs are stable and are the same on every 
 | 5 | `admin-user-mgmt-admin` | Create, update and delete admin users and admin groups; set users' group memberships; change other users' passwords. Includes everything `admin-user-mgmt-viewer` allows. |
 | 6 | `admin-user-mgmt-viewer` | List and read admin users and admin groups. |
 | 7 | `debugger` | All `/api/admin/debug/...` endpoints. See [Admin debugging](./admin-debugging.md). |
-| 8 | `password-reset` | `PUT /api/admin/users/{userID}/password/reset` and `PUT /api/admin/superuser/password/reset`: set a new password for any admin user, or the superuser, without the old one. Grant it with care: its holder can take over any admin account, the superuser included. |
+| 8 | `password-reset` | `PUT /api/admin/users/{userID}/password/reset`: set a new password for any admin user without the old one. Grant it with care: its holder can take over any admin account. |
+| 9 | `superuser-password-reset` | `PUT /api/admin/superuser/password/reset`: set a new superuser password without the old one. Grant it with care: its holder can take over the superuser. |
 
 ### How effective permissions are computed
 
@@ -164,7 +165,7 @@ All paths are relative to `/api/admin` on the admin port. "Any session" means an
 | `POST /superuser/logout` | superuser | none | `204` ends all superuser sessions; `403` if caller is not the superuser |
 | `POST /superuser/refresh` | superuser refresh cookie | none | `204` + new cookies; `401` missing, unknown or expired refresh token; `403` token belongs to an admin user |
 | `PUT /superuser/password` | superuser | `{"oldPassword", "newPassword"}` | `204`; `400` wrong old password or `newPassword` not 10 to 64 characters; `403` not the superuser |
-| `PUT /superuser/password/reset` | `password-reset` | `{"newPassword"}` | `204` and all superuser sessions end; `400` `newPassword` not 10 to 64 characters; `403` |
+| `PUT /superuser/password/reset` | `superuser-password-reset` | `{"newPassword"}` | `204` and all superuser sessions end; `400` `newPassword` not 10 to 64 characters; `403` |
 
 ### Admin-user session
 

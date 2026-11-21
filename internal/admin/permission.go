@@ -10,25 +10,27 @@ import (
 const (
 	// Permission IDs — these are stable, fixed values (not auto-incremented).
 
-	PermissionIDFlowViewer          = int64(1)
-	PermissionIDOASViewer           = int64(2)
-	PermissionIDBasicAuthOrgAdmin   = int64(3)
-	PermissionIDBasicAuthOrgViewer  = int64(4)
-	PermissionIDAdminUserMgmtAdmin  = int64(5)
-	PermissionIDAdminUserMgmtViewer = int64(6)
-	PermissionIDDebugger            = int64(7)
-	PermissionIDPasswordReset       = int64(8)
+	PermissionIDFlowViewer             = int64(1)
+	PermissionIDOASViewer              = int64(2)
+	PermissionIDBasicAuthOrgAdmin      = int64(3)
+	PermissionIDBasicAuthOrgViewer     = int64(4)
+	PermissionIDAdminUserMgmtAdmin     = int64(5)
+	PermissionIDAdminUserMgmtViewer    = int64(6)
+	PermissionIDDebugger               = int64(7)
+	PermissionIDPasswordReset          = int64(8)
+	PermissionIDSuperuserPasswordReset = int64(9)
 
 	// Permission names.
 
-	PermissionNameFlowViewer          = "flow-viewer"
-	PermissionNameOASViewer           = "oas-viewer"
-	PermissionNameBasicAuthOrgAdmin   = "basic-auth-org-admin"
-	PermissionNameBasicAuthOrgViewer  = "basic-auth-org-viewer"
-	PermissionNameAdminUserMgmtAdmin  = "admin-user-mgmt-admin"
-	PermissionNameAdminUserMgmtViewer = "admin-user-mgmt-viewer"
-	PermissionNameDebugger            = "debugger"
-	PermissionNamePasswordReset       = "password-reset"
+	PermissionNameFlowViewer             = "flow-viewer"
+	PermissionNameOASViewer              = "oas-viewer"
+	PermissionNameBasicAuthOrgAdmin      = "basic-auth-org-admin"
+	PermissionNameBasicAuthOrgViewer     = "basic-auth-org-viewer"
+	PermissionNameAdminUserMgmtAdmin     = "admin-user-mgmt-admin"
+	PermissionNameAdminUserMgmtViewer    = "admin-user-mgmt-viewer"
+	PermissionNameDebugger               = "debugger"
+	PermissionNamePasswordReset          = "password-reset"
+	PermissionNameSuperuserPasswordReset = "superuser-password-reset"
 )
 
 // ContextSessionValid reports whether the context contains an admin session.
@@ -111,4 +113,10 @@ func ContextIsDebugger(ctx context.Context) bool {
 // ContextCanResetPasswords reports whether the calling admin user has the password-reset permission.
 func ContextCanResetPasswords(ctx context.Context) bool {
 	return ContextHasPermission(ctx, PermissionIDPasswordReset)
+}
+
+// ContextCanResetSuperuserPassword reports whether the calling admin user has the
+// superuser-password-reset permission.
+func ContextCanResetSuperuserPassword(ctx context.Context) bool {
+	return ContextHasPermission(ctx, PermissionIDSuperuserPasswordReset)
 }
