@@ -27,7 +27,7 @@ var (
 	errMalformedUserID = errors.New("malformed user ID")
 )
 
-//nolint:funlen,cyclop // one case per operation
+//nolint:funlen // welp
 func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictMiddlewareFunc {
 	apiImpl, ok := ssi.(*impl)
 	if !ok {
@@ -135,13 +135,6 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 				zerologr.V(20).Info("Validating auth for logout path")
 				validation = make([]error, 1)
 				validation[0] = orgValidator(session.OrgID, r)
-			case
-				"CreateUser",
-				"ListUsers":
-				zerologr.V(20).Info("Validating auth for user paths")
-				validation = make([]error, 2)
-				validation[0] = orgValidator(session.OrgID, r)
-				validation[1] = administratorValidator(session.Administrator)
 			case "GetUser":
 				zerologr.V(20).Info("Validating auth for GET user path")
 				validation = make([]error, 2)
@@ -166,35 +159,22 @@ func AuthMiddleware(ssi authbasicapi.StrictServerInterface) authbasicapi.StrictM
 					administratorValidator(session.Administrator),
 					ownerUserValidator(session.UserID, r),
 				)
-			case "UpdateUserGroups":
-				zerologr.V(20).Info("Validating auth for update user membership paths")
-				validation = make([]error, 2)
-				validation[0] = orgValidator(session.OrgID, r)
-				validation[1] = administratorValidator(session.Administrator)
-			case "ResetPassword":
-				zerologr.V(20).Info("Validating auth for reset password path")
-				validation = make([]error, 2)
-				validation[0] = orgValidator(session.OrgID, r)
-				validation[1] = administratorValidator(session.Administrator)
 			case
+				"CreateUser",
+				"ListUsers",
+				"UpdateUserGroups",
+				"ResetPassword",
 				"GetOrganisation",
-				"DeleteOrganisation":
-				zerologr.V(20).Info("Validating auth for specific org paths")
-				validation = make([]error, 2)
-				validation[0] = orgValidator(session.OrgID, r)
-				validation[1] = administratorValidator(session.Administrator)
-			case
+				"DeleteOrganisation",
 				"CreateGroup",
-				"ListGroups":
-				zerologr.V(20).Info("Validating auth for group paths")
-				validation = make([]error, 2)
-				validation[0] = orgValidator(session.OrgID, r)
-				validation[1] = administratorValidator(session.Administrator)
-			case
+				"ListGroups",
 				"UpdateGroup",
 				"GetGroup",
 				"DeleteGroup":
-				zerologr.V(20).Info("Validating auth for specific group paths")
+				zerologr.V(20).Info(
+					"Validating auth for organisation administrator paths",
+					"operation", operationID,
+				)
 				validation = make([]error, 2)
 				validation[0] = orgValidator(session.OrgID, r)
 				validation[1] = administratorValidator(session.Administrator)
