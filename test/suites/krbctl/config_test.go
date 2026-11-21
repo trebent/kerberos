@@ -22,7 +22,6 @@ func TestConfigNonInteractive(t *testing.T) {
 		"--driver", "postgres",
 		"--obs-stack",
 		"--connector",
-		"--superuser-secret", "kerberos-dev-secret",
 		"-o", dir)
 
 	files := []string{
@@ -32,6 +31,8 @@ func TestConfigNonInteractive(t *testing.T) {
 		filepath.Join("grafana", "grafana.ini"),
 		filepath.Join("grafana", "grafana-datasources.yml"),
 	}
+
+	replaceSuperUserSecret(t, filepath.Join(dir, "krb.json"))
 
 	for _, f := range files {
 		assertGoldenFile(t,
@@ -317,20 +318,17 @@ func TestConfigConnectorScrapeTarget(t *testing.T) {
 	}
 }
 
-// TestConfigSuperUserSecret checks that krbctl generates a valid superuser secret when none is
-// given, and rejects a given secret outside the allowed length.
+// TestConfigSuperUserSecret checks that krbctl writes a valid superuser secret, and a different
+// one on every run.
 func TestConfigSuperUserSecret(t *testing.T) {
-	t.Run("generated", func(t *testing.T) {
-		dir := t.TempDir()
-		runKrbctl(t, "config", "-y", "--echo", "-o", dir)
+	first, second := t.TempDir(), t.TempDir()
+	runKrbctl(t, "config", "-y", "--echo", "-o", first)
+	runKrbctl(t, "config", "-y", "--echo", "-o", second)
 
-		krb := filepath.Join(dir, "krb.json")
-		assertFileContains(t, krb, `"clientSecret": "`)
-		assertOutputContains(t, runKrbctlOutput(t, "validate", "kerberos", krb), krb+": ok")
-	})
+	krb := filepath.Join(first, "krb.json")
+	assertOutputContains(t, runKrbctlOutput(t, "validate", "kerberos", krb), krb+": ok")
 
-	t.Run("too short", func(t *testing.T) {
-		out := runKrbctlFailure(t, "config", "-y", "--echo", "--superuser-secret", "short", "-o", t.TempDir())
-		assertOutputContains(t, out, "superuser secret must be 10 to 64 characters")
-	})
+	if superUserSecret(t, krb) == superUserSecret(t, filepath.Join(second, "krb.json")) {
+		t.Error("expected a different superuser secret on every run")
+	}
 }

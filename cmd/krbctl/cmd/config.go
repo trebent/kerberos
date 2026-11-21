@@ -38,21 +38,13 @@ const (
 	// letting Kerberos and the admin-connector share one database file.
 	sqliteSharedPath = "/krbdata/krb.db"
 
-	// superUserSecretMinLen and superUserSecretMaxLen match the limits of
-	// admin.superUser.clientSecret in the Kerberos config schema.
-	superUserSecretMinLen = 10
-	superUserSecretMaxLen = 64
 	// superUserSecretBytes of randomness encode to a 43-character secret.
 	superUserSecretBytes = 32
 )
 
 var (
-	errDuplicateBackend       = errors.New("duplicate backend name")
-	errInvalidPort            = errors.New("port must be a number between 1 and 65535")
-	errInvalidSuperUserSecret = fmt.Errorf(
-		"superuser secret must be %d to %d characters",
-		superUserSecretMinLen, superUserSecretMaxLen,
-	)
+	errDuplicateBackend = errors.New("duplicate backend name")
+	errInvalidPort      = errors.New("port must be a number between 1 and 65535")
 )
 
 // addDriverFlag registers the --driver flag shared by the config and compose
@@ -149,8 +141,6 @@ asked for the details of each part you chose.`,
 		"Include the admin-connector (generates connector.json). (non-interactive mode only)")
 	cmd.Flags().Bool("connector-allow-all-origins", true,
 		"Allow all CORS origins for the admin-connector. (non-interactive mode only)")
-	cmd.Flags().String("superuser-secret", "",
-		"Initial superuser password, 10 to 64 characters. A random one is generated if empty.")
 
 	return cmd
 }
@@ -166,7 +156,7 @@ func runConfig(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	superUserSecret, err := getSuperUserSecret(cmd)
+	superUserSecret, err := generateSuperUserSecret()
 	if err != nil {
 		return err
 	}
@@ -236,25 +226,6 @@ func runConfig(cmd *cobra.Command, _ []string) error {
 	}
 
 	return nil
-}
-
-// getSuperUserSecret returns the --superuser-secret flag value, or a random secret when the flag
-// is empty.
-func getSuperUserSecret(cmd *cobra.Command) (string, error) {
-	secret, err := cmd.Flags().GetString("superuser-secret")
-	if err != nil {
-		return "", err
-	}
-
-	if secret == "" {
-		return generateSuperUserSecret()
-	}
-
-	if n := len([]rune(secret)); n < superUserSecretMinLen || n > superUserSecretMaxLen {
-		return "", errInvalidSuperUserSecret
-	}
-
-	return secret, nil
 }
 
 // generateSuperUserSecret returns a random, URL-safe superuser secret.

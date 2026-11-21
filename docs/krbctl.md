@@ -175,9 +175,8 @@ Interactive mode runs in a terminal. If you cancel a prompt (for example with Ct
 | `--scrape-target` | Kerberos, all backends, and Jaeger, Loki and the connector when included | Prometheus scrape target. Repeatable. If you pass any, only those are used. |
 | `--connector` | `false` | Generate `connector.json` for the admin-connector. |
 | `--connector-allow-all-origins` | `true` | `true` writes `"allowAll": true`. `false` writes `"denyAll": true`. |
-| `--superuser-secret` | random | Initial superuser password, 10 to 64 characters. If you leave it out, `krbctl` generates a random 43-character password. Any other length stops `krbctl` with an error. |
 
-All flags except `-o`, `-y` and `--superuser-secret` are only used with `-y`. Without `-y` you are asked the questions instead.
+All flags except `-o` and `-y` are only used with `-y`. Without `-y` you are asked the questions instead.
 
 #### `--backend` syntax
 
@@ -208,7 +207,7 @@ The scrape targets also decide which Grafana dashboards are generated; see [Othe
 
 ### What `krb.json` contains
 
-- `admin.superUser.clientSecret`: the initial superuser password, from `--superuser-secret` or generated at random. Log in as the superuser with client ID `admin` and this password. See [Admin API: the superuser](./admin-api.md#the-superuser).
+- `admin.superUser.clientSecret`: the initial superuser password, a random 43-character string generated on every run. Log in as the superuser with client ID `admin` and this password. See [Admin API: the superuser](./admin-api.md#the-superuser).
 - `gateway.router.backends`: one entry per backend with `name`, `host` and `port`.
 - `observability`: always `{"enabled": true, "runtimeMetrics": true}`. Whether anything is exported depends on the `OTEL_*` variables in `compose.yaml`.
 - `auth`: only if at least one backend has auth enabled. It enables the `basic` method, adds one mapping per protected backend with `method: "basic"` and an empty `exempt` list, and sets `order: 1`. See [Authentication](./authentication.md).
