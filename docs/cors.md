@@ -162,7 +162,7 @@ In practice:
 - **Cookies.** Browsers send and accept cookies on cross-origin requests when the page uses `credentials: "include"` (or `withCredentials`).
 - **Response headers.** Page scripts can read the standard response headers, such as `Content-Type`.
 
-- **Caches.** `Vary: Origin` tells caches, such as a CDN or reverse proxy, to keep a separate copy of the response for each origin. When `origins` is set, Kerberos adds it to every response, including `403` rejections and requests without an `Origin` header. A `Vary` header from the backend is kept.
+- **Caches.** `Vary: Origin` tells caches, such as a CDN or reverse proxy, to keep a separate copy of the response for each origin. When `origins` is set, Kerberos adds it to every response to a request with an `Origin` header, including `403` rejections. A `Vary` header from the backend is kept.
 
 The headers are added before the later checks run, so error responses from Kerberos (for example `401` from authentication or `400` from request validation) also carry them, and the page can read those errors.
 
