@@ -1,0 +1,30 @@
+{
+  "gateway": {
+    "router": {
+      "backends": [
+        {
+          "name": "backend1",
+          "host": "localhost",
+          "port": 8080
+        }
+      ]
+    }
+  },
+  "auth": {
+    "methods": {
+      "basic": {}
+    },
+    "scheme": {
+      "mappings": [
+        {
+          "backend": "backend1",
+          "method": "basic"
+        },
+        {
+          "backend": "bakcend1",
+          "method": "basic"
+        }
+      ]
+    }
+  }
+}

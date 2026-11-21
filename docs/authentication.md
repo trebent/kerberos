@@ -85,7 +85,7 @@ Leave the whole `auth` section out to turn authentication off. If you include it
 
 | Key | Type | Required | Description |
 |---|---|---|---|
-| `backend` | string | yes | Name of a backend in `gateway.router.backends`. You can use `${ref:gateway.router.backends[1].name}` to avoid repeating it (see [Configuration](./configuration.md)). |
+| `backend` | string | yes | Name of a backend in `gateway.router.backends`. Kerberos does not start if no backend has this name. You can use `${ref:gateway.router.backends[1].name}` to avoid repeating it (see [Configuration](./configuration.md)). |
 | `method` | string | yes | Authentication method: `basic`. |
 | `exempt` | array of strings | no | Path patterns that skip authentication and authorisation completely. |
 | `authorization` | object | no | Group requirements. Without it, any logged-in user is allowed. |
