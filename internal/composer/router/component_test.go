@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 
 	"github.com/trebent/kerberos/internal/composer"
@@ -58,5 +59,82 @@ func TestRouter(t *testing.T) {
 
 	if recorder.Code != http.StatusNoContent {
 		t.Fatalf("expected status code %d, got %d", http.StatusNoContent, recorder.Code)
+	}
+}
+
+func TestRouterVaryOrigin(t *testing.T) {
+	cfg := &config.Router{
+		Backends: []*config.RouterBackend{
+			{
+				Name:    "cors",
+				Host:    "localhost",
+				Port:    8080,
+				Origins: &config.Origins{AllowedOrigins: []string{"https://app.example.com"}},
+			},
+			{
+				Name: "plain",
+				Host: "localhost",
+				Port: 8081,
+			},
+		},
+	}
+
+	tests := []struct {
+		name       string
+		backend    string
+		origin     string
+		wantStatus int
+		wantVary   bool
+	}{
+		{
+			name:       "allowed origin",
+			backend:    "cors",
+			origin:     "https://app.example.com",
+			wantStatus: http.StatusNoContent,
+			wantVary:   true,
+		},
+		{
+			name:       "origin not allowed",
+			backend:    "cors",
+			origin:     "https://evil.example.com",
+			wantStatus: http.StatusForbidden,
+			wantVary:   true,
+		},
+		{name: "no origin", backend: "cors", wantStatus: http.StatusNoContent, wantVary: true},
+		{
+			name:       "backend without CORS",
+			backend:    "plain",
+			origin:     "https://app.example.com",
+			wantStatus: http.StatusNoContent,
+			wantVary:   false,
+		},
+	}
+
+	router := NewComponent(&Opts{Cfg: cfg})
+	router.Next(&composer.Dummy{
+		CustomHandler: func(_ composer.FlowComponent, w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		},
+	})
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/gw/backend/"+tt.backend+"/path", nil)
+			if tt.origin != "" {
+				req.Header.Set("Origin", tt.origin)
+			}
+			recorder := httptest.NewRecorder()
+			ctx := context.WithValue(req.Context(), composer.BackendContextKey, tt.backend)
+			router.ServeHTTP(response.NewResponseWrapper(recorder), req.WithContext(ctx))
+
+			if recorder.Code != tt.wantStatus {
+				t.Fatalf("expected status code %d, got %d", tt.wantStatus, recorder.Code)
+			}
+
+			vary := recorder.Header().Values("Vary")
+			if got := slices.Contains(vary, "Origin"); got != tt.wantVary {
+				t.Fatalf("expected Vary: Origin to be %t, got Vary values %v", tt.wantVary, vary)
+			}
+		})
 	}
 }
