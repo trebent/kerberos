@@ -248,29 +248,23 @@ func (kc *Kerberos) Validate() error {
 		backends[b.Name] = struct{}{}
 	}
 
+	const unknownBackend = "%s.%d.backend - unknown backend %q, " +
+		"it must match a gateway.router.backends name"
+
 	if kc.AuthCfg != nil && kc.AuthCfg.Scheme != nil {
 		for i, m := range kc.AuthCfg.Scheme.Mappings {
-			if err := checkMappedBackend(backends, "auth.scheme.mappings", i, m.Backend); err != nil {
-				return err
+			if _, ok := backends[m.Backend]; !ok {
+				return fmt.Errorf(unknownBackend, "auth.scheme.mappings", i, m.Backend)
 			}
 		}
 	}
 
 	if kc.OASCfg != nil {
 		for i, m := range kc.OASCfg.Mappings {
-			if err := checkMappedBackend(backends, "oas.mappings", i, m.Backend); err != nil {
-				return err
+			if _, ok := backends[m.Backend]; !ok {
+				return fmt.Errorf(unknownBackend, "oas.mappings", i, m.Backend)
 			}
 		}
-	}
-
-	return nil
-}
-
-// checkMappedBackend returns an error if the backend named by the mapping at field[index] is not a router backend.
-func checkMappedBackend(backends map[string]struct{}, field string, index int, name string) error {
-	if _, ok := backends[name]; !ok {
-		return fmt.Errorf("%s.%d.backend - unknown backend %q, it must match a gateway.router.backends name", field, index, name)
 	}
 
 	return nil
