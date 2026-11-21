@@ -91,7 +91,7 @@ Use the superuser to set up admin groups and admin users, then use those account
 
 ## Admin users and admin groups
 
-An **admin user** has a username and a password. Usernames are unique, and the superuser's name is taken too (`409`). Use long, random passwords.
+An **admin user** has a username and a password of 10 to 64 characters. Usernames are unique, and the superuser's name is taken too (`409`). Use long, random passwords.
 
 An **admin group** has a unique name and a set of permissions. Groups are the only way to give an admin user permissions. A user with no groups can log in, read `/api/admin/me` and `/api/admin/permissions`, and manage their own account.
 
@@ -150,7 +150,7 @@ All paths are relative to `/api/admin` on the admin port. "Any session" means an
 | `POST /superuser/login` | public | `{"clientId", "clientSecret"}` | `204` + cookies; `401` wrong credentials |
 | `POST /superuser/logout` | superuser | none | `204` ends all superuser sessions; `403` if caller is not the superuser |
 | `POST /superuser/refresh` | superuser refresh cookie | none | `204` + new cookies; `401` missing, unknown or expired refresh token; `403` token belongs to an admin user |
-| `PUT /superuser/password` | superuser | `{"oldPassword", "newPassword"}` | `204`; `400` wrong old password; `403` not the superuser |
+| `PUT /superuser/password` | superuser | `{"oldPassword", "newPassword"}` | `204`; `400` wrong old password or `newPassword` not 10 to 64 characters; `403` not the superuser |
 
 ### Admin-user session
 
@@ -171,12 +171,12 @@ All paths are relative to `/api/admin` on the admin port. "Any session" means an
 
 | Method and path | Required permission | Body | Notable responses |
 | --- | --- | --- | --- |
-| `POST /users` | `admin-user-mgmt-admin` | `{"username", "password"}` | `201` `{"id", "username"}`; `409` username taken |
+| `POST /users` | `admin-user-mgmt-admin` | `{"username", "password"}` | `201` `{"id", "username"}`; `400` password not 10 to 64 characters; `409` username taken |
 | `GET /users` | `admin-user-mgmt-admin` or `-viewer` | none | `200` list of users, each with `groups` |
 | `GET /users/{userID}` | self, or `admin-user-mgmt-admin` / `-viewer` | none | `200` user with `groups`; `404` |
 | `PUT /users/{userID}` | self, or `admin-user-mgmt-admin` | `{"username"}` | `204`; `409` username taken |
 | `DELETE /users/{userID}` | `admin-user-mgmt-admin` | none | `204`; `404` |
-| `PUT /users/{userID}/password` | self, or `admin-user-mgmt-admin` | `{"oldPassword", "newPassword"}` | `204`; `400` wrong old password; `404` |
+| `PUT /users/{userID}/password` | self, or `admin-user-mgmt-admin` | `{"oldPassword", "newPassword"}` | `204`; `400` wrong old password or `newPassword` not 10 to 64 characters; `404` |
 | `PUT /users/{userID}/groups` | `admin-user-mgmt-admin` | `{"groupIDs": [int]}` | `204`; `404` user not found |
 
 `PUT /users/{userID}/groups` sets the **complete** list of groups. Groups that are not in `groupIDs` are removed, and `{"groupIDs": []}` removes the user from every group.

@@ -120,13 +120,13 @@ every `GET`.
 | `POST` | `/organisations/{orgID}/login` | Anyone | `{"username", "password"}` | `204` + cookies | `401` on unknown user or wrong password. |
 | `POST` | `/organisations/{orgID}/logout` | Any user of the organisation | | `204` | Ends the current session and expires its cookies. |
 | `POST` | `/organisations/{orgID}/refresh` | Holder of a refresh cookie | | `204` + new cookies | `401` if the refresh cookie is missing, unknown or expired. See [Sessions](./sessions.md). |
-| `POST` | `/organisations/{orgID}/users` | Org admin | `{"name", "password"}` | `201` `{id, name}` | Name at least 5 characters; password 10 to 40 characters. `409` if the name exists. |
+| `POST` | `/organisations/{orgID}/users` | Org admin | `{"name", "password"}` | `201` `{id, name}` | Name at least 5 characters; password 10 to 64 characters. `409` if the name exists. |
 | `GET` | `/organisations/{orgID}/users` | Org admin | | `200` `[{id, name, groups}]` | Each user includes its groups. |
 | `GET` | `/organisations/{orgID}/users/me` | Any user of the organisation | | `200` `{id, name, groups}` | The logged-in user. |
 | `GET` | `/organisations/{orgID}/users/{userID}` | Org admin or the user | | `200` `{id, name, groups}` | `404` if missing. |
 | `PUT` | `/organisations/{orgID}/users/{userID}` | Org admin or the user | `{"id", "name"}` | `200` `{id, name}` | Renames. Use the same ID in the path and the body. `404`, `409`. |
 | `DELETE` | `/organisations/{orgID}/users/{userID}` | Org admin or the user | | `204` | |
-| `PUT` | `/organisations/{orgID}/users/{userID}/password` | Org admin or the user | `{"oldPassword", "password"}` | `204` | Old password is always required. `401` if it is wrong. |
+| `PUT` | `/organisations/{orgID}/users/{userID}/password` | Org admin or the user | `{"oldPassword", "password"}` | `204` | New password 10 to 64 characters. Old password is always required. `401` if it is wrong. |
 | `GET` | `/organisations/{orgID}/users/{userID}/groups` | Org admin or the user | | `200` `[{id, name}]` | |
 | `PUT` | `/organisations/{orgID}/users/{userID}/groups` | Org admin | `[{"id", "name"}, ...]` | `200` | Sets the full list of memberships. |
 | `POST` | `/organisations/{orgID}/groups` | Org admin | `{"name"}` | `201` `{id, name}` | `409` if the name exists. |
@@ -285,9 +285,8 @@ The same `session` cookie now authenticates Alice on the gateway port, for examp
 
 ## Passwords
 
-- New users need a password of **10 to 40 characters**.
-- Use letters, digits and common symbols from the standard keyboard (ASCII), and keep changed
-  passwords to 40 characters or fewer as well.
+- Passwords must be **10 to 64 characters**, both for new users and when changing a password. Any
+  characters can be used.
 - A password change needs the current password in `oldPassword`, for every role. If a user forgets
   their password, an administrator deletes the user and creates it again, then assigns its groups.
 - Passwords are stored as salted bcrypt hashes.

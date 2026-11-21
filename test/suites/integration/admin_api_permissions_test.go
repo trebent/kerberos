@@ -626,13 +626,13 @@ func TestAdminPermissionsAdminUserMgmtViewerGetSelf(t *testing.T) {
 	name := lib.Username()
 	createResp, err := lib.AdminClient.CreateUserWithResponse(
 		t.Context(),
-		adminapi.CreateUserJSONRequestBody{Username: name, Password: "pass"},
+		adminapi.CreateUserJSONRequestBody{Username: name, Password: "password123"},
 		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	lib.CheckErr(err, t)
 	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
 
-	userRequestEditor := lib.AdminUserLogin(t, name, "pass")
+	userRequestEditor := lib.AdminUserLogin(t, name, "password123")
 
 	listUsersResp, err := lib.AdminClient.GetUserWithResponse(
 		t.Context(),
@@ -691,7 +691,7 @@ func TestAdminPermissionsAdminUserChangePasswordWrongUser(t *testing.T) {
 	changeResp, err := lib.AdminClient.ChangeUserPasswordWithResponse(
 		t.Context(),
 		createResp.JSON201.Id,
-		adminapi.ChangeUserPasswordJSONRequestBody{OldPassword: pass, NewPassword: "newpass"},
+		adminapi.ChangeUserPasswordJSONRequestBody{OldPassword: pass, NewPassword: "newpassword123"},
 		adminapi.RequestEditorFn(userRequestEditor),
 	)
 	lib.CheckErr(err, t)

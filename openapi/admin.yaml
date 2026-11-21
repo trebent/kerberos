@@ -20,7 +20,8 @@ components:
                 minLength: 1
               password:
                 type: string
-                minLength: 1
+                minLength: 10
+                maxLength: 64
             required:
               - username
               - password
@@ -50,7 +51,8 @@ components:
                 minLength: 1
               newPassword:
                 type: string
-                minLength: 1
+                minLength: 10
+                maxLength: 64
             required:
               - oldPassword
               - newPassword

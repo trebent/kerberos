@@ -28,8 +28,7 @@
     <p class="guides">
       Guides:
       @for (guide of current().guides; track guide.href; let last = $last) {
-        <a [href]="guide.href">{{ guide.label }}</a
-        >{{ last ? '' : ',' }}
+        <a [href]="guide.href">{{ guide.label }}</a>{{ last ? '' : ',' }}
       }
     </p>
 
