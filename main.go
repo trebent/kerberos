@@ -166,23 +166,12 @@ func setupConfig() (*config.Kerberos, error) {
 
 	zerologr.Info("Configuration data loaded")
 
-	cfg := config.NewKerberos()
-	sch := config.NewKerberosSchemer()
-	sch.Load(data)
-
 	zerologr.Info("Parsing configurations...")
 
-	// Parse configurations.
-	//nolint: govet
-	if err := sch.Parse(cfg); err != nil {
+	cfg, err := config.ParseKerberos(data)
+	if err != nil {
 		return nil, err
 	}
-
-	if err := cfg.Validate(); err != nil {
-		return nil, err
-	}
-
-	cfg.PostProcess()
 
 	zerologr.Info("Configuration parsed successfully")
 

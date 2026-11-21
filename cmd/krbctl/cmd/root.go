@@ -25,6 +25,7 @@ Version: %s`, version),
 
 	root.AddCommand(newComposeCmd())
 	root.AddCommand(newConfigCmd())
+	root.AddCommand(newValidateCmd())
 
 	return root.Execute()
 }

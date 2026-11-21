@@ -63,6 +63,7 @@ Both targets build a Linux binary (`GOOS=linux`). On macOS or Windows, use a rel
 | --- | --- |
 | `krbctl compose` | Writes `compose.yaml`. |
 | `krbctl config` | Writes `krb.json`, plus observability stack and admin-connector files if you choose them. |
+| `krbctl validate <kerberos\|connector> <file>` (`val`) | Checks a `krb.json` or a `connector.json`. |
 | `krbctl completion <bash\|zsh\|fish\|powershell>` | Prints a shell completion script. See `krbctl completion <shell> --help` for how to load it. |
 | `krbctl --version` (`-v`) | Prints the version. |
 | `krbctl help [command]`, `-h` | Prints help. |
@@ -261,6 +262,24 @@ Example from `krbctl config -y --echo`:
 | `connector.json` | Connector | `origins` (`allowAll` or `denyAll`) and the same `persistence` block as `krb.json`. See [Admin connector](./admin-connector.md). |
 
 The observability files are only written with `--obs-stack` (or "Generate observability stack config?"), and only for the services you chose. `krbctl config` creates the `grafana` and `grafana/dashboards` directories if needed and replaces existing files. It also removes dashboards from `grafana/dashboards` that do not match the chosen services and scrape targets, so a dashboard is only shown in Grafana when it has data.
+
+## `krbctl validate`
+
+Checks a configuration file the same way Kerberos or the admin-connector checks it at startup,
+without starting anything. Name the kind of file with a subcommand:
+
+| Subcommand | Checks |
+| --- | --- |
+| `kerberos <file>` (`krb`) | A Kerberos configuration, such as `krb.json`. |
+| `connector <file>` (`conn`) | An admin-connector configuration, such as `connector.json`. |
+
+```bash
+krbctl val krb krb.json
+krbctl val conn connector.json
+```
+
+It prints `<file>: ok` and exits with 0, or prints what is wrong and exits with 1.
+`${env:...}` references are resolved, so set the environment variables the file uses first.
 
 ## Give the same answers to both commands
 
