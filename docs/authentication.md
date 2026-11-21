@@ -100,7 +100,7 @@ For each request to `/gw/backend/<name>/...`, Kerberos does the following after 
 
 1. **Backend not mapped**: the request is forwarded unchanged.
 2. **Path matches an `exempt` pattern**: the request is forwarded unchanged. No session is needed and no identity headers are added.
-3. **Session check**: the request must carry a non-empty `session` cookie that belongs to an existing, unexpired basic-auth session. Otherwise Kerberos responds `401` with `{"errors":["Unauthorized"]}`. On success, `X-Krb-User` and `X-Krb-Org` are set on the forwarded request.
+3. **Session check**: the request must carry a non-empty `session` cookie that belongs to an existing, unexpired basic-auth session. A session from any organisation passes this check. Otherwise Kerberos responds `401` with `{"errors":["Unauthorized"]}`. On success, `X-Krb-User` and `X-Krb-Org` are set on the forwarded request.
 4. **Authorisation**:
    - If the mapping has no `authorization`, the request is allowed.
    - If the path matches a pattern in `authorization.paths`, the user must be in one of that pattern's groups.
@@ -134,7 +134,7 @@ Things to know:
 ## Authorisation semantics
 
 - **Any of the listed groups.** A user needs to be a member of at least one listed group, not all of them.
-- **Groups are matched by name.** Kerberos looks up the groups the user belongs to in their own organisation and compares them with the group names in the rule.
+- **Groups are matched by name.** Kerberos looks up the groups the user belongs to in their own organisation and compares them with the group names in the rule. A rule is not tied to an organisation, so it admits members of a group with that name in any organisation. To keep organisations apart, check `X-Krb-Org` in the backend (see [Good practice](#good-practice)).
 - **Path rules replace global groups.** If a path matches an `authorization.paths` pattern, only that pattern's groups count; `authorization.groups` is ignored for that request. In the example above, a user who is only in `staff` gets `403` on `/long/hello`.
 - **Avoid overlapping path patterns.** Make the patterns in `authorization.paths` mutually exclusive, so that each path matches at most one rule.
 - **No rules means any logged-in user.** Without `authorization`, or when neither `authorization.groups` is set nor a path rule matches, every authenticated user is allowed.
@@ -152,7 +152,7 @@ On requests that pass the session check, Kerberos adds these headers before forw
 
 These headers are added on protected paths, not on unmapped backends or exempt paths. If your backend needs the user's groups on every protected path, configure `authorization.groups` for the backend.
 
-All other request headers, including the `Cookie` header with the session cookie, are forwarded to the backend as well.
+All other request headers are forwarded to the backend as well, except the Kerberos cookies (see [Routing](./routing.md#what-is-forwarded)).
 
 ### Reading the headers in a Go backend
 

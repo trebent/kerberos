@@ -127,7 +127,8 @@ Kerberos builds the upstream URL as `http://<host>:<port><backend-path>?<query>`
 - **Method.** The method is forwarded unchanged.
 - **Path.** Kerberos forwards the stripped backend path. Percent-encoded characters are decoded and encoded again, so an encoded slash (`%2F`) reaches the backend as `/`.
 - **Query string.** The query string is forwarded exactly as the client sent it, including repeated keys, their order and any percent-encoding. For example, `/gw/backend/echo/search?q=two%20words&tag=a&tag=b` reaches the backend as `/search?q=two%20words&tag=a&tag=b`.
-- **Headers.** Client headers are forwarded as-is, including `Authorization`, `Cookie`, `Origin` and any `X-Forwarded-*` headers the client sent itself.
+- **Headers.** Client headers are forwarded as-is, including `Authorization`, `Origin` and any `X-Forwarded-*` headers the client sent itself.
+- **Cookies.** Kerberos removes its own `session`, `refresh` and `csrf` cookies from the `Cookie` header. Other cookies are forwarded as the client sent them.
 - **`Host`.** `Host` is set to the backend's `host:port`, not the host the client used.
 - **Body.** The body is streamed to the backend with `Transfer-Encoding: chunked`.
 - **Trace context.** When observability is enabled, Kerberos sets the W3C `traceparent` and `baggage` headers so the backend continues Kerberos' trace. When observability is disabled, trace headers sent by the client pass through unchanged.

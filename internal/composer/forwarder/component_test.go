@@ -497,3 +497,30 @@ func TestForwarderQueryParameters(t *testing.T) {
 		})
 	}
 }
+
+func TestForwarderStripsKerberosCookies(t *testing.T) {
+	var received string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received = r.Header.Get("Cookie")
+	}))
+	defer server.Close()
+
+	serverURL, _ := url.Parse(server.URL)
+	port, _ := strconv.Atoi(serverURL.Port())
+	backend := &config.RouterBackend{Name: "backend", Host: serverURL.Hostname(), Port: port}
+
+	fwd, err := forwarder.NewComponent(&forwarder.Opts{Backends: []*config.RouterBackend{backend}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.Header.Set("Cookie", "session=a; refresh=b; csrf=c; theme=dark")
+	ctx := context.WithValue(req.Context(), composer.TargetContextKey, backend)
+
+	fwd.ServeHTTP(httptest.NewRecorder(), req.WithContext(ctx))
+
+	if received != "theme=dark" {
+		t.Errorf("expected backend to receive Cookie %q, got %q", "theme=dark", received)
+	}
+}

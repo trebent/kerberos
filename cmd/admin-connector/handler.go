@@ -59,6 +59,7 @@ func newHandler(opts opts) (*connectorHandler, error) {
 			Transport: transport,
 			Rewrite: func(r *httputil.ProxyRequest) {
 				r.SetURL(u)
+				security.StripKerberosCookies(r.Out)
 			},
 		},
 		sqlClient: opts.sqlClient,
