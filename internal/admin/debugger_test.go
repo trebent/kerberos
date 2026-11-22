@@ -83,13 +83,13 @@ func TestDebuggerRateLimitCountsDebuggedCallsOnly(t *testing.T) {
 
 	other := context.WithValue(t.Context(), composer.BackendContextKey, "other")
 	for range 1000 {
-		if call, _ := d.Start(other); call != composerdebug.NewNoopCall() {
+		if call, _ := d.Debug(other); call != composerdebug.NoopCall() {
 			t.Fatal("expected a no-op call for a backend that is not being debugged")
 		}
 	}
 
 	debugged := context.WithValue(t.Context(), composer.BackendContextKey, "debugged")
-	if call, _ := d.Start(debugged); call == composerdebug.NewNoopCall() {
+	if call, _ := d.Debug(debugged); call == composerdebug.NoopCall() {
 		t.Fatal("expected the debugged backend's call to be recorded")
 	}
 }

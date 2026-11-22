@@ -58,7 +58,7 @@ func NewComponent(opts *Opts) composer.FlowComponent {
 	logger := zerologr.WithName("request")
 
 	if !opts.Cfg.Enabled {
-		return dummyComponent(logger, opts)
+		return dummyObs(logger, opts)
 	}
 
 	metrics, err := intotel.StandardHTTPMetrics("", opts.Version)
@@ -154,7 +154,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	ctx = context.WithValue(ctx, composer.BackendContextKey, backendName)
 
 	// Debug call is started.
-	debugCall, ctx := o.debugger.Start(ctx)
+	debugCall, ctx := o.debugger.Debug(ctx)
 	defer debugCall.Finalise()
 	debugCall.SetURL(req.URL.Path)
 	debugCall.SetMethod(req.Method)
@@ -171,10 +171,10 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	debugCall.AddTransition(
 		"obs",
-		debug.CallDirectionInbound,
+		debug.DirectionInbound,
 		debugStart,
 		time.Now(),
-		debug.CallResultSuccess,
+		debug.ResultSuccess,
 		"",
 	)
 
@@ -206,10 +206,10 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	debugCall.SetStatusCode(wrapper.StatusCode())
 	debugCall.AddTransition(
 		"obs",
-		debug.CallDirectionOutbound,
+		debug.DirectionOutbound,
 		debugStart,
 		time.Now(),
-		debug.CallResultSuccess,
+		debug.ResultSuccess,
 		"",
 	)
 }
@@ -233,7 +233,10 @@ func extractKrbAttributes(ctx context.Context) []attribute.KeyValue {
 	return attributes
 }
 
-func dummyComponent(logger logr.Logger, opts *Opts) composer.FlowComponent {
+// dummyObs returns a dummy component that makes sure the start of the flow
+// honors the context contract set by the observability component, without
+// the real observability component.
+func dummyObs(logger logr.Logger, opts *Opts) composer.FlowComponent {
 	logger.Info("Observability has been disabled, setting dummy component for logging")
 
 	// Observability disabled still logs and debugs incoming requests, ensuring that the request
@@ -257,7 +260,7 @@ func dummyComponent(logger logr.Logger, opts *Opts) composer.FlowComponent {
 
 		// Debug call is started, but the flow component transition is not logged to denote that
 		// observability is indeed disabled.
-		debugCall, ctx := opts.Debugger.Start(ctx)
+		debugCall, ctx := opts.Debugger.Debug(ctx)
 		defer debugCall.Finalise()
 		debugCall.SetURL(req.URL.Path)
 		debugCall.SetMethod(req.Method)

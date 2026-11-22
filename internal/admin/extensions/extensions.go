@@ -18,6 +18,11 @@ type (
 		// GetOAS returns the OpenAPI Specification for the specified backend.
 		GetOAS(backendName string) ([]byte, error)
 	}
+	// BackendLookup implementors provide a way for the admin API to lookup backends by name.
+	BackendLookup interface {
+		// GetBackend returns true if the backend is configured.
+		BackendExists(name string) bool
+	}
 	// DummyOASBackend is a no-op OAS backend that always returns not found. This is used by default
 	// when admin is instantiated without an OAS backend, to avoid nil checks.
 	DummyOASBackend struct{}

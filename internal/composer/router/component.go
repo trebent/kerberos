@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/go-logr/logr"
+	adminext "github.com/trebent/kerberos/internal/admin/extensions"
 	"github.com/trebent/kerberos/internal/composer"
 	composerdebug "github.com/trebent/kerberos/internal/composer/debug"
 	"github.com/trebent/kerberos/internal/config"
@@ -31,6 +33,7 @@ type (
 
 var (
 	_ composer.FlowComponent = (*router)(nil)
+	_ adminext.BackendLookup = (*router)(nil)
 
 	//nolint:errname // This is intentional to separate pure error types from wrapper API Errors.
 	apiErrNoBackendFound = apierror.New(http.StatusNotFound, "no backend found")
@@ -53,6 +56,13 @@ func NewComponent(opts *Opts) composer.FlowComponent {
 	return &router{
 		cfg: opts.Cfg,
 	}
+}
+
+// BackendExists implements [adminext.BackendLookup].
+func (r *router) BackendExists(name string) bool {
+	return slices.ContainsFunc(r.cfg.Backends, func(backend *config.RouterBackend) bool {
+		return name == backend.Name
+	})
 }
 
 // Next implements [composer.FlowComponent].
@@ -104,10 +114,10 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 		apierror.ErrorHandler(wrapped, req, apiErrNoBackendFound)
 		debuggedCall.AddTransition(
 			"router",
-			composerdebug.CallDirectionInbound,
+			composerdebug.DirectionInbound,
 			debugStart,
 			time.Now(),
-			composerdebug.CallResultFailure,
+			composerdebug.ResultFailure,
 			apiErrNoBackendFound.Error(),
 		)
 		return
@@ -129,10 +139,10 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 			apierror.ErrorHandler(wrapped, req, err)
 			debuggedCall.AddTransition(
 				"router",
-				composerdebug.CallDirectionInbound,
+				composerdebug.DirectionInbound,
 				debugStart,
 				time.Now(),
-				composerdebug.CallResultFailure,
+				composerdebug.ResultFailure,
 				err.Error(),
 			)
 			return
@@ -144,10 +154,10 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 			wrapped.WriteHeader(http.StatusNoContent)
 			debuggedCall.AddTransition(
 				"router",
-				composerdebug.CallDirectionInbound,
+				composerdebug.DirectionInbound,
 				debugStart,
 				time.Now(),
-				composerdebug.CallResultSuccess,
+				composerdebug.ResultSuccess,
 				"",
 			)
 			return
@@ -167,10 +177,10 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 
 	debuggedCall.AddTransition(
 		"router",
-		composerdebug.CallDirectionInbound,
+		composerdebug.DirectionInbound,
 		debugStart,
 		time.Now(),
-		composerdebug.CallResultSuccess,
+		composerdebug.ResultSuccess,
 		"",
 	)
 

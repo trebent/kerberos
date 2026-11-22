@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/trebent/kerberos/internal/composer"
-	composerdebug "github.com/trebent/kerberos/internal/composer/debug"
+	"github.com/trebent/kerberos/internal/composer/debug"
 	"github.com/trebent/kerberos/internal/config"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	apierror "github.com/trebent/kerberos/internal/oapi/error"
@@ -98,10 +98,10 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 		apierror.ErrorHandler(wrapped, req, apiErrFailedForwarding)
 		debugCall.AddTransition(
 			"forwarder",
-			composerdebug.CallDirectionInbound,
+			debug.DirectionInbound,
 			debugStart,
 			time.Now(),
-			composerdebug.CallResultFailure,
+			debug.ResultFailure,
 			err.Error(),
 		)
 		return
@@ -110,10 +110,10 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 
 	debugCall.AddTransition(
 		"forwarder",
-		composerdebug.CallDirectionInbound,
+		debug.DirectionInbound,
 		debugStart,
 		time.Now(),
-		composerdebug.CallResultSuccess,
+		debug.ResultSuccess,
 		"",
 	)
 
@@ -125,10 +125,10 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 		apierror.ErrorHandler(wrapped, req, apiErrFailedForwarding)
 		debugCall.AddTransition(
 			"forwarder",
-			composerdebug.CallDirectionOutbound,
+			debug.DirectionOutbound,
 			debugStart,
 			time.Now(),
-			composerdebug.CallResultFailure,
+			debug.ResultFailure,
 			err.Error(),
 		)
 		return
@@ -136,10 +136,10 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 
 	debugCall.AddTransition(
 		"forwarder",
-		composerdebug.CallDirectionOutbound,
+		debug.DirectionOutbound,
 		debugStart,
 		time.Now(),
-		composerdebug.CallResultSuccess,
+		debug.ResultSuccess,
 		"",
 	)
 

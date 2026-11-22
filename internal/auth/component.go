@@ -166,10 +166,10 @@ func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			Info(fmt.Sprintf("Backend %s path %s is exempted, calling next", backend, req.URL.Path))
 		debugCall.AddTransition(
 			"authorizer",
-			debug.CallDirectionInbound,
+			debug.DirectionInbound,
 			debugStart,
 			time.Now(),
-			debug.CallResultSuccess,
+			debug.ResultSuccess,
 			"",
 		)
 		a.next.ServeHTTP(w, req)
@@ -197,10 +197,10 @@ func (a *authorizer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	debugCall.AddTransition(
 		"authorizer",
-		debug.CallDirectionInbound,
+		debug.DirectionInbound,
 		debugStart,
 		time.Now(),
-		debug.CallResultSuccess,
+		debug.ResultSuccess,
 		"",
 	)
 
@@ -260,13 +260,13 @@ func makeAuthZMap(mappings []*config.AuthMapping) map[string]*config.AuthZ {
 	return m
 }
 
-func transitionFailure(debugCall debug.DebuggedCall, debugStart time.Time, errMsg string) {
+func transitionFailure(debugCall debug.Call, debugStart time.Time, errMsg string) {
 	debugCall.AddTransition(
 		"authorizer",
-		debug.CallDirectionInbound,
+		debug.DirectionInbound,
 		debugStart,
 		time.Now(),
-		debug.CallResultFailure,
+		debug.ResultFailure,
 		errMsg,
 	)
 }

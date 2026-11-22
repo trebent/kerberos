@@ -14,79 +14,93 @@ import (
 // TestAdminDebugStartSession verifies that a superuser can start a debug session and
 // the response body contains the correct fields.
 func TestAdminDebugStartSession(t *testing.T) {
-	superRequestEditor := lib.SuperLogin(t)
+	t.Run("ok", func(t *testing.T) {
+		t.Parallel()
 
-	resp, err := lib.AdminClient.StartDebugSessionWithResponse(
-		t.Context(),
-		"echo",
-		adminapi.StartDebugSessionJSONRequestBody{},
-		adminapi.RequestEditorFn(superRequestEditor),
-	)
-	lib.CheckErr(err, t)
-	lib.VerifyStatusCode(resp.StatusCode(), http.StatusOK, t)
+		superRequestEditor := lib.SuperLogin(t)
 
-	session := resp.JSON200
-	if session == nil {
-		t.Fatal("expected non-nil debug session in response body")
-	}
-	if session.Id == 0 {
-		t.Error("expected non-zero session ID")
-	}
-	if session.Backend != "echo" {
-		t.Errorf("expected backend %q, got %q", "echo", session.Backend)
-	}
-	if session.StartedAt.IsZero() {
-		t.Error("expected non-zero StartedAt")
-	}
-	if session.ExpiresAt.IsZero() {
-		t.Error("expected non-zero ExpiresAt")
-	}
-	if session.StoppedAt != nil {
-		t.Error("expected nil StoppedAt for a newly started session")
-	}
+		resp, err := lib.AdminClient.StartDebugSessionWithResponse(
+			t.Context(),
+			"echo",
+			adminapi.StartDebugSessionJSONRequestBody{},
+			adminapi.RequestEditorFn(superRequestEditor),
+		)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(resp.StatusCode(), http.StatusOK, t)
 
-	// Clean up.
-	deleteResp, err := lib.AdminClient.DeleteDebugSessionWithResponse(
-		t.Context(),
-		"echo",
-		session.Id,
-		adminapi.RequestEditorFn(superRequestEditor),
-	)
-	lib.CheckErr(err, t)
-	lib.VerifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
-}
+		session := resp.JSON200
+		if session == nil {
+			t.Fatal("expected non-nil debug session in response body")
+		}
+		if session.Id == 0 {
+			t.Error("expected non-zero session ID")
+		}
+		if session.Backend != "echo" {
+			t.Errorf("expected backend %q, got %q", "echo", session.Backend)
+		}
+		if session.StartedAt.IsZero() {
+			t.Error("expected non-zero StartedAt")
+		}
+		if session.ExpiresAt.IsZero() {
+			t.Error("expected non-zero ExpiresAt")
+		}
+		if session.StoppedAt != nil {
+			t.Error("expected nil StoppedAt for a newly started session")
+		}
 
-// TestAdminDebugStartSessionConflict verifies that starting a second debug session for a
-// backend that already has an active session returns 409 conflict.
-func TestAdminDebugStartSessionConflict(t *testing.T) {
-	t.Parallel()
-	superRequestEditor := lib.SuperLogin(t)
+		// Clean up.
+		deleteResp, err := lib.AdminClient.DeleteDebugSessionWithResponse(
+			t.Context(),
+			"echo",
+			session.Id,
+			adminapi.RequestEditorFn(superRequestEditor),
+		)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
+	})
 
-	// Use a backend name unique to this test to avoid conflicts with parallel tests.
-	const conflictBackend = "echo-conflict-test"
+	t.Run("backend does not exist", func(t *testing.T) {
+		t.Parallel()
 
-	sessionID := lib.StartDebugSession(t, superRequestEditor, conflictBackend)
+		superRequestEditor := lib.SuperLogin(t)
 
-	// Attempt to start a second session for the same backend.
-	resp, err := lib.AdminClient.StartDebugSessionWithResponse(
-		t.Context(),
-		conflictBackend,
-		adminapi.StartDebugSessionJSONRequestBody{},
-		adminapi.RequestEditorFn(superRequestEditor),
-	)
-	lib.CheckErr(err, t)
-	lib.VerifyStatusCode(resp.StatusCode(), http.StatusConflict, t)
-	lib.VerifyAdminAPIErrorResponse(resp.JSON409, t)
+		resp, err := lib.AdminClient.StartDebugSessionWithResponse(
+			t.Context(),
+			"echoooooo",
+			adminapi.StartDebugSessionJSONRequestBody{},
+			adminapi.RequestEditorFn(superRequestEditor),
+		)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(resp.StatusCode(), http.StatusNotFound, t)
+	})
 
-	// Clean up.
-	deleteResp, err := lib.AdminClient.DeleteDebugSessionWithResponse(
-		t.Context(),
-		conflictBackend,
-		sessionID,
-		adminapi.RequestEditorFn(superRequestEditor),
-	)
-	lib.CheckErr(err, t)
-	lib.VerifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
+	// Can't run in parallel
+	t.Run("conflict", func(t *testing.T) {
+		superRequestEditor := lib.SuperLogin(t)
+
+		sessionID := lib.StartDebugSession(t, superRequestEditor, "echo")
+
+		// Attempt to start a second session for the same backend.
+		resp, err := lib.AdminClient.StartDebugSessionWithResponse(
+			t.Context(),
+			"echo",
+			adminapi.StartDebugSessionJSONRequestBody{},
+			adminapi.RequestEditorFn(superRequestEditor),
+		)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(resp.StatusCode(), http.StatusConflict, t)
+		lib.VerifyAdminAPIErrorResponse(resp.JSON409, t)
+
+		// Clean up.
+		deleteResp, err := lib.AdminClient.DeleteDebugSessionWithResponse(
+			t.Context(),
+			"echo",
+			sessionID,
+			adminapi.RequestEditorFn(superRequestEditor),
+		)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(deleteResp.StatusCode(), http.StatusNoContent, t)
+	})
 }
 
 // --- ListDebugSessions ---

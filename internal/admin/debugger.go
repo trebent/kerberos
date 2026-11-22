@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/trebent/kerberos/internal/composer"
-	composerdebug "github.com/trebent/kerberos/internal/composer/debug"
+	"github.com/trebent/kerberos/internal/composer/debug"
 	"github.com/trebent/kerberos/internal/db"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	"github.com/trebent/zerologr"
@@ -38,8 +38,8 @@ type (
 )
 
 var (
-	_ composerdebug.Debugger     = &debugger{}
-	_ composerdebug.DebuggedCall = &realCall{}
+	_ debug.Debugger = &debugger{}
+	_ debug.Call     = &realCall{}
 )
 
 // newDebugger creates a new debugger that can be used to debug calls.
@@ -97,20 +97,16 @@ func (d *debugger) IsEnabled(backend string) (int64, bool) {
 	return 0, false
 }
 
-// Start implements [debug.Debugger]. Only calls to a backend being debugged count towards the rate
+// Debug implements [debug.Debugger]. Only calls to a backend being debugged count towards the rate
 // limit.
-func (d *debugger) Start(ctx context.Context) (composerdebug.DebuggedCall, context.Context) {
+func (d *debugger) Debug(ctx context.Context) (debug.Call, context.Context) {
 	//nolint:errcheck // the API contract is trusted.
 	backend := ctx.Value(composer.BackendContextKey).(string)
 	id, enabled := d.IsEnabled(backend)
-	if !enabled {
-		zerologr.V(20).Info("Backend is not being debugged, returning noop debugger")
-		return composerdebug.NewNoopCall(), ctx
-	}
-
-	if !d.Allow() {
-		zerologr.V(20).Info("Debug rate limit reached, returning noop debugger", "backend", backend)
-		return composerdebug.NewNoopCall(), ctx
+	if !enabled || !d.Allow() {
+		zerologr.V(20).Info("Call is not debugged")
+		noop := debug.NoopCall()
+		return noop, context.WithValue(ctx, composer.DebugContextKey, noop)
 	}
 
 	zerologr.V(20).Info("Debugging call", "backend", backend, "session_id", id)
@@ -121,7 +117,7 @@ func (d *debugger) Start(ctx context.Context) (composerdebug.DebuggedCall, conte
 func newRealCall(
 	sqlClient db.SQLClient,
 	sessionID int64,
-) *realCall { //nolint:revive // sqlClient will be read in Finalise once persistence is implemented
+) debug.Call { //nolint:revive // sqlClient will be read in Finalise once persistence is implemented
 	return &realCall{
 		sqlClient: sqlClient,
 		sessionID: sessionID,
@@ -135,9 +131,9 @@ func newRealCall(
 // AddTransition implements [debug.DebuggedCall].
 func (r *realCall) AddTransition(
 	component string,
-	direction composerdebug.CallDirection,
+	direction debug.Direction,
 	startTime time.Time, endTime time.Time,
-	result composerdebug.CallResult,
+	result debug.Result,
 	failureCause string,
 ) {
 	r.apiCall.FlowTransitions = append(r.apiCall.FlowTransitions, adminapi.FlowTransition{
