@@ -38,7 +38,7 @@ type (
 
 		// StrictServerInterface of the admin API. Used to manufacture middleware to late-registered
 		// API providers.
-		ssi withExtensions
+		ssi ssiWithExtensions
 
 		// debugger is the debugger used to determine if a request should be debugged.
 		*debugger
@@ -46,6 +46,8 @@ type (
 )
 
 const adminSpecification = "admin.yaml"
+
+var _ ExtensionSetter = (*Admin)(nil)
 
 // Runs the administration API.
 func New(opts *Opts) (*Admin, error) {
@@ -133,6 +135,12 @@ func (a *Admin) SetFlowFetcher(ff adminext.FlowFetcher) {
 // to clients per backend providing an OAS.
 func (a *Admin) SetOASBackend(backend adminext.OASBackend) {
 	a.ssi.SetOASBackend(backend)
+}
+
+// SetBackendLookup sets the backend lookup for the admin component. This allows the admin API to check
+// if a given backend exists.
+func (a *Admin) SetBackendLookup(backendLookup adminext.BackendLookup) {
+	a.ssi.SetBackendLookup(backendLookup)
 }
 
 // RegisterAPIProvider registers an API provider with the admin API. All adminext.APIProvider implementations must

@@ -15,6 +15,7 @@ import (
 
 	"github.com/trebent/envparser"
 	"github.com/trebent/kerberos/internal/admin"
+	adminext "github.com/trebent/kerberos/internal/admin/extensions"
 	"github.com/trebent/kerberos/internal/auth"
 	"github.com/trebent/kerberos/internal/composer"
 	"github.com/trebent/kerberos/internal/composer/custom"
@@ -211,6 +212,7 @@ func startServer(ctx context.Context, cfg *config.Kerberos) error {
 
 	zerologr.Info("Loading router")
 	router := router.NewComponent(&router.Opts{Cfg: cfg.GatewayCfg.Router})
+	adm.SetBackendLookup(router.(adminext.BackendLookup))
 
 	zerologr.Info("Loading custom")
 	customFlowComponents := make([]composer.FlowComponent, 0)

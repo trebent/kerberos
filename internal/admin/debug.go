@@ -16,6 +16,10 @@ func (i *impl) StartDebugSession(
 	ctx context.Context,
 	req adminapi.StartDebugSessionRequestObject,
 ) (adminapi.StartDebugSessionResponseObject, error) {
+	if !i.backendLookup.BackendExists(req.Backend) {
+		return adminapi.StartDebugSession404JSONResponse(apiErrNotFound), nil
+	}
+
 	if !ContextIsDebugger(ctx) {
 		return adminapi.StartDebugSession403JSONResponse(apiErrForbidden), nil
 	}

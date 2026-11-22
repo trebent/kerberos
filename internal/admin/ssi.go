@@ -14,15 +14,17 @@ import (
 )
 
 type (
-	withExtensions interface {
-		adminapi.StrictServerInterface
-
-		// Extensions.
-
+	ExtensionSetter interface {
 		// SetFlowFetcher sets the flow fetcher for the SSI, allowing it to serve flow metadata to the admin API.
 		SetFlowFetcher(adminext.FlowFetcher)
 		// SetOASBackend sets the OAS backend for the SSI, allowing it to serve OAS data to the admin API.
 		SetOASBackend(adminext.OASBackend)
+		// SetBackendLookup sets the backend lookup for the SSI, allowing it to lookup backend names.
+		SetBackendLookup(adminext.BackendLookup)
+	}
+	ssiWithExtensions interface {
+		adminapi.StrictServerInterface
+		ExtensionSetter
 	}
 	ssiOpts struct {
 		SQLClient db.SQLClient
@@ -37,8 +39,9 @@ type (
 	impl struct {
 		sqlClient db.SQLClient
 
-		flowFetcher adminext.FlowFetcher
-		oasBackend  adminext.OASBackend
+		flowFetcher   adminext.FlowFetcher
+		oasBackend    adminext.OASBackend
+		backendLookup adminext.BackendLookup
 
 		*debugger
 
@@ -47,7 +50,7 @@ type (
 )
 
 var (
-	_ withExtensions = (*impl)(nil)
+	_ ssiWithExtensions = (*impl)(nil)
 
 	apiErrInternal     = makeGenAPIError(http.StatusText(http.StatusInternalServerError))
 	apiErrForbidden    = makeGenAPIError(http.StatusText(http.StatusForbidden))
@@ -60,7 +63,7 @@ func makeGenAPIError(msg string) adminapi.APIErrorResponse {
 	return adminapi.APIErrorResponse{Errors: []string{msg}}
 }
 
-func newSSI(opts *ssiOpts) (withExtensions, error) {
+func newSSI(opts *ssiOpts) (ssiWithExtensions, error) {
 	i := &impl{
 		sqlClient:  opts.SQLClient,
 		oasBackend: &adminext.DummyOASBackend{},
@@ -87,6 +90,10 @@ func (i *impl) SetFlowFetcher(ff adminext.FlowFetcher) {
 
 func (i *impl) SetOASBackend(ob adminext.OASBackend) {
 	i.oasBackend = ob
+}
+
+func (i *impl) SetBackendLookup(bl adminext.BackendLookup) {
+	i.backendLookup = bl
 }
 
 // GetFlow implements [adminapi.StrictServerInterface].
