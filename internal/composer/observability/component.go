@@ -58,7 +58,7 @@ func NewComponent(opts *Opts) composer.FlowComponent {
 	logger := zerologr.WithName("request")
 
 	if !opts.Cfg.Enabled {
-		return dummyComponent(logger, opts)
+		return dummyObs(logger, opts)
 	}
 
 	metrics, err := intotel.StandardHTTPMetrics("", opts.Version)
@@ -233,7 +233,10 @@ func extractKrbAttributes(ctx context.Context) []attribute.KeyValue {
 	return attributes
 }
 
-func dummyComponent(logger logr.Logger, opts *Opts) composer.FlowComponent {
+// dummyObs returns a dummy component that makes sure the start of the flow
+// honors the context contract set by the observability component, without
+// the real observability component.
+func dummyObs(logger logr.Logger, opts *Opts) composer.FlowComponent {
 	logger.Info("Observability has been disabled, setting dummy component for logging")
 
 	// Observability disabled still logs and debugs incoming requests, ensuring that the request
