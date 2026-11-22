@@ -11,54 +11,69 @@ import (
 
 // TestAdminGroupCreate verifies that a new admin group can be created.
 func TestAdminGroupCreate(t *testing.T) {
-	t.Parallel()
-	superRequestEditor := lib.SuperLogin(t)
+	t.Run("ok", func(t *testing.T) {
+		t.Parallel()
+		superRequestEditor := lib.SuperLogin(t)
 
-	name := lib.GroupName()
-	createResp, err := lib.AdminClient.CreateGroupWithResponse(
-		t.Context(),
-		adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: lib.AllPermissionIDs},
-		adminapi.RequestEditorFn(superRequestEditor),
-	)
-	lib.CheckErr(err, t)
-	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
-	lib.Matches(createResp.JSON201.Name, name, t)
-	if createResp.JSON201.Id == 0 {
-		t.Fatal("expected non-zero group ID in create response")
-	}
-
-	if createResp.JSON201.Permissions == nil || len(*createResp.JSON201.Permissions) != len(lib.AllPermissionIDs) {
-		got := 0
-		if createResp.JSON201.Permissions != nil {
-			got = len(*createResp.JSON201.Permissions)
+		name := lib.GroupName()
+		createResp, err := lib.AdminClient.CreateGroupWithResponse(
+			t.Context(),
+			adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: lib.AllPermissionIDs},
+			adminapi.RequestEditorFn(superRequestEditor),
+		)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+		lib.Matches(createResp.JSON201.Name, name, t)
+		if createResp.JSON201.Id == 0 {
+			t.Fatal("expected non-zero group ID in create response")
 		}
-		t.Fatalf("expected %d permissions in create response, got %d",
-			len(lib.AllPermissionIDs), got)
-	}
-}
 
-// TestAdminGroupCreateConflict verifies that creating a duplicate admin group name is rejected.
-func TestAdminGroupCreateConflict(t *testing.T) {
-	t.Parallel()
-	superRequestEditor := lib.SuperLogin(t)
+		if createResp.JSON201.Permissions == nil || len(*createResp.JSON201.Permissions) != len(lib.AllPermissionIDs) {
+			got := 0
+			if createResp.JSON201.Permissions != nil {
+				got = len(*createResp.JSON201.Permissions)
+			}
+			t.Fatalf("expected %d permissions in create response, got %d",
+				len(lib.AllPermissionIDs), got)
+		}
+	})
 
-	name := lib.GroupName()
-	createResp, err := lib.AdminClient.CreateGroupWithResponse(
-		t.Context(),
-		adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: lib.AllPermissionIDs},
-		adminapi.RequestEditorFn(superRequestEditor),
-	)
-	lib.CheckErr(err, t)
-	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+	t.Run("conflict", func(t *testing.T) {
+		t.Parallel()
+		superRequestEditor := lib.SuperLogin(t)
 
-	dupResp, err := lib.AdminClient.CreateGroupWithResponse(
-		t.Context(),
-		adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: lib.AllPermissionIDs},
-		adminapi.RequestEditorFn(superRequestEditor),
-	)
-	lib.CheckErr(err, t)
-	lib.VerifyStatusCode(dupResp.StatusCode(), http.StatusConflict, t)
-	lib.VerifyAdminAPIErrorResponse(dupResp.JSON409, t)
+		name := lib.GroupName()
+		createResp, err := lib.AdminClient.CreateGroupWithResponse(
+			t.Context(),
+			adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: lib.AllPermissionIDs},
+			adminapi.RequestEditorFn(superRequestEditor),
+		)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+
+		dupResp, err := lib.AdminClient.CreateGroupWithResponse(
+			t.Context(),
+			adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: lib.AllPermissionIDs},
+			adminapi.RequestEditorFn(superRequestEditor),
+		)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(dupResp.StatusCode(), http.StatusConflict, t)
+		lib.VerifyAdminAPIErrorResponse(dupResp.JSON409, t)
+	})
+
+	t.Run("permission does not exist", func(t *testing.T) {
+		t.Parallel()
+		superRequestEditor := lib.SuperLogin(t)
+
+		name := lib.GroupName()
+		createResp, err := lib.AdminClient.CreateGroupWithResponse(
+			t.Context(),
+			adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: []int{666}},
+			adminapi.RequestEditorFn(superRequestEditor),
+		)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(createResp.StatusCode(), http.StatusBadRequest, t)
+	})
 }
 
 // TestAdminGroupList verifies that a newly created admin group appears in the list response.
@@ -134,37 +149,63 @@ func TestAdminGroupGetNotFound(t *testing.T) {
 
 // TestAdminGroupUpdate verifies that an admin group's name can be updated.
 func TestAdminGroupUpdate(t *testing.T) {
-	t.Parallel()
-	superRequestEditor := lib.SuperLogin(t)
+	t.Run("ok", func(t *testing.T) {
+		t.Parallel()
+		superRequestEditor := lib.SuperLogin(t)
 
-	name := lib.GroupName()
-	createResp, err := lib.AdminClient.CreateGroupWithResponse(
-		t.Context(),
-		adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: lib.AllPermissionIDs},
-		adminapi.RequestEditorFn(superRequestEditor),
-	)
-	lib.CheckErr(err, t)
-	lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
-	groupID := createResp.JSON201.Id
+		name := lib.GroupName()
+		createResp, err := lib.AdminClient.CreateGroupWithResponse(
+			t.Context(),
+			adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: lib.AllPermissionIDs},
+			adminapi.RequestEditorFn(superRequestEditor),
+		)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+		groupID := createResp.JSON201.Id
 
-	newName := lib.GroupName()
-	updateResp, err := lib.AdminClient.UpdateGroupWithResponse(
-		t.Context(),
-		groupID,
-		adminapi.UpdateGroupJSONRequestBody{Name: newName, PermissionIDs: lib.AllPermissionIDs},
-		adminapi.RequestEditorFn(superRequestEditor),
-	)
-	lib.CheckErr(err, t)
-	lib.VerifyStatusCode(updateResp.StatusCode(), http.StatusNoContent, t)
+		newName := lib.GroupName()
+		updateResp, err := lib.AdminClient.UpdateGroupWithResponse(
+			t.Context(),
+			groupID,
+			adminapi.UpdateGroupJSONRequestBody{Name: newName, PermissionIDs: lib.AllPermissionIDs},
+			adminapi.RequestEditorFn(superRequestEditor),
+		)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(updateResp.StatusCode(), http.StatusNoContent, t)
 
-	getResp, err := lib.AdminClient.GetGroupWithResponse(
-		t.Context(),
-		groupID,
-		adminapi.RequestEditorFn(superRequestEditor),
-	)
-	lib.CheckErr(err, t)
-	lib.VerifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
-	lib.Matches(getResp.JSON200.Name, newName, t)
+		getResp, err := lib.AdminClient.GetGroupWithResponse(
+			t.Context(),
+			groupID,
+			adminapi.RequestEditorFn(superRequestEditor),
+		)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(getResp.StatusCode(), http.StatusOK, t)
+		lib.Matches(getResp.JSON200.Name, newName, t)
+	})
+
+	t.Run("permission does not exist", func(t *testing.T) {
+		t.Parallel()
+		superRequestEditor := lib.SuperLogin(t)
+
+		name := lib.GroupName()
+		createResp, err := lib.AdminClient.CreateGroupWithResponse(
+			t.Context(),
+			adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: lib.AllPermissionIDs},
+			adminapi.RequestEditorFn(superRequestEditor),
+		)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(createResp.StatusCode(), http.StatusCreated, t)
+
+		newName := lib.GroupName()
+		updateResp, err := lib.AdminClient.UpdateGroupWithResponse(
+			t.Context(),
+			createResp.JSON201.Id,
+			adminapi.UpdateGroupJSONRequestBody{Name: newName, PermissionIDs: []int{666}},
+			adminapi.RequestEditorFn(superRequestEditor),
+		)
+		lib.CheckErr(err, t)
+		lib.VerifyStatusCode(updateResp.StatusCode(), http.StatusBadRequest, t)
+	})
 }
 
 // TestAdminGroupUpdateConflict verifies that updating an admin group's name to an existing name returns a conflict.

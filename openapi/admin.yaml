@@ -113,9 +113,7 @@ components:
                 type: string
                 minLength: 1
               permissionIDs:
-                type: array
-                items:
-                  type: integer
+                $ref: "#/components/schemas/PermissionIDs"
             required:
               - name
               - permissionIDs
@@ -131,9 +129,7 @@ components:
                 type: string
                 minLength: 1
               permissionIDs:
-                type: array
-                items:
-                  type: integer
+                $ref: "#/components/schemas/PermissionIDs"
             required:
               - name
               - permissionIDs
@@ -156,6 +152,18 @@ components:
                   is disabled, or for a maximum of 1 hour. Minimum is 1 minute,
                   defaults to 5 minutes.
   schemas:
+    PermissionIDs:
+      type: array
+      items:
+        type: integer
+        enum:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          - 6
+          - 7
     DebugSession:
       type: object
       additionalProperties: false
@@ -320,6 +328,14 @@ components:
       properties:
         id:
           type: integer
+          enum:
+            - 1
+            - 2
+            - 3
+            - 4
+            - 5
+            - 6
+            - 7
         name:
           type: string
       required:
