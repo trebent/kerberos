@@ -200,7 +200,7 @@ This example assumes a backend called `echo`, the gateway on port 30000 and the 
 
 ## Things to know
 
-- **Built for a handful of requests.** Debug sessions work best when you reproduce a problem with a few requests. Kerberos records about one request per second, with bursts of up to 100, across the whole gateway, and every request is still handled normally.
+- **Built for a handful of requests.** Debug sessions work best when you reproduce a problem with a few requests. Kerberos records about one request per second, with bursts of up to 100, shared by all backends that are being debugged. Requests to other backends do not count towards this, and every request is still handled normally.
 - **One instance.** A debug session records the requests handled by the Kerberos instance that started it. After a restart, start or extend a session to record again. See [Deployment](./deployment.md).
 - **One active session per backend.** Extend the active session to record for longer.
 - **Stop sessions when you are done**, and delete them once you no longer need the calls.

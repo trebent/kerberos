@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/trebent/kerberos/internal/composer"
@@ -20,6 +21,8 @@ type (
 
 		*rate.Limiter
 
+		// mu guards backendSessions, which gateway requests read while Admin API calls write it.
+		mu              sync.RWMutex
 		backendSessions map[string]session
 	}
 	session struct {
@@ -50,45 +53,63 @@ func newDebugger(sqlClient db.SQLClient) *debugger {
 }
 
 // EnableBackend enables debugging for the specified backend with the given session ID and expiration time.
+// It replaces any earlier session for the backend, so calls are recorded under the given session.
 func (d *debugger) EnableBackend(backend string, id int64, expires time.Time) {
-	s, ok := d.backendSessions[backend]
-	if ok {
-		s.expires = expires
-		d.backendSessions[backend] = s
-	} else {
-		d.backendSessions[backend] = session{
-			id:      id,
-			expires: expires,
-		}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	d.backendSessions[backend] = session{
+		id:      id,
+		expires: expires,
 	}
 }
 
 // DisableBackend disables debugging for the specified backend.
 func (d *debugger) DisableBackend(backend string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	delete(d.backendSessions, backend)
 }
 
 // IsEnabled checks if debugging is enabled for the specified backend and if the session has not expired.
+// An expired session is removed.
 func (d *debugger) IsEnabled(backend string) (int64, bool) {
-	session, ok := d.backendSessions[backend]
+	d.mu.RLock()
+	s, ok := d.backendSessions[backend]
+	d.mu.RUnlock()
+
 	if !ok {
 		return 0, false
 	}
 
-	return session.id, time.Now().Before(session.expires)
-}
-
-// Start implements [debug.Debugger].
-func (d *debugger) Start(ctx context.Context) (composerdebug.DebuggedCall, context.Context) {
-	if !d.Allow() {
-		return composerdebug.NewNoopCall(), ctx
+	if time.Now().Before(s.expires) {
+		return s.id, true
 	}
 
+	d.mu.Lock()
+	// Only remove the session that was found expired: it may have been extended or replaced since.
+	if current, ok := d.backendSessions[backend]; ok && current == s {
+		delete(d.backendSessions, backend)
+	}
+	d.mu.Unlock()
+
+	return 0, false
+}
+
+// Start implements [debug.Debugger]. Only calls to a backend being debugged count towards the rate
+// limit.
+func (d *debugger) Start(ctx context.Context) (composerdebug.DebuggedCall, context.Context) {
 	//nolint:errcheck // the API contract is trusted.
 	backend := ctx.Value(composer.BackendContextKey).(string)
 	id, enabled := d.IsEnabled(backend)
 	if !enabled {
 		zerologr.V(20).Info("Backend is not being debugged, returning noop debugger")
+		return composerdebug.NewNoopCall(), ctx
+	}
+
+	if !d.Allow() {
+		zerologr.V(20).Info("Debug rate limit reached, returning noop debugger", "backend", backend)
 		return composerdebug.NewNoopCall(), ctx
 	}
 
