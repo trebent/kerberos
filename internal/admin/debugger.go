@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/trebent/kerberos/internal/composer"
-	composerdebug "github.com/trebent/kerberos/internal/composer/debug"
+	"github.com/trebent/kerberos/internal/composer/debug"
 	"github.com/trebent/kerberos/internal/db"
 	adminapi "github.com/trebent/kerberos/internal/oapi/admin"
 	"github.com/trebent/zerologr"
@@ -38,8 +38,8 @@ type (
 )
 
 var (
-	_ composerdebug.Debugger     = &debugger{}
-	_ composerdebug.Call = &realCall{}
+	_ debug.Debugger = &debugger{}
+	_ debug.Call     = &realCall{}
 )
 
 // newDebugger creates a new debugger that can be used to debug calls.
@@ -99,13 +99,13 @@ func (d *debugger) IsEnabled(backend string) (int64, bool) {
 
 // Debug implements [debug.Debugger]. Only calls to a backend being debugged count towards the rate
 // limit.
-func (d *debugger) Debug(ctx context.Context) (composerdebug.Call, context.Context) {
+func (d *debugger) Debug(ctx context.Context) (debug.Call, context.Context) {
 	//nolint:errcheck // the API contract is trusted.
 	backend := ctx.Value(composer.BackendContextKey).(string)
 	id, enabled := d.IsEnabled(backend)
 	if !enabled || !d.Allow() {
 		zerologr.V(20).Info("Call is not debugged")
-		noop := composerdebug.NoopCall()
+		noop := debug.NoopCall()
 		return noop, context.WithValue(ctx, composer.DebugContextKey, noop)
 	}
 
@@ -117,7 +117,7 @@ func (d *debugger) Debug(ctx context.Context) (composerdebug.Call, context.Conte
 func newRealCall(
 	sqlClient db.SQLClient,
 	sessionID int64,
-) composerdebug.Call { //nolint:revive // sqlClient will be read in Finalise once persistence is implemented
+) debug.Call { //nolint:revive // sqlClient will be read in Finalise once persistence is implemented
 	return &realCall{
 		sqlClient: sqlClient,
 		sessionID: sessionID,
@@ -131,9 +131,9 @@ func newRealCall(
 // AddTransition implements [debug.DebuggedCall].
 func (r *realCall) AddTransition(
 	component string,
-	direction composerdebug.Direction,
+	direction debug.Direction,
 	startTime time.Time, endTime time.Time,
-	result composerdebug.Result,
+	result debug.Result,
 	failureCause string,
 ) {
 	r.apiCall.FlowTransitions = append(r.apiCall.FlowTransitions, adminapi.FlowTransition{
