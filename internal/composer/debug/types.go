@@ -6,13 +6,13 @@ import (
 )
 
 type (
-	// CallDirection represents the direction of a call, either inbound or outbound.
-	CallDirection string
-	// CallResult represents the result of a call, either success or failure.
-	CallResult string
+	// Direction represents the direction of a call, either inbound or outbound.
+	Direction string
+	// Result represents the result of a call, either success or failure.
+	Result string
 
-	// DebuggedCall is the interface that defines the methods for a debugged call.
-	DebuggedCall interface {
+	// Call is the interface that defines the methods for a debugged call.
+	Call interface {
 		// SetStartTime sets the start time of the call.
 		SetStartTime(startTime time.Time)
 		// SetURL sets the URL of the call.
@@ -24,10 +24,10 @@ type (
 		// AddTransition adds a flow transition to the call.
 		AddTransition(
 			component string,
-			direction CallDirection,
+			direction Direction,
 			startTime time.Time,
 			endTime time.Time,
-			result CallResult,
+			result Result,
 			failureCause string,
 		)
 		// Finalise finalises the call and makes it ready for storage.
@@ -36,17 +36,17 @@ type (
 
 	// Debugger is the interface that defines the methods for debugging calls.
 	Debugger interface {
-		// Start starts a new debugged call and returns it along with a context that has the call stored in it.
-		Start(context.Context) (DebuggedCall, context.Context)
+		// Debug starts a new debugged call and returns it along with a context that has the call stored in it.
+		Debug(context.Context) (Call, context.Context)
 	}
 )
 
 const (
-	CallDirectionInbound  CallDirection = "inbound"
-	CallDirectionOutbound CallDirection = "outbound"
+	DirectionInbound  Direction = "inbound"
+	DirectionOutbound Direction = "outbound"
 
-	CallResultSuccess CallResult = "success"
-	CallResultFailure CallResult = "failure"
+	ResultSuccess Result = "success"
+	ResultFailure Result = "failure"
 
 	// DebugContextKey is the context key used to store the debugged call in the context. DO NOT
 	// use this key directly, use [composer.DebugContextKey] instead.

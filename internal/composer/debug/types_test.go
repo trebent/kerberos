@@ -8,14 +8,14 @@ import (
 
 type (
 	testDebugger struct {
-		returnedCall DebuggedCall
+		returnedCall Call
 	}
 	testDebugTransition struct {
 		component    string
-		direction    CallDirection
+		direction    Direction
 		startTime    time.Time
 		endTime      time.Time
-		result       CallResult
+		result       Result
 		failureCause string
 	}
 	testDebuggedCall struct {
@@ -30,7 +30,7 @@ type (
 
 var (
 	_ Debugger     = &testDebugger{}
-	_ DebuggedCall = &testDebuggedCall{}
+	_ Call = &testDebuggedCall{}
 )
 
 // Implements actual logging.
@@ -52,10 +52,10 @@ func (d *testDebuggedCall) SetStatusCode(statusCode int) {
 
 func (d *testDebuggedCall) AddTransition(
 	component string,
-	direction CallDirection,
+	direction Direction,
 	startTime time.Time,
 	endTime time.Time,
-	result CallResult,
+	result Result,
 	failureCause string,
 ) {
 	d.transitions = append(d.transitions, testDebugTransition{
@@ -68,7 +68,7 @@ func (d *testDebuggedCall) AddTransition(
 	})
 }
 
-func (d *testDebugger) Start(ctx context.Context) (DebuggedCall, context.Context) {
+func (d *testDebugger) Debug(ctx context.Context) (Call, context.Context) {
 	call := d.returnedCall
 	if call == nil {
 		call = &testDebuggedCall{}
@@ -86,17 +86,17 @@ func BenchmarkCallStart(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			call, _ := d.Start(b.Context())
+			call, _ := d.Debug(b.Context())
 			call.SetStartTime(time.Now())
 			call.SetURL("http://example.com")
 			call.SetMethod("GET")
 			call.SetStatusCode(200)
 			call.AddTransition(
 				"component",
-				CallDirectionInbound,
+				DirectionInbound,
 				time.Now(),
 				time.Now(),
-				CallResultSuccess,
+				ResultSuccess,
 				"",
 			)
 		}
@@ -109,17 +109,17 @@ func BenchmarkCallStart(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			call, _ := d.Start(b.Context())
+			call, _ := d.Debug(b.Context())
 			call.SetStartTime(time.Now())
 			call.SetURL("http://example.com")
 			call.SetMethod("GET")
 			call.SetStatusCode(200)
 			call.AddTransition(
 				"component",
-				CallDirectionInbound,
+				DirectionInbound,
 				time.Now(),
 				time.Now(),
-				CallResultSuccess,
+				ResultSuccess,
 				"",
 			)
 		}

@@ -154,7 +154,7 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	ctx = context.WithValue(ctx, composer.BackendContextKey, backendName)
 
 	// Debug call is started.
-	debugCall, ctx := o.debugger.Start(ctx)
+	debugCall, ctx := o.debugger.Debug(ctx)
 	defer debugCall.Finalise()
 	debugCall.SetURL(req.URL.Path)
 	debugCall.SetMethod(req.Method)
@@ -171,10 +171,10 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	debugCall.AddTransition(
 		"obs",
-		debug.CallDirectionInbound,
+		debug.DirectionInbound,
 		debugStart,
 		time.Now(),
-		debug.CallResultSuccess,
+		debug.ResultSuccess,
 		"",
 	)
 
@@ -206,10 +206,10 @@ func (o *obs) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	debugCall.SetStatusCode(wrapper.StatusCode())
 	debugCall.AddTransition(
 		"obs",
-		debug.CallDirectionOutbound,
+		debug.DirectionOutbound,
 		debugStart,
 		time.Now(),
-		debug.CallResultSuccess,
+		debug.ResultSuccess,
 		"",
 	)
 }
@@ -257,7 +257,7 @@ func dummyComponent(logger logr.Logger, opts *Opts) composer.FlowComponent {
 
 		// Debug call is started, but the flow component transition is not logged to denote that
 		// observability is indeed disabled.
-		debugCall, ctx := opts.Debugger.Start(ctx)
+		debugCall, ctx := opts.Debugger.Debug(ctx)
 		defer debugCall.Finalise()
 		debugCall.SetURL(req.URL.Path)
 		debugCall.SetMethod(req.Method)

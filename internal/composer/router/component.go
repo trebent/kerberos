@@ -104,10 +104,10 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 		apierror.ErrorHandler(wrapped, req, apiErrNoBackendFound)
 		debuggedCall.AddTransition(
 			"router",
-			composerdebug.CallDirectionInbound,
+			composerdebug.DirectionInbound,
 			debugStart,
 			time.Now(),
-			composerdebug.CallResultFailure,
+			composerdebug.ResultFailure,
 			apiErrNoBackendFound.Error(),
 		)
 		return
@@ -129,10 +129,10 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 			apierror.ErrorHandler(wrapped, req, err)
 			debuggedCall.AddTransition(
 				"router",
-				composerdebug.CallDirectionInbound,
+				composerdebug.DirectionInbound,
 				debugStart,
 				time.Now(),
-				composerdebug.CallResultFailure,
+				composerdebug.ResultFailure,
 				err.Error(),
 			)
 			return
@@ -144,10 +144,10 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 			wrapped.WriteHeader(http.StatusNoContent)
 			debuggedCall.AddTransition(
 				"router",
-				composerdebug.CallDirectionInbound,
+				composerdebug.DirectionInbound,
 				debugStart,
 				time.Now(),
-				composerdebug.CallResultSuccess,
+				composerdebug.ResultSuccess,
 				"",
 			)
 			return
@@ -167,10 +167,10 @@ func (r *router) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 
 	debuggedCall.AddTransition(
 		"router",
-		composerdebug.CallDirectionInbound,
+		composerdebug.DirectionInbound,
 		debugStart,
 		time.Now(),
-		composerdebug.CallResultSuccess,
+		composerdebug.ResultSuccess,
 		"",
 	)
 

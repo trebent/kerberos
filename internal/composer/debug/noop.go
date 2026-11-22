@@ -6,19 +6,19 @@ import (
 
 type noopCall struct{}
 
-var noop DebuggedCall = &noopCall{}
+var noop Call = &noopCall{}
 
-// NewNoopCall returns a new instance of a DebuggedCall that does not perform any actual debugging.
-func NewNoopCall() DebuggedCall {
+// NoopCall returns a new instance of a DebuggedCall that does not perform any actual debugging.
+func NoopCall() Call {
 	return noop
 }
 
 // AddTransition implements [debug.DebuggedCall].
 func (n *noopCall) AddTransition(
 	_ string,
-	_ CallDirection,
+	_ Direction,
 	_ time.Time, _ time.Time,
-	_ CallResult,
+	_ Result,
 	_ string) {
 }
 

@@ -20,14 +20,10 @@ const (
 )
 
 // DebugFromContext returns the debug call from the context, or a noop call if none is found.
-func DebugFromContext(ctx context.Context) debug.DebuggedCall {
-	if ctx == nil {
-		return debug.NewNoopCall()
-	}
-
-	if call, ok := ctx.Value(DebugContextKey).(debug.DebuggedCall); ok {
+func DebugFromContext(ctx context.Context) debug.Call {
+	if call, ok := ctx.Value(DebugContextKey).(debug.Call); ok {
 		return call
 	}
 
-	return debug.NewNoopCall()
+	return debug.NoopCall()
 }

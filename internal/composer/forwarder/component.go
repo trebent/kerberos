@@ -98,10 +98,10 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 		apierror.ErrorHandler(wrapped, req, apiErrFailedForwarding)
 		debugCall.AddTransition(
 			"forwarder",
-			composerdebug.CallDirectionInbound,
+			composerdebug.DirectionInbound,
 			debugStart,
 			time.Now(),
-			composerdebug.CallResultFailure,
+			composerdebug.ResultFailure,
 			err.Error(),
 		)
 		return
@@ -110,10 +110,10 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 
 	debugCall.AddTransition(
 		"forwarder",
-		composerdebug.CallDirectionInbound,
+		composerdebug.DirectionInbound,
 		debugStart,
 		time.Now(),
-		composerdebug.CallResultSuccess,
+		composerdebug.ResultSuccess,
 		"",
 	)
 
@@ -125,10 +125,10 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 		apierror.ErrorHandler(wrapped, req, apiErrFailedForwarding)
 		debugCall.AddTransition(
 			"forwarder",
-			composerdebug.CallDirectionOutbound,
+			composerdebug.DirectionOutbound,
 			debugStart,
 			time.Now(),
-			composerdebug.CallResultFailure,
+			composerdebug.ResultFailure,
 			err.Error(),
 		)
 		return
@@ -136,10 +136,10 @@ func (f *forwarder) ServeHTTP(wrapped http.ResponseWriter, req *http.Request) {
 
 	debugCall.AddTransition(
 		"forwarder",
-		composerdebug.CallDirectionOutbound,
+		composerdebug.DirectionOutbound,
 		debugStart,
 		time.Now(),
-		composerdebug.CallResultSuccess,
+		composerdebug.ResultSuccess,
 		"",
 	)
 

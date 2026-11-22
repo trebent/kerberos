@@ -49,10 +49,10 @@ func ValidationMiddleware(spec *openapi3.T) func(http.Handler) http.Handler {
 				debugCall := composer.DebugFromContext(r.Context())
 				debugCall.AddTransition(
 					"oas-validator",
-					debug.CallDirectionInbound,
+					debug.DirectionInbound,
 					debugStart,
 					time.Now(),
-					debug.CallResultFailure,
+					debug.ResultFailure,
 					err.Error(),
 				)
 
@@ -68,10 +68,10 @@ func ValidationMiddleware(spec *openapi3.T) func(http.Handler) http.Handler {
 			debugCall := composer.DebugFromContext(req.Context())
 			debugCall.AddTransition(
 				"oas-validator",
-				debug.CallDirectionInbound,
+				debug.DirectionInbound,
 				debugStart,
 				time.Now(),
-				debug.CallResultSuccess,
+				debug.ResultSuccess,
 				"",
 			)
 			next.ServeHTTP(w, req)
