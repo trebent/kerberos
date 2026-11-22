@@ -59,7 +59,7 @@ func (i *impl) StartDebugSession(
 
 	i.debugger.EnableBackend(req.Backend, id, session.ExpiresAt)
 	return adminapi.StartDebugSession200JSONResponse{
-		Id:        int(id),
+		Id:        id,
 		Backend:   req.Backend,
 		StartedAt: session.StartedAt,
 		ExpiresAt: expires,
@@ -80,7 +80,7 @@ func (i *impl) StopDebugSession(
 		ctx,
 		i.sqlClient,
 		req.Backend,
-		int64(req.SessionId),
+		req.SessionId,
 	)
 	if err != nil {
 		if errors.Is(err, db.ErrRowNotFound) {
@@ -121,7 +121,7 @@ func (i *impl) ExtendDebugSession(
 		ctx,
 		i.sqlClient,
 		req.Backend,
-		int64(req.SessionId),
+		req.SessionId,
 	)
 	if err != nil {
 		if errors.Is(err, db.ErrRowNotFound) {
@@ -151,7 +151,7 @@ func (i *impl) ExtendDebugSession(
 		"expiresAt", updatedSession.ExpiresAt,
 	)
 
-	i.debugger.EnableBackend(req.Backend, int64(updatedSession.Id), updatedSession.ExpiresAt)
+	i.debugger.EnableBackend(req.Backend, updatedSession.Id, updatedSession.ExpiresAt)
 	return adminapi.ExtendDebugSession200JSONResponse{
 		Id:        updatedSession.Id,
 		Backend:   updatedSession.Backend,
@@ -170,7 +170,7 @@ func (i *impl) GetDebugSession(
 		return adminapi.GetDebugSession403JSONResponse(apiErrForbidden), nil
 	}
 
-	session, err := admindb.GetDebugSession(ctx, i.sqlClient, req.Backend, int64(req.SessionId))
+	session, err := admindb.GetDebugSession(ctx, i.sqlClient, req.Backend, req.SessionId)
 	if err != nil {
 		if errors.Is(err, db.ErrRowNotFound) {
 			return adminapi.GetDebugSession404JSONResponse(apiErrNotFound), nil
@@ -218,7 +218,7 @@ func (i *impl) DeleteDebugSession(
 		ctx,
 		i.sqlClient,
 		req.Backend,
-		int64(req.SessionId),
+		req.SessionId,
 	); err != nil {
 		if errors.Is(err, db.ErrRowNotFound) {
 			return adminapi.DeleteDebugSession404JSONResponse(apiErrNotFound), nil
@@ -228,7 +228,7 @@ func (i *impl) DeleteDebugSession(
 	}
 
 	if err := admindb.DeleteDebugSession(
-		ctx, i.sqlClient, req.Backend, int64(req.SessionId),
+		ctx, i.sqlClient, req.Backend, req.SessionId,
 	); err != nil {
 		return adminapi.DeleteDebugSession500JSONResponse(apiErrInternal), err
 	}
@@ -255,7 +255,7 @@ func (i *impl) ListDebugSessionCalls(
 	calls, err := admindb.ListDebugSessionCalls(
 		ctx,
 		i.sqlClient,
-		int64(req.SessionId),
+		req.SessionId,
 		req.Params.IncludeTransitions,
 	)
 	if err != nil {
@@ -276,7 +276,7 @@ func (i *impl) GetDebugSessionCall(
 	call, err := admindb.GetDebugSessionCall(
 		ctx,
 		i.sqlClient,
-		int64(req.CallId),
+		req.CallId,
 	)
 	if err != nil {
 		if errors.Is(err, db.ErrRowNotFound) {

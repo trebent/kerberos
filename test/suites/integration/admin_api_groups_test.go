@@ -68,7 +68,7 @@ func TestAdminGroupCreate(t *testing.T) {
 		name := lib.GroupName()
 		createResp, err := lib.AdminClient.CreateGroupWithResponse(
 			t.Context(),
-			adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: []int{666}},
+			adminapi.CreateGroupJSONRequestBody{Name: name, PermissionIDs: []int64{666}},
 			adminapi.RequestEditorFn(superRequestEditor),
 		)
 		lib.CheckErr(err, t)
@@ -200,7 +200,7 @@ func TestAdminGroupUpdate(t *testing.T) {
 		updateResp, err := lib.AdminClient.UpdateGroupWithResponse(
 			t.Context(),
 			createResp.JSON201.Id,
-			adminapi.UpdateGroupJSONRequestBody{Name: newName, PermissionIDs: []int{666}},
+			adminapi.UpdateGroupJSONRequestBody{Name: newName, PermissionIDs: []int64{666}},
 			adminapi.RequestEditorFn(superRequestEditor),
 		)
 		lib.CheckErr(err, t)

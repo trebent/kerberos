@@ -102,7 +102,7 @@ type DebugSession struct {
 	ExpiresAt time.Time `json:"expiresAt"`
 
 	// Id The ID for the debug session.
-	Id int `json:"id"`
+	Id int64 `json:"id"`
 
 	// StartedAt The time when the debug session started.
 	StartedAt time.Time `json:"startedAt"`
@@ -117,7 +117,7 @@ type DebugSessionCall struct {
 	FlowTransitions []FlowTransition `json:"flowTransitions"`
 
 	// Id The ID for the call.
-	Id int `json:"id"`
+	Id int64 `json:"id"`
 
 	// Method The HTTP method of the operation.
 	Method string `json:"method"`
@@ -240,7 +240,7 @@ type FlowTransitionResultOutcome string
 
 // Group defines model for Group.
 type Group struct {
-	Id   int    `json:"id"`
+	Id   int64  `json:"id"`
 	Name string `json:"name"`
 
 	// Permissions The permissions that the group has. This may or may not be set depending on the endpoint.
@@ -263,15 +263,15 @@ type Permission struct {
 }
 
 // PermissionId defines model for Permission.Id.
-type PermissionId int
+type PermissionId int64
 
 // PermissionIDs defines model for PermissionIDs.
-type PermissionIDs = []int
+type PermissionIDs = []int64
 
 // User defines model for User.
 type User struct {
 	Groups   *[]Group `json:"groups,omitempty"`
-	Id       int      `json:"id"`
+	Id       int64    `json:"id"`
 	Username string   `json:"username"`
 }
 
@@ -318,7 +318,7 @@ type UpdateGroupRequest struct {
 
 // UpdateUserGroupsRequest defines model for UpdateUserGroupsRequest.
 type UpdateUserGroupsRequest struct {
-	GroupIDs []int `json:"groupIDs"`
+	GroupIDs []int64 `json:"groupIDs"`
 }
 
 // UpdateUserRequest defines model for UpdateUserRequest.
@@ -386,7 +386,7 @@ type UpdateUserJSONBody struct {
 
 // UpdateUserGroupsJSONBody defines parameters for UpdateUserGroups.
 type UpdateUserGroupsJSONBody struct {
-	GroupIDs []int `json:"groupIDs"`
+	GroupIDs []int64 `json:"groupIDs"`
 }
 
 // ChangeUserPasswordJSONBody defines parameters for ChangeUserPassword.
@@ -662,27 +662,27 @@ type ClientInterface interface {
 	StartDebugSession(ctx context.Context, backend string, body StartDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteDebugSession performs a DELETE /api/admin/debug/{backend}/sessions/{sessionId} (the `DeleteDebugSession` operationId) request.
-	DeleteDebugSession(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteDebugSession(ctx context.Context, backend string, sessionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDebugSession performs a GET /api/admin/debug/{backend}/sessions/{sessionId} (the `GetDebugSession` operationId) request.
-	GetDebugSession(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetDebugSession(ctx context.Context, backend string, sessionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StopDebugSession performs a POST /api/admin/debug/{backend}/sessions/{sessionId} (the `StopDebugSession` operationId) request.
-	StopDebugSession(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*http.Response, error)
+	StopDebugSession(ctx context.Context, backend string, sessionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ExtendDebugSessionWithBody performs a PUT /api/admin/debug/{backend}/sessions/{sessionId} (the `ExtendDebugSession` operationId) request,
 	// with any type of body and a specified content type.
-	ExtendDebugSessionWithBody(ctx context.Context, backend string, sessionId int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ExtendDebugSessionWithBody(ctx context.Context, backend string, sessionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ExtendDebugSession performs a PUT /api/admin/debug/{backend}/sessions/{sessionId} (the `ExtendDebugSession` operationId) request.
 	// Takes a body of the `application/json` content type.
-	ExtendDebugSession(ctx context.Context, backend string, sessionId int, body ExtendDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ExtendDebugSession(ctx context.Context, backend string, sessionId int64, body ExtendDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListDebugSessionCalls performs a GET /api/admin/debug/{backend}/sessions/{sessionId}/calls (the `ListDebugSessionCalls` operationId) request.
-	ListDebugSessionCalls(ctx context.Context, backend string, sessionId int, params *ListDebugSessionCallsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListDebugSessionCalls(ctx context.Context, backend string, sessionId int64, params *ListDebugSessionCallsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetDebugSessionCall performs a GET /api/admin/debug/{backend}/sessions/{sessionId}/calls/{callId} (the `GetDebugSessionCall` operationId) request.
-	GetDebugSessionCall(ctx context.Context, backend string, sessionId int, callId int, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetDebugSessionCall(ctx context.Context, backend string, sessionId int64, callId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetFlow performs a GET /api/admin/flow (the `GetFlow` operationId) request.
 	GetFlow(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -699,18 +699,18 @@ type ClientInterface interface {
 	CreateGroup(ctx context.Context, body CreateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteGroup performs a DELETE /api/admin/groups/{groupID} (the `DeleteGroup` operationId) request.
-	DeleteGroup(ctx context.Context, groupID int, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteGroup(ctx context.Context, groupID int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetGroup performs a GET /api/admin/groups/{groupID} (the `GetGroup` operationId) request.
-	GetGroup(ctx context.Context, groupID int, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetGroup(ctx context.Context, groupID int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateGroupWithBody performs a PUT /api/admin/groups/{groupID} (the `UpdateGroup` operationId) request,
 	// with any type of body and a specified content type.
-	UpdateGroupWithBody(ctx context.Context, groupID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateGroupWithBody(ctx context.Context, groupID int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateGroup performs a PUT /api/admin/groups/{groupID} (the `UpdateGroup` operationId) request.
 	// Takes a body of the `application/json` content type.
-	UpdateGroup(ctx context.Context, groupID int, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateGroup(ctx context.Context, groupID int64, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// LoginWithBody performs a POST /api/admin/login (the `Login` operationId) request,
 	// with any type of body and a specified content type.
@@ -769,48 +769,48 @@ type ClientInterface interface {
 	CreateUser(ctx context.Context, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteUser performs a DELETE /api/admin/users/{userID} (the `DeleteUser` operationId) request.
-	DeleteUser(ctx context.Context, userID int, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteUser(ctx context.Context, userID int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetUser performs a GET /api/admin/users/{userID} (the `GetUser` operationId) request.
-	GetUser(ctx context.Context, userID int, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetUser(ctx context.Context, userID int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateUserWithBody performs a PUT /api/admin/users/{userID} (the `UpdateUser` operationId) request,
 	// with any type of body and a specified content type.
-	UpdateUserWithBody(ctx context.Context, userID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateUserWithBody(ctx context.Context, userID int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateUser performs a PUT /api/admin/users/{userID} (the `UpdateUser` operationId) request.
 	// Takes a body of the `application/json` content type.
-	UpdateUser(ctx context.Context, userID int, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateUser(ctx context.Context, userID int64, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateUserGroupsWithBody performs a PUT /api/admin/users/{userID}/groups (the `UpdateUserGroups` operationId) request,
 	// with any type of body and a specified content type.
-	UpdateUserGroupsWithBody(ctx context.Context, userID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateUserGroupsWithBody(ctx context.Context, userID int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateUserGroups performs a PUT /api/admin/users/{userID}/groups (the `UpdateUserGroups` operationId) request.
 	// Takes a body of the `application/json` content type.
-	UpdateUserGroups(ctx context.Context, userID int, body UpdateUserGroupsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateUserGroups(ctx context.Context, userID int64, body UpdateUserGroupsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ChangeUserPasswordWithBody performs a PUT /api/admin/users/{userID}/password (the `ChangeUserPassword` operationId) request,
 	// with any type of body and a specified content type.
-	ChangeUserPasswordWithBody(ctx context.Context, userID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ChangeUserPasswordWithBody(ctx context.Context, userID int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ChangeUserPassword performs a PUT /api/admin/users/{userID}/password (the `ChangeUserPassword` operationId) request.
 	// Takes a body of the `application/json` content type.
-	ChangeUserPassword(ctx context.Context, userID int, body ChangeUserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ChangeUserPassword(ctx context.Context, userID int64, body ChangeUserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ResetUserPasswordWithBody performs a PUT /api/admin/users/{userID}/password/reset (the `ResetUserPassword` operationId) request,
 	// with any type of body and a specified content type.
 	//
 	// Sets a new password for an admin user without the old one, and ends all of the user's
 	// sessions. Requires the admin-user-mgmt-admin permission.
-	ResetUserPasswordWithBody(ctx context.Context, userID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ResetUserPasswordWithBody(ctx context.Context, userID int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ResetUserPassword performs a PUT /api/admin/users/{userID}/password/reset (the `ResetUserPassword` operationId) request.
 	// Takes a body of the `application/json` content type.
 	//
 	// Sets a new password for an admin user without the old one, and ends all of the user's
 	// sessions. Requires the admin-user-mgmt-admin permission.
-	ResetUserPassword(ctx context.Context, userID int, body ResetUserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ResetUserPassword(ctx context.Context, userID int64, body ResetUserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // ListDebugSessions performs a GET /api/admin/debug/{backend}/sessions (the `ListDebugSessions` operationId) request.
@@ -855,7 +855,7 @@ func (c *Client) StartDebugSession(ctx context.Context, backend string, body Sta
 }
 
 // DeleteDebugSession performs a DELETE /api/admin/debug/{backend}/sessions/{sessionId} (the `DeleteDebugSession` operationId) request.
-func (c *Client) DeleteDebugSession(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteDebugSession(ctx context.Context, backend string, sessionId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteDebugSessionRequest(c.Server, backend, sessionId)
 	if err != nil {
 		return nil, err
@@ -868,7 +868,7 @@ func (c *Client) DeleteDebugSession(ctx context.Context, backend string, session
 }
 
 // GetDebugSession performs a GET /api/admin/debug/{backend}/sessions/{sessionId} (the `GetDebugSession` operationId) request.
-func (c *Client) GetDebugSession(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetDebugSession(ctx context.Context, backend string, sessionId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetDebugSessionRequest(c.Server, backend, sessionId)
 	if err != nil {
 		return nil, err
@@ -881,7 +881,7 @@ func (c *Client) GetDebugSession(ctx context.Context, backend string, sessionId 
 }
 
 // StopDebugSession performs a POST /api/admin/debug/{backend}/sessions/{sessionId} (the `StopDebugSession` operationId) request.
-func (c *Client) StopDebugSession(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) StopDebugSession(ctx context.Context, backend string, sessionId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStopDebugSessionRequest(c.Server, backend, sessionId)
 	if err != nil {
 		return nil, err
@@ -895,7 +895,7 @@ func (c *Client) StopDebugSession(ctx context.Context, backend string, sessionId
 
 // ExtendDebugSessionWithBody performs a PUT /api/admin/debug/{backend}/sessions/{sessionId} (the `ExtendDebugSession` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) ExtendDebugSessionWithBody(ctx context.Context, backend string, sessionId int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ExtendDebugSessionWithBody(ctx context.Context, backend string, sessionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewExtendDebugSessionRequestWithBody(c.Server, backend, sessionId, contentType, body)
 	if err != nil {
 		return nil, err
@@ -909,7 +909,7 @@ func (c *Client) ExtendDebugSessionWithBody(ctx context.Context, backend string,
 
 // ExtendDebugSession performs a PUT /api/admin/debug/{backend}/sessions/{sessionId} (the `ExtendDebugSession` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) ExtendDebugSession(ctx context.Context, backend string, sessionId int, body ExtendDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ExtendDebugSession(ctx context.Context, backend string, sessionId int64, body ExtendDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewExtendDebugSessionRequest(c.Server, backend, sessionId, body)
 	if err != nil {
 		return nil, err
@@ -922,7 +922,7 @@ func (c *Client) ExtendDebugSession(ctx context.Context, backend string, session
 }
 
 // ListDebugSessionCalls performs a GET /api/admin/debug/{backend}/sessions/{sessionId}/calls (the `ListDebugSessionCalls` operationId) request.
-func (c *Client) ListDebugSessionCalls(ctx context.Context, backend string, sessionId int, params *ListDebugSessionCallsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListDebugSessionCalls(ctx context.Context, backend string, sessionId int64, params *ListDebugSessionCallsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListDebugSessionCallsRequest(c.Server, backend, sessionId, params)
 	if err != nil {
 		return nil, err
@@ -935,7 +935,7 @@ func (c *Client) ListDebugSessionCalls(ctx context.Context, backend string, sess
 }
 
 // GetDebugSessionCall performs a GET /api/admin/debug/{backend}/sessions/{sessionId}/calls/{callId} (the `GetDebugSessionCall` operationId) request.
-func (c *Client) GetDebugSessionCall(ctx context.Context, backend string, sessionId int, callId int, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetDebugSessionCall(ctx context.Context, backend string, sessionId int64, callId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetDebugSessionCallRequest(c.Server, backend, sessionId, callId)
 	if err != nil {
 		return nil, err
@@ -1002,7 +1002,7 @@ func (c *Client) CreateGroup(ctx context.Context, body CreateGroupJSONRequestBod
 }
 
 // DeleteGroup performs a DELETE /api/admin/groups/{groupID} (the `DeleteGroup` operationId) request.
-func (c *Client) DeleteGroup(ctx context.Context, groupID int, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteGroup(ctx context.Context, groupID int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteGroupRequest(c.Server, groupID)
 	if err != nil {
 		return nil, err
@@ -1015,7 +1015,7 @@ func (c *Client) DeleteGroup(ctx context.Context, groupID int, reqEditors ...Req
 }
 
 // GetGroup performs a GET /api/admin/groups/{groupID} (the `GetGroup` operationId) request.
-func (c *Client) GetGroup(ctx context.Context, groupID int, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetGroup(ctx context.Context, groupID int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetGroupRequest(c.Server, groupID)
 	if err != nil {
 		return nil, err
@@ -1029,7 +1029,7 @@ func (c *Client) GetGroup(ctx context.Context, groupID int, reqEditors ...Reques
 
 // UpdateGroupWithBody performs a PUT /api/admin/groups/{groupID} (the `UpdateGroup` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) UpdateGroupWithBody(ctx context.Context, groupID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateGroupWithBody(ctx context.Context, groupID int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateGroupRequestWithBody(c.Server, groupID, contentType, body)
 	if err != nil {
 		return nil, err
@@ -1043,7 +1043,7 @@ func (c *Client) UpdateGroupWithBody(ctx context.Context, groupID int, contentTy
 
 // UpdateGroup performs a PUT /api/admin/groups/{groupID} (the `UpdateGroup` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) UpdateGroup(ctx context.Context, groupID int, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateGroup(ctx context.Context, groupID int64, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateGroupRequest(c.Server, groupID, body)
 	if err != nil {
 		return nil, err
@@ -1272,7 +1272,7 @@ func (c *Client) CreateUser(ctx context.Context, body CreateUserJSONRequestBody,
 }
 
 // DeleteUser performs a DELETE /api/admin/users/{userID} (the `DeleteUser` operationId) request.
-func (c *Client) DeleteUser(ctx context.Context, userID int, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteUser(ctx context.Context, userID int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteUserRequest(c.Server, userID)
 	if err != nil {
 		return nil, err
@@ -1285,7 +1285,7 @@ func (c *Client) DeleteUser(ctx context.Context, userID int, reqEditors ...Reque
 }
 
 // GetUser performs a GET /api/admin/users/{userID} (the `GetUser` operationId) request.
-func (c *Client) GetUser(ctx context.Context, userID int, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetUser(ctx context.Context, userID int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetUserRequest(c.Server, userID)
 	if err != nil {
 		return nil, err
@@ -1299,7 +1299,7 @@ func (c *Client) GetUser(ctx context.Context, userID int, reqEditors ...RequestE
 
 // UpdateUserWithBody performs a PUT /api/admin/users/{userID} (the `UpdateUser` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) UpdateUserWithBody(ctx context.Context, userID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateUserWithBody(ctx context.Context, userID int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateUserRequestWithBody(c.Server, userID, contentType, body)
 	if err != nil {
 		return nil, err
@@ -1313,7 +1313,7 @@ func (c *Client) UpdateUserWithBody(ctx context.Context, userID int, contentType
 
 // UpdateUser performs a PUT /api/admin/users/{userID} (the `UpdateUser` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) UpdateUser(ctx context.Context, userID int, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateUser(ctx context.Context, userID int64, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateUserRequest(c.Server, userID, body)
 	if err != nil {
 		return nil, err
@@ -1327,7 +1327,7 @@ func (c *Client) UpdateUser(ctx context.Context, userID int, body UpdateUserJSON
 
 // UpdateUserGroupsWithBody performs a PUT /api/admin/users/{userID}/groups (the `UpdateUserGroups` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) UpdateUserGroupsWithBody(ctx context.Context, userID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateUserGroupsWithBody(ctx context.Context, userID int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateUserGroupsRequestWithBody(c.Server, userID, contentType, body)
 	if err != nil {
 		return nil, err
@@ -1341,7 +1341,7 @@ func (c *Client) UpdateUserGroupsWithBody(ctx context.Context, userID int, conte
 
 // UpdateUserGroups performs a PUT /api/admin/users/{userID}/groups (the `UpdateUserGroups` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) UpdateUserGroups(ctx context.Context, userID int, body UpdateUserGroupsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UpdateUserGroups(ctx context.Context, userID int64, body UpdateUserGroupsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateUserGroupsRequest(c.Server, userID, body)
 	if err != nil {
 		return nil, err
@@ -1355,7 +1355,7 @@ func (c *Client) UpdateUserGroups(ctx context.Context, userID int, body UpdateUs
 
 // ChangeUserPasswordWithBody performs a PUT /api/admin/users/{userID}/password (the `ChangeUserPassword` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) ChangeUserPasswordWithBody(ctx context.Context, userID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ChangeUserPasswordWithBody(ctx context.Context, userID int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewChangeUserPasswordRequestWithBody(c.Server, userID, contentType, body)
 	if err != nil {
 		return nil, err
@@ -1369,7 +1369,7 @@ func (c *Client) ChangeUserPasswordWithBody(ctx context.Context, userID int, con
 
 // ChangeUserPassword performs a PUT /api/admin/users/{userID}/password (the `ChangeUserPassword` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) ChangeUserPassword(ctx context.Context, userID int, body ChangeUserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ChangeUserPassword(ctx context.Context, userID int64, body ChangeUserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewChangeUserPasswordRequest(c.Server, userID, body)
 	if err != nil {
 		return nil, err
@@ -1386,7 +1386,7 @@ func (c *Client) ChangeUserPassword(ctx context.Context, userID int, body Change
 //
 // Sets a new password for an admin user without the old one, and ends all of the user's
 // sessions. Requires the admin-user-mgmt-admin permission.
-func (c *Client) ResetUserPasswordWithBody(ctx context.Context, userID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ResetUserPasswordWithBody(ctx context.Context, userID int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewResetUserPasswordRequestWithBody(c.Server, userID, contentType, body)
 	if err != nil {
 		return nil, err
@@ -1403,7 +1403,7 @@ func (c *Client) ResetUserPasswordWithBody(ctx context.Context, userID int, cont
 //
 // Sets a new password for an admin user without the old one, and ends all of the user's
 // sessions. Requires the admin-user-mgmt-admin permission.
-func (c *Client) ResetUserPassword(ctx context.Context, userID int, body ResetUserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ResetUserPassword(ctx context.Context, userID int64, body ResetUserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewResetUserPasswordRequest(c.Server, userID, body)
 	if err != nil {
 		return nil, err
@@ -1497,7 +1497,7 @@ func NewStartDebugSessionRequestWithBody(server string, backend string, contentT
 }
 
 // NewDeleteDebugSessionRequest constructs an http.Request for the DeleteDebugSession method
-func NewDeleteDebugSessionRequest(server string, backend string, sessionId int) (*http.Request, error) {
+func NewDeleteDebugSessionRequest(server string, backend string, sessionId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1509,7 +1509,7 @@ func NewDeleteDebugSessionRequest(server string, backend string, sessionId int) 
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
 	if err != nil {
 		return nil, err
 	}
@@ -1538,7 +1538,7 @@ func NewDeleteDebugSessionRequest(server string, backend string, sessionId int) 
 }
 
 // NewGetDebugSessionRequest constructs an http.Request for the GetDebugSession method
-func NewGetDebugSessionRequest(server string, backend string, sessionId int) (*http.Request, error) {
+func NewGetDebugSessionRequest(server string, backend string, sessionId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1550,7 +1550,7 @@ func NewGetDebugSessionRequest(server string, backend string, sessionId int) (*h
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
 	if err != nil {
 		return nil, err
 	}
@@ -1579,7 +1579,7 @@ func NewGetDebugSessionRequest(server string, backend string, sessionId int) (*h
 }
 
 // NewStopDebugSessionRequest constructs an http.Request for the StopDebugSession method
-func NewStopDebugSessionRequest(server string, backend string, sessionId int) (*http.Request, error) {
+func NewStopDebugSessionRequest(server string, backend string, sessionId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1591,7 +1591,7 @@ func NewStopDebugSessionRequest(server string, backend string, sessionId int) (*
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
 	if err != nil {
 		return nil, err
 	}
@@ -1620,7 +1620,7 @@ func NewStopDebugSessionRequest(server string, backend string, sessionId int) (*
 }
 
 // NewExtendDebugSessionRequest calls the generic ExtendDebugSession builder with application/json body
-func NewExtendDebugSessionRequest(server string, backend string, sessionId int, body ExtendDebugSessionJSONRequestBody) (*http.Request, error) {
+func NewExtendDebugSessionRequest(server string, backend string, sessionId int64, body ExtendDebugSessionJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -1631,7 +1631,7 @@ func NewExtendDebugSessionRequest(server string, backend string, sessionId int, 
 }
 
 // NewExtendDebugSessionRequestWithBody constructs an http.Request for the ExtendDebugSession method, with any body, and a specified content type
-func NewExtendDebugSessionRequestWithBody(server string, backend string, sessionId int, contentType string, body io.Reader) (*http.Request, error) {
+func NewExtendDebugSessionRequestWithBody(server string, backend string, sessionId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1643,7 +1643,7 @@ func NewExtendDebugSessionRequestWithBody(server string, backend string, session
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
 	if err != nil {
 		return nil, err
 	}
@@ -1674,7 +1674,7 @@ func NewExtendDebugSessionRequestWithBody(server string, backend string, session
 }
 
 // NewListDebugSessionCallsRequest constructs an http.Request for the ListDebugSessionCalls method
-func NewListDebugSessionCallsRequest(server string, backend string, sessionId int, params *ListDebugSessionCallsParams) (*http.Request, error) {
+func NewListDebugSessionCallsRequest(server string, backend string, sessionId int64, params *ListDebugSessionCallsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1686,7 +1686,7 @@ func NewListDebugSessionCallsRequest(server string, backend string, sessionId in
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
 	if err != nil {
 		return nil, err
 	}
@@ -1738,7 +1738,7 @@ func NewListDebugSessionCallsRequest(server string, backend string, sessionId in
 }
 
 // NewGetDebugSessionCallRequest constructs an http.Request for the GetDebugSessionCall method
-func NewGetDebugSessionCallRequest(server string, backend string, sessionId int, callId int) (*http.Request, error) {
+func NewGetDebugSessionCallRequest(server string, backend string, sessionId int64, callId int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1750,14 +1750,14 @@ func NewGetDebugSessionCallRequest(server string, backend string, sessionId int,
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam2 string
 
-	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "callId", callId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "callId", callId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
 	if err != nil {
 		return nil, err
 	}
@@ -1880,12 +1880,12 @@ func NewCreateGroupRequestWithBody(server string, contentType string, body io.Re
 }
 
 // NewDeleteGroupRequest constructs an http.Request for the DeleteGroup method
-func NewDeleteGroupRequest(server string, groupID int) (*http.Request, error) {
+func NewDeleteGroupRequest(server string, groupID int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "groupID", groupID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "groupID", groupID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
 	if err != nil {
 		return nil, err
 	}
@@ -1914,12 +1914,12 @@ func NewDeleteGroupRequest(server string, groupID int) (*http.Request, error) {
 }
 
 // NewGetGroupRequest constructs an http.Request for the GetGroup method
-func NewGetGroupRequest(server string, groupID int) (*http.Request, error) {
+func NewGetGroupRequest(server string, groupID int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "groupID", groupID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "groupID", groupID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
 	if err != nil {
 		return nil, err
 	}
@@ -1948,7 +1948,7 @@ func NewGetGroupRequest(server string, groupID int) (*http.Request, error) {
 }
 
 // NewUpdateGroupRequest calls the generic UpdateGroup builder with application/json body
-func NewUpdateGroupRequest(server string, groupID int, body UpdateGroupJSONRequestBody) (*http.Request, error) {
+func NewUpdateGroupRequest(server string, groupID int64, body UpdateGroupJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -1959,12 +1959,12 @@ func NewUpdateGroupRequest(server string, groupID int, body UpdateGroupJSONReque
 }
 
 // NewUpdateGroupRequestWithBody constructs an http.Request for the UpdateGroup method, with any body, and a specified content type
-func NewUpdateGroupRequestWithBody(server string, groupID int, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateGroupRequestWithBody(server string, groupID int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "groupID", groupID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "groupID", groupID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
 	if err != nil {
 		return nil, err
 	}
@@ -2378,12 +2378,12 @@ func NewCreateUserRequestWithBody(server string, contentType string, body io.Rea
 }
 
 // NewDeleteUserRequest constructs an http.Request for the DeleteUser method
-func NewDeleteUserRequest(server string, userID int) (*http.Request, error) {
+func NewDeleteUserRequest(server string, userID int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userID", userID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userID", userID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
 	if err != nil {
 		return nil, err
 	}
@@ -2412,12 +2412,12 @@ func NewDeleteUserRequest(server string, userID int) (*http.Request, error) {
 }
 
 // NewGetUserRequest constructs an http.Request for the GetUser method
-func NewGetUserRequest(server string, userID int) (*http.Request, error) {
+func NewGetUserRequest(server string, userID int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userID", userID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userID", userID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
 	if err != nil {
 		return nil, err
 	}
@@ -2446,7 +2446,7 @@ func NewGetUserRequest(server string, userID int) (*http.Request, error) {
 }
 
 // NewUpdateUserRequest calls the generic UpdateUser builder with application/json body
-func NewUpdateUserRequest(server string, userID int, body UpdateUserJSONRequestBody) (*http.Request, error) {
+func NewUpdateUserRequest(server string, userID int64, body UpdateUserJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -2457,12 +2457,12 @@ func NewUpdateUserRequest(server string, userID int, body UpdateUserJSONRequestB
 }
 
 // NewUpdateUserRequestWithBody constructs an http.Request for the UpdateUser method, with any body, and a specified content type
-func NewUpdateUserRequestWithBody(server string, userID int, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateUserRequestWithBody(server string, userID int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userID", userID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userID", userID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
 	if err != nil {
 		return nil, err
 	}
@@ -2493,7 +2493,7 @@ func NewUpdateUserRequestWithBody(server string, userID int, contentType string,
 }
 
 // NewUpdateUserGroupsRequest calls the generic UpdateUserGroups builder with application/json body
-func NewUpdateUserGroupsRequest(server string, userID int, body UpdateUserGroupsJSONRequestBody) (*http.Request, error) {
+func NewUpdateUserGroupsRequest(server string, userID int64, body UpdateUserGroupsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -2504,12 +2504,12 @@ func NewUpdateUserGroupsRequest(server string, userID int, body UpdateUserGroups
 }
 
 // NewUpdateUserGroupsRequestWithBody constructs an http.Request for the UpdateUserGroups method, with any body, and a specified content type
-func NewUpdateUserGroupsRequestWithBody(server string, userID int, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateUserGroupsRequestWithBody(server string, userID int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userID", userID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userID", userID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
 	if err != nil {
 		return nil, err
 	}
@@ -2540,7 +2540,7 @@ func NewUpdateUserGroupsRequestWithBody(server string, userID int, contentType s
 }
 
 // NewChangeUserPasswordRequest calls the generic ChangeUserPassword builder with application/json body
-func NewChangeUserPasswordRequest(server string, userID int, body ChangeUserPasswordJSONRequestBody) (*http.Request, error) {
+func NewChangeUserPasswordRequest(server string, userID int64, body ChangeUserPasswordJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -2551,12 +2551,12 @@ func NewChangeUserPasswordRequest(server string, userID int, body ChangeUserPass
 }
 
 // NewChangeUserPasswordRequestWithBody constructs an http.Request for the ChangeUserPassword method, with any body, and a specified content type
-func NewChangeUserPasswordRequestWithBody(server string, userID int, contentType string, body io.Reader) (*http.Request, error) {
+func NewChangeUserPasswordRequestWithBody(server string, userID int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userID", userID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userID", userID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
 	if err != nil {
 		return nil, err
 	}
@@ -2587,7 +2587,7 @@ func NewChangeUserPasswordRequestWithBody(server string, userID int, contentType
 }
 
 // NewResetUserPasswordRequest calls the generic ResetUserPassword builder with application/json body
-func NewResetUserPasswordRequest(server string, userID int, body ResetUserPasswordJSONRequestBody) (*http.Request, error) {
+func NewResetUserPasswordRequest(server string, userID int64, body ResetUserPasswordJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -2598,12 +2598,12 @@ func NewResetUserPasswordRequest(server string, userID int, body ResetUserPasswo
 }
 
 // NewResetUserPasswordRequestWithBody constructs an http.Request for the ResetUserPassword method, with any body, and a specified content type
-func NewResetUserPasswordRequestWithBody(server string, userID int, contentType string, body io.Reader) (*http.Request, error) {
+func NewResetUserPasswordRequestWithBody(server string, userID int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userID", userID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userID", userID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
 	if err != nil {
 		return nil, err
 	}
@@ -2695,37 +2695,37 @@ type ClientWithResponsesInterface interface {
 	// DeleteDebugSessionWithResponse performs a DELETE /api/admin/debug/{backend}/sessions/{sessionId} (the `DeleteDebugSession` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	DeleteDebugSessionWithResponse(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*DeleteDebugSessionResponse, error)
+	DeleteDebugSessionWithResponse(ctx context.Context, backend string, sessionId int64, reqEditors ...RequestEditorFn) (*DeleteDebugSessionResponse, error)
 
 	// GetDebugSessionWithResponse performs a GET /api/admin/debug/{backend}/sessions/{sessionId} (the `GetDebugSession` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	GetDebugSessionWithResponse(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*GetDebugSessionResponse, error)
+	GetDebugSessionWithResponse(ctx context.Context, backend string, sessionId int64, reqEditors ...RequestEditorFn) (*GetDebugSessionResponse, error)
 
 	// StopDebugSessionWithResponse performs a POST /api/admin/debug/{backend}/sessions/{sessionId} (the `StopDebugSession` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	StopDebugSessionWithResponse(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*StopDebugSessionResponse, error)
+	StopDebugSessionWithResponse(ctx context.Context, backend string, sessionId int64, reqEditors ...RequestEditorFn) (*StopDebugSessionResponse, error)
 
 	// ExtendDebugSessionWithBodyWithResponse performs a PUT /api/admin/debug/{backend}/sessions/{sessionId} (the `ExtendDebugSession` operationId) request,
 	// with any type of body and a specified content type.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	ExtendDebugSessionWithBodyWithResponse(ctx context.Context, backend string, sessionId int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ExtendDebugSessionResponse, error)
+	ExtendDebugSessionWithBodyWithResponse(ctx context.Context, backend string, sessionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ExtendDebugSessionResponse, error)
 
 	// ExtendDebugSessionWithResponse performs a PUT /api/admin/debug/{backend}/sessions/{sessionId} (the `ExtendDebugSession` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	ExtendDebugSessionWithResponse(ctx context.Context, backend string, sessionId int, body ExtendDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*ExtendDebugSessionResponse, error)
+	ExtendDebugSessionWithResponse(ctx context.Context, backend string, sessionId int64, body ExtendDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*ExtendDebugSessionResponse, error)
 
 	// ListDebugSessionCallsWithResponse performs a GET /api/admin/debug/{backend}/sessions/{sessionId}/calls (the `ListDebugSessionCalls` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	ListDebugSessionCallsWithResponse(ctx context.Context, backend string, sessionId int, params *ListDebugSessionCallsParams, reqEditors ...RequestEditorFn) (*ListDebugSessionCallsResponse, error)
+	ListDebugSessionCallsWithResponse(ctx context.Context, backend string, sessionId int64, params *ListDebugSessionCallsParams, reqEditors ...RequestEditorFn) (*ListDebugSessionCallsResponse, error)
 
 	// GetDebugSessionCallWithResponse performs a GET /api/admin/debug/{backend}/sessions/{sessionId}/calls/{callId} (the `GetDebugSessionCall` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	GetDebugSessionCallWithResponse(ctx context.Context, backend string, sessionId int, callId int, reqEditors ...RequestEditorFn) (*GetDebugSessionCallResponse, error)
+	GetDebugSessionCallWithResponse(ctx context.Context, backend string, sessionId int64, callId int64, reqEditors ...RequestEditorFn) (*GetDebugSessionCallResponse, error)
 
 	// GetFlowWithResponse performs a GET /api/admin/flow (the `GetFlow` operationId) request.
 	//
@@ -2750,22 +2750,22 @@ type ClientWithResponsesInterface interface {
 	// DeleteGroupWithResponse performs a DELETE /api/admin/groups/{groupID} (the `DeleteGroup` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	DeleteGroupWithResponse(ctx context.Context, groupID int, reqEditors ...RequestEditorFn) (*DeleteGroupResponse, error)
+	DeleteGroupWithResponse(ctx context.Context, groupID int64, reqEditors ...RequestEditorFn) (*DeleteGroupResponse, error)
 
 	// GetGroupWithResponse performs a GET /api/admin/groups/{groupID} (the `GetGroup` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	GetGroupWithResponse(ctx context.Context, groupID int, reqEditors ...RequestEditorFn) (*GetGroupResponse, error)
+	GetGroupWithResponse(ctx context.Context, groupID int64, reqEditors ...RequestEditorFn) (*GetGroupResponse, error)
 
 	// UpdateGroupWithBodyWithResponse performs a PUT /api/admin/groups/{groupID} (the `UpdateGroup` operationId) request,
 	// with any type of body and a specified content type.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	UpdateGroupWithBodyWithResponse(ctx context.Context, groupID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error)
+	UpdateGroupWithBodyWithResponse(ctx context.Context, groupID int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error)
 
 	// UpdateGroupWithResponse performs a PUT /api/admin/groups/{groupID} (the `UpdateGroup` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	UpdateGroupWithResponse(ctx context.Context, groupID int, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error)
+	UpdateGroupWithResponse(ctx context.Context, groupID int64, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error)
 
 	// LoginWithBodyWithResponse performs a POST /api/admin/login (the `Login` operationId) request,
 	// with any type of body and a specified content type.
@@ -2850,42 +2850,42 @@ type ClientWithResponsesInterface interface {
 	// DeleteUserWithResponse performs a DELETE /api/admin/users/{userID} (the `DeleteUser` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	DeleteUserWithResponse(ctx context.Context, userID int, reqEditors ...RequestEditorFn) (*DeleteUserResponse, error)
+	DeleteUserWithResponse(ctx context.Context, userID int64, reqEditors ...RequestEditorFn) (*DeleteUserResponse, error)
 
 	// GetUserWithResponse performs a GET /api/admin/users/{userID} (the `GetUser` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	GetUserWithResponse(ctx context.Context, userID int, reqEditors ...RequestEditorFn) (*GetUserResponse, error)
+	GetUserWithResponse(ctx context.Context, userID int64, reqEditors ...RequestEditorFn) (*GetUserResponse, error)
 
 	// UpdateUserWithBodyWithResponse performs a PUT /api/admin/users/{userID} (the `UpdateUser` operationId) request,
 	// with any type of body and a specified content type.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	UpdateUserWithBodyWithResponse(ctx context.Context, userID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error)
+	UpdateUserWithBodyWithResponse(ctx context.Context, userID int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error)
 
 	// UpdateUserWithResponse performs a PUT /api/admin/users/{userID} (the `UpdateUser` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	UpdateUserWithResponse(ctx context.Context, userID int, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error)
+	UpdateUserWithResponse(ctx context.Context, userID int64, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error)
 
 	// UpdateUserGroupsWithBodyWithResponse performs a PUT /api/admin/users/{userID}/groups (the `UpdateUserGroups` operationId) request,
 	// with any type of body and a specified content type.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	UpdateUserGroupsWithBodyWithResponse(ctx context.Context, userID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserGroupsResponse, error)
+	UpdateUserGroupsWithBodyWithResponse(ctx context.Context, userID int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserGroupsResponse, error)
 
 	// UpdateUserGroupsWithResponse performs a PUT /api/admin/users/{userID}/groups (the `UpdateUserGroups` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	UpdateUserGroupsWithResponse(ctx context.Context, userID int, body UpdateUserGroupsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserGroupsResponse, error)
+	UpdateUserGroupsWithResponse(ctx context.Context, userID int64, body UpdateUserGroupsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserGroupsResponse, error)
 
 	// ChangeUserPasswordWithBodyWithResponse performs a PUT /api/admin/users/{userID}/password (the `ChangeUserPassword` operationId) request,
 	// with any type of body and a specified content type.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	ChangeUserPasswordWithBodyWithResponse(ctx context.Context, userID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ChangeUserPasswordResponse, error)
+	ChangeUserPasswordWithBodyWithResponse(ctx context.Context, userID int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ChangeUserPasswordResponse, error)
 
 	// ChangeUserPasswordWithResponse performs a PUT /api/admin/users/{userID}/password (the `ChangeUserPassword` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	ChangeUserPasswordWithResponse(ctx context.Context, userID int, body ChangeUserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ChangeUserPasswordResponse, error)
+	ChangeUserPasswordWithResponse(ctx context.Context, userID int64, body ChangeUserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ChangeUserPasswordResponse, error)
 
 	// ResetUserPasswordWithBodyWithResponse performs a PUT /api/admin/users/{userID}/password/reset (the `ResetUserPassword` operationId) request,
 	// with any type of body and a specified content type.
@@ -2894,14 +2894,14 @@ type ClientWithResponsesInterface interface {
 	// sessions. Requires the admin-user-mgmt-admin permission.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	ResetUserPasswordWithBodyWithResponse(ctx context.Context, userID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResetUserPasswordResponse, error)
+	ResetUserPasswordWithBodyWithResponse(ctx context.Context, userID int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResetUserPasswordResponse, error)
 
 	// ResetUserPasswordWithResponse performs a PUT /api/admin/users/{userID}/password/reset (the `ResetUserPassword` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Sets a new password for an admin user without the old one, and ends all of the user's
 	// sessions. Requires the admin-user-mgmt-admin permission.
-	ResetUserPasswordWithResponse(ctx context.Context, userID int, body ResetUserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ResetUserPasswordResponse, error)
+	ResetUserPasswordWithResponse(ctx context.Context, userID int64, body ResetUserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ResetUserPasswordResponse, error)
 }
 
 type ListDebugSessionsResponse struct {
@@ -5120,7 +5120,7 @@ func (c *ClientWithResponses) StartDebugSessionWithResponse(ctx context.Context,
 // DeleteDebugSessionWithResponse performs a DELETE /api/admin/debug/{backend}/sessions/{sessionId} (the `DeleteDebugSession` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) DeleteDebugSessionWithResponse(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*DeleteDebugSessionResponse, error) {
+func (c *ClientWithResponses) DeleteDebugSessionWithResponse(ctx context.Context, backend string, sessionId int64, reqEditors ...RequestEditorFn) (*DeleteDebugSessionResponse, error) {
 	rsp, err := c.DeleteDebugSession(ctx, backend, sessionId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5131,7 +5131,7 @@ func (c *ClientWithResponses) DeleteDebugSessionWithResponse(ctx context.Context
 // GetDebugSessionWithResponse performs a GET /api/admin/debug/{backend}/sessions/{sessionId} (the `GetDebugSession` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetDebugSessionWithResponse(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*GetDebugSessionResponse, error) {
+func (c *ClientWithResponses) GetDebugSessionWithResponse(ctx context.Context, backend string, sessionId int64, reqEditors ...RequestEditorFn) (*GetDebugSessionResponse, error) {
 	rsp, err := c.GetDebugSession(ctx, backend, sessionId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5142,7 +5142,7 @@ func (c *ClientWithResponses) GetDebugSessionWithResponse(ctx context.Context, b
 // StopDebugSessionWithResponse performs a POST /api/admin/debug/{backend}/sessions/{sessionId} (the `StopDebugSession` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) StopDebugSessionWithResponse(ctx context.Context, backend string, sessionId int, reqEditors ...RequestEditorFn) (*StopDebugSessionResponse, error) {
+func (c *ClientWithResponses) StopDebugSessionWithResponse(ctx context.Context, backend string, sessionId int64, reqEditors ...RequestEditorFn) (*StopDebugSessionResponse, error) {
 	rsp, err := c.StopDebugSession(ctx, backend, sessionId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5154,7 +5154,7 @@ func (c *ClientWithResponses) StopDebugSessionWithResponse(ctx context.Context, 
 // with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) ExtendDebugSessionWithBodyWithResponse(ctx context.Context, backend string, sessionId int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ExtendDebugSessionResponse, error) {
+func (c *ClientWithResponses) ExtendDebugSessionWithBodyWithResponse(ctx context.Context, backend string, sessionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ExtendDebugSessionResponse, error) {
 	rsp, err := c.ExtendDebugSessionWithBody(ctx, backend, sessionId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5164,7 +5164,7 @@ func (c *ClientWithResponses) ExtendDebugSessionWithBodyWithResponse(ctx context
 
 // ExtendDebugSessionWithResponse performs a PUT /api/admin/debug/{backend}/sessions/{sessionId} (the `ExtendDebugSession` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) ExtendDebugSessionWithResponse(ctx context.Context, backend string, sessionId int, body ExtendDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*ExtendDebugSessionResponse, error) {
+func (c *ClientWithResponses) ExtendDebugSessionWithResponse(ctx context.Context, backend string, sessionId int64, body ExtendDebugSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*ExtendDebugSessionResponse, error) {
 	rsp, err := c.ExtendDebugSession(ctx, backend, sessionId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5175,7 +5175,7 @@ func (c *ClientWithResponses) ExtendDebugSessionWithResponse(ctx context.Context
 // ListDebugSessionCallsWithResponse performs a GET /api/admin/debug/{backend}/sessions/{sessionId}/calls (the `ListDebugSessionCalls` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) ListDebugSessionCallsWithResponse(ctx context.Context, backend string, sessionId int, params *ListDebugSessionCallsParams, reqEditors ...RequestEditorFn) (*ListDebugSessionCallsResponse, error) {
+func (c *ClientWithResponses) ListDebugSessionCallsWithResponse(ctx context.Context, backend string, sessionId int64, params *ListDebugSessionCallsParams, reqEditors ...RequestEditorFn) (*ListDebugSessionCallsResponse, error) {
 	rsp, err := c.ListDebugSessionCalls(ctx, backend, sessionId, params, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5186,7 +5186,7 @@ func (c *ClientWithResponses) ListDebugSessionCallsWithResponse(ctx context.Cont
 // GetDebugSessionCallWithResponse performs a GET /api/admin/debug/{backend}/sessions/{sessionId}/calls/{callId} (the `GetDebugSessionCall` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetDebugSessionCallWithResponse(ctx context.Context, backend string, sessionId int, callId int, reqEditors ...RequestEditorFn) (*GetDebugSessionCallResponse, error) {
+func (c *ClientWithResponses) GetDebugSessionCallWithResponse(ctx context.Context, backend string, sessionId int64, callId int64, reqEditors ...RequestEditorFn) (*GetDebugSessionCallResponse, error) {
 	rsp, err := c.GetDebugSessionCall(ctx, backend, sessionId, callId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5241,7 +5241,7 @@ func (c *ClientWithResponses) CreateGroupWithResponse(ctx context.Context, body 
 // DeleteGroupWithResponse performs a DELETE /api/admin/groups/{groupID} (the `DeleteGroup` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) DeleteGroupWithResponse(ctx context.Context, groupID int, reqEditors ...RequestEditorFn) (*DeleteGroupResponse, error) {
+func (c *ClientWithResponses) DeleteGroupWithResponse(ctx context.Context, groupID int64, reqEditors ...RequestEditorFn) (*DeleteGroupResponse, error) {
 	rsp, err := c.DeleteGroup(ctx, groupID, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5252,7 +5252,7 @@ func (c *ClientWithResponses) DeleteGroupWithResponse(ctx context.Context, group
 // GetGroupWithResponse performs a GET /api/admin/groups/{groupID} (the `GetGroup` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetGroupWithResponse(ctx context.Context, groupID int, reqEditors ...RequestEditorFn) (*GetGroupResponse, error) {
+func (c *ClientWithResponses) GetGroupWithResponse(ctx context.Context, groupID int64, reqEditors ...RequestEditorFn) (*GetGroupResponse, error) {
 	rsp, err := c.GetGroup(ctx, groupID, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5264,7 +5264,7 @@ func (c *ClientWithResponses) GetGroupWithResponse(ctx context.Context, groupID 
 // with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) UpdateGroupWithBodyWithResponse(ctx context.Context, groupID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error) {
+func (c *ClientWithResponses) UpdateGroupWithBodyWithResponse(ctx context.Context, groupID int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error) {
 	rsp, err := c.UpdateGroupWithBody(ctx, groupID, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5274,7 +5274,7 @@ func (c *ClientWithResponses) UpdateGroupWithBodyWithResponse(ctx context.Contex
 
 // UpdateGroupWithResponse performs a PUT /api/admin/groups/{groupID} (the `UpdateGroup` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) UpdateGroupWithResponse(ctx context.Context, groupID int, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error) {
+func (c *ClientWithResponses) UpdateGroupWithResponse(ctx context.Context, groupID int64, body UpdateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGroupResponse, error) {
 	rsp, err := c.UpdateGroup(ctx, groupID, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5461,7 +5461,7 @@ func (c *ClientWithResponses) CreateUserWithResponse(ctx context.Context, body C
 // DeleteUserWithResponse performs a DELETE /api/admin/users/{userID} (the `DeleteUser` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) DeleteUserWithResponse(ctx context.Context, userID int, reqEditors ...RequestEditorFn) (*DeleteUserResponse, error) {
+func (c *ClientWithResponses) DeleteUserWithResponse(ctx context.Context, userID int64, reqEditors ...RequestEditorFn) (*DeleteUserResponse, error) {
 	rsp, err := c.DeleteUser(ctx, userID, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5472,7 +5472,7 @@ func (c *ClientWithResponses) DeleteUserWithResponse(ctx context.Context, userID
 // GetUserWithResponse performs a GET /api/admin/users/{userID} (the `GetUser` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetUserWithResponse(ctx context.Context, userID int, reqEditors ...RequestEditorFn) (*GetUserResponse, error) {
+func (c *ClientWithResponses) GetUserWithResponse(ctx context.Context, userID int64, reqEditors ...RequestEditorFn) (*GetUserResponse, error) {
 	rsp, err := c.GetUser(ctx, userID, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5484,7 +5484,7 @@ func (c *ClientWithResponses) GetUserWithResponse(ctx context.Context, userID in
 // with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) UpdateUserWithBodyWithResponse(ctx context.Context, userID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error) {
+func (c *ClientWithResponses) UpdateUserWithBodyWithResponse(ctx context.Context, userID int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error) {
 	rsp, err := c.UpdateUserWithBody(ctx, userID, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5494,7 +5494,7 @@ func (c *ClientWithResponses) UpdateUserWithBodyWithResponse(ctx context.Context
 
 // UpdateUserWithResponse performs a PUT /api/admin/users/{userID} (the `UpdateUser` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) UpdateUserWithResponse(ctx context.Context, userID int, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error) {
+func (c *ClientWithResponses) UpdateUserWithResponse(ctx context.Context, userID int64, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error) {
 	rsp, err := c.UpdateUser(ctx, userID, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5506,7 +5506,7 @@ func (c *ClientWithResponses) UpdateUserWithResponse(ctx context.Context, userID
 // with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) UpdateUserGroupsWithBodyWithResponse(ctx context.Context, userID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserGroupsResponse, error) {
+func (c *ClientWithResponses) UpdateUserGroupsWithBodyWithResponse(ctx context.Context, userID int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserGroupsResponse, error) {
 	rsp, err := c.UpdateUserGroupsWithBody(ctx, userID, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5516,7 +5516,7 @@ func (c *ClientWithResponses) UpdateUserGroupsWithBodyWithResponse(ctx context.C
 
 // UpdateUserGroupsWithResponse performs a PUT /api/admin/users/{userID}/groups (the `UpdateUserGroups` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) UpdateUserGroupsWithResponse(ctx context.Context, userID int, body UpdateUserGroupsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserGroupsResponse, error) {
+func (c *ClientWithResponses) UpdateUserGroupsWithResponse(ctx context.Context, userID int64, body UpdateUserGroupsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserGroupsResponse, error) {
 	rsp, err := c.UpdateUserGroups(ctx, userID, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5528,7 +5528,7 @@ func (c *ClientWithResponses) UpdateUserGroupsWithResponse(ctx context.Context, 
 // with any type of body and a specified content type.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) ChangeUserPasswordWithBodyWithResponse(ctx context.Context, userID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ChangeUserPasswordResponse, error) {
+func (c *ClientWithResponses) ChangeUserPasswordWithBodyWithResponse(ctx context.Context, userID int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ChangeUserPasswordResponse, error) {
 	rsp, err := c.ChangeUserPasswordWithBody(ctx, userID, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5538,7 +5538,7 @@ func (c *ClientWithResponses) ChangeUserPasswordWithBodyWithResponse(ctx context
 
 // ChangeUserPasswordWithResponse performs a PUT /api/admin/users/{userID}/password (the `ChangeUserPassword` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) ChangeUserPasswordWithResponse(ctx context.Context, userID int, body ChangeUserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ChangeUserPasswordResponse, error) {
+func (c *ClientWithResponses) ChangeUserPasswordWithResponse(ctx context.Context, userID int64, body ChangeUserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ChangeUserPasswordResponse, error) {
 	rsp, err := c.ChangeUserPassword(ctx, userID, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5553,7 +5553,7 @@ func (c *ClientWithResponses) ChangeUserPasswordWithResponse(ctx context.Context
 // sessions. Requires the admin-user-mgmt-admin permission.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) ResetUserPasswordWithBodyWithResponse(ctx context.Context, userID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResetUserPasswordResponse, error) {
+func (c *ClientWithResponses) ResetUserPasswordWithBodyWithResponse(ctx context.Context, userID int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResetUserPasswordResponse, error) {
 	rsp, err := c.ResetUserPasswordWithBody(ctx, userID, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5566,7 +5566,7 @@ func (c *ClientWithResponses) ResetUserPasswordWithBodyWithResponse(ctx context.
 //
 // Sets a new password for an admin user without the old one, and ends all of the user's
 // sessions. Requires the admin-user-mgmt-admin permission.
-func (c *ClientWithResponses) ResetUserPasswordWithResponse(ctx context.Context, userID int, body ResetUserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ResetUserPasswordResponse, error) {
+func (c *ClientWithResponses) ResetUserPasswordWithResponse(ctx context.Context, userID int64, body ResetUserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ResetUserPasswordResponse, error) {
 	rsp, err := c.ResetUserPassword(ctx, userID, body, reqEditors...)
 	if err != nil {
 		return nil, err

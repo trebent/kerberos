@@ -101,7 +101,7 @@ type DebugSession struct {
 	ExpiresAt time.Time `json:"expiresAt"`
 
 	// Id The ID for the debug session.
-	Id int `json:"id"`
+	Id int64 `json:"id"`
 
 	// StartedAt The time when the debug session started.
 	StartedAt time.Time `json:"startedAt"`
@@ -116,7 +116,7 @@ type DebugSessionCall struct {
 	FlowTransitions []FlowTransition `json:"flowTransitions"`
 
 	// Id The ID for the call.
-	Id int `json:"id"`
+	Id int64 `json:"id"`
 
 	// Method The HTTP method of the operation.
 	Method string `json:"method"`
@@ -239,7 +239,7 @@ type FlowTransitionResultOutcome string
 
 // Group defines model for Group.
 type Group struct {
-	Id   int    `json:"id"`
+	Id   int64  `json:"id"`
 	Name string `json:"name"`
 
 	// Permissions The permissions that the group has. This may or may not be set depending on the endpoint.
@@ -262,15 +262,15 @@ type Permission struct {
 }
 
 // PermissionId defines model for Permission.Id.
-type PermissionId int
+type PermissionId int64
 
 // PermissionIDs defines model for PermissionIDs.
-type PermissionIDs = []int
+type PermissionIDs = []int64
 
 // User defines model for User.
 type User struct {
 	Groups   *[]Group `json:"groups,omitempty"`
-	Id       int      `json:"id"`
+	Id       int64    `json:"id"`
 	Username string   `json:"username"`
 }
 
@@ -317,7 +317,7 @@ type UpdateGroupRequest struct {
 
 // UpdateUserGroupsRequest defines model for UpdateUserGroupsRequest.
 type UpdateUserGroupsRequest struct {
-	GroupIDs []int `json:"groupIDs"`
+	GroupIDs []int64 `json:"groupIDs"`
 }
 
 // UpdateUserRequest defines model for UpdateUserRequest.
@@ -385,7 +385,7 @@ type UpdateUserJSONBody struct {
 
 // UpdateUserGroupsJSONBody defines parameters for UpdateUserGroups.
 type UpdateUserGroupsJSONBody struct {
-	GroupIDs []int `json:"groupIDs"`
+	GroupIDs []int64 `json:"groupIDs"`
 }
 
 // ChangeUserPasswordJSONBody defines parameters for ChangeUserPassword.
@@ -585,22 +585,22 @@ type ServerInterface interface {
 	StartDebugSession(w http.ResponseWriter, r *http.Request, backend string)
 
 	// (DELETE /api/admin/debug/{backend}/sessions/{sessionId})
-	DeleteDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int)
+	DeleteDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int64)
 
 	// (GET /api/admin/debug/{backend}/sessions/{sessionId})
-	GetDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int)
+	GetDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int64)
 
 	// (POST /api/admin/debug/{backend}/sessions/{sessionId})
-	StopDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int)
+	StopDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int64)
 
 	// (PUT /api/admin/debug/{backend}/sessions/{sessionId})
-	ExtendDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int)
+	ExtendDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int64)
 
 	// (GET /api/admin/debug/{backend}/sessions/{sessionId}/calls)
-	ListDebugSessionCalls(w http.ResponseWriter, r *http.Request, backend string, sessionId int, params ListDebugSessionCallsParams)
+	ListDebugSessionCalls(w http.ResponseWriter, r *http.Request, backend string, sessionId int64, params ListDebugSessionCallsParams)
 
 	// (GET /api/admin/debug/{backend}/sessions/{sessionId}/calls/{callId})
-	GetDebugSessionCall(w http.ResponseWriter, r *http.Request, backend string, sessionId int, callId int)
+	GetDebugSessionCall(w http.ResponseWriter, r *http.Request, backend string, sessionId int64, callId int64)
 
 	// (GET /api/admin/flow)
 	GetFlow(w http.ResponseWriter, r *http.Request)
@@ -612,13 +612,13 @@ type ServerInterface interface {
 	CreateGroup(w http.ResponseWriter, r *http.Request)
 
 	// (DELETE /api/admin/groups/{groupID})
-	DeleteGroup(w http.ResponseWriter, r *http.Request, groupID int)
+	DeleteGroup(w http.ResponseWriter, r *http.Request, groupID int64)
 
 	// (GET /api/admin/groups/{groupID})
-	GetGroup(w http.ResponseWriter, r *http.Request, groupID int)
+	GetGroup(w http.ResponseWriter, r *http.Request, groupID int64)
 
 	// (PUT /api/admin/groups/{groupID})
-	UpdateGroup(w http.ResponseWriter, r *http.Request, groupID int)
+	UpdateGroup(w http.ResponseWriter, r *http.Request, groupID int64)
 
 	// (POST /api/admin/login)
 	Login(w http.ResponseWriter, r *http.Request)
@@ -657,22 +657,22 @@ type ServerInterface interface {
 	CreateUser(w http.ResponseWriter, r *http.Request)
 
 	// (DELETE /api/admin/users/{userID})
-	DeleteUser(w http.ResponseWriter, r *http.Request, userID int)
+	DeleteUser(w http.ResponseWriter, r *http.Request, userID int64)
 
 	// (GET /api/admin/users/{userID})
-	GetUser(w http.ResponseWriter, r *http.Request, userID int)
+	GetUser(w http.ResponseWriter, r *http.Request, userID int64)
 
 	// (PUT /api/admin/users/{userID})
-	UpdateUser(w http.ResponseWriter, r *http.Request, userID int)
+	UpdateUser(w http.ResponseWriter, r *http.Request, userID int64)
 
 	// (PUT /api/admin/users/{userID}/groups)
-	UpdateUserGroups(w http.ResponseWriter, r *http.Request, userID int)
+	UpdateUserGroups(w http.ResponseWriter, r *http.Request, userID int64)
 
 	// (PUT /api/admin/users/{userID}/password)
-	ChangeUserPassword(w http.ResponseWriter, r *http.Request, userID int)
+	ChangeUserPassword(w http.ResponseWriter, r *http.Request, userID int64)
 
 	// (PUT /api/admin/users/{userID}/password/reset)
-	ResetUserPassword(w http.ResponseWriter, r *http.Request, userID int)
+	ResetUserPassword(w http.ResponseWriter, r *http.Request, userID int64)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -752,9 +752,9 @@ func (siw *ServerInterfaceWrapper) DeleteDebugSession(w http.ResponseWriter, r *
 	}
 
 	// ------------- Path parameter "sessionId" -------------
-	var sessionId int
+	var sessionId int64
 
-	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
 		return
@@ -787,9 +787,9 @@ func (siw *ServerInterfaceWrapper) GetDebugSession(w http.ResponseWriter, r *htt
 	}
 
 	// ------------- Path parameter "sessionId" -------------
-	var sessionId int
+	var sessionId int64
 
-	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
 		return
@@ -822,9 +822,9 @@ func (siw *ServerInterfaceWrapper) StopDebugSession(w http.ResponseWriter, r *ht
 	}
 
 	// ------------- Path parameter "sessionId" -------------
-	var sessionId int
+	var sessionId int64
 
-	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
 		return
@@ -857,9 +857,9 @@ func (siw *ServerInterfaceWrapper) ExtendDebugSession(w http.ResponseWriter, r *
 	}
 
 	// ------------- Path parameter "sessionId" -------------
-	var sessionId int
+	var sessionId int64
 
-	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
 		return
@@ -892,9 +892,9 @@ func (siw *ServerInterfaceWrapper) ListDebugSessionCalls(w http.ResponseWriter, 
 	}
 
 	// ------------- Path parameter "sessionId" -------------
-	var sessionId int
+	var sessionId int64
 
-	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
 		return
@@ -943,18 +943,18 @@ func (siw *ServerInterfaceWrapper) GetDebugSessionCall(w http.ResponseWriter, r 
 	}
 
 	// ------------- Path parameter "sessionId" -------------
-	var sessionId int
+	var sessionId int64
 
-	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
 		return
 	}
 
 	// ------------- Path parameter "callId" -------------
-	var callId int
+	var callId int64
 
-	err = runtime.BindStyledParameterWithOptions("simple", "callId", r.PathValue("callId"), &callId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "callId", r.PathValue("callId"), &callId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "callId", Err: err})
 		return
@@ -1020,9 +1020,9 @@ func (siw *ServerInterfaceWrapper) DeleteGroup(w http.ResponseWriter, r *http.Re
 	_ = err
 
 	// ------------- Path parameter "groupID" -------------
-	var groupID int
+	var groupID int64
 
-	err = runtime.BindStyledParameterWithOptions("simple", "groupID", r.PathValue("groupID"), &groupID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "groupID", r.PathValue("groupID"), &groupID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "groupID", Err: err})
 		return
@@ -1046,9 +1046,9 @@ func (siw *ServerInterfaceWrapper) GetGroup(w http.ResponseWriter, r *http.Reque
 	_ = err
 
 	// ------------- Path parameter "groupID" -------------
-	var groupID int
+	var groupID int64
 
-	err = runtime.BindStyledParameterWithOptions("simple", "groupID", r.PathValue("groupID"), &groupID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "groupID", r.PathValue("groupID"), &groupID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "groupID", Err: err})
 		return
@@ -1072,9 +1072,9 @@ func (siw *ServerInterfaceWrapper) UpdateGroup(w http.ResponseWriter, r *http.Re
 	_ = err
 
 	// ------------- Path parameter "groupID" -------------
-	var groupID int
+	var groupID int64
 
-	err = runtime.BindStyledParameterWithOptions("simple", "groupID", r.PathValue("groupID"), &groupID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "groupID", r.PathValue("groupID"), &groupID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "groupID", Err: err})
 		return
@@ -1278,9 +1278,9 @@ func (siw *ServerInterfaceWrapper) DeleteUser(w http.ResponseWriter, r *http.Req
 	_ = err
 
 	// ------------- Path parameter "userID" -------------
-	var userID int
+	var userID int64
 
-	err = runtime.BindStyledParameterWithOptions("simple", "userID", r.PathValue("userID"), &userID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "userID", r.PathValue("userID"), &userID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userID", Err: err})
 		return
@@ -1304,9 +1304,9 @@ func (siw *ServerInterfaceWrapper) GetUser(w http.ResponseWriter, r *http.Reques
 	_ = err
 
 	// ------------- Path parameter "userID" -------------
-	var userID int
+	var userID int64
 
-	err = runtime.BindStyledParameterWithOptions("simple", "userID", r.PathValue("userID"), &userID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "userID", r.PathValue("userID"), &userID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userID", Err: err})
 		return
@@ -1330,9 +1330,9 @@ func (siw *ServerInterfaceWrapper) UpdateUser(w http.ResponseWriter, r *http.Req
 	_ = err
 
 	// ------------- Path parameter "userID" -------------
-	var userID int
+	var userID int64
 
-	err = runtime.BindStyledParameterWithOptions("simple", "userID", r.PathValue("userID"), &userID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "userID", r.PathValue("userID"), &userID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userID", Err: err})
 		return
@@ -1356,9 +1356,9 @@ func (siw *ServerInterfaceWrapper) UpdateUserGroups(w http.ResponseWriter, r *ht
 	_ = err
 
 	// ------------- Path parameter "userID" -------------
-	var userID int
+	var userID int64
 
-	err = runtime.BindStyledParameterWithOptions("simple", "userID", r.PathValue("userID"), &userID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "userID", r.PathValue("userID"), &userID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userID", Err: err})
 		return
@@ -1382,9 +1382,9 @@ func (siw *ServerInterfaceWrapper) ChangeUserPassword(w http.ResponseWriter, r *
 	_ = err
 
 	// ------------- Path parameter "userID" -------------
-	var userID int
+	var userID int64
 
-	err = runtime.BindStyledParameterWithOptions("simple", "userID", r.PathValue("userID"), &userID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "userID", r.PathValue("userID"), &userID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userID", Err: err})
 		return
@@ -1408,9 +1408,9 @@ func (siw *ServerInterfaceWrapper) ResetUserPassword(w http.ResponseWriter, r *h
 	_ = err
 
 	// ------------- Path parameter "userID" -------------
-	var userID int
+	var userID int64
 
-	err = runtime.BindStyledParameterWithOptions("simple", "userID", r.PathValue("userID"), &userID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "userID", r.PathValue("userID"), &userID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userID", Err: err})
 		return
@@ -1770,7 +1770,7 @@ func (response StartDebugSession500JSONResponse) VisitStartDebugSessionResponse(
 
 type DeleteDebugSessionRequestObject struct {
 	Backend   string `json:"backend"`
-	SessionId int    `json:"sessionId"`
+	SessionId int64  `json:"sessionId"`
 }
 
 type DeleteDebugSessionResponseObject interface {
@@ -1857,7 +1857,7 @@ func (response DeleteDebugSession500JSONResponse) VisitDeleteDebugSessionRespons
 
 type GetDebugSessionRequestObject struct {
 	Backend   string `json:"backend"`
-	SessionId int    `json:"sessionId"`
+	SessionId int64  `json:"sessionId"`
 }
 
 type GetDebugSessionResponseObject interface {
@@ -1950,7 +1950,7 @@ func (response GetDebugSession500JSONResponse) VisitGetDebugSessionResponse(w ht
 
 type StopDebugSessionRequestObject struct {
 	Backend   string `json:"backend"`
-	SessionId int    `json:"sessionId"`
+	SessionId int64  `json:"sessionId"`
 }
 
 type StopDebugSessionResponseObject interface {
@@ -2037,7 +2037,7 @@ func (response StopDebugSession500JSONResponse) VisitStopDebugSessionResponse(w 
 
 type ExtendDebugSessionRequestObject struct {
 	Backend   string `json:"backend"`
-	SessionId int    `json:"sessionId"`
+	SessionId int64  `json:"sessionId"`
 	Body      *ExtendDebugSessionJSONRequestBody
 }
 
@@ -2145,7 +2145,7 @@ func (response ExtendDebugSession500JSONResponse) VisitExtendDebugSessionRespons
 
 type ListDebugSessionCallsRequestObject struct {
 	Backend   string `json:"backend"`
-	SessionId int    `json:"sessionId"`
+	SessionId int64  `json:"sessionId"`
 	Params    ListDebugSessionCallsParams
 }
 
@@ -2239,8 +2239,8 @@ func (response ListDebugSessionCalls500JSONResponse) VisitListDebugSessionCallsR
 
 type GetDebugSessionCallRequestObject struct {
 	Backend   string `json:"backend"`
-	SessionId int    `json:"sessionId"`
-	CallId    int    `json:"callId"`
+	SessionId int64  `json:"sessionId"`
+	CallId    int64  `json:"callId"`
 }
 
 type GetDebugSessionCallResponseObject interface {
@@ -2550,7 +2550,7 @@ func (response CreateGroup500JSONResponse) VisitCreateGroupResponse(w http.Respo
 }
 
 type DeleteGroupRequestObject struct {
-	GroupID int `json:"groupID"`
+	GroupID int64 `json:"groupID"`
 }
 
 type DeleteGroupResponseObject interface {
@@ -2636,7 +2636,7 @@ func (response DeleteGroup500JSONResponse) VisitDeleteGroupResponse(w http.Respo
 }
 
 type GetGroupRequestObject struct {
-	GroupID int `json:"groupID"`
+	GroupID int64 `json:"groupID"`
 }
 
 type GetGroupResponseObject interface {
@@ -2714,7 +2714,7 @@ func (response GetGroup500JSONResponse) VisitGetGroupResponse(w http.ResponseWri
 }
 
 type UpdateGroupRequestObject struct {
-	GroupID int `json:"groupID"`
+	GroupID int64 `json:"groupID"`
 	Body    *UpdateGroupJSONRequestBody
 }
 
@@ -3588,7 +3588,7 @@ func (response CreateUser500JSONResponse) VisitCreateUserResponse(w http.Respons
 }
 
 type DeleteUserRequestObject struct {
-	UserID int `json:"userID"`
+	UserID int64 `json:"userID"`
 }
 
 type DeleteUserResponseObject interface {
@@ -3674,7 +3674,7 @@ func (response DeleteUser500JSONResponse) VisitDeleteUserResponse(w http.Respons
 }
 
 type GetUserRequestObject struct {
-	UserID int `json:"userID"`
+	UserID int64 `json:"userID"`
 }
 
 type GetUserResponseObject interface {
@@ -3766,7 +3766,7 @@ func (response GetUser500JSONResponse) VisitGetUserResponse(w http.ResponseWrite
 }
 
 type UpdateUserRequestObject struct {
-	UserID int `json:"userID"`
+	UserID int64 `json:"userID"`
 	Body   *UpdateUserJSONRequestBody
 }
 
@@ -3867,7 +3867,7 @@ func (response UpdateUser500JSONResponse) VisitUpdateUserResponse(w http.Respons
 }
 
 type UpdateUserGroupsRequestObject struct {
-	UserID int `json:"userID"`
+	UserID int64 `json:"userID"`
 	Body   *UpdateUserGroupsJSONRequestBody
 }
 
@@ -3954,7 +3954,7 @@ func (response UpdateUserGroups500JSONResponse) VisitUpdateUserGroupsResponse(w 
 }
 
 type ChangeUserPasswordRequestObject struct {
-	UserID int `json:"userID"`
+	UserID int64 `json:"userID"`
 	Body   *ChangeUserPasswordJSONRequestBody
 }
 
@@ -4041,7 +4041,7 @@ func (response ChangeUserPassword500JSONResponse) VisitChangeUserPasswordRespons
 }
 
 type ResetUserPasswordRequestObject struct {
-	UserID int `json:"userID"`
+	UserID int64 `json:"userID"`
 	Body   *ResetUserPasswordJSONRequestBody
 }
 
@@ -4329,7 +4329,7 @@ func (sh *strictHandler) StartDebugSession(w http.ResponseWriter, r *http.Reques
 }
 
 // DeleteDebugSession operation middleware
-func (sh *strictHandler) DeleteDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int) {
+func (sh *strictHandler) DeleteDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int64) {
 	var request DeleteDebugSessionRequestObject
 
 	request.Backend = backend
@@ -4356,7 +4356,7 @@ func (sh *strictHandler) DeleteDebugSession(w http.ResponseWriter, r *http.Reque
 }
 
 // GetDebugSession operation middleware
-func (sh *strictHandler) GetDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int) {
+func (sh *strictHandler) GetDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int64) {
 	var request GetDebugSessionRequestObject
 
 	request.Backend = backend
@@ -4383,7 +4383,7 @@ func (sh *strictHandler) GetDebugSession(w http.ResponseWriter, r *http.Request,
 }
 
 // StopDebugSession operation middleware
-func (sh *strictHandler) StopDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int) {
+func (sh *strictHandler) StopDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int64) {
 	var request StopDebugSessionRequestObject
 
 	request.Backend = backend
@@ -4410,7 +4410,7 @@ func (sh *strictHandler) StopDebugSession(w http.ResponseWriter, r *http.Request
 }
 
 // ExtendDebugSession operation middleware
-func (sh *strictHandler) ExtendDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int) {
+func (sh *strictHandler) ExtendDebugSession(w http.ResponseWriter, r *http.Request, backend string, sessionId int64) {
 	var request ExtendDebugSessionRequestObject
 
 	request.Backend = backend
@@ -4444,7 +4444,7 @@ func (sh *strictHandler) ExtendDebugSession(w http.ResponseWriter, r *http.Reque
 }
 
 // ListDebugSessionCalls operation middleware
-func (sh *strictHandler) ListDebugSessionCalls(w http.ResponseWriter, r *http.Request, backend string, sessionId int, params ListDebugSessionCallsParams) {
+func (sh *strictHandler) ListDebugSessionCalls(w http.ResponseWriter, r *http.Request, backend string, sessionId int64, params ListDebugSessionCallsParams) {
 	var request ListDebugSessionCallsRequestObject
 
 	request.Backend = backend
@@ -4472,7 +4472,7 @@ func (sh *strictHandler) ListDebugSessionCalls(w http.ResponseWriter, r *http.Re
 }
 
 // GetDebugSessionCall operation middleware
-func (sh *strictHandler) GetDebugSessionCall(w http.ResponseWriter, r *http.Request, backend string, sessionId int, callId int) {
+func (sh *strictHandler) GetDebugSessionCall(w http.ResponseWriter, r *http.Request, backend string, sessionId int64, callId int64) {
 	var request GetDebugSessionCallRequestObject
 
 	request.Backend = backend
@@ -4579,7 +4579,7 @@ func (sh *strictHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteGroup operation middleware
-func (sh *strictHandler) DeleteGroup(w http.ResponseWriter, r *http.Request, groupID int) {
+func (sh *strictHandler) DeleteGroup(w http.ResponseWriter, r *http.Request, groupID int64) {
 	var request DeleteGroupRequestObject
 
 	request.GroupID = groupID
@@ -4605,7 +4605,7 @@ func (sh *strictHandler) DeleteGroup(w http.ResponseWriter, r *http.Request, gro
 }
 
 // GetGroup operation middleware
-func (sh *strictHandler) GetGroup(w http.ResponseWriter, r *http.Request, groupID int) {
+func (sh *strictHandler) GetGroup(w http.ResponseWriter, r *http.Request, groupID int64) {
 	var request GetGroupRequestObject
 
 	request.GroupID = groupID
@@ -4631,7 +4631,7 @@ func (sh *strictHandler) GetGroup(w http.ResponseWriter, r *http.Request, groupI
 }
 
 // UpdateGroup operation middleware
-func (sh *strictHandler) UpdateGroup(w http.ResponseWriter, r *http.Request, groupID int) {
+func (sh *strictHandler) UpdateGroup(w http.ResponseWriter, r *http.Request, groupID int64) {
 	var request UpdateGroupRequestObject
 
 	request.GroupID = groupID
@@ -4982,7 +4982,7 @@ func (sh *strictHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteUser operation middleware
-func (sh *strictHandler) DeleteUser(w http.ResponseWriter, r *http.Request, userID int) {
+func (sh *strictHandler) DeleteUser(w http.ResponseWriter, r *http.Request, userID int64) {
 	var request DeleteUserRequestObject
 
 	request.UserID = userID
@@ -5008,7 +5008,7 @@ func (sh *strictHandler) DeleteUser(w http.ResponseWriter, r *http.Request, user
 }
 
 // GetUser operation middleware
-func (sh *strictHandler) GetUser(w http.ResponseWriter, r *http.Request, userID int) {
+func (sh *strictHandler) GetUser(w http.ResponseWriter, r *http.Request, userID int64) {
 	var request GetUserRequestObject
 
 	request.UserID = userID
@@ -5034,7 +5034,7 @@ func (sh *strictHandler) GetUser(w http.ResponseWriter, r *http.Request, userID 
 }
 
 // UpdateUser operation middleware
-func (sh *strictHandler) UpdateUser(w http.ResponseWriter, r *http.Request, userID int) {
+func (sh *strictHandler) UpdateUser(w http.ResponseWriter, r *http.Request, userID int64) {
 	var request UpdateUserRequestObject
 
 	request.UserID = userID
@@ -5067,7 +5067,7 @@ func (sh *strictHandler) UpdateUser(w http.ResponseWriter, r *http.Request, user
 }
 
 // UpdateUserGroups operation middleware
-func (sh *strictHandler) UpdateUserGroups(w http.ResponseWriter, r *http.Request, userID int) {
+func (sh *strictHandler) UpdateUserGroups(w http.ResponseWriter, r *http.Request, userID int64) {
 	var request UpdateUserGroupsRequestObject
 
 	request.UserID = userID
@@ -5100,7 +5100,7 @@ func (sh *strictHandler) UpdateUserGroups(w http.ResponseWriter, r *http.Request
 }
 
 // ChangeUserPassword operation middleware
-func (sh *strictHandler) ChangeUserPassword(w http.ResponseWriter, r *http.Request, userID int) {
+func (sh *strictHandler) ChangeUserPassword(w http.ResponseWriter, r *http.Request, userID int64) {
 	var request ChangeUserPasswordRequestObject
 
 	request.UserID = userID
@@ -5133,7 +5133,7 @@ func (sh *strictHandler) ChangeUserPassword(w http.ResponseWriter, r *http.Reque
 }
 
 // ResetUserPassword operation middleware
-func (sh *strictHandler) ResetUserPassword(w http.ResponseWriter, r *http.Request, userID int) {
+func (sh *strictHandler) ResetUserPassword(w http.ResponseWriter, r *http.Request, userID int64) {
 	var request ResetUserPasswordRequestObject
 
 	request.UserID = userID

@@ -887,7 +887,7 @@ func TestDBCascadeDeletes(t *testing.T) {
 	t.Run("delete user cascades group bindings", func(t *testing.T) {
 		userID := mustCreateAdminUser(t, uniqueName(t, "cascade-bind-user"))
 		groupID := mustCreateAdminGroup(t, uniqueName(t, "cascade-bind-grp-u"))
-		if err := UpdateUserGroupBindings(ctx, testClient, userID, []int{int(groupID)}); err != nil {
+		if err := UpdateUserGroupBindings(ctx, testClient, userID, []int64{groupID}); err != nil {
 			t.Fatalf("dbUpdateUserGroupBindings error: %v", err)
 		}
 
@@ -916,7 +916,7 @@ func TestDBCascadeDeletes(t *testing.T) {
 	t.Run("delete group cascades group bindings", func(t *testing.T) {
 		userID := mustCreateAdminUser(t, uniqueName(t, "cascade-grp-user"))
 		groupID := mustCreateAdminGroup(t, uniqueName(t, "cascade-grp"))
-		if err := UpdateUserGroupBindings(ctx, testClient, userID, []int{int(groupID)}); err != nil {
+		if err := UpdateUserGroupBindings(ctx, testClient, userID, []int64{groupID}); err != nil {
 			t.Fatalf("dbUpdateUserGroupBindings error: %v", err)
 		}
 
@@ -963,7 +963,7 @@ func TestDBGroupBindings(t *testing.T) {
 		}
 
 		// Set two groups.
-		if err := UpdateUserGroupBindings(ctx, testClient, userID, []int{int(groupID1), int(groupID2)}); err != nil {
+		if err := UpdateUserGroupBindings(ctx, testClient, userID, []int64{groupID1, groupID2}); err != nil {
 			t.Fatalf("dbUpdateUserGroupBindings error: %v", err)
 		}
 
@@ -976,7 +976,7 @@ func TestDBGroupBindings(t *testing.T) {
 		}
 
 		// Reduce to one group.
-		if err := UpdateUserGroupBindings(ctx, testClient, userID, []int{int(groupID1)}); err != nil {
+		if err := UpdateUserGroupBindings(ctx, testClient, userID, []int64{groupID1}); err != nil {
 			t.Fatalf("dbUpdateUserGroupBindings (reduce) error: %v", err)
 		}
 
@@ -992,7 +992,7 @@ func TestDBGroupBindings(t *testing.T) {
 		}
 
 		// Clear all groups.
-		if err := UpdateUserGroupBindings(ctx, testClient, userID, []int{}); err != nil {
+		if err := UpdateUserGroupBindings(ctx, testClient, userID, []int64{}); err != nil {
 			t.Fatalf("dbUpdateUserGroupBindings (clear) error: %v", err)
 		}
 

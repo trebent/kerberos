@@ -9,7 +9,7 @@ import (
 )
 
 // StartDebugSession starts a debug session for the given backend and returns its ID.
-func StartDebugSession(t *testing.T, requestEditor RequestEditorFn, backend string) int {
+func StartDebugSession(t *testing.T, requestEditor RequestEditorFn, backend string) int64 {
 	t.Helper()
 	resp, err := AdminClient.StartDebugSessionWithResponse(
 		t.Context(),

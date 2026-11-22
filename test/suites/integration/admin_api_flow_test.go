@@ -98,7 +98,7 @@ func TestAdminGetFlowAsAdminUser(t *testing.T) {
 	updateResp, err := lib.AdminClient.UpdateUserGroupsWithResponse(
 		t.Context(),
 		userID,
-		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int{grpResp.JSON201.Id}},
+		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int64{grpResp.JSON201.Id}},
 		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	lib.CheckErr(err, t)

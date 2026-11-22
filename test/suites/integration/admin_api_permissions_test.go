@@ -12,13 +12,13 @@ import (
 
 // Permission IDs are the fixed permission IDs bootstrapped by the server.
 const (
-	PermissionIDFlowViewer          = 1
-	PermissionIDOASViewer           = 2
-	PermissionIDBasicAuthOrgAdmin   = 3
-	PermissionIDBasicAuthOrgViewer  = 4
-	PermissionIDAdminUserMgmtAdmin  = 5
-	PermissionIDAdminUserMgmtViewer = 6
-	PermissionIDDebugger            = 7
+	PermissionIDFlowViewer          = int64(1)
+	PermissionIDOASViewer           = int64(2)
+	PermissionIDBasicAuthOrgAdmin   = int64(3)
+	PermissionIDBasicAuthOrgViewer  = int64(4)
+	PermissionIDAdminUserMgmtAdmin  = int64(5)
+	PermissionIDAdminUserMgmtViewer = int64(6)
+	PermissionIDDebugger            = int64(7)
 
 	// Permission names.
 
@@ -51,12 +51,12 @@ func TestAdminPermissionsGetPermissions(t *testing.T) {
 	}
 
 	// Verify the four expected permissions exist with the correct names.
-	nameByID := make(map[int]string, len(*resp.JSON200))
+	nameByID := make(map[int64]string, len(*resp.JSON200))
 	for _, p := range *resp.JSON200 {
-		nameByID[int(p.Id)] = p.Name
+		nameByID[int64(p.Id)] = p.Name
 	}
 
-	expected := map[int]string{
+	expected := map[int64]string{
 		PermissionIDFlowViewer:          PermissionNameFlowViewer,
 		PermissionIDOASViewer:           PermissionNameOASViewer,
 		PermissionIDBasicAuthOrgViewer:  PermissionNameBasicAuthOrgViewer,
@@ -173,7 +173,7 @@ func TestAdminPermissionsSuperuserAccessAll(t *testing.T) {
 func TestAdminPermissionsFlowViewerAllowed(t *testing.T) {
 	t.Parallel()
 	superSession := lib.SuperLogin(t)
-	adminRequestEditor := lib.CreateAdminUserInGroup(t, superSession, []int{PermissionIDFlowViewer})
+	adminRequestEditor := lib.CreateAdminUserInGroup(t, superSession, []int64{PermissionIDFlowViewer})
 
 	resp, err := lib.AdminClient.GetFlowWithResponse(
 		t.Context(),
@@ -189,7 +189,7 @@ func TestAdminPermissionsFlowViewerDeniedWithoutPermission(t *testing.T) {
 	t.Parallel()
 	superSession := lib.SuperLogin(t)
 	// Give only oasviewer — no flowviewer.
-	adminRequestEditor := lib.CreateAdminUserInGroup(t, superSession, []int{PermissionIDOASViewer})
+	adminRequestEditor := lib.CreateAdminUserInGroup(t, superSession, []int64{PermissionIDOASViewer})
 
 	resp, err := lib.AdminClient.GetFlowWithResponse(
 		t.Context(),
@@ -232,7 +232,7 @@ func TestAdminPermissionsFlowViewerDeniedNoGroup(t *testing.T) {
 func TestAdminPermissionsOASViewerAllowed(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
-	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDOASViewer})
+	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int64{PermissionIDOASViewer})
 
 	resp, err := lib.AdminClient.GetBackendOASWithResponse(
 		t.Context(),
@@ -249,7 +249,7 @@ func TestAdminPermissionsOASViewerDeniedWithoutPermission(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 	// Give only flowviewer — no oasviewer.
-	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDFlowViewer})
+	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int64{PermissionIDFlowViewer})
 
 	resp, err := lib.AdminClient.GetBackendOASWithResponse(
 		t.Context(),
@@ -268,7 +268,7 @@ func TestAdminPermissionsOASViewerDeniedWithoutPermission(t *testing.T) {
 func TestAdminPermissionsBasicAuthOrgAdminAllowed(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
-	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDBasicAuthOrgAdmin})
+	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int64{PermissionIDBasicAuthOrgAdmin})
 
 	// basicauthorgadmin must be able to create an organisation (write).
 	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
@@ -308,7 +308,7 @@ func TestAdminPermissionsBasicAuthOrgAdminDeniedWithoutPermission(t *testing.T) 
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 	// Give only flowviewer — no basic auth permission.
-	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDFlowViewer})
+	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int64{PermissionIDFlowViewer})
 
 	// The admin session is not a valid basic auth session, so the middleware returns 401.
 	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
@@ -331,7 +331,7 @@ func TestAdminPermissionsBasicAuthOrgViewerReadAllowed(t *testing.T) {
 	// Create an org via the superuser first so there is something to read.
 	orgID, _ := lib.OrgWithSession(t, superRequestEditor)
 
-	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDBasicAuthOrgViewer})
+	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int64{PermissionIDBasicAuthOrgViewer})
 
 	// basicauthorgviewer must be able to list users (GET).
 	listUsersResp, err := lib.BasicAuthClient.ListUsersWithResponse(
@@ -358,7 +358,7 @@ func TestAdminPermissionsBasicAuthOrgViewerReadAllowed(t *testing.T) {
 func TestAdminPermissionsBasicAuthOrgViewerWriteDenied(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
-	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDBasicAuthOrgViewer})
+	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int64{PermissionIDBasicAuthOrgViewer})
 
 	// basicauthorgviewer must NOT be able to create an organisation (POST).
 	createOrgResp, err := lib.BasicAuthClient.CreateOrganisationWithResponse(
@@ -391,7 +391,7 @@ func TestAdminPermissionsBasicAuthOrgViewerDeniedWithoutPermission(t *testing.T)
 	orgID, _ := lib.OrgWithSession(t, superSession)
 
 	// Give only flowviewer — no basic auth permission.
-	adminRequestEditor := lib.CreateAdminUserInGroup(t, superSession, []int{PermissionIDFlowViewer})
+	adminRequestEditor := lib.CreateAdminUserInGroup(t, superSession, []int64{PermissionIDFlowViewer})
 
 	listUsersResp, err := lib.BasicAuthClient.ListUsersWithResponse(
 		t.Context(),
@@ -425,7 +425,7 @@ func TestAdminPermissionsGroupResponseIncludesPermissions(t *testing.T) {
 
 	returnedIDs := make(adminapi.PermissionIDs, 0, len(*createResp.JSON201.Permissions))
 	for _, p := range *createResp.JSON201.Permissions {
-		returnedIDs = append(returnedIDs, int(p.Id))
+		returnedIDs = append(returnedIDs, int64(p.Id))
 	}
 	lib.ContainsAll(permIDs, returnedIDs, t)
 	lib.ContainsAll(returnedIDs, permIDs, t)
@@ -443,9 +443,9 @@ func TestAdminPermissionsGroupResponseIncludesPermissions(t *testing.T) {
 		t.Fatal("expected permissions in get group response, got empty slice")
 	}
 
-	getReturnedIDs := make([]int, 0, len(*getResp.JSON200.Permissions))
+	getReturnedIDs := make([]int64, 0, len(*getResp.JSON200.Permissions))
 	for _, p := range *getResp.JSON200.Permissions {
-		getReturnedIDs = append(getReturnedIDs, int(p.Id))
+		getReturnedIDs = append(getReturnedIDs, int64(p.Id))
 	}
 	lib.ContainsAll(permIDs, getReturnedIDs, t)
 	lib.ContainsAll(getReturnedIDs, permIDs, t)
@@ -459,7 +459,7 @@ func TestAdminPermissionsGroupResponseIncludesPermissions(t *testing.T) {
 func TestAdminPermissionsAdminUserMgmtAdminAllowed(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
-	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDAdminUserMgmtAdmin})
+	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int64{PermissionIDAdminUserMgmtAdmin})
 
 	// adminusermgmtadmin must be able to list users (GET).
 	listUsersResp, err := lib.AdminClient.GetUsersWithResponse(
@@ -503,7 +503,7 @@ func TestAdminPermissionsAdminUserMgmtAdminAllowed(t *testing.T) {
 	// adminusermgmtadmin must be able to create a group (POST).
 	createGroupResp, err := lib.AdminClient.CreateGroupWithResponse(
 		t.Context(),
-		adminapi.CreateGroupJSONRequestBody{Name: lib.GroupName(), PermissionIDs: []int{}},
+		adminapi.CreateGroupJSONRequestBody{Name: lib.GroupName(), PermissionIDs: []int64{}},
 		adminapi.RequestEditorFn(adminRequestEditor),
 	)
 	lib.CheckErr(err, t)
@@ -515,7 +515,7 @@ func TestAdminPermissionsAdminUserMgmtAdminAllowed(t *testing.T) {
 	updateGroupsResp, err := lib.AdminClient.UpdateUserGroupsWithResponse(
 		t.Context(),
 		userID,
-		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int{groupID}},
+		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int64{groupID}},
 		adminapi.RequestEditorFn(adminRequestEditor),
 	)
 	lib.CheckErr(err, t)
@@ -526,7 +526,7 @@ func TestAdminPermissionsAdminUserMgmtAdminAllowed(t *testing.T) {
 	updateGroupResp, err := lib.AdminClient.UpdateGroupWithResponse(
 		t.Context(),
 		groupID,
-		adminapi.UpdateGroupJSONRequestBody{Name: newGroupName, PermissionIDs: []int{}},
+		adminapi.UpdateGroupJSONRequestBody{Name: newGroupName, PermissionIDs: []int64{}},
 		adminapi.RequestEditorFn(adminRequestEditor),
 	)
 	lib.CheckErr(err, t)
@@ -558,7 +558,7 @@ func TestAdminPermissionsAdminUserMgmtAdminAllowed(t *testing.T) {
 func TestAdminPermissionsAdminUserMgmtViewerReadAllowed(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
-	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDAdminUserMgmtViewer})
+	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int64{PermissionIDAdminUserMgmtViewer})
 
 	// adminusermgmtviewer must be able to list users (GET).
 	listUsersResp, err := lib.AdminClient.GetUsersWithResponse(
@@ -583,7 +583,7 @@ func TestAdminPermissionsAdminUserMgmtViewerReadAllowed(t *testing.T) {
 func TestAdminPermissionsAdminUserMgmtViewerWriteDenied(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
-	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDAdminUserMgmtViewer})
+	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int64{PermissionIDAdminUserMgmtViewer})
 
 	// adminusermgmtviewer must NOT be able to create a user (POST).
 	createUserResp, err := lib.AdminClient.CreateUserWithResponse(
@@ -597,7 +597,7 @@ func TestAdminPermissionsAdminUserMgmtViewerWriteDenied(t *testing.T) {
 	// adminusermgmtviewer must NOT be able to create a group (POST).
 	createGroupResp, err := lib.AdminClient.CreateGroupWithResponse(
 		t.Context(),
-		adminapi.CreateGroupJSONRequestBody{Name: lib.GroupName(), PermissionIDs: []int{}},
+		adminapi.CreateGroupJSONRequestBody{Name: lib.GroupName(), PermissionIDs: []int64{}},
 		adminapi.RequestEditorFn(adminRequestEditor),
 	)
 	lib.CheckErr(err, t)
@@ -610,7 +610,7 @@ func TestAdminPermissionsAdminUserMgmtViewerDeniedWithoutPermission(t *testing.T
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 	// Give only flowviewer — no user mgmt permission.
-	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDFlowViewer})
+	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int64{PermissionIDFlowViewer})
 
 	listUsersResp, err := lib.AdminClient.GetUsersWithResponse(
 		t.Context(),
@@ -652,7 +652,7 @@ func TestAdminPermissionsAdminUserMgmtViewerGetSelf(t *testing.T) {
 // endpoint, cannot log out the superuser.
 func TestAdminPermissionsNormalUserLogoutSuper(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
-	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDAdminUserMgmtViewer})
+	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int64{PermissionIDAdminUserMgmtViewer})
 
 	// Normal admin users should not be able to log out the superuser, even if they
 	// have permissions to call the logout endpoint.
@@ -709,7 +709,7 @@ func TestAdminPermissionsAdminUserChangePasswordWrongUser(t *testing.T) {
 func TestAdminPermissionsDebuggerAllowed(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
-	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDDebugger})
+	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int64{PermissionIDDebugger})
 
 	resp, err := lib.AdminClient.StartDebugSessionWithResponse(
 		t.Context(),
@@ -737,7 +737,7 @@ func TestAdminPermissionsDebuggerDenied(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 	// Give only flowviewer — no debugger.
-	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDFlowViewer})
+	adminRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int64{PermissionIDFlowViewer})
 
 	resp, err := lib.AdminClient.StartDebugSessionWithResponse(
 		t.Context(),
@@ -771,7 +771,7 @@ func TestAdminPermissionsPasswordReset(t *testing.T) {
 	targetID := createResp.JSON201.Id
 	targetRequestEditor := lib.AdminUserLogin(t, name, oldPass)
 
-	reset := func(editor lib.RequestEditorFn, userID int) *adminapi.ResetUserPasswordResponse {
+	reset := func(editor lib.RequestEditorFn, userID int64) *adminapi.ResetUserPasswordResponse {
 		t.Helper()
 		resp, err := lib.AdminClient.ResetUserPasswordWithResponse(
 			t.Context(),
@@ -784,7 +784,7 @@ func TestAdminPermissionsPasswordReset(t *testing.T) {
 	}
 
 	// Every other permission is not enough.
-	otherRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{
+	otherRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int64{
 		PermissionIDFlowViewer,
 		PermissionIDOASViewer,
 		PermissionIDBasicAuthOrgAdmin,
@@ -796,7 +796,7 @@ func TestAdminPermissionsPasswordReset(t *testing.T) {
 	lib.VerifyStatusCode(denied.StatusCode(), http.StatusForbidden, t)
 	lib.VerifyAdminAPIErrorResponse(denied.JSON403, t)
 
-	resetRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int{PermissionIDAdminUserMgmtAdmin})
+	resetRequestEditor := lib.CreateAdminUserInGroup(t, superRequestEditor, []int64{PermissionIDAdminUserMgmtAdmin})
 
 	missing := reset(resetRequestEditor, 999999)
 	lib.VerifyStatusCode(missing.StatusCode(), http.StatusNotFound, t)

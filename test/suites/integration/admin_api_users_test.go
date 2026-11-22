@@ -323,7 +323,7 @@ func TestAdminUserGroupBindingsAssign(t *testing.T) {
 	updateResp, err := lib.AdminClient.UpdateUserGroupsWithResponse(
 		t.Context(),
 		userID,
-		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int{grp1ID, grp2ID}},
+		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int64{grp1ID, grp2ID}},
 		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	lib.CheckErr(err, t)
@@ -342,11 +342,11 @@ func TestAdminUserGroupBindingsAssign(t *testing.T) {
 	if len(*getResp.JSON200.Groups) != 2 {
 		t.Fatalf("expected 2 groups, got %d", len(*getResp.JSON200.Groups))
 	}
-	groupIDs := make([]int, 0, len(*getResp.JSON200.Groups))
+	groupIDs := make([]int64, 0, len(*getResp.JSON200.Groups))
 	for _, g := range *getResp.JSON200.Groups {
 		groupIDs = append(groupIDs, g.Id)
 	}
-	lib.ContainsAll([]int{grp1ID, grp2ID}, groupIDs, t)
+	lib.ContainsAll([]int64{grp1ID, grp2ID}, groupIDs, t)
 }
 
 // TestAdminUserGroupBindingsUpdate verifies that a user's group membership can be partially updated
@@ -396,7 +396,7 @@ func TestAdminUserGroupBindingsUpdate(t *testing.T) {
 	updateResp, err := lib.AdminClient.UpdateUserGroupsWithResponse(
 		t.Context(),
 		userID,
-		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int{grp1ID, grp2ID}},
+		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int64{grp1ID, grp2ID}},
 		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	lib.CheckErr(err, t)
@@ -406,7 +406,7 @@ func TestAdminUserGroupBindingsUpdate(t *testing.T) {
 	updateResp, err = lib.AdminClient.UpdateUserGroupsWithResponse(
 		t.Context(),
 		userID,
-		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int{grp2ID, grp3ID}},
+		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int64{grp2ID, grp3ID}},
 		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	lib.CheckErr(err, t)
@@ -425,11 +425,11 @@ func TestAdminUserGroupBindingsUpdate(t *testing.T) {
 	if len(*getResp.JSON200.Groups) != 2 {
 		t.Fatalf("expected 2 groups after update, got %d", len(*getResp.JSON200.Groups))
 	}
-	groupIDs := make([]int, 0, len(*getResp.JSON200.Groups))
+	groupIDs := make([]int64, 0, len(*getResp.JSON200.Groups))
 	for _, g := range *getResp.JSON200.Groups {
 		groupIDs = append(groupIDs, g.Id)
 	}
-	lib.ContainsAll([]int{grp2ID, grp3ID}, groupIDs, t)
+	lib.ContainsAll([]int64{grp2ID, grp3ID}, groupIDs, t)
 	for _, id := range groupIDs {
 		if id == grp1ID {
 			t.Fatalf("grp1 should have been removed from user groups")
@@ -465,7 +465,7 @@ func TestAdminUserGroupBindingsClear(t *testing.T) {
 	updateResp, err := lib.AdminClient.UpdateUserGroupsWithResponse(
 		t.Context(),
 		userID,
-		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int{grpID}},
+		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int64{grpID}},
 		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	lib.CheckErr(err, t)
@@ -475,7 +475,7 @@ func TestAdminUserGroupBindingsClear(t *testing.T) {
 	updateResp, err = lib.AdminClient.UpdateUserGroupsWithResponse(
 		t.Context(),
 		userID,
-		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int{}},
+		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int64{}},
 		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	lib.CheckErr(err, t)
@@ -501,7 +501,7 @@ func TestAdminUserGroupBindingsNotFoundUser(t *testing.T) {
 	updateResp, err := lib.AdminClient.UpdateUserGroupsWithResponse(
 		t.Context(),
 		999999999,
-		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int{}},
+		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int64{}},
 		adminapi.RequestEditorFn(superRequestEditor),
 	)
 	lib.CheckErr(err, t)

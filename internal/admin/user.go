@@ -451,7 +451,7 @@ func (i *impl) CreateUser(
 	}
 
 	return adminapi.CreateUser201JSONResponse{
-		Id:       int(id),
+		Id:       id,
 		Username: request.Body.Username,
 	}, nil
 }
@@ -472,7 +472,7 @@ func (i *impl) GetUsers(
 	}
 
 	for index, u := range users {
-		groups, err := admindb.ListGroupBindings(ctx, i.sqlClient, int64(u.Id))
+		groups, err := admindb.ListGroupBindings(ctx, i.sqlClient, u.Id)
 		if err != nil {
 			zerologr.Error(err, "Failed to list admin user group bindings")
 			return adminapi.GetUsers500JSONResponse(apiErrInternal), nil
@@ -480,7 +480,7 @@ func (i *impl) GetUsers(
 
 		apiGroups := make([]adminapi.Group, 0, len(groups))
 		for _, b := range groups {
-			apiGroups = append(apiGroups, adminapi.Group{Id: int(b.GroupID), Name: b.Name})
+			apiGroups = append(apiGroups, adminapi.Group{Id: b.GroupID, Name: b.Name})
 		}
 		u.Groups = &apiGroups
 		users[index] = u
@@ -507,7 +507,7 @@ func (i *impl) GetMe(
 		return adminapi.GetMe500JSONResponse(apiErrInternal), nil
 	}
 
-	groups, err := admindb.ListGroupBindings(ctx, i.sqlClient, int64(u.Id))
+	groups, err := admindb.ListGroupBindings(ctx, i.sqlClient, u.Id)
 	if err != nil {
 		zerologr.Error(err, "Failed to list admin user group bindings for /me")
 		return adminapi.GetMe500JSONResponse(apiErrInternal), nil
@@ -515,7 +515,7 @@ func (i *impl) GetMe(
 
 	apiGroups := make([]adminapi.Group, 0, len(groups))
 	for _, b := range groups {
-		apiGroups = append(apiGroups, adminapi.Group{Id: int(b.GroupID), Name: b.Name})
+		apiGroups = append(apiGroups, adminapi.Group{Id: b.GroupID, Name: b.Name})
 	}
 	u.Groups = &apiGroups
 
@@ -529,13 +529,13 @@ func (i *impl) GetUser(
 ) (adminapi.GetUserResponseObject, error) {
 	//nolint:errcheck // no need, done in mware
 	session := ctx.Value(adminContextSession).(*model.Session)
-	self := session.UserID == int64(request.UserID)
+	self := session.UserID == request.UserID
 
 	if !self && !ContextIsAdminUserMgmtAdmin(ctx) && !ContextIsAdminUserMgmtViewer(ctx) {
 		return adminapi.GetUser403JSONResponse(apiErrForbidden), nil
 	}
 
-	u, err := admindb.GetUser(ctx, i.sqlClient, int64(request.UserID))
+	u, err := admindb.GetUser(ctx, i.sqlClient, request.UserID)
 	if err != nil {
 		if errors.Is(err, db.ErrRowNotFound) {
 			return adminapi.GetUser404JSONResponse(apiErrNotFound), nil
@@ -544,7 +544,7 @@ func (i *impl) GetUser(
 		return adminapi.GetUser500JSONResponse(apiErrInternal), nil
 	}
 
-	groups, err := admindb.ListGroupBindings(ctx, i.sqlClient, int64(u.Id))
+	groups, err := admindb.ListGroupBindings(ctx, i.sqlClient, u.Id)
 	if err != nil {
 		zerologr.Error(err, "Failed to list admin user group bindings")
 		return adminapi.GetUser500JSONResponse(apiErrInternal), nil
@@ -552,7 +552,7 @@ func (i *impl) GetUser(
 
 	apiGroups := make([]adminapi.Group, 0, len(groups))
 	for _, b := range groups {
-		apiGroups = append(apiGroups, adminapi.Group{Id: int(b.GroupID), Name: b.Name})
+		apiGroups = append(apiGroups, adminapi.Group{Id: b.GroupID, Name: b.Name})
 	}
 	u.Groups = &apiGroups
 
@@ -566,13 +566,13 @@ func (i *impl) UpdateUser(
 ) (adminapi.UpdateUserResponseObject, error) {
 	//nolint:errcheck // no need, done in mware
 	session := ctx.Value(adminContextSession).(*model.Session)
-	self := session.UserID == int64(request.UserID)
+	self := session.UserID == request.UserID
 
 	if !self && !ContextIsAdminUserMgmtAdmin(ctx) {
 		return adminapi.UpdateUser403JSONResponse(apiErrForbidden), nil
 	}
 
-	_, err := admindb.GetUser(ctx, i.sqlClient, int64(request.UserID))
+	_, err := admindb.GetUser(ctx, i.sqlClient, request.UserID)
 	if errors.Is(err, db.ErrRowNotFound) {
 		return adminapi.UpdateUser404JSONResponse(apiErrNotFound), nil
 	}
@@ -585,7 +585,7 @@ func (i *impl) UpdateUser(
 	if err := admindb.UpdateUser(
 		ctx,
 		i.sqlClient,
-		int64(request.UserID),
+		request.UserID,
 		request.Body.Username,
 	); err != nil {
 		if errors.Is(err, db.ErrUnique) {
@@ -609,7 +609,7 @@ func (i *impl) DeleteUser(
 		return adminapi.DeleteUser403JSONResponse(apiErrForbidden), nil
 	}
 
-	if _, err := admindb.GetUser(ctx, i.sqlClient, int64(request.UserID)); err != nil {
+	if _, err := admindb.GetUser(ctx, i.sqlClient, request.UserID); err != nil {
 		if errors.Is(err, db.ErrRowNotFound) {
 			return adminapi.DeleteUser404JSONResponse(apiErrNotFound), nil
 		}
@@ -617,7 +617,7 @@ func (i *impl) DeleteUser(
 		return adminapi.DeleteUser500JSONResponse(apiErrInternal), nil
 	}
 
-	if err := admindb.DeleteUser(ctx, i.sqlClient, int64(request.UserID)); err != nil {
+	if err := admindb.DeleteUser(ctx, i.sqlClient, request.UserID); err != nil {
 		zerologr.Error(err, "Failed to delete admin user")
 		return adminapi.DeleteUser500JSONResponse(apiErrInternal), nil
 	}
@@ -641,7 +641,7 @@ func (i *impl) ResetUserPassword(
 		return adminapi.ResetUserPassword500JSONResponse(apiErrInternal), nil
 	}
 
-	err = admindb.SetUserPassword(ctx, i.sqlClient, int64(request.UserID), salt, hashed)
+	err = admindb.SetUserPassword(ctx, i.sqlClient, request.UserID, salt, hashed)
 	if errors.Is(err, db.ErrRowNotFound) {
 		return adminapi.ResetUserPassword404JSONResponse(apiErrNotFound), nil
 	}
@@ -669,13 +669,13 @@ func (i *impl) ChangeUserPassword(
 ) (adminapi.ChangeUserPasswordResponseObject, error) {
 	//nolint:errcheck // no need, done in mware
 	session := ctx.Value(adminContextSession).(*model.Session)
-	self := session.UserID == int64(request.UserID)
+	self := session.UserID == request.UserID
 
 	if !ContextIsAdminUserMgmtAdmin(ctx) && !self {
 		return adminapi.ChangeUserPassword403JSONResponse(apiErrForbidden), nil
 	}
 
-	auth, err := admindb.GetUserAuth(ctx, i.sqlClient, int64(request.UserID))
+	auth, err := admindb.GetUserAuth(ctx, i.sqlClient, request.UserID)
 	if err != nil {
 		if errors.Is(err, db.ErrRowNotFound) {
 			return adminapi.ChangeUserPassword404JSONResponse(apiErrNotFound), nil
@@ -697,7 +697,7 @@ func (i *impl) ChangeUserPassword(
 	if err := admindb.SetUserPassword(
 		ctx,
 		i.sqlClient,
-		int64(request.UserID),
+		request.UserID,
 		newSalt,
 		newHashed,
 	); err != nil {
@@ -756,7 +756,7 @@ func (i *impl) UpdateUserGroups(
 		return adminapi.UpdateUserGroups403JSONResponse(apiErrForbidden), nil
 	}
 
-	if _, err := admindb.GetUser(ctx, i.sqlClient, int64(request.UserID)); err != nil {
+	if _, err := admindb.GetUser(ctx, i.sqlClient, request.UserID); err != nil {
 		if errors.Is(err, db.ErrRowNotFound) {
 			return adminapi.UpdateUserGroups404JSONResponse(apiErrNotFound), nil
 		}
@@ -767,7 +767,7 @@ func (i *impl) UpdateUserGroups(
 	if err := admindb.UpdateUserGroupBindings(
 		ctx,
 		i.sqlClient,
-		int64(request.UserID),
+		request.UserID,
 		request.Body.GroupIDs,
 	); err != nil {
 		zerologr.Error(err, "Failed to update admin user group bindings")
@@ -814,7 +814,7 @@ func (i *impl) CreateGroup(
 	}
 
 	return adminapi.CreateGroup201JSONResponse(
-		adminapi.Group{Id: int(id), Name: request.Body.Name, Permissions: &perms},
+		adminapi.Group{Id: id, Name: request.Body.Name, Permissions: &perms},
 	), nil
 }
 
@@ -835,7 +835,7 @@ func (i *impl) GetGroups(
 
 	enriched := make([]adminapi.Group, 0, len(groups))
 	for _, g := range groups {
-		perms, err := admindb.GetGroupPermissions(ctx, i.sqlClient, int64(g.Id))
+		perms, err := admindb.GetGroupPermissions(ctx, i.sqlClient, g.Id)
 		if err != nil {
 			zerologr.Error(err, "Failed to fetch permissions for admin group")
 			return adminapi.GetGroups500JSONResponse(apiErrInternal), nil
@@ -856,7 +856,7 @@ func (i *impl) GetGroup(
 		return adminapi.GetGroup403JSONResponse(apiErrForbidden), nil
 	}
 
-	g, err := admindb.GetGroup(ctx, i.sqlClient, int64(request.GroupID))
+	g, err := admindb.GetGroup(ctx, i.sqlClient, request.GroupID)
 	if err != nil {
 		if errors.Is(err, db.ErrRowNotFound) {
 			return adminapi.GetGroup404JSONResponse(apiErrNotFound), nil
@@ -865,7 +865,7 @@ func (i *impl) GetGroup(
 		return adminapi.GetGroup500JSONResponse(apiErrInternal), nil
 	}
 
-	perms, err := admindb.GetGroupPermissions(ctx, i.sqlClient, int64(request.GroupID))
+	perms, err := admindb.GetGroupPermissions(ctx, i.sqlClient, request.GroupID)
 	if err != nil {
 		zerologr.Error(err, "Failed to fetch permissions for admin group")
 		return adminapi.GetGroup500JSONResponse(apiErrInternal), nil
@@ -884,7 +884,7 @@ func (i *impl) UpdateGroup(
 		return adminapi.UpdateGroup403JSONResponse(apiErrForbidden), nil
 	}
 
-	if _, err := admindb.GetGroup(ctx, i.sqlClient, int64(request.GroupID)); err != nil {
+	if _, err := admindb.GetGroup(ctx, i.sqlClient, request.GroupID); err != nil {
 		if errors.Is(err, db.ErrRowNotFound) {
 			return adminapi.UpdateGroup404JSONResponse(apiErrNotFound), nil
 		}
@@ -896,7 +896,7 @@ func (i *impl) UpdateGroup(
 	if err := admindb.UpdateGroup(
 		ctx,
 		i.sqlClient,
-		int64(request.GroupID),
+		request.GroupID,
 		request.Body.Name,
 	); err != nil {
 		if errors.Is(err, db.ErrUnique) {
@@ -911,7 +911,7 @@ func (i *impl) UpdateGroup(
 	if err := admindb.SetGroupPermissions(
 		ctx,
 		i.sqlClient,
-		int64(request.GroupID),
+		request.GroupID,
 		request.Body.PermissionIDs,
 	); err != nil {
 		zerologr.Error(err, "Failed to update permissions for admin group")
@@ -930,7 +930,7 @@ func (i *impl) DeleteGroup(
 		return adminapi.DeleteGroup403JSONResponse(apiErrForbidden), nil
 	}
 
-	if _, err := admindb.GetGroup(ctx, i.sqlClient, int64(request.GroupID)); err != nil {
+	if _, err := admindb.GetGroup(ctx, i.sqlClient, request.GroupID); err != nil {
 		if errors.Is(err, db.ErrRowNotFound) {
 			return adminapi.DeleteGroup404JSONResponse(apiErrNotFound), nil
 		}
@@ -938,7 +938,7 @@ func (i *impl) DeleteGroup(
 		return adminapi.DeleteGroup500JSONResponse(apiErrInternal), nil
 	}
 
-	if err := admindb.DeleteGroup(ctx, i.sqlClient, int64(request.GroupID)); err != nil {
+	if err := admindb.DeleteGroup(ctx, i.sqlClient, request.GroupID); err != nil {
 		zerologr.Error(err, "Failed to delete admin group")
 		return adminapi.DeleteGroup500JSONResponse(apiErrInternal), nil
 	}
