@@ -51,6 +51,7 @@ When the connector itself answers, it uses the same JSON error format as the Ker
 | `204` | CORS preflight from an allowed origin | empty |
 | `401` | No `session` cookie, unknown session, organisation user session, or expired session | `{"errors":["Unauthorized"]}` |
 | `403` | `Origin` header not allowed by `origins` | `{"errors":["Forbidden"]}` |
+| `500` | The session could not be looked up in the database | `{"errors":["Internal Server Error"]}` |
 | `502` | The target could not be reached or the proxied request failed | `{"errors":["Bad Gateway"]}` |
 
 All other responses come from the target.
