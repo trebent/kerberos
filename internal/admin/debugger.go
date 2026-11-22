@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/trebent/kerberos/internal/composer"
@@ -20,6 +21,8 @@ type (
 
 		*rate.Limiter
 
+		// mu guards backendSessions, which gateway requests read while Admin API calls write it.
+		mu              sync.RWMutex
 		backendSessions map[string]session
 	}
 	session struct {
@@ -51,6 +54,9 @@ func newDebugger(sqlClient db.SQLClient) *debugger {
 
 // EnableBackend enables debugging for the specified backend with the given session ID and expiration time.
 func (d *debugger) EnableBackend(backend string, id int64, expires time.Time) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	s, ok := d.backendSessions[backend]
 	if ok {
 		s.expires = expires
@@ -65,12 +71,18 @@ func (d *debugger) EnableBackend(backend string, id int64, expires time.Time) {
 
 // DisableBackend disables debugging for the specified backend.
 func (d *debugger) DisableBackend(backend string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	delete(d.backendSessions, backend)
 }
 
 // IsEnabled checks if debugging is enabled for the specified backend and if the session has not expired.
 func (d *debugger) IsEnabled(backend string) (int64, bool) {
+	d.mu.RLock()
 	session, ok := d.backendSessions[backend]
+	d.mu.RUnlock()
+
 	if !ok {
 		return 0, false
 	}
