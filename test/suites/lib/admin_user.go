@@ -9,10 +9,10 @@ import (
 
 // AllPermissionIDs is the base set of all available admin group permissions.
 // Tests that create admin groups should include these to avoid breaking permission-gated endpoints.
-var AllPermissionIDs = []int{1, 2, 3, 4, 5, 6, 7}
+var AllPermissionIDs = []int64{1, 2, 3, 4, 5, 6, 7}
 
 // MustGetAdminUserID fetches the admin user list and returns the ID of the user with the given username.
-func MustGetAdminUserID(t *testing.T, requestEditor RequestEditorFn, name string) int {
+func MustGetAdminUserID(t *testing.T, requestEditor RequestEditorFn, name string) int64 {
 	t.Helper()
 	resp, err := AdminClient.GetUsersWithResponse(
 		t.Context(),
@@ -31,7 +31,7 @@ func MustGetAdminUserID(t *testing.T, requestEditor RequestEditorFn, name string
 
 // CreateAdminUserInGroup creates a fresh admin user, creates a group with the specified
 // permissionIDs, adds the user to that group, and returns the user's session.
-func CreateAdminUserInGroup(t *testing.T, requestEditor RequestEditorFn, permissionIDs []int) RequestEditorFn {
+func CreateAdminUserInGroup(t *testing.T, requestEditor RequestEditorFn, permissionIDs []int64) RequestEditorFn {
 	t.Helper()
 
 	const pass = "testpassword1"
@@ -58,7 +58,7 @@ func CreateAdminUserInGroup(t *testing.T, requestEditor RequestEditorFn, permiss
 	updateResp, err := AdminClient.UpdateUserGroupsWithResponse(
 		t.Context(),
 		userID,
-		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int{grpResp.JSON201.Id}},
+		adminapi.UpdateUserGroupsJSONRequestBody{GroupIDs: []int64{grpResp.JSON201.Id}},
 		adminapi.RequestEditorFn(requestEditor),
 	)
 	CheckErr(err, t)

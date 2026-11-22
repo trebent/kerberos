@@ -420,7 +420,7 @@ func ListDebugSessionCalls(
 	if includeTransitions {
 		// Fetch flow transitions per call.
 		for i, call := range calls {
-			transitions, err := ListDebugSessionFlowTransitions(ctx, client, int64(call.Id))
+			transitions, err := ListDebugSessionFlowTransitions(ctx, client, call.Id)
 			if err != nil {
 				zerologr.Error(err, "Failed to list debug session flow transitions")
 				return nil, err
@@ -471,7 +471,7 @@ func GetDebugSessionCall(
 		// On SQLite (single connection) an open cursor blocks further queries.
 		_ = rows.Close()
 
-		transitions, err := ListDebugSessionFlowTransitions(ctx, client, int64(call.Id))
+		transitions, err := ListDebugSessionFlowTransitions(ctx, client, call.Id)
 		if err != nil {
 			zerologr.Error(err, "Failed to list debug session flow transitions")
 			return nil, err
@@ -1057,7 +1057,7 @@ func UpdateUserGroupBindings(
 	ctx context.Context,
 	client db.SQLClient,
 	userID int64,
-	desiredGroupIDs []int,
+	desiredGroupIDs []int64,
 ) error {
 	bindings, err := ListGroupBindings(ctx, client, userID)
 	if err != nil {
@@ -1066,7 +1066,7 @@ func UpdateUserGroupBindings(
 
 	toDelete := make([]*model.GroupBinding, 0)
 	for _, b := range bindings {
-		if !slices.Contains(desiredGroupIDs, int(b.GroupID)) {
+		if !slices.Contains(desiredGroupIDs, b.GroupID) {
 			toDelete = append(toDelete, b)
 		}
 	}
@@ -1098,7 +1098,7 @@ func UpdateUserGroupBindings(
 	for _, groupID := range desiredGroupIDs {
 		if !slices.ContainsFunc(
 			bindings,
-			func(b *model.GroupBinding) bool { return int(b.GroupID) == groupID },
+			func(b *model.GroupBinding) bool { return b.GroupID == groupID },
 		) {
 			if _, err := tx.Exec(
 				ctx,
@@ -1326,7 +1326,7 @@ func SetGroupPermissions(
 	ctx context.Context,
 	client db.SQLClient,
 	groupID int64,
-	permissionIDs []int,
+	permissionIDs []int64,
 ) error {
 	tx, err := client.Begin(ctx)
 	if err != nil {
