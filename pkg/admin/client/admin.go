@@ -334,11 +334,6 @@ type ChangeSuperuserPasswordJSONBody struct {
 	OldPassword string `json:"oldPassword"`
 }
 
-// ResetSuperuserPasswordJSONBody defines parameters for ResetSuperuserPassword.
-type ResetSuperuserPasswordJSONBody struct {
-	NewPassword string `json:"newPassword"`
-}
-
 // CreateUserJSONBody defines parameters for CreateUser.
 type CreateUserJSONBody struct {
 	Password string `json:"password"`
@@ -386,9 +381,6 @@ type LoginSuperuserJSONRequestBody LoginSuperuserJSONBody
 
 // ChangeSuperuserPasswordJSONRequestBody defines body for ChangeSuperuserPassword for application/json ContentType.
 type ChangeSuperuserPasswordJSONRequestBody ChangeSuperuserPasswordJSONBody
-
-// ResetSuperuserPasswordJSONRequestBody defines body for ResetSuperuserPassword for application/json ContentType.
-type ResetSuperuserPasswordJSONRequestBody ResetSuperuserPasswordJSONBody
 
 // CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
 type CreateUserJSONRequestBody CreateUserJSONBody
@@ -723,20 +715,6 @@ type ClientInterface interface {
 	// Takes a body of the `application/json` content type.
 	ChangeSuperuserPassword(ctx context.Context, body ChangeSuperuserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// ResetSuperuserPasswordWithBody performs a PUT /api/admin/superuser/password/reset (the `ResetSuperuserPassword` operationId) request,
-	// with any type of body and a specified content type.
-	//
-	// Sets a new superuser password without the old one, and ends all superuser sessions.
-	// Requires the superuser-password-reset permission.
-	ResetSuperuserPasswordWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// ResetSuperuserPassword performs a PUT /api/admin/superuser/password/reset (the `ResetSuperuserPassword` operationId) request.
-	// Takes a body of the `application/json` content type.
-	//
-	// Sets a new superuser password without the old one, and ends all superuser sessions.
-	// Requires the superuser-password-reset permission.
-	ResetSuperuserPassword(ctx context.Context, body ResetSuperuserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// RefreshSuperuserSession performs a POST /api/admin/superuser/refresh (the `RefreshSuperuserSession` operationId) request.
 	RefreshSuperuserSession(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -785,14 +763,14 @@ type ClientInterface interface {
 	// with any type of body and a specified content type.
 	//
 	// Sets a new password for an admin user without the old one, and ends all of the user's
-	// sessions. Requires the password-reset permission.
+	// sessions. Requires the admin-user-mgmt-admin permission.
 	ResetUserPasswordWithBody(ctx context.Context, userID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ResetUserPassword performs a PUT /api/admin/users/{userID}/password/reset (the `ResetUserPassword` operationId) request.
 	// Takes a body of the `application/json` content type.
 	//
 	// Sets a new password for an admin user without the old one, and ends all of the user's
-	// sessions. Requires the password-reset permission.
+	// sessions. Requires the admin-user-mgmt-admin permission.
 	ResetUserPassword(ctx context.Context, userID int, body ResetUserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
@@ -1200,40 +1178,6 @@ func (c *Client) ChangeSuperuserPassword(ctx context.Context, body ChangeSuperus
 	return c.Client.Do(req)
 }
 
-// ResetSuperuserPasswordWithBody performs a PUT /api/admin/superuser/password/reset (the `ResetSuperuserPassword` operationId) request,
-// with any type of body and a specified content type.
-//
-// Sets a new superuser password without the old one, and ends all superuser sessions.
-// Requires the superuser-password-reset permission.
-func (c *Client) ResetSuperuserPasswordWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewResetSuperuserPasswordRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// ResetSuperuserPassword performs a PUT /api/admin/superuser/password/reset (the `ResetSuperuserPassword` operationId) request.
-// Takes a body of the `application/json` content type.
-//
-// Sets a new superuser password without the old one, and ends all superuser sessions.
-// Requires the superuser-password-reset permission.
-func (c *Client) ResetSuperuserPassword(ctx context.Context, body ResetSuperuserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewResetSuperuserPasswordRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 // RefreshSuperuserSession performs a POST /api/admin/superuser/refresh (the `RefreshSuperuserSession` operationId) request.
 func (c *Client) RefreshSuperuserSession(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRefreshSuperuserSessionRequest(c.Server)
@@ -1402,7 +1346,7 @@ func (c *Client) ChangeUserPassword(ctx context.Context, userID int, body Change
 // with any type of body and a specified content type.
 //
 // Sets a new password for an admin user without the old one, and ends all of the user's
-// sessions. Requires the password-reset permission.
+// sessions. Requires the admin-user-mgmt-admin permission.
 func (c *Client) ResetUserPasswordWithBody(ctx context.Context, userID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewResetUserPasswordRequestWithBody(c.Server, userID, contentType, body)
 	if err != nil {
@@ -1419,7 +1363,7 @@ func (c *Client) ResetUserPasswordWithBody(ctx context.Context, userID int, cont
 // Takes a body of the `application/json` content type.
 //
 // Sets a new password for an admin user without the old one, and ends all of the user's
-// sessions. Requires the password-reset permission.
+// sessions. Requires the admin-user-mgmt-admin permission.
 func (c *Client) ResetUserPassword(ctx context.Context, userID int, body ResetUserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewResetUserPasswordRequest(c.Server, userID, body)
 	if err != nil {
@@ -2300,46 +2244,6 @@ func NewChangeSuperuserPasswordRequestWithBody(server string, contentType string
 	return req, nil
 }
 
-// NewResetSuperuserPasswordRequest calls the generic ResetSuperuserPassword builder with application/json body
-func NewResetSuperuserPasswordRequest(server string, body ResetSuperuserPasswordJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewResetSuperuserPasswordRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewResetSuperuserPasswordRequestWithBody constructs an http.Request for the ResetSuperuserPassword method, with any body, and a specified content type
-func NewResetSuperuserPasswordRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/admin/superuser/password/reset")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 // NewRefreshSuperuserSessionRequest constructs an http.Request for the RefreshSuperuserSession method
 func NewRefreshSuperuserSessionRequest(server string) (*http.Request, error) {
 	var err error
@@ -2884,22 +2788,6 @@ type ClientWithResponsesInterface interface {
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	ChangeSuperuserPasswordWithResponse(ctx context.Context, body ChangeSuperuserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ChangeSuperuserPasswordResponse, error)
 
-	// ResetSuperuserPasswordWithBodyWithResponse performs a PUT /api/admin/superuser/password/reset (the `ResetSuperuserPassword` operationId) request,
-	// with any type of body and a specified content type.
-	//
-	// Sets a new superuser password without the old one, and ends all superuser sessions.
-	// Requires the superuser-password-reset permission.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	ResetSuperuserPasswordWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResetSuperuserPasswordResponse, error)
-
-	// ResetSuperuserPasswordWithResponse performs a PUT /api/admin/superuser/password/reset (the `ResetSuperuserPassword` operationId) request.
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Sets a new superuser password without the old one, and ends all superuser sessions.
-	// Requires the superuser-password-reset permission.
-	ResetSuperuserPasswordWithResponse(ctx context.Context, body ResetSuperuserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ResetSuperuserPasswordResponse, error)
-
 	// RefreshSuperuserSessionWithResponse performs a POST /api/admin/superuser/refresh (the `RefreshSuperuserSession` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -2964,7 +2852,7 @@ type ClientWithResponsesInterface interface {
 	// with any type of body and a specified content type.
 	//
 	// Sets a new password for an admin user without the old one, and ends all of the user's
-	// sessions. Requires the password-reset permission.
+	// sessions. Requires the admin-user-mgmt-admin permission.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	ResetUserPasswordWithBodyWithResponse(ctx context.Context, userID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResetUserPasswordResponse, error)
@@ -2973,7 +2861,7 @@ type ClientWithResponsesInterface interface {
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Sets a new password for an admin user without the old one, and ends all of the user's
-	// sessions. Requires the password-reset permission.
+	// sessions. Requires the admin-user-mgmt-admin permission.
 	ResetUserPasswordWithResponse(ctx context.Context, userID int, body ResetUserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ResetUserPasswordResponse, error)
 }
 
@@ -4529,68 +4417,6 @@ func (r ChangeSuperuserPasswordResponse) ContentType() string {
 	return ""
 }
 
-type ResetSuperuserPasswordResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *APIErrorResponse
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *APIErrorResponse
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *APIErrorResponse
-	// JSON500 the response for an HTTP 500 `application/json` response
-	JSON500 *APIErrorResponse
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r ResetSuperuserPasswordResponse) GetJSON400() *APIErrorResponse {
-	return r.JSON400
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r ResetSuperuserPasswordResponse) GetJSON401() *APIErrorResponse {
-	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r ResetSuperuserPasswordResponse) GetJSON403() *APIErrorResponse {
-	return r.JSON403
-}
-
-// GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r ResetSuperuserPasswordResponse) GetJSON500() *APIErrorResponse {
-	return r.JSON500
-}
-
-// GetBody returns the raw response body bytes
-func (r ResetSuperuserPasswordResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r ResetSuperuserPasswordResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r ResetSuperuserPasswordResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r ResetSuperuserPasswordResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
 // RefreshSuperuserSessionResponse204Headers the declared response headers of an HTTP 204 response for RefreshSuperuserSession
 type RefreshSuperuserSessionResponse204Headers struct {
 	SetCookie *string
@@ -5549,34 +5375,6 @@ func (c *ClientWithResponses) ChangeSuperuserPasswordWithResponse(ctx context.Co
 	return ParseChangeSuperuserPasswordResponse(rsp)
 }
 
-// ResetSuperuserPasswordWithBodyWithResponse performs a PUT /api/admin/superuser/password/reset (the `ResetSuperuserPassword` operationId) request,
-// with any type of body and a specified content type.
-//
-// Sets a new superuser password without the old one, and ends all superuser sessions.
-// Requires the superuser-password-reset permission.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) ResetSuperuserPasswordWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResetSuperuserPasswordResponse, error) {
-	rsp, err := c.ResetSuperuserPasswordWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseResetSuperuserPasswordResponse(rsp)
-}
-
-// ResetSuperuserPasswordWithResponse performs a PUT /api/admin/superuser/password/reset (the `ResetSuperuserPassword` operationId) request.
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-//
-// Sets a new superuser password without the old one, and ends all superuser sessions.
-// Requires the superuser-password-reset permission.
-func (c *ClientWithResponses) ResetSuperuserPasswordWithResponse(ctx context.Context, body ResetSuperuserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ResetSuperuserPasswordResponse, error) {
-	rsp, err := c.ResetSuperuserPassword(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseResetSuperuserPasswordResponse(rsp)
-}
-
 // RefreshSuperuserSessionWithResponse performs a POST /api/admin/superuser/refresh (the `RefreshSuperuserSession` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -5713,7 +5511,7 @@ func (c *ClientWithResponses) ChangeUserPasswordWithResponse(ctx context.Context
 // with any type of body and a specified content type.
 //
 // Sets a new password for an admin user without the old one, and ends all of the user's
-// sessions. Requires the password-reset permission.
+// sessions. Requires the admin-user-mgmt-admin permission.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) ResetUserPasswordWithBodyWithResponse(ctx context.Context, userID int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResetUserPasswordResponse, error) {
@@ -5728,7 +5526,7 @@ func (c *ClientWithResponses) ResetUserPasswordWithBodyWithResponse(ctx context.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Sets a new password for an admin user without the old one, and ends all of the user's
-// sessions. Requires the password-reset permission.
+// sessions. Requires the admin-user-mgmt-admin permission.
 func (c *ClientWithResponses) ResetUserPasswordWithResponse(ctx context.Context, userID int, body ResetUserPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ResetUserPasswordResponse, error) {
 	rsp, err := c.ResetUserPassword(ctx, userID, body, reqEditors...)
 	if err != nil {
@@ -6963,56 +6761,6 @@ func ParseChangeSuperuserPasswordResponse(rsp *http.Response) (*ChangeSuperuserP
 	}
 
 	response := &ChangeSuperuserPasswordResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case rsp.StatusCode == 204:
-		break // No content-type
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest APIErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest APIErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest APIErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest APIErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseResetSuperuserPasswordResponse parses an HTTP response from a ResetSuperuserPasswordWithResponse call
-func ParseResetSuperuserPasswordResponse(rsp *http.Response) (*ResetSuperuserPasswordResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &ResetSuperuserPasswordResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}

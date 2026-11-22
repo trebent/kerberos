@@ -54,6 +54,10 @@ const (
 	// Permissions.
 	selectAdminPermissions = "SELECT id, name FROM admin_permissions;"
 	insertAdminPermission  = "INSERT INTO admin_permissions (id, name) VALUES(@id, @name);"
+	// Permissions 8 (password-reset) and 9 (superuser-password-reset) no longer exist. Their IDs
+	// are not reused.
+	deleteRetiredPermBindings = "DELETE FROM admin_group_permission_bindings WHERE permission_id IN (8, 9);"
+	deleteRetiredPermissions  = "DELETE FROM admin_permissions WHERE id IN (8, 9);"
 
 	// Group permission bindings.
 	selectGroupPermissions       = "SELECT p.id, p.name FROM admin_group_permission_bindings gpb INNER JOIN admin_permissions p ON gpb.permission_id = p.id WHERE gpb.group_id = @groupID;"
@@ -833,23 +837,6 @@ func ResetUserPassword(
 	})
 }
 
-// ResetSuperuserPassword sets a new superuser password and deletes all superuser sessions, in one
-// transaction.
-func ResetSuperuserPassword(
-	ctx context.Context,
-	client db.SQLClient,
-	salt, hashedPassword string,
-) error {
-	return resetPassword(ctx, client, &resetPasswordOpts{
-		update: updateSuperuserPassword,
-		updateArgs: []any{
-			sql.NamedArg{Name: argSalt, Value: salt},
-			sql.NamedArg{Name: argHashedPassword, Value: hashedPassword},
-		},
-		deleteSessions: deleteSuperSessions,
-	})
-}
-
 // resetPasswordOpts holds the statements and arguments of a password reset.
 type resetPasswordOpts struct {
 	update             string
@@ -1240,8 +1227,15 @@ func BootstrapSuperuser(client db.SQLClient, clientID, clientSecret string) erro
 
 // --- Permissions ---
 
-// BootstrapPermissions inserts the fixed set of permissions if they do not yet exist.
+// BootstrapPermissions removes retired permissions, with their group bindings, and inserts the
+// fixed set of permissions if they do not yet exist.
 func BootstrapPermissions(client db.SQLClient) error {
+	for _, stmt := range []string{deleteRetiredPermBindings, deleteRetiredPermissions} {
+		if _, err := client.Exec(context.Background(), stmt); err != nil {
+			return fmt.Errorf("remove retired permissions: %w", err)
+		}
+	}
+
 	perms := []struct {
 		id   int64
 		name string
@@ -1253,8 +1247,6 @@ func BootstrapPermissions(client db.SQLClient) error {
 		{5, "admin-user-mgmt-admin"},
 		{6, "admin-user-mgmt-viewer"},
 		{7, "debugger"},
-		{8, "password-reset"},
-		{9, "superuser-password-reset"},
 	}
 
 	for _, p := range perms {
