@@ -53,7 +53,7 @@ func TestAdminPermissionsGetPermissions(t *testing.T) {
 	// Verify the four expected permissions exist with the correct names.
 	nameByID := make(map[int]string, len(*resp.JSON200))
 	for _, p := range *resp.JSON200 {
-		nameByID[p.Id] = p.Name
+		nameByID[int(p.Id)] = p.Name
 	}
 
 	expected := map[int]string{
@@ -410,7 +410,7 @@ func TestAdminPermissionsGroupResponseIncludesPermissions(t *testing.T) {
 	t.Parallel()
 	superRequestEditor := lib.SuperLogin(t)
 
-	permIDs := []int{PermissionIDFlowViewer, PermissionIDOASViewer}
+	permIDs := adminapi.PermissionIDs{PermissionIDFlowViewer, PermissionIDOASViewer}
 	createResp, err := lib.AdminClient.CreateGroupWithResponse(
 		t.Context(),
 		adminapi.CreateGroupJSONRequestBody{Name: lib.GroupName(), PermissionIDs: permIDs},
@@ -423,9 +423,9 @@ func TestAdminPermissionsGroupResponseIncludesPermissions(t *testing.T) {
 		t.Fatal("expected permissions in create group response, got empty slice")
 	}
 
-	returnedIDs := make([]int, 0, len(*createResp.JSON201.Permissions))
+	returnedIDs := make(adminapi.PermissionIDs, 0, len(*createResp.JSON201.Permissions))
 	for _, p := range *createResp.JSON201.Permissions {
-		returnedIDs = append(returnedIDs, p.Id)
+		returnedIDs = append(returnedIDs, int(p.Id))
 	}
 	lib.ContainsAll(permIDs, returnedIDs, t)
 	lib.ContainsAll(returnedIDs, permIDs, t)
@@ -445,7 +445,7 @@ func TestAdminPermissionsGroupResponseIncludesPermissions(t *testing.T) {
 
 	getReturnedIDs := make([]int, 0, len(*getResp.JSON200.Permissions))
 	for _, p := range *getResp.JSON200.Permissions {
-		getReturnedIDs = append(getReturnedIDs, p.Id)
+		getReturnedIDs = append(getReturnedIDs, int(p.Id))
 	}
 	lib.ContainsAll(permIDs, getReturnedIDs, t)
 	lib.ContainsAll(getReturnedIDs, permIDs, t)
