@@ -833,23 +833,6 @@ func ResetUserPassword(
 	})
 }
 
-// ResetSuperuserPassword sets a new superuser password and deletes all superuser sessions, in one
-// transaction.
-func ResetSuperuserPassword(
-	ctx context.Context,
-	client db.SQLClient,
-	salt, hashedPassword string,
-) error {
-	return resetPassword(ctx, client, &resetPasswordOpts{
-		update: updateSuperuserPassword,
-		updateArgs: []any{
-			sql.NamedArg{Name: argSalt, Value: salt},
-			sql.NamedArg{Name: argHashedPassword, Value: hashedPassword},
-		},
-		deleteSessions: deleteSuperSessions,
-	})
-}
-
 // resetPasswordOpts holds the statements and arguments of a password reset.
 type resetPasswordOpts struct {
 	update             string
@@ -1253,8 +1236,6 @@ func BootstrapPermissions(client db.SQLClient) error {
 		{5, "admin-user-mgmt-admin"},
 		{6, "admin-user-mgmt-viewer"},
 		{7, "debugger"},
-		{8, "password-reset"},
-		{9, "superuser-password-reset"},
 	}
 
 	for _, p := range perms {
