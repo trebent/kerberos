@@ -133,6 +133,8 @@ func (i *impl) LoginSuperuser(
 		return adminapi.LoginSuperuser401JSONResponse(apiErrUnauthorized), nil
 	}
 
+	i.deleteExpiredSessions(ctx)
+
 	sessionID := uuid.NewString()
 	refreshID := uuid.NewString()
 	if err := admindb.CreateSession(
@@ -287,6 +289,8 @@ func (i *impl) Login(
 	if !password.Match(u.Salt, u.HashedPassword, request.Body.Password) {
 		return adminapi.Login401JSONResponse(apiErrUnauthorized), nil
 	}
+
+	i.deleteExpiredSessions(ctx)
 
 	sessionID := uuid.NewString()
 	refreshID := uuid.NewString()
@@ -637,7 +641,7 @@ func (i *impl) ResetUserPassword(
 		return adminapi.ResetUserPassword500JSONResponse(apiErrInternal), nil
 	}
 
-	err = admindb.ResetUserPassword(ctx, i.sqlClient, int64(request.UserID), salt, hashed)
+	err = admindb.SetUserPassword(ctx, i.sqlClient, int64(request.UserID), salt, hashed)
 	if errors.Is(err, db.ErrRowNotFound) {
 		return adminapi.ResetUserPassword404JSONResponse(apiErrNotFound), nil
 	}
@@ -649,7 +653,16 @@ func (i *impl) ResetUserPassword(
 	return adminapi.ResetUserPassword204Response{}, nil
 }
 
-// ChangeUserPassword implements [withExtensions].
+// deleteExpiredSessions removes admin and superuser sessions that can no longer be refreshed. It runs
+// on every login. A failure is logged and does not stop the login.
+func (i *impl) deleteExpiredSessions(ctx context.Context) {
+	if err := admindb.DeleteExpiredSessions(ctx, i.sqlClient); err != nil {
+		zerologr.Error(err, "Failed to delete expired admin sessions")
+	}
+}
+
+// ChangeUserPassword implements [withExtensions]. It ends all of the user's sessions, including the
+// one making the request.
 func (i *impl) ChangeUserPassword(
 	ctx context.Context,
 	request adminapi.ChangeUserPasswordRequestObject,
@@ -681,7 +694,7 @@ func (i *impl) ChangeUserPassword(
 		return adminapi.ChangeUserPassword500JSONResponse(apiErrInternal), nil
 	}
 
-	if err := admindb.UpdateUserPassword(
+	if err := admindb.SetUserPassword(
 		ctx,
 		i.sqlClient,
 		int64(request.UserID),
@@ -695,6 +708,8 @@ func (i *impl) ChangeUserPassword(
 	return adminapi.ChangeUserPassword204Response{}, nil
 }
 
+// ChangeSuperuserPassword implements [withExtensions]. It ends all superuser sessions, including the
+// one making the request.
 func (i *impl) ChangeSuperuserPassword(
 	ctx context.Context,
 	request adminapi.ChangeSuperuserPasswordRequestObject,
@@ -719,7 +734,7 @@ func (i *impl) ChangeSuperuserPassword(
 		return adminapi.ChangeSuperuserPassword500JSONResponse(apiErrInternal), nil
 	}
 
-	if err := admindb.UpdateSuperuserPassword(
+	if err := admindb.SetSuperuserPassword(
 		ctx,
 		i.sqlClient,
 		newSalt,

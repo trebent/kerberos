@@ -52,7 +52,7 @@ All three cookies always carry the `Secure` flag. Browsers and most HTTP clients
 
 Each login or refresh creates a session row in the database that expires **15 minutes** after it was created. The cookie lifetime matches that. After 15 minutes the session ends, and the APIs and gateway answer `401`. To keep a session going, refresh it.
 
-Sessions live in the configured database (see [Persistence](./persistence.md)), so they survive a restart and all Kerberos instances sharing that database see them.
+Sessions live in the configured database (see [Persistence](./persistence.md)), so they survive a restart and all Kerberos instances sharing that database see them. Each login deletes the sessions of its API that can no longer be refreshed, so old sessions do not pile up.
 
 ## Refreshing a session
 
@@ -83,6 +83,10 @@ Good practice for clients: refresh a little before the 15-minute mark, for examp
 | Organisation user (`.../organisations/{orgID}/logout`) | Deletes only the current session. Other sessions of the same user, for example on other devices, stay valid. |
 | Admin user (`/api/admin/logout`) | Deletes only the current session. |
 | Superuser (`/api/admin/superuser/logout`) | Deletes **all** superuser sessions, including those on other devices and in other scripts. Calling it with an admin-user session returns `403`. |
+
+## Password changes and resets
+
+Changing or resetting a password ends **all** of that user's sessions, including the one that made the change. Anyone logged in as that user, on any device, gets `401` on their next call and logs in again with the new password. For the superuser, this means every superuser session.
 
 ## CSRF protection
 

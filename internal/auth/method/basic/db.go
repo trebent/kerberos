@@ -42,8 +42,6 @@ const (
 	selectUsers         = "SELECT id, name FROM users WHERE organisation_id = @orgID;"
 	updateUser          = "UPDATE users SET name = @name WHERE id = @userID AND organisation_id = @orgID;"
 	//nolint:gosec // not a password
-	updateUserPassword = "UPDATE users SET salt = @salt, hashed_password = @hashedPassword WHERE id = @id;"
-	//nolint:gosec // not a password
 	resetUserPassword = "UPDATE users SET salt = @salt, hashed_password = @hashedPassword WHERE id = @userID AND organisation_id = @orgID;"
 	selectLoginUser   = "SELECT id, name, salt, hashed_password, organisation_id FROM users WHERE organisation_id = @orgID AND name = @username;"
 
@@ -59,6 +57,7 @@ const (
 	selectSessionByRefresh = "SELECT s.session_id, s.refresh_id, s.user_id, s.organisation_id, u.administrator, s.expires FROM sessions s INNER JOIN users u ON s.user_id = u.id WHERE refresh_id = @refreshID AND s.organisation_id = @orgID;"
 	deleteUserSession      = "DELETE FROM sessions WHERE organisation_id = @orgID AND user_id = @userID AND session_id = @sessionID;"
 	deleteUserSessions     = "DELETE FROM sessions WHERE organisation_id = @orgID AND user_id = @userID;"
+	deleteExpiredSessions  = "DELETE FROM sessions WHERE expires < @cutoff;"
 
 	// Named arg keys.
 	argSession        = "session"
@@ -216,6 +215,21 @@ func dbCreateSession(
 		zerologr.Error(err, "Failed to store new session")
 	}
 	return err
+}
+
+// dbDeleteExpiredSessions deletes the sessions of every organisation that can no longer be
+// refreshed.
+func dbDeleteExpiredSessions(ctx context.Context, client db.SQLClient) error {
+	cutoff := time.Now().Add(sessionExpiry - sessionRefreshExpiry).UnixMilli()
+	if _, err := client.Exec(
+		ctx,
+		deleteExpiredSessions,
+		sql.NamedArg{Name: "cutoff", Value: cutoff},
+	); err != nil {
+		return fmt.Errorf("delete expired sessions: %w", err)
+	}
+
+	return nil
 }
 
 func dbDeleteUserSession(
@@ -454,28 +468,9 @@ func dbDeleteUser(ctx context.Context, client db.SQLClient, orgID, userID int64)
 	return err
 }
 
-func dbUpdateUserPassword(
-	ctx context.Context,
-	client db.SQLClient,
-	userID int64,
-	salt, hashedPassword string,
-) error {
-	_, err := client.Exec(
-		ctx,
-		updateUserPassword,
-		sql.NamedArg{Name: argSalt, Value: salt},
-		sql.NamedArg{Name: argHashedPassword, Value: hashedPassword},
-		sql.NamedArg{Name: "id", Value: userID},
-	)
-	if err != nil {
-		zerologr.Error(err, "Failed to update user password")
-	}
-	return err
-}
-
-// dbResetUserPassword sets a new password for a user of the organisation and deletes all of the
+// dbSetUserPassword sets a new password for a user of the organisation and deletes all of the
 // user's sessions, in one transaction. It returns errNoUser if the organisation has no such user.
-func dbResetUserPassword(
+func dbSetUserPassword(
 	ctx context.Context,
 	client db.SQLClient,
 	orgID, userID int64,
@@ -519,7 +514,7 @@ func dbResetUserPassword(
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit password reset: %w", err)
+		return fmt.Errorf("commit password change: %w", err)
 	}
 
 	return nil

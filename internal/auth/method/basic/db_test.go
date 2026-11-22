@@ -293,8 +293,8 @@ func TestDBUsers(t *testing.T) {
 		}
 
 		newPw := "newpassword"
-		if err := dbUpdateUserPassword(ctx, testClient, userID, "salt", newPw); err != nil {
-			t.Fatalf("dbUpdateUserPassword error: %v", err)
+		if err := dbSetUserPassword(ctx, testClient, orgID, userID, "salt", newPw); err != nil {
+			t.Fatalf("dbSetUserPassword error: %v", err)
 		}
 
 		auth, err := dbGetUserAuth(ctx, testClient, orgID, userID)
@@ -630,6 +630,37 @@ func TestDBSessions(t *testing.T) {
 		}
 	})
 
+	t.Run("delete expired", func(t *testing.T) {
+		expiredID := uniqueName(t, "session-expired")
+		if _, err := testClient.Exec(
+			ctx,
+			insertSession,
+			sql.NamedArg{Name: argUserID, Value: userID},
+			sql.NamedArg{Name: argOrgID, Value: orgID},
+			sql.NamedArg{Name: "refresh", Value: expiredID + "-refresh"},
+			sql.NamedArg{Name: argSession, Value: expiredID},
+			sql.NamedArg{Name: "expires", Value: time.Now().Add(-time.Second).UnixMilli()},
+		); err != nil {
+			t.Fatalf("insert expired session: %v", err)
+		}
+
+		liveID := uniqueName(t, "session-live")
+		if err := dbCreateSession(ctx, testClient, userID, orgID, liveID+"-refresh", liveID); err != nil {
+			t.Fatalf("dbCreateSession error: %v", err)
+		}
+
+		if err := dbDeleteExpiredSessions(ctx, testClient); err != nil {
+			t.Fatalf("dbDeleteExpiredSessions error: %v", err)
+		}
+
+		if _, err := dbGetSessionRow(ctx, testClient, expiredID); !errors.Is(err, errNoSession) {
+			t.Fatalf("expected the expired session to be deleted, got %v", err)
+		}
+		if _, err := dbGetSessionRow(ctx, testClient, liveID); err != nil {
+			t.Fatalf("expected the live session to remain, got %v", err)
+		}
+	})
+
 	t.Run("get not found", func(t *testing.T) {
 		_, err := dbGetSessionRow(ctx, testClient, "no-such-session")
 		if !errors.Is(err, errNoSession) {
@@ -667,8 +698,8 @@ func TestDBSessions(t *testing.T) {
 			t.Fatalf("dbCreateSession error: %v", err)
 		}
 
-		if err := dbResetUserPassword(ctx, testClient, orgID, resetID, "resetsalt", "resethash"); err != nil {
-			t.Fatalf("dbResetUserPassword error: %v", err)
+		if err := dbSetUserPassword(ctx, testClient, orgID, resetID, "resetsalt", "resethash"); err != nil {
+			t.Fatalf("dbSetUserPassword error: %v", err)
 		}
 
 		auth, err := dbGetUserAuth(ctx, testClient, orgID, resetID)
@@ -693,7 +724,7 @@ func TestDBSessions(t *testing.T) {
 	t.Run("reset password wrong organisation", func(t *testing.T) {
 		otherOrgID, _ := mustCreateOrg(t, uniqueName(t, "org-reset-other"))
 
-		err := dbResetUserPassword(ctx, testClient, otherOrgID, userID, "s", "h")
+		err := dbSetUserPassword(ctx, testClient, otherOrgID, userID, "s", "h")
 		if !errors.Is(err, errNoUser) {
 			t.Fatalf("expected errNoUser for a user of another organisation, got %v", err)
 		}

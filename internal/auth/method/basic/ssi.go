@@ -101,6 +101,11 @@ func (i *impl) Login(
 	}
 	zerologr.V(10).Info("User has logged in successfully", "username", req.Body.Username)
 
+	if err := dbDeleteExpiredSessions(ctx, i.db); err != nil {
+		// Cleanup must not stop the login.
+		zerologr.Error(err, "Failed to delete expired sessions")
+	}
+
 	sessionID := uuid.NewString()
 	refreshID := uuid.NewString()
 	if err := dbCreateSession(
@@ -237,7 +242,7 @@ func (i *impl) ResetPassword(
 		return authbasicapi.ResetPassword500JSONResponse(apiErrInternal), nil
 	}
 
-	err = dbResetUserPassword(ctx, i.db, req.OrgID, req.UserID, salt, hashed)
+	err = dbSetUserPassword(ctx, i.db, req.OrgID, req.UserID, salt, hashed)
 	if errors.Is(err, errNoUser) {
 		return authbasicapi.ResetPassword404Response{}, nil
 	}
@@ -249,7 +254,8 @@ func (i *impl) ResetPassword(
 	return authbasicapi.ResetPassword204Response{}, nil
 }
 
-// ChangePassword implements [StrictServerInterface].
+// ChangePassword implements [StrictServerInterface]. It ends all of the user's sessions, including
+// the one making the request.
 func (i *impl) ChangePassword(
 	ctx context.Context,
 	req authbasicapi.ChangePasswordRequestObject,
@@ -274,7 +280,11 @@ func (i *impl) ChangePassword(
 		return authbasicapi.ChangePassword500JSONResponse(apiErrInternal), nil
 	}
 
-	if err := dbUpdateUserPassword(ctx, i.db, req.UserID, newSalt, newHashedPassword); err != nil {
+	err = dbSetUserPassword(ctx, i.db, req.OrgID, req.UserID, newSalt, newHashedPassword)
+	if errors.Is(err, errNoUser) {
+		return authbasicapi.ChangePassword401JSONResponse(apiErrUnauthorized), nil
+	}
+	if err != nil {
 		zerologr.Error(err, "Failed to update user password")
 		return authbasicapi.ChangePassword500JSONResponse(apiErrInternal), nil
 	}
