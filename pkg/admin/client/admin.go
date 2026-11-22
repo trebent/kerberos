@@ -55,6 +55,39 @@ func (e FlowTransitionResultOutcome) Valid() bool {
 	}
 }
 
+// Defines values for PermissionId.
+const (
+	N1 PermissionId = 1
+	N2 PermissionId = 2
+	N3 PermissionId = 3
+	N4 PermissionId = 4
+	N5 PermissionId = 5
+	N6 PermissionId = 6
+	N7 PermissionId = 7
+)
+
+// Valid indicates whether the value is a known member of the PermissionId enum.
+func (e PermissionId) Valid() bool {
+	switch e {
+	case N1:
+		return true
+	case N2:
+		return true
+	case N3:
+		return true
+	case N4:
+		return true
+	case N5:
+		return true
+	case N6:
+		return true
+	case N7:
+		return true
+	default:
+		return false
+	}
+}
+
 // APIErrorResponse defines model for APIErrorResponse.
 type APIErrorResponse struct {
 	Errors []string `json:"errors"`
@@ -225,9 +258,15 @@ type NoFlowMetaData = map[string]interface{}
 
 // Permission defines model for Permission.
 type Permission struct {
-	Id   int64  `json:"id"`
-	Name string `json:"name"`
+	Id   PermissionId `json:"id"`
+	Name string       `json:"name"`
 }
+
+// PermissionId defines model for Permission.Id.
+type PermissionId int64
+
+// PermissionIDs defines model for PermissionIDs.
+type PermissionIDs = []int64
 
 // User defines model for User.
 type User struct {
@@ -244,8 +283,8 @@ type ChangePasswordRequest struct {
 
 // CreateGroupRequest defines model for CreateGroupRequest.
 type CreateGroupRequest struct {
-	Name          string  `json:"name"`
-	PermissionIDs []int64 `json:"permissionIDs"`
+	Name          string        `json:"name"`
+	PermissionIDs PermissionIDs `json:"permissionIDs"`
 }
 
 // CreateUserRequest defines model for CreateUserRequest.
@@ -273,8 +312,8 @@ type StartDebugSessionRequest struct {
 
 // UpdateGroupRequest defines model for UpdateGroupRequest.
 type UpdateGroupRequest struct {
-	Name          string  `json:"name"`
-	PermissionIDs []int64 `json:"permissionIDs"`
+	Name          string        `json:"name"`
+	PermissionIDs PermissionIDs `json:"permissionIDs"`
 }
 
 // UpdateUserGroupsRequest defines model for UpdateUserGroupsRequest.
@@ -306,14 +345,14 @@ type ListDebugSessionCallsParams struct {
 
 // CreateGroupJSONBody defines parameters for CreateGroup.
 type CreateGroupJSONBody struct {
-	Name          string  `json:"name"`
-	PermissionIDs []int64 `json:"permissionIDs"`
+	Name          string        `json:"name"`
+	PermissionIDs PermissionIDs `json:"permissionIDs"`
 }
 
 // UpdateGroupJSONBody defines parameters for UpdateGroup.
 type UpdateGroupJSONBody struct {
-	Name          string  `json:"name"`
-	PermissionIDs []int64 `json:"permissionIDs"`
+	Name          string        `json:"name"`
+	PermissionIDs PermissionIDs `json:"permissionIDs"`
 }
 
 // LoginJSONBody defines parameters for Login.
