@@ -345,7 +345,7 @@ func TestBasicAuthUserCreateOASValidation(t *testing.T) {
 }
 
 // TestBasicAuthUserChangePassword verifies the full change-password flow: a user can log in,
-// change their password, and then log in again with the new password.
+// change their password, is logged out everywhere, and can log in again with the new password.
 func TestBasicAuthUserChangePassword(t *testing.T) {
 	superRequestEditor := lib.SuperLogin(t)
 
@@ -390,6 +390,15 @@ func TestBasicAuthUserChangePassword(t *testing.T) {
 	)
 	lib.CheckErr(err, t)
 	lib.VerifyStatusCode(changeResp.StatusCode(), http.StatusNoContent, t)
+
+	// The change ends the user's sessions, including the one that made it.
+	meResp, err := lib.BasicAuthClient.GetMeWithResponse(
+		t.Context(),
+		orgID,
+		authbasicapi.RequestEditorFn(orgUserRequestEditor),
+	)
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(meResp.StatusCode(), http.StatusUnauthorized, t)
 
 	// Login with new password must succeed.
 	newLoginResp, err := lib.BasicAuthClient.LoginWithResponse(

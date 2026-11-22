@@ -536,8 +536,8 @@ func TestDBUsers(t *testing.T) {
 			t.Fatalf("dbCreateUser error: %v", err)
 		}
 
-		if err := UpdateUserPassword(ctx, testClient, userID, "newsalt", "newpassword"); err != nil {
-			t.Fatalf("dbUpdateUserPassword error: %v", err)
+		if err := SetUserPassword(ctx, testClient, userID, "newsalt", "newpassword"); err != nil {
+			t.Fatalf("SetUserPassword error: %v", err)
 		}
 
 		auth, err := GetUserAuth(ctx, testClient, userID)
@@ -568,8 +568,8 @@ func TestDBUsers(t *testing.T) {
 			t.Fatalf("CreateSession error: %v", err)
 		}
 
-		if err := ResetUserPassword(ctx, testClient, userID, "resetsalt", "resethash"); err != nil {
-			t.Fatalf("ResetUserPassword error: %v", err)
+		if err := SetUserPassword(ctx, testClient, userID, "resetsalt", "resethash"); err != nil {
+			t.Fatalf("SetUserPassword error: %v", err)
 		}
 
 		auth, err := GetUserAuth(ctx, testClient, userID)
@@ -592,7 +592,7 @@ func TestDBUsers(t *testing.T) {
 	})
 
 	t.Run("reset password not found", func(t *testing.T) {
-		if err := ResetUserPassword(ctx, testClient, 999999, "s", "h"); !errors.Is(err, db.ErrRowNotFound) {
+		if err := SetUserPassword(ctx, testClient, 999999, "s", "h"); !errors.Is(err, db.ErrRowNotFound) {
 			t.Fatalf("expected db.ErrRowNotFound, got %v", err)
 		}
 
@@ -601,7 +601,7 @@ func TestDBUsers(t *testing.T) {
 			t.Fatalf("GetSuperuser error: %v", err)
 		}
 
-		err = ResetUserPassword(ctx, testClient, superuser.ID, "s", "h")
+		err = SetUserPassword(ctx, testClient, superuser.ID, "s", "h")
 		if !errors.Is(err, db.ErrRowNotFound) {
 			t.Fatalf("expected the superuser to be out of reach, got %v", err)
 		}
@@ -613,8 +613,13 @@ func TestDBUsers(t *testing.T) {
 			t.Fatalf("dbGetSuperuser error: %v", err)
 		}
 
-		if err := UpdateSuperuserPassword(ctx, testClient, "supernewsalt", "supernewpassword"); err != nil {
-			t.Fatalf("dbUpdateUserPassword error: %v", err)
+		sessionID := uniqueName(t, "super-pw")
+		if err := CreateSession(ctx, testClient, oldSuperuser.ID, sessionID+"-refresh", sessionID); err != nil {
+			t.Fatalf("CreateSession error: %v", err)
+		}
+
+		if err := SetSuperuserPassword(ctx, testClient, "supernewsalt", "supernewpassword"); err != nil {
+			t.Fatalf("SetUserPassword error: %v", err)
 		}
 
 		superuser, err := GetSuperuser(ctx, testClient)
@@ -628,9 +633,54 @@ func TestDBUsers(t *testing.T) {
 			t.Fatalf("expected hashed password %q after update, got %q", "supernewpassword", superuser.HashedPassword)
 		}
 
+		if _, err := GetSession(ctx, testClient, sessionID); !errors.Is(err, db.ErrRowNotFound) {
+			t.Fatalf("expected the superuser session to be deleted, got %v", err)
+		}
+
 		// Change password back to original for other tests.
-		if err := UpdateSuperuserPassword(ctx, testClient, oldSuperuser.Salt, oldSuperuser.HashedPassword); err != nil {
-			t.Fatalf("dbUpdateUserPassword error: %v", err)
+		if err := SetSuperuserPassword(ctx, testClient, oldSuperuser.Salt, oldSuperuser.HashedPassword); err != nil {
+			t.Fatalf("SetUserPassword error: %v", err)
+		}
+	})
+
+	t.Run("delete expired sessions", func(t *testing.T) {
+		userID := mustCreateAdminUser(t, uniqueName(t, "user-expired"))
+
+		// Past the refresh window, so it can no longer be refreshed.
+		deadID := uniqueName(t, "session-dead")
+		if _, err := testClient.Exec(
+			ctx,
+			insertSession,
+			sql.NamedArg{Name: "user_id", Value: userID},
+			sql.NamedArg{Name: "refresh_id", Value: deadID + "-refresh"},
+			sql.NamedArg{Name: "session_id", Value: deadID},
+			sql.NamedArg{Name: "expires", Value: time.Now().Add(-SessionRefreshExpiry).UnixMilli()},
+		); err != nil {
+			t.Fatalf("insert dead session: %v", err)
+		}
+
+		// Expired, but still inside the refresh window.
+		refreshableID := uniqueName(t, "session-refreshable")
+		if _, err := testClient.Exec(
+			ctx,
+			insertSession,
+			sql.NamedArg{Name: "user_id", Value: userID},
+			sql.NamedArg{Name: "refresh_id", Value: refreshableID + "-refresh"},
+			sql.NamedArg{Name: "session_id", Value: refreshableID},
+			sql.NamedArg{Name: "expires", Value: time.Now().Add(-time.Minute).UnixMilli()},
+		); err != nil {
+			t.Fatalf("insert refreshable session: %v", err)
+		}
+
+		if err := DeleteExpiredSessions(ctx, testClient); err != nil {
+			t.Fatalf("DeleteExpiredSessions error: %v", err)
+		}
+
+		if _, err := GetSession(ctx, testClient, deadID); !errors.Is(err, db.ErrRowNotFound) {
+			t.Fatalf("expected the dead session to be deleted, got %v", err)
+		}
+		if _, err := GetSession(ctx, testClient, refreshableID); err != nil {
+			t.Fatalf("expected the refreshable session to remain, got %v", err)
 		}
 	})
 

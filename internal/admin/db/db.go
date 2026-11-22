@@ -42,6 +42,7 @@ const (
 	//nolint:gosec // not a password
 	updateAdminUserPassword = "UPDATE admin_users SET salt = @salt, hashed_password = @hashedPassword WHERE id = @userID AND superuser = false;"
 	deleteAdminUserSessions = "DELETE FROM admin_sessions WHERE user_id = @userID;"
+	deleteExpiredSessions   = "DELETE FROM admin_sessions WHERE expires < @cutoff;"
 
 	// Groups.
 	selectAdminGroups         = "SELECT id, name FROM admin_groups;"
@@ -794,34 +795,15 @@ func GetUserAuth(
 	return r, nil
 }
 
-func UpdateUserPassword(
-	ctx context.Context,
-	client db.SQLClient,
-	userID int64,
-	salt, hashedPassword string,
-) error {
-	_, err := client.Exec(
-		ctx,
-		updateAdminUserPassword,
-		sql.NamedArg{Name: argSalt, Value: salt},
-		sql.NamedArg{Name: argHashedPassword, Value: hashedPassword},
-		sql.NamedArg{Name: argUserID, Value: userID},
-	)
-	if err != nil {
-		zerologr.Error(err, "Failed to update admin user password")
-	}
-	return err
-}
-
-// ResetUserPassword sets a new password for a non-superuser admin user and deletes all of the
+// SetUserPassword sets a new password for a non-superuser admin user and deletes all of the
 // user's sessions, in one transaction. It returns db.ErrRowNotFound if no such user exists.
-func ResetUserPassword(
+func SetUserPassword(
 	ctx context.Context,
 	client db.SQLClient,
 	userID int64,
 	salt, hashedPassword string,
 ) error {
-	return resetPassword(ctx, client, &resetPasswordOpts{
+	return setPassword(ctx, client, &setPasswordOpts{
 		update: updateAdminUserPassword,
 		updateArgs: []any{
 			sql.NamedArg{Name: argSalt, Value: salt},
@@ -833,17 +815,17 @@ func ResetUserPassword(
 	})
 }
 
-// resetPasswordOpts holds the statements and arguments of a password reset.
-type resetPasswordOpts struct {
+// setPasswordOpts holds the statements and arguments of a password change.
+type setPasswordOpts struct {
 	update             string
 	updateArgs         []any
 	deleteSessions     string
 	deleteSessionsArgs []any
 }
 
-// resetPassword runs a password update and a session deletion in one transaction. It returns
+// setPassword runs a password update and a session deletion in one transaction. It returns
 // db.ErrRowNotFound if the update changed no row.
-func resetPassword(ctx context.Context, client db.SQLClient, opts *resetPasswordOpts) error {
+func setPassword(ctx context.Context, client db.SQLClient, opts *setPasswordOpts) error {
 	tx, err := client.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("start transaction: %w", err)
@@ -870,27 +852,27 @@ func resetPassword(ctx context.Context, client db.SQLClient, opts *resetPassword
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit password reset: %w", err)
+		return fmt.Errorf("commit password change: %w", err)
 	}
 
 	return nil
 }
 
-func UpdateSuperuserPassword(
+// SetSuperuserPassword sets a new superuser password and deletes all superuser sessions, in one
+// transaction.
+func SetSuperuserPassword(
 	ctx context.Context,
 	client db.SQLClient,
 	salt, hashedPassword string,
 ) error {
-	_, err := client.Exec(
-		ctx,
-		updateSuperuserPassword,
-		sql.NamedArg{Name: argSalt, Value: salt},
-		sql.NamedArg{Name: argHashedPassword, Value: hashedPassword},
-	)
-	if err != nil {
-		zerologr.Error(err, "Failed to update superuser password")
-	}
-	return err
+	return setPassword(ctx, client, &setPasswordOpts{
+		update: updateSuperuserPassword,
+		updateArgs: []any{
+			sql.NamedArg{Name: argSalt, Value: salt},
+			sql.NamedArg{Name: argHashedPassword, Value: hashedPassword},
+		},
+		deleteSessions: deleteSuperSessions,
+	})
 }
 
 // LoginLookup looks up a non-superuser admin user by username for authentication.
@@ -1171,6 +1153,20 @@ func DeleteSession(ctx context.Context, client db.SQLClient, sessionID string) e
 		zerologr.Error(err, "Failed to delete admin sessions")
 	}
 	return err
+}
+
+// DeleteExpiredSessions deletes the admin and superuser sessions that can no longer be refreshed.
+func DeleteExpiredSessions(ctx context.Context, client db.SQLClient) error {
+	cutoff := time.Now().Add(SessionExpiry - SessionRefreshExpiry).UnixMilli()
+	if _, err := client.Exec(
+		ctx,
+		deleteExpiredSessions,
+		sql.NamedArg{Name: "cutoff", Value: cutoff},
+	); err != nil {
+		return fmt.Errorf("delete expired admin sessions: %w", err)
+	}
+
+	return nil
 }
 
 func DeleteSuperuserSessions(ctx context.Context, client db.SQLClient) error {

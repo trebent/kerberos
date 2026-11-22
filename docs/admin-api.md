@@ -76,7 +76,7 @@ curl -i -c su.jar -b su.jar -X PUT http://localhost:30001/api/admin/superuser/pa
   -d '{"oldPassword": "<superuser secret>", "newPassword": "a-long-random-passphrase"}'
 ```
 
-A successful change returns `204`. A wrong `oldPassword` returns `400`. The superuser's name (`clientId`) stays as it was set on the first start.
+A successful change returns `204` and ends all superuser sessions, so log in again with the new password. A wrong `oldPassword` returns `400`. The superuser's name (`clientId`) stays as it was set on the first start.
 
 Only the superuser can change its password, and only with the current one. Keep it somewhere safe, such as a password manager.
 
@@ -152,7 +152,7 @@ All paths are on the admin port. "Any session" means any logged-in admin user or
 | `POST /api/admin/superuser/login` | public | `{"clientId", "clientSecret"}` | `204` + cookies; `401` wrong credentials |
 | `POST /api/admin/superuser/logout` | superuser | none | `204` ends all superuser sessions; `403` if caller is not the superuser |
 | `POST /api/admin/superuser/refresh` | superuser refresh cookie | none | `204` + new cookies; `401` missing, unknown or expired refresh token; `403` token belongs to an admin user |
-| `PUT /api/admin/superuser/password` | superuser | `{"oldPassword", "newPassword"}` | `204`; `400` wrong old password or `newPassword` not 10 to 64 characters; `403` not the superuser |
+| `PUT /api/admin/superuser/password` | superuser | `{"oldPassword", "newPassword"}` | `204` and all superuser sessions end; `400` wrong old password or `newPassword` not 10 to 64 characters; `403` not the superuser |
 
 ### Admin-user session
 
@@ -178,13 +178,13 @@ All paths are on the admin port. "Any session" means any logged-in admin user or
 | `GET /api/admin/users/{userID}` | self, or `admin-user-mgmt-admin` / `-viewer` | none | `200` user with `groups`; `404` |
 | `PUT /api/admin/users/{userID}` | self, or `admin-user-mgmt-admin` | `{"username"}` | `204`; `409` username taken |
 | `DELETE /api/admin/users/{userID}` | `admin-user-mgmt-admin` | none | `204`; `404` |
-| `PUT /api/admin/users/{userID}/password` | self, or `admin-user-mgmt-admin` | `{"oldPassword", "newPassword"}` | `204`; `400` wrong old password or `newPassword` not 10 to 64 characters; `404` |
+| `PUT /api/admin/users/{userID}/password` | self, or `admin-user-mgmt-admin` | `{"oldPassword", "newPassword"}` | `204` and the user's sessions end; `400` wrong old password or `newPassword` not 10 to 64 characters; `404` |
 | `PUT /api/admin/users/{userID}/password/reset` | `admin-user-mgmt-admin` | `{"newPassword"}` | `204` and the user's sessions end; `400` `newPassword` not 10 to 64 characters; `404` |
 | `PUT /api/admin/users/{userID}/groups` | `admin-user-mgmt-admin` | `{"groupIDs": [int]}` | `204`; `404` user not found |
 
 `PUT /api/admin/users/{userID}/groups` sets the **complete** list of groups. Groups that are not in `groupIDs` are removed, and `{"groupIDs": []}` removes the user from every group.
 
-`PUT /api/admin/users/{userID}/password` takes the user's current password, also when an `admin-user-mgmt-admin` changes someone else's password. If a user forgets their password, someone with `admin-user-mgmt-admin` sets a new one with `PUT /api/admin/users/{userID}/password/reset`. A reset ends all of the user's sessions, so anyone still logged in as that user is logged out.
+`PUT /api/admin/users/{userID}/password` takes the user's current password, also when an `admin-user-mgmt-admin` changes someone else's password. If a user forgets their password, someone with `admin-user-mgmt-admin` sets a new one with `PUT /api/admin/users/{userID}/password/reset`. A change or a reset ends all of the user's sessions. See [Sessions](./sessions.md#password-changes-and-resets).
 
 ### Admin groups
 
@@ -384,7 +384,7 @@ The standard Go cookie jar sends `Secure` cookies over plain `http://` only to `
 - **The superuser settings are used on the first start.** Afterwards, change the password with `PUT /api/admin/superuser/password`.
 - **Superuser logout ends every superuser session.**
 - **Deleting an admin user ends that user's sessions.**
-- **Password changes take the old password.** To replace a forgotten password, delete the user and create it again.
+- **Password changes take the old password.** To replace a forgotten password, use `PUT /api/admin/users/{userID}/password/reset`.
 - **Check group changes.** After creating or updating a group, confirm the result with `GET /groups`.
 - **Sessions are stored in the database**, so a restart keeps them, and replicas that share a database (PostgreSQL) share them. See [Debug sessions](./admin-debugging.md) for how debug recording works across instances.
 

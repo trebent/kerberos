@@ -246,6 +246,11 @@ func TestAdminUserChangePassword(t *testing.T) {
 	lib.CheckErr(err, t)
 	lib.VerifyStatusCode(changeResp.StatusCode(), http.StatusNoContent, t)
 
+	// The change ends the user's sessions, including the one that made it.
+	meResp, err := lib.AdminClient.GetMeWithResponse(t.Context(), adminapi.RequestEditorFn(adminRequestEditor))
+	lib.CheckErr(err, t)
+	lib.VerifyStatusCode(meResp.StatusCode(), http.StatusUnauthorized, t)
+
 	oldLoginResp, err := lib.AdminClient.LoginWithResponse(
 		t.Context(),
 		adminapi.LoginJSONRequestBody{Username: name, Password: oldPass},

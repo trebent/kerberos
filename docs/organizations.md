@@ -127,7 +127,7 @@ every `GET`.
 | `GET` | `/organisations/{orgID}/users/{userID}` | Org admin or the user | | `200` `{id, name, groups}` | `404` if missing. |
 | `PUT` | `/organisations/{orgID}/users/{userID}` | Org admin or the user | `{"id", "name"}` | `200` `{id, name}` | Renames. Use the same ID in the path and the body. `404`, `409`. |
 | `DELETE` | `/organisations/{orgID}/users/{userID}` | Org admin or the user | | `204` | |
-| `PUT` | `/organisations/{orgID}/users/{userID}/password` | Org admin or the user | `{"oldPassword", "password"}` | `204` | New password 10 to 64 characters. Old password is always required. `401` if it is wrong. |
+| `PUT` | `/organisations/{orgID}/users/{userID}/password` | Org admin or the user | `{"oldPassword", "password"}` | `204` | New password 10 to 64 characters. Old password is always required. `401` if it is wrong. Ends all of the user's sessions. |
 | `PUT` | `/organisations/{orgID}/users/{userID}/password/reset` | Org admin | `{"password"}` | `204` | Sets a new password, 10 to 64 characters, without the old one, and ends all of the user's sessions. `404` if the user is not in the organisation. |
 | `GET` | `/organisations/{orgID}/users/{userID}/groups` | Org admin or the user | | `200` `[{id, name}]` | |
 | `PUT` | `/organisations/{orgID}/users/{userID}/groups` | Org admin | `[{"id", "name"}, ...]` | `200` | Sets the full list of memberships. |
@@ -292,8 +292,8 @@ The same `session` cookie now authenticates Alice on the gateway port, for examp
 - A password change needs the current password in `oldPassword`, for every role. If a user forgets
   their password, an administrator sets a new one with
   `PUT /api/auth/basic/organisations/{orgID}/users/{userID}/password/reset`, which needs no old
-  password. A reset ends all of the user's sessions, so anyone still logged in as that user is
-  logged out.
+  password. A change or a reset ends all of the user's sessions. See
+  [Sessions](./sessions.md#password-changes-and-resets).
 - Passwords are stored as salted bcrypt hashes.
 
 ## Errors
