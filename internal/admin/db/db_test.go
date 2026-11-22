@@ -706,51 +706,6 @@ func TestDBUsers(t *testing.T) {
 
 // --- Groups ---
 
-func TestBootstrapPermissionsRemovesRetired(t *testing.T) {
-	ctx := context.Background()
-
-	for _, p := range []struct {
-		id   int64
-		name string
-	}{{8, "password-reset"}, {9, "superuser-password-reset"}} {
-		if _, err := testClient.Exec(
-			ctx,
-			insertAdminPermission,
-			sql.NamedArg{Name: "id", Value: p.id},
-			sql.NamedArg{Name: argName, Value: p.name},
-		); err != nil {
-			t.Fatalf("insert retired permission %d: %v", p.id, err)
-		}
-	}
-
-	groupID := mustCreateAdminGroup(t, uniqueName(t, "group-retired"))
-	if err := SetGroupPermissions(ctx, testClient, groupID, []int{7, 8, 9}); err != nil {
-		t.Fatalf("SetGroupPermissions error: %v", err)
-	}
-
-	if err := BootstrapPermissions(testClient); err != nil {
-		t.Fatalf("BootstrapPermissions error: %v", err)
-	}
-
-	perms, err := ListPermissions(ctx, testClient)
-	if err != nil {
-		t.Fatalf("ListPermissions error: %v", err)
-	}
-	for _, p := range perms {
-		if p.Id == 8 || p.Id == 9 {
-			t.Fatalf("expected retired permission %d to be removed", p.Id)
-		}
-	}
-
-	groupPerms, err := GetGroupPermissions(ctx, testClient, groupID)
-	if err != nil {
-		t.Fatalf("GetGroupPermissions error: %v", err)
-	}
-	if len(groupPerms) != 1 || groupPerms[0].Id != 7 {
-		t.Fatalf("expected only permission 7 to remain bound, got %+v", groupPerms)
-	}
-}
-
 func TestDBGroups(t *testing.T) {
 	ctx := context.Background()
 

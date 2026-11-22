@@ -143,46 +143,46 @@ Logins, refresh, logout, cookies and CSRF are covered in [Sessions](./sessions.m
 
 ## Endpoint reference
 
-All paths are relative to `/api/admin` on the admin port. "Any session" means any logged-in admin user or the superuser. `401` (no valid session) and `400` (request validation) can occur on any endpoint marked as needing a session, and `500` on any endpoint. Those codes are not repeated below.
+All paths are on the admin port. "Any session" means any logged-in admin user or the superuser. `401` (no valid session) and `400` (request validation) can occur on any endpoint marked as needing a session, and `500` on any endpoint. Those codes are not repeated below.
 
 ### Superuser
 
 | Method and path | Who | Body | Notable responses |
 | --- | --- | --- | --- |
-| `POST /superuser/login` | public | `{"clientId", "clientSecret"}` | `204` + cookies; `401` wrong credentials |
-| `POST /superuser/logout` | superuser | none | `204` ends all superuser sessions; `403` if caller is not the superuser |
-| `POST /superuser/refresh` | superuser refresh cookie | none | `204` + new cookies; `401` missing, unknown or expired refresh token; `403` token belongs to an admin user |
-| `PUT /superuser/password` | superuser | `{"oldPassword", "newPassword"}` | `204`; `400` wrong old password or `newPassword` not 10 to 64 characters; `403` not the superuser |
+| `POST /api/admin/superuser/login` | public | `{"clientId", "clientSecret"}` | `204` + cookies; `401` wrong credentials |
+| `POST /api/admin/superuser/logout` | superuser | none | `204` ends all superuser sessions; `403` if caller is not the superuser |
+| `POST /api/admin/superuser/refresh` | superuser refresh cookie | none | `204` + new cookies; `401` missing, unknown or expired refresh token; `403` token belongs to an admin user |
+| `PUT /api/admin/superuser/password` | superuser | `{"oldPassword", "newPassword"}` | `204`; `400` wrong old password or `newPassword` not 10 to 64 characters; `403` not the superuser |
 
 ### Admin-user session
 
 | Method and path | Who | Body | Notable responses |
 | --- | --- | --- | --- |
-| `POST /login` | public | `{"username", "password"}` | `204` + cookies; `401` unknown user or wrong password |
-| `POST /logout` | any session | none | `204` ends the current session |
-| `POST /refresh` | admin-user refresh cookie | none | `204` + new cookies; `401` missing, unknown or expired refresh token |
+| `POST /api/admin/login` | public | `{"username", "password"}` | `204` + cookies; `401` unknown user or wrong password |
+| `POST /api/admin/logout` | any session | none | `204` ends the current session |
+| `POST /api/admin/refresh` | admin-user refresh cookie | none | `204` + new cookies; `401` missing, unknown or expired refresh token |
 
 ### Me and permissions
 
 | Method and path | Who | Notable responses |
 | --- | --- | --- |
-| `GET /me` | any session | `200` `{"isSuperuser": bool, "user": {"id", "username", "groups": [{"id", "name"}]}}`; `user` is omitted for the superuser |
-| `GET /permissions` | any session | `200` list of `{"id", "name"}` |
+| `GET /api/admin/me` | any session | `200` `{"isSuperuser": bool, "user": {"id", "username", "groups": [{"id", "name"}]}}`; `user` is omitted for the superuser |
+| `GET /api/admin/permissions` | any session | `200` list of `{"id", "name"}` |
 
 ### Admin users
 
 | Method and path | Required permission | Body | Notable responses |
 | --- | --- | --- | --- |
-| `POST /users` | `admin-user-mgmt-admin` | `{"username", "password"}` | `201` `{"id", "username"}`; `400` password not 10 to 64 characters; `409` username taken |
-| `GET /users` | `admin-user-mgmt-admin` or `-viewer` | none | `200` list of users, each with `groups` |
-| `GET /users/{userID}` | self, or `admin-user-mgmt-admin` / `-viewer` | none | `200` user with `groups`; `404` |
-| `PUT /users/{userID}` | self, or `admin-user-mgmt-admin` | `{"username"}` | `204`; `409` username taken |
-| `DELETE /users/{userID}` | `admin-user-mgmt-admin` | none | `204`; `404` |
-| `PUT /users/{userID}/password` | self, or `admin-user-mgmt-admin` | `{"oldPassword", "newPassword"}` | `204`; `400` wrong old password or `newPassword` not 10 to 64 characters; `404` |
-| `PUT /users/{userID}/password/reset` | `admin-user-mgmt-admin` | `{"newPassword"}` | `204` and the user's sessions end; `400` `newPassword` not 10 to 64 characters; `404` |
-| `PUT /users/{userID}/groups` | `admin-user-mgmt-admin` | `{"groupIDs": [int]}` | `204`; `404` user not found |
+| `POST /api/admin/users` | `admin-user-mgmt-admin` | `{"username", "password"}` | `201` `{"id", "username"}`; `400` password not 10 to 64 characters; `409` username taken |
+| `GET /api/admin/users` | `admin-user-mgmt-admin` or `-viewer` | none | `200` list of users, each with `groups` |
+| `GET /api/admin/users/{userID}` | self, or `admin-user-mgmt-admin` / `-viewer` | none | `200` user with `groups`; `404` |
+| `PUT /api/admin/users/{userID}` | self, or `admin-user-mgmt-admin` | `{"username"}` | `204`; `409` username taken |
+| `DELETE /api/admin/users/{userID}` | `admin-user-mgmt-admin` | none | `204`; `404` |
+| `PUT /api/admin/users/{userID}/password` | self, or `admin-user-mgmt-admin` | `{"oldPassword", "newPassword"}` | `204`; `400` wrong old password or `newPassword` not 10 to 64 characters; `404` |
+| `PUT /api/admin/users/{userID}/password/reset` | `admin-user-mgmt-admin` | `{"newPassword"}` | `204` and the user's sessions end; `400` `newPassword` not 10 to 64 characters; `404` |
+| `PUT /api/admin/users/{userID}/groups` | `admin-user-mgmt-admin` | `{"groupIDs": [int]}` | `204`; `404` user not found |
 
-`PUT /users/{userID}/groups` sets the **complete** list of groups. Groups that are not in `groupIDs` are removed, and `{"groupIDs": []}` removes the user from every group.
+`PUT /api/admin/users/{userID}/groups` sets the **complete** list of groups. Groups that are not in `groupIDs` are removed, and `{"groupIDs": []}` removes the user from every group.
 
 `PUT /api/admin/users/{userID}/password` takes the user's current password, also when an `admin-user-mgmt-admin` changes someone else's password. If a user forgets their password, someone with `admin-user-mgmt-admin` sets a new one with `PUT /api/admin/users/{userID}/password/reset`. A reset ends all of the user's sessions, so anyone still logged in as that user is logged out.
 
@@ -190,11 +190,11 @@ All paths are relative to `/api/admin` on the admin port. "Any session" means an
 
 | Method and path | Required permission | Body | Notable responses |
 | --- | --- | --- | --- |
-| `POST /groups` | `admin-user-mgmt-admin` | `{"name", "permissionIDs": [int]}` | `201` `{"id", "name", "permissions": [{"id", "name"}]}`; `409` name taken |
-| `GET /groups` | `admin-user-mgmt-admin` or `-viewer` | none | `200` list of groups, each with `permissions` |
-| `GET /groups/{groupID}` | `admin-user-mgmt-admin` or `-viewer` | none | `200` group with `permissions`; `404` |
-| `PUT /groups/{groupID}` | `admin-user-mgmt-admin` | `{"name", "permissionIDs": [int]}` | `204`; `404`; `409` name taken |
-| `DELETE /groups/{groupID}` | `admin-user-mgmt-admin` | none | `204`; `404` |
+| `POST /api/admin/groups` | `admin-user-mgmt-admin` | `{"name", "permissionIDs": [int]}` | `201` `{"id", "name", "permissions": [{"id", "name"}]}`; `409` name taken |
+| `GET /api/admin/groups` | `admin-user-mgmt-admin` or `-viewer` | none | `200` list of groups, each with `permissions` |
+| `GET /api/admin/groups/{groupID}` | `admin-user-mgmt-admin` or `-viewer` | none | `200` group with `permissions`; `404` |
+| `PUT /api/admin/groups/{groupID}` | `admin-user-mgmt-admin` | `{"name", "permissionIDs": [int]}` | `204`; `404`; `409` name taken |
+| `DELETE /api/admin/groups/{groupID}` | `admin-user-mgmt-admin` | none | `204`; `404` |
 
 `permissionIDs` is required on both create and update. On update it **replaces** the group's permissions, so always send the full set you want. Use IDs from the [permissions table](#permissions), each once.
 
@@ -202,8 +202,8 @@ All paths are relative to `/api/admin` on the admin port. "Any session" means an
 
 | Method and path | Required permission | Notable responses |
 | --- | --- | --- |
-| `GET /flow` | `flow-viewer` | `200` list of flow components (see [Inspecting the flow](#inspecting-the-flow)) |
-| `GET /oas/{backend}` | `oas-viewer` | `200` specification file (`application/yaml`); `404` backend has no OAS mapping |
+| `GET /api/admin/flow` | `flow-viewer` | `200` list of flow components (see [Inspecting the flow](#inspecting-the-flow)) |
+| `GET /api/admin/oas/{backend}` | `oas-viewer` | `200` specification file (`application/yaml`); `404` backend has no OAS mapping |
 
 ### Debug
 
@@ -211,9 +211,9 @@ All debug endpoints require the `debugger` permission. They are documented in [A
 
 | Method and path | Purpose |
 | --- | --- |
-| `POST /debug/{backend}/sessions`, `GET /debug/{backend}/sessions` | Start or list debug sessions for a backend |
-| `GET`, `PUT`, `POST`, `DELETE /debug/{backend}/sessions/{sessionId}` | Read, extend, stop or delete a debug session |
-| `GET /debug/{backend}/sessions/{sessionId}/calls`, `.../calls/{callId}` | Inspect captured calls |
+| `POST /api/admin/debug/{backend}/sessions`, `GET /api/admin/debug/{backend}/sessions` | Start or list debug sessions for a backend |
+| `GET`, `PUT`, `POST`, `DELETE /api/admin/debug/{backend}/sessions/{sessionId}` | Read, extend, stop or delete a debug session |
+| `GET /api/admin/debug/{backend}/sessions/{sessionId}/calls`, `GET /api/admin/debug/{backend}/sessions/{sessionId}/calls/{callId}` | Inspect captured calls |
 
 ## Walkthrough: give a colleague access
 
