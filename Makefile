@@ -190,13 +190,6 @@ docker/logs:
 docker/rm:
 	@docker rm kerberos || true
 
-poc/build:
-	$(call cecho,Building Kerberos Docker image for PoC...,$(BOLD_YELLOW))
-	docker build --build-arg VERSION=$(VERSION) --target poc-runtime -t ghcr.io/trebent/kerberos:$(VERSION) -f docker/krb.Dockerfile .
-
-poc/run:
-	docker run -d --name kerberos ghcr.io/trebent/kerberos:$(VERSION) --config /poc.json
-
 docker/run: docker/build docker/stop docker/rm docker/network/create
 	$(call cecho,Running Kerberos Docker container...,$(BOLD_YELLOW))
 	docker run -d \
