@@ -43,7 +43,13 @@ type (
 	}
 )
 
-var tracer = otel.GetTracerProvider().Tracer("admin-connector")
+var (
+	tracer = otel.GetTracerProvider().Tracer("admin-connector")
+
+	// errSessionDenied marks session check failures caused by the request itself,
+	// as opposed to failures to look the session up.
+	errSessionDenied = errors.New("session denied")
+)
 
 func newHandler(opts opts) (*connectorHandler, error) {
 	u := &url.URL{
@@ -89,9 +95,13 @@ func (h *connectorHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.checkSession(r); err != nil {
 		zerologr.Error(err, "Session check failed")
-		newSpan.SetStatus(codes.Error, http.StatusText(http.StatusUnauthorized))
-		h.callDeniedCounter.Add(ctx, 1)
-		apierror.ErrorHandler(w, r, apierror.ErrUnauthorized)
+		apiErr := apierror.ErrISE
+		if errors.Is(err, errSessionDenied) {
+			apiErr = apierror.ErrUnauthorized
+			h.callDeniedCounter.Add(ctx, 1)
+		}
+		newSpan.SetStatus(codes.Error, apiErr.Error())
+		apierror.ErrorHandler(w, r, apiErr)
 		return
 	}
 
@@ -136,18 +146,21 @@ func (h *connectorHandler) checkSession(r *http.Request) error {
 	sessionCookies := r.CookiesNamed(security.SessionCookieName)
 	// #1 -> are there any session cookies? If not, return 401 Unauthorized.
 	if len(sessionCookies) == 0 {
-		return errors.New("no session cookie found in request")
+		return fmt.Errorf("%w: no session cookie found in request", errSessionDenied)
 	}
 
 	// #2 -> is the session cookie referring to an existing session? If not, return 401 Unauthorized.
 	session, err := admindb.GetSession(r.Context(), h.sqlClient, sessionCookies[0].Value)
 	if errors.Is(err, db.ErrRowNotFound) {
-		return err
+		return fmt.Errorf("%w: %w", errSessionDenied, err)
+	}
+	if err != nil {
+		return fmt.Errorf("looking up session: %w", err)
 	}
 
 	// #3 -> is the session cookie expired? If so, return 401 Unauthorized.
 	if time.Until(time.UnixMilli(session.Expires)) <= 0 {
-		return errors.New("session cookie is expired")
+		return fmt.Errorf("%w: session cookie is expired", errSessionDenied)
 	}
 
 	return nil
