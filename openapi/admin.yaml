@@ -82,6 +82,7 @@ components:
                 type: array
                 items:
                   type: integer
+                  format: int64
             required:
               - groupIDs
     LoginUserRequest:
@@ -156,6 +157,7 @@ components:
       type: array
       items:
         type: integer
+        format: int64
         enum:
           - 1
           - 2
@@ -170,6 +172,7 @@ components:
       properties:
         id:
           type: integer
+          format: int64
           description: The ID for the debug session.
         backend:
           type: string
@@ -198,6 +201,7 @@ components:
       properties:
         id:
           type: integer
+          format: int64
           description: The ID for the call.
         startedAt:
           type: string
@@ -295,6 +299,7 @@ components:
       properties:
         id:
           type: integer
+          format: int64
         username:
           type: string
         groups:
@@ -310,6 +315,7 @@ components:
       properties:
         id:
           type: integer
+          format: int64
         name:
           type: string
           minLength: 1
@@ -328,6 +334,7 @@ components:
       properties:
         id:
           type: integer
+          format: int64
           enum:
             - 1
             - 2
@@ -758,6 +765,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         "200":
           content:
@@ -805,6 +813,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       requestBody:
         $ref: "#/components/requestBodies/UpdateUserRequest"
       responses:
@@ -856,6 +865,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         "204":
           description: Deleted the user successfully.
@@ -901,6 +911,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       requestBody:
         $ref: "#/components/requestBodies/ChangePasswordRequest"
       responses:
@@ -951,6 +962,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       requestBody:
         $ref: "#/components/requestBodies/ResetPasswordRequest"
       responses:
@@ -998,6 +1010,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       requestBody:
         $ref: "#/components/requestBodies/UpdateUserGroupsRequest"
       responses:
@@ -1208,6 +1221,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         "200":
           content:
@@ -1249,6 +1263,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       requestBody:
         $ref: "#/components/requestBodies/UpdateGroupRequest"
       responses:
@@ -1300,6 +1315,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         "204":
           description: Deleted the group successfully.
@@ -1481,6 +1497,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         "200":
           content:
@@ -1533,6 +1550,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       requestBody:
         required: true
         content:
@@ -1606,6 +1624,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         "204":
           description: Stopped the backend debug session successfully.
@@ -1654,6 +1673,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         "204":
           description: Deleted the backend debug session successfully.
@@ -1704,6 +1724,7 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
         - name: includeTransitions
           in: query
           required: true
@@ -1766,11 +1787,13 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
         - name: callId
           in: path
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         "200":
           content:
