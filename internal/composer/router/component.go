@@ -58,7 +58,7 @@ func NewComponent(opts *Opts) composer.FlowComponent {
 	}
 }
 
-// BackendExists implements [adminext.BackendLookup]
+// BackendExists implements [adminext.BackendLookup].
 func (r *router) BackendExists(name string) bool {
 	return slices.ContainsFunc(r.cfg.Backends, func(backend *config.RouterBackend) bool {
 		return name == backend.Name

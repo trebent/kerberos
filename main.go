@@ -212,6 +212,7 @@ func startServer(ctx context.Context, cfg *config.Kerberos) error {
 
 	zerologr.Info("Loading router")
 	router := router.NewComponent(&router.Opts{Cfg: cfg.GatewayCfg.Router})
+	//nolint:errcheck // no need
 	adm.SetBackendLookup(router.(adminext.BackendLookup))
 
 	zerologr.Info("Loading custom")
